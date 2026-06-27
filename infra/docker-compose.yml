@@ -1,0 +1,67 @@
+# DOCKER COMPOSE PARA AMBIENTE DE DESENVOLVIMENTO LOCAL - GASTOSAPP
+# Este arquivo orquestra os serviços necessários para rodar o backend localmente.
+
+services:
+  # Serviço que emula a AWS localmente (DynamoDB, Cognito e Secrets Manager)
+  localstack:
+    image: localstack/localstack:latest
+    container_name: gastosapp-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=dynamodb,cognito,secretsmanager
+      - DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      # Executa scripts automaticamente quando o LocalStack estiver inicializado e pronto
+      - ./scripts/localstack-init:/etc/localstack/init/ready.d
+    networks:
+      - gastos-network
+
+  # API ASP.NET Core 10 (Minimal APIs)
+  api:
+    image: gastosapp-api:latest
+    container_name: gastosapp-api
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - AWS__ServiceURL=http://localstack:4566
+      - AWS__Region=us-east-1
+      - AWS__AccessKey=test
+      - AWS__SecretKey=test
+    depends_on:
+      - localstack
+    networks:
+      - gastos-network
+
+  # API Gateway Kong rodando em modo DB-less (sem banco de dados)
+  kong:
+    image: kong:3.9.3
+    container_name: gastosapp-kong
+    environment:
+      - KONG_DATABASE=off
+      - KONG_DECLARATIVE_CONFIG=/etc/kong/kong.yml
+      - KONG_PROXY_ACCESS_LOG=/dev/stdout
+      - KONG_ADMIN_ACCESS_LOG=/dev/stdout
+      - KONG_PROXY_ERROR_LOG=/dev/stderr
+      - KONG_ADMIN_ERROR_LOG=/dev/stderr
+      - KONG_ADMIN_LISTEN=0.0.0.0:8001
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    volumes:
+      # Monta a configuração declarativa de rotas do Kong (somente leitura)
+      - ./kong.yml:/etc/kong/kong.yml:ro
+    depends_on:
+      - api
+    networks:
+      - gastos-network
+
+networks:
+  gastos-network:
+    driver: bridge
