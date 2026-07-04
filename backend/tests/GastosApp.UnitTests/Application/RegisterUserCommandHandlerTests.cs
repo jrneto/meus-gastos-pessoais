@@ -22,10 +22,10 @@ public class RegisterUserCommandHandlerTests
     public async Task HandleAsync_ShouldRegisterUserSuccessfully_WhenCommandIsValid()
     {
         // Arrange
-        var command = new RegisterUserCommand("neto@email.com", "Senha123", "Neto");
-        var expectedResult = new RegisterResult("user-id-123", command.Email, command.Name);
+        var command = new RegisterUserCommand("neto@email.com", "Senha123");
+        var expectedResult = new RegisterResult("user-id-123", command.Email);
 
-        _authServiceMock.RegisterAsync(command.Email, command.Password, command.Name, Arg.Any<CancellationToken>())
+        _authServiceMock.RegisterAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
             .Returns(expectedResult);
 
         // Act
@@ -35,23 +35,20 @@ public class RegisterUserCommandHandlerTests
         result.Should().NotBeNull();
         result.UserId.Should().Be("user-id-123");
         result.Email.Should().Be(command.Email);
-        result.Name.Should().Be(command.Name);
 
-        await _authServiceMock.Received(1).RegisterAsync(command.Email, command.Password, command.Name, Arg.Any<CancellationToken>());
+        await _authServiceMock.Received(1).RegisterAsync(command.Email, command.Password, Arg.Any<CancellationToken>());
     }
 
     [Theory]
-    [InlineData("", "Senha123", "Neto", "Email")]
-    [InlineData("   ", "Senha123", "Neto", "Email")]
-    [InlineData("neto@email.com", "", "Neto", "Senha")]
-    [InlineData("neto@email.com", "   ", "Neto", "Senha")]
-    [InlineData("neto@email.com", "123", "Neto", "Senha")]
-    [InlineData("neto@email.com", "Senha123", "", "Nome")]
-    [InlineData("neto@email.com", "Senha123", "   ", "Nome")]
-    public async Task HandleAsync_ShouldThrowArgumentException_WhenCommandIsInvalid(string email, string password, string name, string expectedPart)
+    [InlineData("", "Senha123",  "Email")]
+    [InlineData("   ", "Senha123", "Email")]
+    [InlineData("neto@email.com", "", "Senha")]
+    [InlineData("neto@email.com", "   ", "Senha")]
+    [InlineData("neto@email.com", "123", "Senha")]  
+    public async Task HandleAsync_ShouldThrowArgumentException_WhenCommandIsInvalid(string email, string password, string expectedPart)
     {
         // Arrange
-        var command = new RegisterUserCommand(email, password, name);
+        var command = new RegisterUserCommand(email, password);
 
         // Act
         Func<Task> act = async () => await _handler.HandleAsync(command);
@@ -60,16 +57,16 @@ public class RegisterUserCommandHandlerTests
         var exception = await act.Should().ThrowAsync<ArgumentException>();
         exception.Which.Message.Should().Contain(expectedPart);
 
-        await _authServiceMock.DidNotReceiveWithAnyArgs().RegisterAsync(default!, default!, default!, default);
+        await _authServiceMock.DidNotReceiveWithAnyArgs().RegisterAsync(default!, default!, default);
     }
 
     [Fact]
     public async Task HandleAsync_ShouldThrowEmailAlreadyExistsException_WhenEmailIsAlreadyRegistered()
     {
         // Arrange
-        var command = new RegisterUserCommand("neto@email.com", "Senha123", "Neto");
+        var command = new RegisterUserCommand("neto@email.com", "Senha123");
 
-        _authServiceMock.RegisterAsync(command.Email, command.Password, command.Name, Arg.Any<CancellationToken>())
+        _authServiceMock.RegisterAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
             .Returns(Task.FromException<RegisterResult>(new EmailAlreadyExistsException()));
 
         // Act
@@ -78,6 +75,6 @@ public class RegisterUserCommandHandlerTests
         // Assert
         await act.Should().ThrowAsync<EmailAlreadyExistsException>();
 
-        await _authServiceMock.Received(1).RegisterAsync(command.Email, command.Password, command.Name, Arg.Any<CancellationToken>());
+        await _authServiceMock.Received(1).RegisterAsync(command.Email, command.Password, Arg.Any<CancellationToken>());
     }
 }

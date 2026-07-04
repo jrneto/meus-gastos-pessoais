@@ -51,8 +51,13 @@ public class GlobalExceptionHandler : IExceptionHandler
         }
 
         httpContext.Response.StatusCode = problemDetails.Status.Value;
-        httpContext.Response.ContentType = "application/problem+json";
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+        //httpContext.Response.ContentType = "application/problem+json";
+        //await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+        await httpContext.Response.WriteAsJsonAsync(
+            problemDetails,
+            options: (System.Text.Json.JsonSerializerOptions?)null,
+            contentType: "application/problem+json",
+            cancellationToken: cancellationToken);
 
         return true;
     }

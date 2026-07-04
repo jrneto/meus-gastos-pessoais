@@ -1,24 +1,7 @@
 # DOCKER COMPOSE PARA AMBIENTE DE DESENVOLVIMENTO LOCAL - GASTOSAPP
-# Este arquivo orquestra os serviços necessários para rodar o backend localmente.
+# Configurado para desenvolvimento local conectado diretamente à nuvem AWS real.
 
 services:
-  # Serviço que emula a AWS localmente (DynamoDB, Cognito e Secrets Manager)
-  localstack:
-    image: localstack/localstack:latest
-    container_name: gastosapp-localstack
-    ports:
-      - "4566:4566"
-    environment:
-      - SERVICES=dynamodb,cognito,secretsmanager
-      - DEFAULT_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
-    volumes:
-      # Executa scripts automaticamente quando o LocalStack estiver inicializado e pronto
-      - ./scripts/localstack-init:/etc/localstack/init/ready.d
-    networks:
-      - gastos-network
-
   # API ASP.NET Core 10 (Minimal APIs)
   api:
     image: gastosapp-api:latest
@@ -30,12 +13,11 @@ services:
       - "8080:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - AWS__ServiceURL=http://localstack:4566
       - AWS__Region=us-east-1
-      - AWS__AccessKey=test
-      - AWS__SecretKey=test
-    depends_on:
-      - localstack
+      - AWS_PROFILE=developer # Usa o profile conectado via AWS CLI / Identity Center
+    volumes:
+      # 🔒 Compartilha as credenciais temporárias do seu computador com o container de forma segura
+      - ~/.aws:/root/.aws:ro
     networks:
       - gastos-network
 

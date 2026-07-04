@@ -21,8 +21,8 @@ public class LoginUserCommandHandler
             throw new ArgumentException("Senha é obrigatória.", nameof(command.Password));
 
         var result = await _authService.LoginAsync(command.Email, command.Password, cancellationToken);
-        return new LoginUserResult(result.AccessToken, result.ExpiresIn, result.UserId, result.Name);
+        return new LoginUserResult(result.accessToken, result.ExpiresIn, result.UserId);
     }
 }
 
-public record LoginUserResult(string AccessToken, int ExpiresIn, string UserId, string Name);
+public record LoginUserResult(string AccessToken, int ExpiresIn, string UserId);

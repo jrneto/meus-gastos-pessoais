@@ -1,5 +1,3 @@
-using System.IO;
-using System.Text.Json;
 using FluentAssertions;
 using GastosApp.Api.Middlewares;
 using GastosApp.Application.Common.Exceptions;
@@ -7,7 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using Xunit;
+using System.Text.Json;
 
 namespace GastosApp.UnitTests.Api;
 

@@ -6,9 +6,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Amazon.Extensions.Configuration.SystemsManager" Version="7.1.0" />
     <PackageReference Include="AWSSDK.CognitoIdentityProvider" Version="4.0.10.1" />
+    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.4.11" />
     <PackageReference Include="AWSSDK.SecretsManager" Version="4.0.5.8" />
+    <PackageReference Include="AWSSDK.SSO" Version="4.0.3.8" />
+    <PackageReference Include="AWSSDK.SSOOIDC" Version="4.0.4.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="2.3.11" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.9" />
   </ItemGroup>
 
   <PropertyGroup>
