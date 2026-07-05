@@ -1,3 +1,4 @@
+using GastosApp.Application.Abstractions;
 using GastosApp.Application.Auth.Commands.Login;
 using GastosApp.Application.Auth.Commands.Register;
 using Microsoft.AspNetCore.Mvc;
@@ -45,8 +46,8 @@ public static class AuthEndpoints
     }
 
     private static async Task<IResult> Login(
-        [FromBody] LoginRequest request,
-        [FromServices] LoginUserCommandHandler handler,
+        LoginRequest request,
+        ICommandHandler<LoginUserCommand, LoginUserResult> handler,
         CancellationToken cancellationToken)
     {
 
@@ -58,7 +59,7 @@ public static class AuthEndpoints
 
     private static async Task<IResult> RegisterUser(
         RegisterRequest request,
-        RegisterUserCommandHandler handler,
+        ICommandHandler<RegisterUserCommand, RegisterUserResult> handler,
         CancellationToken cancellationToken)
     {
         var command = new RegisterUserCommand(request.Email, request.Password);

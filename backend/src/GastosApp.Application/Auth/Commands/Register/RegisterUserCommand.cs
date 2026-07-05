@@ -1,10 +1,11 @@
+using GastosApp.Application.Abstractions;
 using GastosApp.Application.Common.Interfaces;
 
 namespace GastosApp.Application.Auth.Commands.Register;
 
-public record RegisterUserCommand(string Email, string Password);
+public record RegisterUserCommand(string Email, string Password) : ICommand<RegisterUserResult>;
 
-public class RegisterUserCommandHandler
+public class RegisterUserCommandHandler : ICommandHandler<RegisterUserCommand, RegisterUserResult>
 {
     private readonly IAuthService _authService;
 
