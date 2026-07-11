@@ -1,16 +1,23 @@
 # Constitution — GastosApp
 
+**Escopo: Backend (.NET).**
+
 ## O que é este sistema
 API de controle de gastos pessoal. Backend-first, frontend React depois.
 
 ## Regras imutáveis
 - Valor monetário SEMPRE em centavos (long). Ex: R$ 49,90 = 4990
 - userId SEMPRE extraído do JWT (Cognito sub), NUNCA do body do request
-- Toda feature começa com uma spec em /docs/specs antes de qualquer código
+- Toda feature começa com uma spec em `backend/specs/{FEAT-XX-nome}/spec.md`
+  antes de qualquer código (ver Modo Leve vs Fluxo Completo em `/CLAUDE.md`)
 - Todo novo endpoint deve ter testes de componente (mock de repositórios
-  e dependências externas, ver `docs/specs/FEAT-03-testes-componentes.md`)
+  e dependências externas, ver `backend/specs/FEAT-03-testes-componentes/spec.md`)
   antes de ser considerado concluído
 - Sem Scan no DynamoDB — apenas Query com PK ou GSI definidos
+- Toda infraestrutura é AWS. Desenvolvimento local conecta-se diretamente aos
+  recursos AWS reais (Cognito, DynamoDB, Parameter Store), sem simulação
+  (sem LocalStack, sem Kong). IaC futuro será feito exclusivamente em
+  Terraform (não CloudFormation, não CDK)
 
 ## Stack
 - Runtime: .NET 10, ASP.NET Core Minimal APIs

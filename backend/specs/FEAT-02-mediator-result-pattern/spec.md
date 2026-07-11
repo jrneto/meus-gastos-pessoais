@@ -1,7 +1,7 @@
 # FEAT-02: Padrão Mediator + Result Pattern
 
 ## Contexto
-A `docs/constitution.md` (seção "Padrões de Código e Arquitetura") exige:
+A `backend/docs/constitution.md` (seção "Padrões de Código e Arquitetura") exige:
 - **Mediator Pattern**: usar uma biblioteca de Mediator para desacoplar
   os Handlers de comandos/queries das Minimal APIs. As rotas devem
   apenas enviar (`Send`) o request para o mediator.
@@ -24,7 +24,7 @@ nenhuma das duas regras:
   `GlobalExceptionHandler` e convertidas em `ProblemDetails`.
 
 Isso já estava documentado como **débito técnico explícito** em
-`docs/specs/FEAT-01-auth.md` (seção Application). Esta spec define o
+`backend/specs/FEAT-01-auth/spec.md` (seção Application). Esta spec define o
 padrão arquitetural (válido para todas as features futuras) e aplica a
 migração ao módulo Auth, que é o único código existente hoje.
 
@@ -113,7 +113,7 @@ externas:
 Os contratos HTTP documentados em `FEAT-01-auth.md` (paths, request/response
 JSON, status codes, `Type` URIs de erro) **não mudam**.
 
-Após a implementação, `docs/specs/FEAT-01-auth.md` deve ser atualizado
+Após a implementação, `backend/specs/FEAT-01-auth/spec.md` deve ser atualizado
 para remover a nota de débito técnico ("Os handlers lançam exceções em
 vez de usar o Result Pattern...") e refletir o novo fluxo baseado em
 `ISender`/`Result`.
@@ -151,7 +151,7 @@ vez de usar o Result Pattern...") e refletir o novo fluxo baseado em
 - [x] Contratos HTTP inalterados (mesmos paths/payloads/status codes/Type URIs)
 - [x] Testes existentes migrados para o novo padrão (sem `ThrowAsync` de
       exceções de negócio)
-- [x] `docs/specs/FEAT-01-auth.md` atualizado, removendo a nota de
+- [x] `backend/specs/FEAT-01-auth/spec.md` atualizado, removendo a nota de
       débito técnico
 
 ## Fora do escopo

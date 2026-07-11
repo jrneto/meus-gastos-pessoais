@@ -110,7 +110,7 @@ Response 401 (token ausente, inválido ou expirado):
 
 ### Application
 - Mediator: biblioteca `Mediator` (martinothamar), conforme
-  `docs/specs/FEAT-02-mediator-result-pattern.md`. `ICommand<TResponse>`/
+  `backend/specs/FEAT-02-mediator-result-pattern/spec.md`. `ICommand<TResponse>`/
   `ICommandHandler<TCommand,TResponse>` usados aqui são da lib (namespace
   `Mediator`), não mais abstrações próprias.
 - `RegisterUserCommand(Email, Password)` / `RegisterUserCommandHandler`

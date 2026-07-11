@@ -15,10 +15,10 @@ Hoje existem dois projetos de teste:
 Isso deixa uma lacuna: nenhum teste hoje valida que um endpoint, quando
 chamado via HTTP real (Minimal API → Mediator → Handler →
 `ResultHttpExtensions` → resposta), se comporta como documentado nas
-specs (`FEAT-01-auth.md`), incluindo o comportamento de middlewares
+specs (`FEAT-01-auth/spec.md`), incluindo o comportamento de middlewares
 (`GlobalExceptionHandler`, autenticação JWT) e o roteamento em si.
 
-`FEAT-01-auth.md` já registra esse débito como critério de aceite em
+`FEAT-01-auth/spec.md` já registra esse débito como critério de aceite em
 aberto: *"Testes de integração cobrem register e login contra o Cognito
 real (hoje: `GastosApp.IntegrationTests` está sem testes implementados)"*.
 Esta spec não fecha esse débito (testes contra o Cognito real
@@ -45,7 +45,7 @@ Definir e implementar um padrão de **testes de componente** para a API
   (`IAuthService`/Cognito hoje; gateways de pagamento, filas, etc. no
   futuro) e repositórios (DynamoDB — ainda não implementados, mas o
   padrão já cobre quando existirem).
-- Validam os contratos HTTP documentados nas specs (`FEAT-01-auth.md`
+- Validam os contratos HTTP documentados nas specs (`FEAT-01-auth/spec.md`
   e futuras): status code, corpo de sucesso e corpo de erro RFC 9457,
   para os fluxos felizes e de erro de cada endpoint.
 
@@ -58,7 +58,7 @@ Definir e implementar um padrão de **testes de componente** para a API
   substituídas por dublês registrados via `IServiceCollection` na
   factory de teste.
 - **Testes de integração** (fora de escopo aqui, mantidos como débito
-  documentado em `FEAT-01-auth.md`): os mesmos fluxos, mas contra os
+  documentado em `FEAT-01-auth/spec.md`): os mesmos fluxos, mas contra os
   serviços reais da AWS (Cognito/DynamoDB), sem nenhum mock.
 - **Testes unitários** (já existentes em `GastosApp.UnitTests`,
   inalterados por este FEAT): testam uma classe isolada (Handler,
@@ -108,7 +108,7 @@ Definir e implementar um padrão de **testes de componente** para a API
 
 ### Autenticação nos testes de componente
 - Endpoints protegidos (ex.: `GET /auth/me`) exigem hoje validação real
-  de JWT contra o JWKS do Cognito (`FEAT-01-auth.md`), o que não é
+  de JWT contra o JWKS do Cognito (`FEAT-01-auth/spec.md`), o que não é
   viável nem desejável em testes de componente (dependeria de rede e de
   um usuário real no Cognito).
 - Decisão: registrar, apenas no host de teste
@@ -163,7 +163,7 @@ Cobertura inicial (módulo Auth, único implementado hoje), via
 ## Requisito para novos endpoints
 A partir desta spec, testes de componente passam a ser parte da
 **definição de pronto** de qualquer endpoint (regra registrada em
-`docs/constitution.md`, seção "Regras imutáveis"):
+`backend/docs/constitution.md`, seção "Regras imutáveis"):
 - Nenhum endpoint novo é considerado implementado sem teste de
   componente cobrindo seu(s) fluxo(s) de sucesso e cada erro mapeado na
   spec correspondente.
@@ -189,11 +189,11 @@ A partir desta spec, testes de componente passam a ser parte da
 - [x] `TestAuthHandler` permite simular usuário autenticado sem depender
       do Cognito real
 - [x] Testes de componente cobrem os 3 endpoints de Auth (sucesso e
-      cada erro mapeado em `FEAT-01-auth.md`)
+      cada erro mapeado em `FEAT-01-auth/spec.md`)
 - [x] `dotnet test` roda os testes de componente junto com os demais,
       sem exigir rede ou credenciais AWS
 - [x] Nenhum contrato de API existente foi alterado
-- [x] `docs/constitution.md` atualizado com a regra de testes de
+- [x] `backend/docs/constitution.md` atualizado com a regra de testes de
       componente obrigatórios para novos endpoints
 
 ## Detalhes de implementação
@@ -222,7 +222,7 @@ UnitTests).
 
 ## Fora do escopo
 - Testes de integração contra o Cognito real ou contra DynamoDB real
-  (permanecem como débito documentado em `FEAT-01-auth.md`)
+  (permanecem como débito documentado em `FEAT-01-auth/spec.md`)
 - Testes de carga/performance
 - Cobertura de módulos além de Auth (serão adicionados nos FEATs que os
   implementarem, seguindo o padrão aqui definido)
