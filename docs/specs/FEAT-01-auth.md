@@ -1,158 +1,191 @@
-# FEAT-01: Autenticação (AWS Cognito) — Especificação Técnica (SDD)
+# FEAT-01: Autenticação
 
-Esta especificação técnica documenta a funcionalidade de Autenticação implementada no backend do **GastosApp**, refletindo exatamente o estado atual do código-fonte, contratos de API e regras de negócio codificadas.
+## Objetivo
+Permitir que um usuário se registre e faça login na aplicação,
+recebendo um JWT (IdToken do Cognito) para autenticar as demais requisições.
+A aplicação conecta diretamente aos serviços reais da AWS (Cognito) em
+todos os ambientes — não há LocalStack nem simulação local.
+A validação do JWT é sempre feita contra o JWKS do Cognito.
 
----
+## Regras de negócio
+- Email deve ser único por usuário (garantido pelo Cognito)
+- Senha mínima: 8 caracteres (validação local no handler)
+- O campo userId nunca vem do body — sempre extraído das claims do JWT
+  (`sub`, com fallback para `ClaimTypes.NameIdentifier`)
+- Tokens expiram conforme configuração do Cognito App Client (retornado em `expiresIn`)
+- Não há refresh token no MVP
 
-## 1. Objetivo
-Permitir que usuários se cadastrem, façam login e obtenham informações do próprio perfil autenticado a partir do **AWS Cognito**, validando as requisições subsequentes via JWT Bearer em ambientes locais e de produção.
+## Contratos da API
 
----
+### POST /auth/register
+Request:
+{
+  "email": "neto@email.com",
+  "password": "Senha123"
+}
 
-## 2. Regras de Negócio Implementadas
-*   **Identificação Única:** O e-mail do usuário é utilizado como identificador exclusivo de login. Tentativas de cadastro com e-mails duplicados são rejeitadas pelo Cognito (`409 Conflict`).
-*   **Requisitos de Senha:** A validação na camada de aplicação exige que a senha tenha no mínimo 8 caracteres (retorna `400 Bad Request` caso não cumpra).
-*   **Identificação Segura:** O identificador exclusivo do usuário (`userId`/`sub`) é extraído diretamente das claims do JWT (`sub` ou `NameIdentifier`), mitigando vulnerabilidades de injeção de parâmetros no corpo da requisição.
-*   **Tempo de Vida do Token:** O token padrão emitido pelo Cognito expira em 1 hora (3600 segundos).
+Response 201 (Location: /auth/me):
+{
+  "userId": "uuid-gerado-pelo-cognito",
+  "email": "neto@email.com"
+}
 
----
+Response 409 (email já cadastrado):
+{
+  "type": "https://gastosapp.dev/errors/email-already-exists",
+  "title": "Email já cadastrado",
+  "status": 409
+}
 
-## 3. Contratos da API & Rotas
+Response 400 (parâmetros inválidos — email/senha ausentes ou senha curta):
+{
+  "type": "https://gastosapp.dev/errors/bad-request",
+  "title": "Parâmetros inválidos",
+  "status": 400,
+  "detail": "Senha deve ter no mínimo 8 caracteres."
+}
 
-As Minimal APIs de autenticação estão mapeadas no arquivo **[AuthEndpoints.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Api/Endpoints/AuthEndpoints.cs)** sob o prefixo `/auth`.
+### POST /auth/login
+Request:
+{
+  "email": "neto@email.com",
+  "password": "Senha123"
+}
 
-### 3.1. POST /auth/register
-Cadastra um novo usuário diretamente no Pool de Usuários do AWS Cognito.
+Response 200:
+{
+  "accessToken": "eyJ...",
+  "expiresIn": 3600,
+  "userId": "uuid-do-cognito"
+}
 
-*   **Endpoint:** `POST /auth/register`
-*   **Content-Type:** `application/json`
-*   **Payload de Entrada (`RegisterRequest`):**
-    ```json
-    {
-      "email": "usuario@email.com",
-      "password": "SenhaSegura123"
-    }
-    ```
-*   **Resposta de Sucesso (`201 Created`):**
-    *   *Header:* `Location: /auth/me`
-    *   *Body (`RegisterUserResult`):*
-        ```json
-        {
-          "userId": "uuid-gerado-pelo-cognito",
-          "email": "usuario@email.com"
-        }
-        ```
-*   **Validações e Casos de Erro:**
-    *   `email` ou `password` nulos/vazios $\rightarrow$ `400 Bad Request`
-    *   `password` menor que 8 caracteres $\rightarrow$ `400 Bad Request`
-    *   E-mail já existente no Cognito $\rightarrow$ `409 Conflict`
+Observação: `accessToken` retorna o **IdToken** do Cognito (não o AccessToken
+do fluxo OAuth), pois é ele que carrega as claims de email/name usadas por
+`GET /auth/me`.
 
-### 3.2. POST /auth/login
-Autentica o usuário com email e senha no Cognito utilizando o fluxo `USER_PASSWORD_AUTH`.
+Response 401 (credenciais inválidas):
+{
+  "type": "https://gastosapp.dev/errors/invalid-credentials",
+  "title": "Email ou senha inválidos",
+  "status": 401
+}
 
-*   **Endpoint:** `POST /auth/login`
-*   **Content-Type:** `application/json`
-*   **Payload de Entrada (`LoginRequest`):**
-    ```json
-    {
-      "email": "usuario@email.com",
-      "password": "SenhaSegura123"
-    }
-    ```
-*   **Resposta de Sucesso (`200 OK`):**
-    *   *Body (`LoginUserResult`):*
-        *   *Nota:* O `accessToken` retornado é o **IdToken** gerado pelo Cognito, necessário para extrair as informações de perfil.
-        ```json
-        {
-          "accessToken": "eyJhbGciOi...",
-          "expiresIn": 3600,
-          "userId": "uuid-do-usuario-no-cognito"
-        }
-        ```
-*   **Validações e Casos de Erro:**
-    *   `email` ou `password` nulos/vazios $\rightarrow$ `400 Bad Request`
-    *   Credenciais inválidas (usuário não encontrado ou senha errada) $\rightarrow$ `401 Unauthorized`
+### GET /auth/me
+Header: Authorization: Bearer <token>
 
-### 3.3. GET /auth/me
-Retorna os dados do usuário autenticado a partir das claims extraídas do token JWT Bearer.
+Response 200:
+{
+  "userId": "uuid-do-cognito",
+  "email": "neto@email.com",
+  "name": "Neto"
+}
 
-*   **Endpoint:** `GET /auth/me`
-*   **Requer Autorização:** Sim (`RequireAuthorization()`)
-*   **Headers:** `Authorization: Bearer <JWT_ID_TOKEN>`
-*   **Mapeamento de Claims:**
-    *   `userId` $\leftarrow$ Claims `"sub"` ou `ClaimTypes.NameIdentifier`
-    *   `email` $\leftarrow$ Claims `"email"` ou `ClaimTypes.Email`
-    *   `name` $\leftarrow$ Claims `"name"` ou `ClaimTypes.Name`
-*   **Resposta de Sucesso (`200 OK`):**
-    ```json
-    {
-      "userId": "uuid-do-usuario-no-cognito",
-      "email": "usuario@email.com",
-      "name": "Nome do Usuário"
-    }
-    ```
-*   **Casos de Erro:**
-    *   Token ausente, inválido, expirado ou claim `sub` ausente $\rightarrow$ `401 Unauthorized`
+Response 401 (token ausente, inválido ou expirado):
+{
+  "type": "https://gastosapp.dev/errors/unauthorized",
+  "title": "Não autorizado",
+  "status": 401
+}
 
----
+## Comportamento do JWT
 
-## 4. Tratamento Global de Erros (RFC 9457)
-Todas as falhas e erros de validação da API são interceptados pelo **[GlobalExceptionHandler.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Api/Middlewares/GlobalExceptionHandler.cs)** e retornados em formato `ProblemDetails` (`application/problem+json`):
+- Middleware `AddJwtBearer` sempre valida contra o JWKS real do Cognito:
+  `https://cognito-idp.{Region}.amazonaws.com/{UserPoolId}`
+- `RequireHttpsMetadata = true`
+- `ValidateIssuerSigningKey = true`
+- `ValidateIssuer = true`
+- `ValidateAudience = true` (audience = ClientId do Cognito App Client)
+- `ValidateLifetime = true`
+- Não existe modo de desenvolvimento com validação de assinatura
+  desabilitada — todos os ambientes (local incluído) apontam para o
+  User Pool real na AWS, configurado via `CognitoOptions`.
+- Falha de autenticação (`OnChallenge`) retorna 401 já formatado como
+  ProblemDetails.
 
-*   **ArgumentException (400 Bad Request):**
-    ```json
-    {
-      "type": "https://gastosapp.dev/errors/bad-request",
-      "title": "Parâmetros inválidos",
-      "status": 400,
-      "detail": "Mensagem detalhada do argumento (ex: Senha é obrigatória.)"
-    }
-    ```
-*   **InvalidCredentialsException (401 Unauthorized):**
-    ```json
-    {
-      "type": "https://gastosapp.dev/errors/invalid-credentials",
-      "title": "Email ou senha inválidos",
-      "status": 401
-    }
-    ```
-*   **EmailAlreadyExistsException (409 Conflict):**
-    ```json
-    {
-      "type": "https://gastosapp.dev/errors/email-already-exists",
-      "title": "Email já cadastrado",
-      "status": 409
-    }
-    ```
-*   **Token Inválido / Ausente (401 Unauthorized):**
-    ```json
-    {
-      "type": "https://gastosapp.dev/errors/unauthorized",
-      "title": "Não autorizado",
-      "status": 401
-    }
-    ```
-*   **Erro Inesperado (500 Internal Server Error):**
-    ```json
-    {
-      "type": "https://gastosapp.dev/errors/internal-server-error",
-      "title": "Erro interno do servidor",
-      "status": 500
-    }
-    ```
+## Mapeamento de camadas
 
----
+### Domain
+- Nenhuma entidade de domínio — auth é responsabilidade
+  do Cognito, não do domínio da aplicação
 
-## 5. Mapeamento de Camadas e Componentes C#
+### Application
+- Mediator: biblioteca `Mediator` (martinothamar), conforme
+  `docs/specs/FEAT-02-mediator-result-pattern.md`. `ICommand<TResponse>`/
+  `ICommandHandler<TCommand,TResponse>` usados aqui são da lib (namespace
+  `Mediator`), não mais abstrações próprias.
+- `RegisterUserCommand(Email, Password)` / `RegisterUserCommandHandler`
+  → valida email/senha obrigatórios e senha mínima de 8 caracteres,
+  retorna `Result<RegisterUserResult>`
+- `LoginUserCommand(Email, Password)` / `LoginUserCommandHandler`
+  → valida email/senha obrigatórios,
+  retorna `Result<LoginUserResult>`
+- Interface: `IAuthService` (`RegisterAsync`, `LoginAsync`) em
+  `GastosApp.Application/Common/Interfaces`, retornando
+  `Result<RegisterResult>`/`Result<LoginResult>`
+- Erros de negócio modelados como `Error`/`ErrorType` (não mais exceções):
+  `AuthErrors.EmailAlreadyExists` (`ErrorType.Conflict`),
+  `AuthErrors.InvalidCredentials` (`ErrorType.Unauthorized`),
+  `AuthErrors.Validation(message)` (`ErrorType.Validation`) — em
+  `GastosApp.Application/Auth/AuthErrors.cs`
+- Handlers não lançam mais exceções para fluxo de negócio: seguem o
+  Result Pattern customizado definido na constituição
+  (`GastosApp.Application/Common/Results`). Débito técnico anterior
+  resolvido.
 
-*   **API ([GastosApp.Api](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Api))**:
-    *   [Program.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Api/Program.cs): Habilita JwtBearer, Parameter Store e middlewares.
-    *   [AuthEndpoints.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Api/Endpoints/AuthEndpoints.cs): Rotas HTTP.
-    *   [GlobalExceptionHandler.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Api/Middlewares/GlobalExceptionHandler.cs): Tratamento global de exceções.
-*   **Application ([GastosApp.Application](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Application))**:
-    *   [RegisterUserCommand.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Application/Auth/Commands/Register/RegisterUserCommand.cs): Validações e payload de cadastro.
-    *   [LoginUserCommand.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Application/Auth/Commands/Login/LoginUserCommand.cs): Validações e payload de login.
-    *   [IAuthService.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Application/Common/Interfaces/IAuthService.cs): Abstração do provedor de identidade.
-*   **Infrastructure ([GastosApp.Infrastructure](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Infrastructure))**:
-    *   [CognitoAuthService.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Infrastructure/Auth/CognitoAuthService.cs): Implementa a integração concreta via AWS SDK.
-    *   [AddCognitoSdk.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Infrastructure/Extensions/AddCognitoSdk.cs): Configuração do contêiner DI para Cognito e injeção do JwtBearer configurando a autoridade de domínio real do pool Cognito.
+### Infrastructure
+- `CognitoAuthService` implementa `IAuthService`, usando
+  `AWSSDK.CognitoIdentityProvider`
+- `RegisterAsync` → `SignUpAsync`, captura `UsernameExistsException` e
+  converte para `Result.Failure(AuthErrors.EmailAlreadyExists)`
+- `LoginAsync` → `InitiateAuthAsync` com `USER_PASSWORD_AUTH`, seguido de
+  `GetUserAsync` para extrair `sub` e `name`; captura
+  `NotAuthorizedException`/`UserNotFoundException` e converte para
+  `Result.Failure(AuthErrors.InvalidCredentials)`
+- Conexão sempre com a AWS real (sem LocalStack): usa o `RegionEndpoint`
+  configurado e credenciais via IAM Role/ambiente por padrão; suporta
+  `AccessKey`/`SecretKey` explícitos como alternativa (não recomendado
+  em produção)
+- `CognitoOptions` (`Region`, `UserPoolId`, `ClientId`, `ServiceURL`
+  opcional, `AccessKey`/`SecretKey` opcionais) é lida da seção `Cognito`
+  da configuração, alimentada pelo AWS Parameter Store (`/GastosApp/`)
+
+### Api
+- `AuthEndpoints.cs` com os 3 endpoints mapeados via `MapGroup("/auth")`
+- `POST /register` e `POST /login` injetam `ISender` (Mediator) e chamam
+  apenas `sender.Send(command, ct)`; o `Result` retornado é mapeado para
+  `IResult` via `ResultHttpExtensions.ToHttpResult` (`GastosApp.Api/Common`)
+- `GlobalExceptionHandler` (`IExceptionHandler`) trata apenas exceções não
+  previstas (bug/infra) → sempre 500 com `ProblemDetails` (RFC 9457)
+
+## Casos de erro mapeados
+- Email já cadastrado → 409 (`ErrorType.Conflict`)
+- Credenciais inválidas → 401 (`ErrorType.Unauthorized`)
+- Parâmetros inválidos → 400 (`ErrorType.Validation`)
+- Token ausente/inválido/expirado → 401 (validação JWT / claims ausentes)
+- Erro interno do Cognito ou exceção não prevista → 500 com log
+  estruturado (Serilog), via `GlobalExceptionHandler`
+
+## Critérios de aceite
+- [x] POST /auth/register cria usuário no Cognito (AWS real) e retorna 201
+- [x] POST /auth/register com email duplicado retorna 409
+- [x] POST /auth/login com credenciais válidas retorna accessToken
+- [x] POST /auth/login com senha errada retorna 401
+- [x] GET /auth/me com JWT válido retorna dados do usuário extraídos do token
+- [x] GET /auth/me sem token retorna 401
+- [x] Todos os erros seguem RFC 9457 (ProblemDetails)
+- [ ] Testes de integração cobrem register e login contra o Cognito real
+      (hoje: `GastosApp.IntegrationTests` está sem testes implementados)
+- [x] Testes unitários cobrem os handlers de Register e Login
+      (`RegisterUserCommandHandlerTests`, `LoginUserCommandHandlerTests`),
+      o `CognitoAuthService` (`CognitoAuthServiceTests`), o `Result`
+      Pattern (`ResultTests`) e o mapeamento Result→HTTP
+      (`ResultHttpExtensionsTests`)
+
+## Fora do escopo deste FEAT
+- Refresh token
+- Logout / revogação de token
+- Recuperação de senha
+- MFA
+- Validação de senha forte (maiúscula/número) — hoje só o tamanho mínimo
+  é validado localmente; regras adicionais de senha ficam a cargo da
+  política do Cognito User Pool, não do código da aplicação

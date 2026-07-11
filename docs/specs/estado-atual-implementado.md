@@ -1,175 +1,79 @@
-# Especificação Técnica de Implementação (SDD) — Autenticação & AWS Cognito
+# Estado Atual Implementado — GastosApp
 
-Esta especificação reflete com exatidão o comportamento, contratos e regras técnicas da funcionalidade de Autenticação implementada no backend do **GastosApp**, com base na análise do código-fonte atual da solução.
-
----
-
-## 1. Escopo Técnico e Arquitetura
-
-### 1.1. Stack Tecnológica
-*   **Runtime:** .NET 10 (ASP.NET Core Minimal APIs).
-*   **Integração de Identidade:** AWS Cognito (User Pools).
-*   **Provedor de Configuração:** AWS Systems Manager (Parameter Store) sob o path `/GastosApp/`.
-*   **Autenticação de API:** JWT Bearer (validação contra as chaves JWKS públicas da AWS).
-
-### 1.2. Mapeamento de Camadas (CQS & DI)
-*   **API ([AuthEndpoints.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Api/Endpoints/AuthEndpoints.cs))**: Expõe os endpoints `/auth/register`, `/auth/login` e `/auth/me`. Responsável por receber o payload HTTP, orquestrar com os Handlers apropriados e tratar respostas de erro.
-*   **Application ([GastosApp.Application](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Application))**: Contém os commands, validações prévias e a abstração `IAuthService`.
-*   **Infrastructure ([CognitoAuthService.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Infrastructure/Auth/CognitoAuthService.cs))**: Implementa `IAuthService` realizando chamadas SDK para a API do AWS Cognito utilizando credenciais do ambiente ou perfil configurado.
+Este documento registra o estado atual do desenvolvimento do backend do **GastosApp**, mapeando a arquitetura, projetos, endpoints, classes principais e cobertura de testes atuais.
 
 ---
 
-## 2. Contratos da API & Rotas
+## 1. Visão Geral da Solução
+A solução está estruturada utilizando uma arquitetura em camadas inspirada em Clean Architecture e padrões CQS (Command Query Separation). O backend está atualizado para o **.NET 10** e utiliza **ASP.NET Core Minimal APIs**.
 
-### 2.1. Criar Usuário (`POST /auth/register`)
-Realiza o cadastro de uma nova conta de usuário no AWS Cognito.
-
-*   **Endpoint:** `POST /auth/register`
-*   **Content-Type:** `application/json`
-*   **Payload de Entrada (`RegisterRequest`):**
-    ```json
-    {
-      "email": "usuario@exemplo.com",
-      "password": "SenhaSegura123"
-    }
-    ```
-*   **Regras de Validação (C#):**
-    *   `email` não pode ser nulo ou vazio (retorna `400 Bad Request`).
-    *   `password` não pode ser nula ou vazia (retorna `400 Bad Request`).
-    *   `password` deve conter no mínimo 8 caracteres (retorna `400 Bad Request`).
-*   **Fluxo de Sucesso:**
-    1.  Cria o usuário no pool do AWS Cognito.
-    2.  O atributo `email` é propagado para o atributo padrão de email do Cognito.
-*   **Resposta de Sucesso (`201 Created`):**
-    *   *Header:* `Location: /auth/me`
-    *   *Body (`RegisterUserResult`):*
-        ```json
-        {
-          "userId": "uuid-gerado-pelo-cognito",
-          "email": "usuario@exemplo.com"
-        }
-        ```
-*   **Respostas de Erro Mapeadas:**
-    *   **`400 Bad Request`** (Parâmetros inválidos):
-        ```json
-        {
-          "type": "https://gastosapp.dev/errors/bad-request",
-          "title": "Parâmetros inválidos",
-          "status": 400,
-          "detail": "Mensagem detalhada do erro de validação (ex: Senha deve ter no mínimo 8 caracteres.)"
-        }
-        ```
-    *   **`409 Conflict`** (E-mail duplicado/já cadastrado):
-        ```json
-        {
-          "type": "https://gastosapp.dev/errors/email-already-exists",
-          "title": "Email já cadastrado",
-          "status": 409
-        }
-        ```
-
-### 2.2. Login (`POST /auth/login`)
-Realiza a autenticação do usuário contra o Cognito via fluxo `USER_PASSWORD_AUTH`.
-
-*   **Endpoint:** `POST /auth/login`
-*   **Content-Type:** `application/json`
-*   **Payload de Entrada (`LoginRequest`):**
-    ```json
-    {
-      "email": "usuario@exemplo.com",
-      "password": "SenhaSegura123"
-    }
-    ```
-*   **Regras de Validação (C#):**
-    *   `email` não pode ser nulo ou vazio (retorna `400 Bad Request`).
-    *   `password` não pode ser nula ou vazia (retorna `400 Bad Request`).
-*   **Fluxo de Sucesso:**
-    1.  Efetua autenticação no Cognito.
-    2.  Recupera os detalhes adicionais do usuário logado via endpoint `GetUserAsync` do Cognito SDK.
-*   **Resposta de Sucesso (`200 OK`):**
-    *   *Body (`LoginUserResult`):*
-        *   *Nota:* O `accessToken` retornado no corpo da resposta contém o **IdToken** emitido pelo Cognito.
-        ```json
-        {
-          "accessToken": "eyJhbGciOi...",
-          "expiresIn": 3600,
-          "userId": "uuid-do-usuario-no-cognito"
-        }
-        ```
-*   **Respostas de Erro Mapeadas:**
-    *   **`400 Bad Request`** (Campos obrigatórios ausentes):
-        ```json
-        {
-          "type": "https://gastosapp.dev/errors/bad-request",
-          "title": "Parâmetros inválidos",
-          "status": 400,
-          "detail": "Email é obrigatório. / Senha é obrigatória."
-        }
-        ```
-    *   **`401 Unauthorized`** (Credenciais inválidas / Usuário não encontrado):
-        ```json
-        {
-          "type": "https://gastosapp.dev/errors/invalid-credentials",
-          "title": "Email ou senha inválidos",
-          "status": 401
-        }
-        ```
-
-### 2.3. Obter Perfil do Usuário Autenticado (`GET /auth/me`)
-Obtém informações do usuário extraídas diretamente das claims do token JWT.
-
-*   **Endpoint:** `GET /auth/me`
-*   **Cabeçalho Requerido:** `Authorization: Bearer <JWT_ID_TOKEN>`
-*   **Regras de Validação:**
-    *   A rota exige autenticação via middleware do ASP.NET Core (`RequireAuthorization`).
-    *   A validação do token JWT realiza a verificação de assinatura contra o JWKS público da AWS, expiração e correspondência do client ID (Audience).
-*   **Mapeamento de Claims:**
-    O código realiza a leitura de claims de forma flexível suportando formatos padrão do Cognito e schemas do WS-Security:
-    *   **User ID / Sub:** Lê do claim `"sub"` ou `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier`.
-    *   **Email:** Lê do claim `"email"` ou `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress`.
-    *   **Name:** Lê do claim `"name"` ou `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name`.
-*   **Resposta de Sucesso (`200 OK`):**
-    ```json
-    {
-      "userId": "uuid-do-usuario-no-cognito",
-      "email": "usuario@exemplo.com",
-      "name": "Nome do Usuário (se disponível)"
-    }
-    ```
-*   **Respostas de Erro Mapeadas:**
-    *   **`401 Unauthorized`** (Token inválido, expirado ou claims críticas ausentes):
-        ```json
-        {
-          "type": "https://gastosapp.dev/errors/unauthorized",
-          "title": "Não autorizado",
-          "status": 401
-        }
-        ```
+A autenticação e gestão de usuários é delegada diretamente ao **AWS Cognito**, e as configurações da aplicação são integradas ao **AWS Systems Manager (Parameter Store)**.
 
 ---
 
-## 3. Tratamento Global de Exceções & ProblemDetails
+## 2. Estrutura de Projetos e Camadas
 
-Todas as respostas de erro HTTP são unificadas através da classe [GlobalExceptionHandler.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Api/Middlewares/GlobalExceptionHandler.cs). O Content-Type de retorno de erro é obrigatoriamente `application/problem+json`.
+A solução contém os seguintes projetos no diretório `backend`:
 
-| Exceção de Negócio / Origem | Código HTTP | Título do Erro | Campo `type` do ProblemDetails |
-| :--- | :--- | :--- | :--- |
-| `ArgumentException` | `400 Bad Request` | "Parâmetros inválidos" | `https://gastosapp.dev/errors/bad-request` |
-| `InvalidCredentialsException` (Originada por `NotAuthorizedException` ou `UserNotFoundException` do Cognito) | `401 Unauthorized` | "Email ou senha inválidos" | `https://gastosapp.dev/errors/invalid-credentials` |
-| Falha na validação do JWT Bearer ou claim `sub` ausente | `401 Unauthorized` | "Não autorizado" | `https://gastosapp.dev/errors/unauthorized` |
-| `EmailAlreadyExistsException` (Originada por `UsernameExistsException` do Cognito) | `409 Conflict` | "Email já cadastrado" | `https://gastosapp.dev/errors/email-already-exists` |
-| Qualquer outra exceção não tratada | `500 Internal Server Error` | "Erro interno do servidor" | `https://gastosapp.dev/errors/internal-server-error` |
+*   **[GastosApp.Api](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Api/GastosApp.Api.csproj)**: Ponto de entrada da aplicação. Expõe os endpoints HTTP utilizando Minimal APIs, gerencia a autenticação JWT, documentação interativa com Scalar e tratamento global de erros.
+*   **[GastosApp.Application](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Application/GastosApp.Application.csproj)**: Contém os casos de uso (Commands/Handlers), as validações de input, as abstrações de CQS (`ICommand`, `IQuery`) e definições de interfaces de serviços compartilhadas.
+*   **[GastosApp.Domain](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Domain/GastosApp.Domain.csproj)**: Camada de domínio. Atualmente vazia (estrutura pronta), destinada no futuro a conter entidades, agregados, value objects e regras de negócio de gastos.
+*   **[GastosApp.Infrastructure](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Infrastructure/GastosApp.Infrastructure.csproj)**: Implementação concreta das integrações externas. Contém a integração com o AWS Cognito, configuração de autenticação JWT Bearer com a nuvem e extensão de leitura do AWS Parameter Store.
 
 ---
 
-## 4. Integração do SDK AWS & Autenticação JWT
+## 3. Detalhes de Implementação por Camada
 
-*   **Serviço Cognito:** O cliente SDK `IAmazonCognitoIdentityProvider` é injetado como Singleton em [AddCognitoSdk.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Infrastructure/Extensions/AddCognitoSdk.cs).
-*   **Autenticação de Middleware:** O pipeline de autenticação é adicionado via `AddJwtBearer` configurando:
-    *   `Authority`: `https://cognito-idp.{Region}.amazonaws.com/{UserPoolId}`
-    *   `TokenValidationParameters`:
-        *   `ValidateIssuerSigningKey = true`
-        *   `ValidateIssuer = true`
-        *   `ValidateAudience = true`
-        *   `ValidAudience = {ClientId}`
-        *   `ValidateLifetime = true`
+### 3.1. API ([GastosApp.Api](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Api))
+*   **[Program.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Api/Program.cs)**:
+    *   Carrega variáveis de configuração da AWS usando `AddAwsParameterStore()`.
+    *   Adiciona documentação OpenAPI com interface de referência Scalar em ambiente de desenvolvimento (`MapScalarApiReference()`).
+    *   Registra e configura o middleware do Serilog para logs estruturados no console.
+    *   Habilita autenticação e autorização nativa do ASP.NET Core (`UseAuthentication()`, `UseAuthorization()`).
+*   **Endpoints ([AuthEndpoints.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Api/Endpoints/AuthEndpoints.cs))**:
+    *   `POST /auth/register`: Recebe `RegisterRequest` (Email e Password), envia o command `RegisterUserCommand` via `ISender` (Mediator) e cria o usuário no Cognito. Mapeia o `Result` para `201 Created` ou erro.
+    *   `POST /auth/login`: Recebe `LoginRequest` (Email e Password), envia o command `LoginUserCommand` via `ISender` e realiza o login com o fluxo `USER_PASSWORD_AUTH`. Retorna o `AccessToken` (IdToken do Cognito) e o tempo de expiração.
+    *   `GET /auth/me`: Endpoint protegido que lê as claims `sub` (userId), `email` e `name` do JWT do usuário autenticado.
+*   **Mapeamento Result → HTTP ([ResultHttpExtensions.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Api/Common/ResultHttpExtensions.cs))**:
+    *   `Result`/`Result<T>.ToHttpResult(...)` converte sucesso no `IResult` do endpoint, e falha em `ProblemDetails` (RFC 9457) conforme o `ErrorType`:
+        *   `Conflict` $\rightarrow$ `409`, `Unauthorized` $\rightarrow$ `401`, `Validation` $\rightarrow$ `400`, `NotFound` $\rightarrow$ `404`, `Failure` $\rightarrow$ `500`
+*   **Tratamento Global de Erros ([GlobalExceptionHandler.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Api/Middlewares/GlobalExceptionHandler.cs))**:
+    *   Implementa `IExceptionHandler` e trata apenas exceções não previstas (bug/infra), retornando sempre `500 InternalServerError` formatado como `ProblemDetails` (RFC 9457). Erros de negócio não passam mais por exceções — são tratados via `Result`.
+
+### 3.2. Application ([GastosApp.Application](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Application))
+*   **Mediator**: biblioteca [`Mediator`](https://github.com/martinothamar/Mediator) (martinothamar), via `Mediator.Abstractions` + `Mediator.SourceGenerator`. Substituiu as antigas abstrações CQS próprias (`ICommand`/`ICommandHandler`/`IQuery`/`IQueryHandler`), removidas de `Abstractions/`. Registrada via `AddMediator` em [ApplicationServiceCollectionExtensions.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Application/DependencyInjection/ApplicationServiceCollectionExtensions.cs).
+*   **Result Pattern**: implementação própria em [Common/Results](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Application/Common/Results) (`Result`, `Result<T>`, `Error`, `ErrorType`). Handlers e serviços não lançam mais exceções para fluxo de negócio.
+*   **Casos de Uso (Autenticação)**:
+    *   **[RegisterUserCommand](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Application/Auth/Commands/Register/RegisterUserCommand.cs)**: Realiza validações locais (se email e senha foram informados; se a senha tem pelo menos 8 caracteres) e dispara a criação através da abstração `IAuthService`, retornando `Result<RegisterUserResult>`.
+    *   **[LoginUserCommand](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Application/Auth/Commands/Login/LoginUserCommand.cs)**: Valida parâmetros obrigatórios e dispara o login no `IAuthService`, retornando `Result<LoginUserResult>`.
+*   **Interfaces**:
+    *   **[IAuthService](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Application/Common/Interfaces/IAuthService.cs)**: Interface agnóstica de tecnologia para autenticação, retornando `Result<RegisterResult>`/`Result<LoginResult>`.
+*   **Erros de negócio**: [AuthErrors.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Application/Auth/AuthErrors.cs) centraliza os `Error` de Auth (`EmailAlreadyExists`, `InvalidCredentials`, `Validation`).
+
+### 3.3. Infrastructure ([GastosApp.Infrastructure](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Infrastructure))
+*   **Integração com AWS Cognito ([CognitoAuthService.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Infrastructure/Auth/CognitoAuthService.cs))**:
+    *   Utiliza o SDK `AWSSDK.CognitoIdentityProvider`.
+    *   No cadastro (`RegisterAsync`), invoca `SignUpAsync` enviando o email como atributo. Trata duplicidades capturando `UsernameExistsException` e convertendo para `Result.Failure(AuthErrors.EmailAlreadyExists)`.
+    *   No login (`LoginAsync`), inicia o fluxo com `InitiateAuthAsync` (usando `USER_PASSWORD_AUTH`), recupera o token, consulta os atributos do usuário via `GetUserAsync` e retorna `Result.Success` com o IdToken, a expiração e o identificador do usuário.
+*   **Configuração de Infraestrutura e JWT Bearer ([AddCognitoSdk.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Infrastructure/Extensions/AddCognitoSdk.cs))**:
+    *   Carrega as opções fortemente tipadas `CognitoOptions` da seção `"Cognito"`.
+    *   Registra a instância singleton de `IAmazonCognitoIdentityProvider`, configurada para usar credenciais locais via perfil AWS (`default`) ou chaves explícitas se configuradas.
+    *   Adiciona a autenticação JwtBearer apontando para a autoridade real do pool do Cognito (`https://cognito-idp.{Region}.amazonaws.com/{UserPoolId}`).
+    *   Customiza o evento `OnChallenge` para formatar a resposta 401 como `ProblemDetails`.
+*   **AWS Systems Manager ([AwsParameterStoreExtensions.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/src/GastosApp.Infrastructure/Configuration/AwsParameterStoreExtensions.cs))**:
+    *   Configura a leitura do Parameter Store apontando para o caminho `/GastosApp/`, configurado na região `us-east-1` usando o profile `default`.
+
+---
+
+## 4. Testes Automatizados (`tests/`)
+
+A solução dispõe de projetos de teste em `backend/tests/`:
+
+*   **[GastosApp.UnitTests](file:///D:/git_jrneto/meus-gastos-pessoais/backend/tests/GastosApp.UnitTests/GastosApp.UnitTests.csproj)**:
+    *   **[RegisterUserCommandHandlerTests.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/tests/GastosApp.UnitTests/Application/RegisterUserCommandHandlerTests.cs)**: Valida as regras do handler de cadastro (campos nulos, tamanho mínimo da senha) e a chamada mockada para o `IAuthService`, checando o `Result` retornado.
+    *   **[LoginUserCommandHandlerTests.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/tests/GastosApp.UnitTests/Application/LoginUserCommandHandlerTests.cs)**: Valida as regras do handler de login (campos obrigatórios) e o retorno do serviço de auth via `Result`.
+    *   **[ResultTests.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/tests/GastosApp.UnitTests/Application/ResultTests.cs)**: Cobre o `Result`/`Result<T>` customizado (sucesso, falha, conversão implícita, acesso a `Value`).
+    *   **[ResultHttpExtensionsTests.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/tests/GastosApp.UnitTests/Api/ResultHttpExtensionsTests.cs)**: Cobre o mapeamento de cada `ErrorType` para o status HTTP/`ProblemDetails` esperado.
+    *   **[GlobalExceptionHandlerTests.cs](file:///D:/git_jrneto/meus-gastos-pessoais/backend/tests/GastosApp.UnitTests/Api/GlobalExceptionHandlerTests.cs)**: Cobre apenas o caso de exceção genérica não mapeada → 500.
+*   **[GastosApp.IntegrationTests](file:///D:/git_jrneto/meus-gastos-pessoais/backend/tests/GastosApp.IntegrationTests/GastosApp.IntegrationTests.csproj)**:
+    *   Estrutura inicializada com um arquivo vazio (`UnitTest1.cs`). Sem testes reais implementados até o momento.
