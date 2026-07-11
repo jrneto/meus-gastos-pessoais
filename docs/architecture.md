@@ -30,9 +30,10 @@ Atributos-chave:
 | AP4 | Últimos N meses | PK=USER#id SK begins_with SUMMARY# limit N desc |
 
 ## Infraestrutura local
-- LocalStack simula: DynamoDB, Cognito, S3, Secrets Manager
-- Kong simula o API Gateway da AWS
-- Toda configuração AWS usa endpoint http://localhost:4566 em Development
+- Desenvolvimento conectado diretamente aos serviços da AWS.
+- Credenciais configuradas localmente via AWS CLI (utilizando o profile `default` e região `us-east-1`).
+- Recursos na AWS (como DynamoDB e Cognito) são consumidos diretamente durante o desenvolvimento.
+
 
 ## Infraestrutura de produção (fase futura)
 - Lambda + API Gateway (adapter: Amazon.Lambda.AspNetCoreServer)
