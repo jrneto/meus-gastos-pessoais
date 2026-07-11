@@ -1,7 +1,8 @@
 using FluentAssertions;
+using GastosApp.Application.Auth;
 using GastosApp.Application.Auth.Commands.Login;
-using GastosApp.Application.Common.Exceptions;
 using GastosApp.Application.Common.Interfaces;
+using GastosApp.Application.Common.Results;
 using NSubstitute;
 using Xunit;
 
@@ -19,23 +20,23 @@ public class LoginUserCommandHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_ShouldLoginSuccessfully_WhenCommandIsValid()
+    public async Task Handle_ShouldLoginSuccessfully_WhenCommandIsValid()
     {
         // Arrange
         var command = new LoginUserCommand("neto@email.com", "Senha123");
         var expectedResult = new LoginResult("token-jwt-123", 3600, "user-id-123");
 
         _authServiceMock.LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
-            .Returns(expectedResult);
+            .Returns(Result.Success(expectedResult));
 
         // Act
-        var result = await _handler.HandleAsync(command);
+        var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        result.Should().NotBeNull();
-        result.AccessToken.Should().Be("token-jwt-123");
-        result.ExpiresIn.Should().Be(3600);
-        result.UserId.Should().Be("user-id-123");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.AccessToken.Should().Be("token-jwt-123");
+        result.Value.ExpiresIn.Should().Be(3600);
+        result.Value.UserId.Should().Be("user-id-123");
 
         await _authServiceMock.Received(1).LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>());
     }
@@ -45,35 +46,38 @@ public class LoginUserCommandHandlerTests
     [InlineData("   ", "Senha123", "Email")]
     [InlineData("neto@email.com", "", "Senha")]
     [InlineData("neto@email.com", "   ", "Senha")]
-    public async Task HandleAsync_ShouldThrowArgumentException_WhenCommandIsInvalid(string email, string password, string expectedPart)
+    public async Task Handle_ShouldReturnValidationFailure_WhenCommandIsInvalid(string email, string password, string expectedPart)
     {
         // Arrange
         var command = new LoginUserCommand(email, password);
 
         // Act
-        Func<Task> act = async () => await _handler.HandleAsync(command);
+        var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        var exception = await act.Should().ThrowAsync<ArgumentException>();
-        exception.Which.Message.Should().Contain(expectedPart);
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Validation);
+        result.Error.Message.Should().Contain(expectedPart);
 
         await _authServiceMock.DidNotReceiveWithAnyArgs().LoginAsync(default!, default!, default);
     }
 
     [Fact]
-    public async Task HandleAsync_ShouldThrowInvalidCredentialsException_WhenCredentialsAreInvalid()
+    public async Task Handle_ShouldReturnUnauthorizedFailure_WhenCredentialsAreInvalid()
     {
         // Arrange
         var command = new LoginUserCommand("neto@email.com", "SenhaIncorreta");
 
         _authServiceMock.LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<LoginResult>(new InvalidCredentialsException()));
+            .Returns(Result.Failure<LoginResult>(AuthErrors.InvalidCredentials));
 
         // Act
-        Func<Task> act = async () => await _handler.HandleAsync(command);
+        var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<InvalidCredentialsException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Unauthorized);
+        result.Error.Code.Should().Be("invalid-credentials");
 
         await _authServiceMock.Received(1).LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>());
     }

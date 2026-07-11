@@ -1,6 +1,4 @@
-﻿using GastosApp.Application.Abstractions;
-using GastosApp.Application.Auth.Commands.Login;
-using GastosApp.Application.Auth.Commands.Register;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GastosApp.Application.DependencyInjection
@@ -10,13 +8,10 @@ namespace GastosApp.Application.DependencyInjection
         public static IServiceCollection AddApplicationServices(
             this IServiceCollection services)
         {
-            services.AddScoped<
-                ICommandHandler<RegisterUserCommand, RegisterUserResult>,
-                RegisterUserCommandHandler>();
-
-            services.AddScoped<
-                ICommandHandler<LoginUserCommand, LoginUserResult>,
-                LoginUserCommandHandler>();
+            services.AddMediator(options =>
+            {
+                options.ServiceLifetime = ServiceLifetime.Scoped;
+            });
 
             return services;
         }

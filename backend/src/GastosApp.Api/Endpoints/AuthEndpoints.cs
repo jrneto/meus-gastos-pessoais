@@ -1,6 +1,7 @@
-using GastosApp.Application.Abstractions;
+using GastosApp.Api.Common;
 using GastosApp.Application.Auth.Commands.Login;
 using GastosApp.Application.Auth.Commands.Register;
+using Mediator;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -47,25 +48,22 @@ public static class AuthEndpoints
 
     private static async Task<IResult> Login(
         LoginRequest request,
-        ICommandHandler<LoginUserCommand, LoginUserResult> handler,
+        ISender sender,
         CancellationToken cancellationToken)
     {
-
         var command = new LoginUserCommand(request.Email, request.Password);
-        var result = await handler.HandleAsync(command, cancellationToken);
-        return Results.Ok(result);
-
+        var result = await sender.Send(command, cancellationToken);
+        return result.ToHttpResult(Results.Ok);
     }
 
     private static async Task<IResult> RegisterUser(
         RegisterRequest request,
-        ICommandHandler<RegisterUserCommand, RegisterUserResult> handler,
+        ISender sender,
         CancellationToken cancellationToken)
     {
         var command = new RegisterUserCommand(request.Email, request.Password);
-        var result = await handler.HandleAsync(command, cancellationToken);
-        return Results.Created($"/auth/me", result);
-
+        var result = await sender.Send(command, cancellationToken);
+        return result.ToHttpResult(value => Results.Created("/auth/me", value));
     }
 }
 

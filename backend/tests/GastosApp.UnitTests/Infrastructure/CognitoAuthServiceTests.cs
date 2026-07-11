@@ -1,7 +1,7 @@
 using Amazon.CognitoIdentityProvider;
 using Amazon.CognitoIdentityProvider.Model;
 using FluentAssertions;
-using GastosApp.Application.Common.Exceptions;
+using GastosApp.Application.Common.Results;
 using GastosApp.Infrastructure.Auth;
 using GastosApp.Infrastructure.Configuration;
 using Microsoft.Extensions.Options;
@@ -39,13 +39,13 @@ public class CognitoAuthServiceTests
         var result = await service.RegisterAsync("neto@email.com", "Senha123");
 
         // Assert
-        result.Should().NotBeNull();
-        result.UserId.Should().Be("sub-123");
-        result.Email.Should().Be("neto@email.com");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.UserId.Should().Be("sub-123");
+        result.Value.Email.Should().Be("neto@email.com");
     }
 
     [Fact]
-    public async Task RegisterAsync_ShouldThrowEmailAlreadyExistsException_WhenCognitoThrowsUsernameExistsException()
+    public async Task RegisterAsync_ShouldReturnConflictFailure_WhenCognitoThrowsUsernameExistsException()
     {
         // Arrange
         var service = new CognitoAuthService(_cognitoMock, _options);
@@ -54,10 +54,12 @@ public class CognitoAuthServiceTests
             .Returns(Task.FromException<SignUpResponse>(new UsernameExistsException("User already exists")));
 
         // Act
-        Func<Task> act = async () => await service.RegisterAsync("neto@email.com", "Senha123");
+        var result = await service.RegisterAsync("neto@email.com", "Senha123");
 
         // Assert
-        await act.Should().ThrowAsync<EmailAlreadyExistsException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Conflict);
+        result.Error.Code.Should().Be("email-already-exists");
     }
 
     [Fact]
@@ -91,14 +93,14 @@ public class CognitoAuthServiceTests
         var result = await service.LoginAsync("neto@email.com", "Senha123");
 
         // Assert
-        result.Should().NotBeNull();
-        result.accessToken.Should().Be("access-token-123");
-        result.ExpiresIn.Should().Be(3600);
-        result.UserId.Should().Be("sub-123");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.AccessToken.Should().Be("access-token-123");
+        result.Value.ExpiresIn.Should().Be(3600);
+        result.Value.UserId.Should().Be("sub-123");
     }
 
     [Fact]
-    public async Task LoginAsync_ShouldThrowInvalidCredentialsException_WhenCognitoThrowsNotAuthorizedException()
+    public async Task LoginAsync_ShouldReturnUnauthorizedFailure_WhenCognitoThrowsNotAuthorizedException()
     {
         // Arrange
         var service = new CognitoAuthService(_cognitoMock, _options);
@@ -107,14 +109,16 @@ public class CognitoAuthServiceTests
             .Returns(Task.FromException<InitiateAuthResponse>(new NotAuthorizedException("Invalid credentials")));
 
         // Act
-        Func<Task> act = async () => await service.LoginAsync("neto@email.com", "Senha123");
+        var result = await service.LoginAsync("neto@email.com", "Senha123");
 
         // Assert
-        await act.Should().ThrowAsync<InvalidCredentialsException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Unauthorized);
+        result.Error.Code.Should().Be("invalid-credentials");
     }
 
     [Fact]
-    public async Task LoginAsync_ShouldThrowInvalidCredentialsException_WhenCognitoThrowsUserNotFoundException()
+    public async Task LoginAsync_ShouldReturnUnauthorizedFailure_WhenCognitoThrowsUserNotFoundException()
     {
         // Arrange
         var service = new CognitoAuthService(_cognitoMock, _options);
@@ -123,9 +127,11 @@ public class CognitoAuthServiceTests
             .Returns(Task.FromException<InitiateAuthResponse>(new UserNotFoundException("User not found")));
 
         // Act
-        Func<Task> act = async () => await service.LoginAsync("neto@email.com", "Senha123");
+        var result = await service.LoginAsync("neto@email.com", "Senha123");
 
         // Assert
-        await act.Should().ThrowAsync<InvalidCredentialsException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Unauthorized);
+        result.Error.Code.Should().Be("invalid-credentials");
     }
 }

@@ -1,11 +1,12 @@
-using GastosApp.Application.Abstractions;
 using GastosApp.Application.Common.Interfaces;
+using GastosApp.Application.Common.Results;
+using Mediator;
 
 namespace GastosApp.Application.Auth.Commands.Login;
 
-public record LoginUserCommand(string Email, string Password) : ICommand<LoginUserResult>;
+public sealed record LoginUserCommand(string Email, string Password) : ICommand<Result<LoginUserResult>>;
 
-public class LoginUserCommandHandler : ICommandHandler<LoginUserCommand, LoginUserResult>
+public sealed class LoginUserCommandHandler : ICommandHandler<LoginUserCommand, Result<LoginUserResult>>
 {
     private readonly IAuthService _authService;
 
@@ -14,15 +15,18 @@ public class LoginUserCommandHandler : ICommandHandler<LoginUserCommand, LoginUs
         _authService = authService;
     }
 
-    public async Task<LoginUserResult> HandleAsync(LoginUserCommand command, CancellationToken cancellationToken = default)
+    public async ValueTask<Result<LoginUserResult>> Handle(LoginUserCommand command, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(command.Email))
-            throw new ArgumentException("Email é obrigatório.", nameof(command.Email));
+            return Result.Failure<LoginUserResult>(AuthErrors.Validation("Email é obrigatório."));
         if (string.IsNullOrWhiteSpace(command.Password))
-            throw new ArgumentException("Senha é obrigatória.", nameof(command.Password));
+            return Result.Failure<LoginUserResult>(AuthErrors.Validation("Senha é obrigatória."));
 
         var result = await _authService.LoginAsync(command.Email, command.Password, cancellationToken);
-        return new LoginUserResult(result.accessToken, result.ExpiresIn, result.UserId);
+        if (result.IsFailure)
+            return Result.Failure<LoginUserResult>(result.Error!);
+
+        return Result.Success(new LoginUserResult(result.Value.AccessToken, result.Value.ExpiresIn, result.Value.UserId));
     }
 }
 

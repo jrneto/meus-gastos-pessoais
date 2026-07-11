@@ -1,6 +1,5 @@
 using FluentAssertions;
 using GastosApp.Api.Middlewares;
-using GastosApp.Application.Common.Exceptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -24,68 +23,7 @@ public class GlobalExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_ShouldReturn409ProblemDetails_WhenExceptionIsEmailAlreadyExistsException()
-    {
-        // Arrange
-        var exception = new EmailAlreadyExistsException("Email já cadastrado");
-
-        // Act
-        var result = await _handler.TryHandleAsync(_context, exception, CancellationToken.None);
-
-        // Assert
-        result.Should().BeTrue();
-        _context.Response.StatusCode.Should().Be(StatusCodes.Status409Conflict);
-        _context.Response.ContentType.Should().Be("application/problem+json");
-
-        var problemDetails = await ReadProblemDetailsAsync();
-        problemDetails.Status.Should().Be(StatusCodes.Status409Conflict);
-        problemDetails.Title.Should().Be("Email já cadastrado");
-        problemDetails.Type.Should().Be("https://gastosapp.dev/errors/email-already-exists");
-    }
-
-    [Fact]
-    public async Task TryHandleAsync_ShouldReturn401ProblemDetails_WhenExceptionIsInvalidCredentialsException()
-    {
-        // Arrange
-        var exception = new InvalidCredentialsException("Email ou senha inválidos");
-
-        // Act
-        var result = await _handler.TryHandleAsync(_context, exception, CancellationToken.None);
-
-        // Assert
-        result.Should().BeTrue();
-        _context.Response.StatusCode.Should().Be(StatusCodes.Status401Unauthorized);
-        _context.Response.ContentType.Should().Be("application/problem+json");
-
-        var problemDetails = await ReadProblemDetailsAsync();
-        problemDetails.Status.Should().Be(StatusCodes.Status401Unauthorized);
-        problemDetails.Title.Should().Be("Email ou senha inválidos");
-        problemDetails.Type.Should().Be("https://gastosapp.dev/errors/invalid-credentials");
-    }
-
-    [Fact]
-    public async Task TryHandleAsync_ShouldReturn400ProblemDetails_WhenExceptionIsArgumentException()
-    {
-        // Arrange
-        var exception = new ArgumentException("Parâmetros inválidos");
-
-        // Act
-        var result = await _handler.TryHandleAsync(_context, exception, CancellationToken.None);
-
-        // Assert
-        result.Should().BeTrue();
-        _context.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
-        _context.Response.ContentType.Should().Be("application/problem+json");
-
-        var problemDetails = await ReadProblemDetailsAsync();
-        problemDetails.Status.Should().Be(StatusCodes.Status400BadRequest);
-        problemDetails.Title.Should().Be("Parâmetros inválidos");
-        problemDetails.Detail.Should().Be("Parâmetros inválidos");
-        problemDetails.Type.Should().Be("https://gastosapp.dev/errors/bad-request");
-    }
-
-    [Fact]
-    public async Task TryHandleAsync_ShouldReturn500ProblemDetails_WhenExceptionIsGenericException()
+    public async Task TryHandleAsync_ShouldReturn500ProblemDetails_WhenExceptionIsNotHandledElsewhere()
     {
         // Arrange
         var exception = new Exception("Erro catastrófico");

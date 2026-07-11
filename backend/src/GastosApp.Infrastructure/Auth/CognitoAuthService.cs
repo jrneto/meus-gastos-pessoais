@@ -1,7 +1,8 @@
 using Amazon.CognitoIdentityProvider;
 using Amazon.CognitoIdentityProvider.Model;
-using GastosApp.Application.Common.Exceptions;
+using GastosApp.Application.Auth;
 using GastosApp.Application.Common.Interfaces;
+using GastosApp.Application.Common.Results;
 using GastosApp.Infrastructure.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -20,7 +21,7 @@ public sealed class CognitoAuthService : IAuthService
         _options = options.Value;
     }
 
-    public async Task<RegisterResult> RegisterAsync(
+    public async Task<Result<RegisterResult>> RegisterAsync(
         string email, string password,
         CancellationToken cancellationToken = default)
     {
@@ -37,15 +38,15 @@ public sealed class CognitoAuthService : IAuthService
                 ]
             }, cancellationToken);
 
-            return new RegisterResult(response.UserSub, email);
+            return Result.Success(new RegisterResult(response.UserSub, email));
         }
         catch (UsernameExistsException)
         {
-            throw new EmailAlreadyExistsException();
+            return Result.Failure<RegisterResult>(AuthErrors.EmailAlreadyExists);
         }
     }
 
-    public async Task<LoginResult> LoginAsync(
+    public async Task<Result<LoginResult>> LoginAsync(
         string email, string password,
         CancellationToken cancellationToken = default)
     {
@@ -72,15 +73,15 @@ public sealed class CognitoAuthService : IAuthService
             var name = userResponse.UserAttributes.FirstOrDefault(a => a.Name == "name")?.Value ?? string.Empty;
             var userId = userResponse.UserAttributes.FirstOrDefault(a => a.Name == "sub")?.Value ?? userResponse.Username;
 
-            return new LoginResult(result.IdToken, result.ExpiresIn ?? 3600, userId);
+            return Result.Success(new LoginResult(result.IdToken, result.ExpiresIn ?? 3600, userId));
         }
         catch (NotAuthorizedException)
         {
-            throw new InvalidCredentialsException();
+            return Result.Failure<LoginResult>(AuthErrors.InvalidCredentials);
         }
         catch (UserNotFoundException)
         {
-            throw new InvalidCredentialsException();
+            return Result.Failure<LoginResult>(AuthErrors.InvalidCredentials);
         }
     }
 }
