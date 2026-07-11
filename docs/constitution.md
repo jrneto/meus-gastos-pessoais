@@ -7,6 +7,9 @@ API de controle de gastos pessoal. Backend-first, frontend React depois.
 - Valor monetário SEMPRE em centavos (long). Ex: R$ 49,90 = 4990
 - userId SEMPRE extraído do JWT (Cognito sub), NUNCA do body do request
 - Toda feature começa com uma spec em /docs/specs antes de qualquer código
+- Todo novo endpoint deve ter testes de componente (mock de repositórios
+  e dependências externas, ver `docs/specs/FEAT-03-testes-componentes.md`)
+  antes de ser considerado concluído
 - Sem Scan no DynamoDB — apenas Query com PK ou GSI definidos
 
 ## Stack
@@ -33,3 +36,8 @@ API de controle de gastos pessoal. Backend-first, frontend React depois.
 - Toda a infraestrutura deve ser estritamente Serverless.
 - Banco de dados: Usar APENAS Amazon DynamoDB (Modo On-Demand). É expressamente proibido o uso de RDS, instâncias EC2 ou qualquer recurso com cobrança por hora ligada.
 - Autenticação: Usar exclusivamente o Amazon Cognito User Pools.
+
+## Padrões de Código e Arquitetura
+- **Mediator Pattern:** Usar a biblioteca de Mediator/MediatR para desacoplar os Handlers de comandos/queries das Minimal APIs. As rotas devem apenas enviar (`Send`) o request para o mediator.
+- **Result Pattern:** Nenhum Handler ou serviço deve lançar exceções para fluxo de negócio ou retornar null. Todos devem retornar um objeto `Result` ou `Result<T>` unificado (indicando Success ou Failure com mensagens de erro/status), e a controller/Minimal API mapeia esse Result para o respectivo HTTP Status Code (200, 400, 404, etc).
+- **Result Pattern Customizado:** Não utilizar bibliotecas externas de Result (como FluentResults). Criar uma implementação própria e simples de `Result` e `Result<T>` dentro do projeto.

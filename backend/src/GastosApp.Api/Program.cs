@@ -8,7 +8,10 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Configuration.AddAwsParameterStore();
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Configuration.AddAwsParameterStore();
+}
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -41,3 +44,5 @@ app.UseAuthorization();
 app.MapAuthEndpoints();
 
 app.Run();
+
+public partial class Program { }
