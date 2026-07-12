@@ -13,8 +13,10 @@ namespace GastosApp.ComponentTests.Support;
 public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<Program>
 {
     public IAuthService AuthServiceMock { get; private set; } = Substitute.For<IAuthService>();
+    public IExpenseRepository ExpenseRepositoryMock { get; private set; } = Substitute.For<IExpenseRepository>();
 
     public void ResetAuthServiceMock() => AuthServiceMock = Substitute.For<IAuthService>();
+    public void ResetExpenseRepositoryMock() => ExpenseRepositoryMock = Substitute.For<IExpenseRepository>();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -26,7 +28,9 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
             {
                 ["Cognito:Region"] = "us-east-1",
                 ["Cognito:UserPoolId"] = "us-east-1_componentTests",
-                ["Cognito:ClientId"] = "component-tests-client-id"
+                ["Cognito:ClientId"] = "component-tests-client-id",
+                ["DynamoDb:TableName"] = "GastosApp-componentTests",
+                ["DynamoDb:Region"] = "us-east-1"
             });
         });
 
@@ -34,6 +38,9 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
         {
             services.RemoveAll<IAuthService>();
             services.AddScoped(_ => AuthServiceMock);
+
+            services.RemoveAll<IExpenseRepository>();
+            services.AddScoped(_ => ExpenseRepositoryMock);
 
             services.AddAuthentication()
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });

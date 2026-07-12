@@ -1,5 +1,9 @@
 ﻿using Amazon;
 using Amazon.CognitoIdentityProvider;
+using Amazon.DynamoDBv2;
+using GastosApp.Application.Common.Interfaces;
+using GastosApp.Infrastructure.Configuration;
+using GastosApp.Infrastructure.Expenses;
 using GastosApp.Infrastructure.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,10 +15,10 @@ namespace GastosApp.Infrastructure.DependencyInjection
     {
         public static IServiceCollection AddInfrastructure(
             this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
-        {            
+        {
             services.AddAwsInfrastructure(configuration, environment);
 
-            //services.AddScoped<ICustomerRepository, CustomerRepository>();
+            services.AddScoped<IExpenseRepository, DynamoDbExpenseRepository>();
 
             return services;
         }
@@ -31,8 +35,14 @@ namespace GastosApp.Infrastructure.DependencyInjection
             services.AddCognitoSdk(configuration);
             services.AddCognitoAuth(configuration, environment);
 
-            // No futuro, suasinjeções do DynamoDB entrarão aqui de forma isolada:
-            // services.AddSingleton<IAmazonDynamoDB>(...);
+            services.Configure<DynamoDbOptions>(configuration.GetSection(DynamoDbOptions.SectionName));
+
+            services.AddSingleton<IAmazonDynamoDB>(sp =>
+            {
+                var dynamoDbRegionStr = configuration["DynamoDb:Region"] ?? regionStr;
+                var dynamoDbRegion = RegionEndpoint.GetBySystemName(dynamoDbRegionStr);
+                return new AmazonDynamoDBClient(dynamoDbRegion);
+            });
 
             return services;
         }
