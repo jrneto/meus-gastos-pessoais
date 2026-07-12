@@ -1,6 +1,6 @@
 namespace GastosApp.Application.Common.Results;
 
-public class Result
+public class Result : IValidationFailureFactory<Result>
 {
     public bool IsSuccess { get; }
     public bool IsFailure => !IsSuccess;
@@ -22,9 +22,11 @@ public class Result
 
     public static Result<T> Success<T>(T value) => Result<T>.Success(value);
     public static Result<T> Failure<T>(Error error) => Result<T>.Failure(error);
+
+    static Result IValidationFailureFactory<Result>.ValidationFailure(Error error) => Failure(error);
 }
 
-public sealed class Result<T> : Result
+public sealed class Result<T> : Result, IValidationFailureFactory<Result<T>>
 {
     private readonly T? _value;
 
@@ -46,4 +48,6 @@ public sealed class Result<T> : Result
     public static new Result<T> Failure(Error error) => new(error);
 
     public static implicit operator Result<T>(T value) => Success(value);
+
+    static Result<T> IValidationFailureFactory<Result<T>>.ValidationFailure(Error error) => Failure(error);
 }

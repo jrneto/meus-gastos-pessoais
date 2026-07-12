@@ -43,45 +43,6 @@ public class RegisterExpenseCommandHandlerTests
     }
 
     [Theory]
-    [InlineData("", 4590, "Alimentacao")]
-    [InlineData("   ", 4590, "Alimentacao")]
-    [InlineData("Almoço", 0, "Alimentacao")]
-    [InlineData("Almoço", -100, "Alimentacao")]
-    [InlineData("Almoço", 4590, "CategoriaInexistente")]
-    public async Task Handle_ShouldReturnValidationFailure_WhenCommandIsInvalid(string description, long amountInCents, string category)
-    {
-        // Arrange
-        var command = new RegisterExpenseCommand("user-id-123", description, amountInCents, category, new DateOnly(2025, 6, 15));
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Type.Should().Be(ErrorType.Validation);
-        result.Error.Code.Should().Be("validation-error");
-
-        await _expenseRepositoryMock.DidNotReceiveWithAnyArgs().SaveAsync(default!, default);
-    }
-
-    [Fact]
-    public async Task Handle_ShouldReturnValidationFailure_WhenDescriptionExceedsMaxLength()
-    {
-        // Arrange
-        var command = new RegisterExpenseCommand(
-            "user-id-123", new string('a', 201), 4590, "Alimentacao", new DateOnly(2025, 6, 15));
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Type.Should().Be(ErrorType.Validation);
-
-        await _expenseRepositoryMock.DidNotReceiveWithAnyArgs().SaveAsync(default!, default);
-    }
-
-    [Theory]
     [InlineData(-1)]
     [InlineData(1)]
     public async Task Handle_ShouldAcceptRetroactiveAndFutureDates(int daysOffset)

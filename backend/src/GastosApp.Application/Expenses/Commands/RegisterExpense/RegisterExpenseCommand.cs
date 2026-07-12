@@ -14,8 +14,6 @@ public sealed record RegisterExpenseCommand(
 
 public sealed class RegisterExpenseCommandHandler : ICommandHandler<RegisterExpenseCommand, Result<RegisterExpenseResult>>
 {
-    private const int MaxDescriptionLength = 200;
-
     private readonly IExpenseRepository _expenseRepository;
 
     public RegisterExpenseCommandHandler(IExpenseRepository expenseRepository)
@@ -25,14 +23,7 @@ public sealed class RegisterExpenseCommandHandler : ICommandHandler<RegisterExpe
 
     public async ValueTask<Result<RegisterExpenseResult>> Handle(RegisterExpenseCommand command, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(command.Description))
-            return Result.Failure<RegisterExpenseResult>(ExpenseErrors.Validation("Descrição é obrigatória."));
-        if (command.Description.Length > MaxDescriptionLength)
-            return Result.Failure<RegisterExpenseResult>(ExpenseErrors.Validation($"Descrição deve ter no máximo {MaxDescriptionLength} caracteres."));
-        if (command.AmountInCents <= 0)
-            return Result.Failure<RegisterExpenseResult>(ExpenseErrors.Validation("Valor deve ser maior que zero."));
-        if (!Enum.TryParse<ExpenseCategory>(command.Category, ignoreCase: true, out var category) || !Enum.IsDefined(category))
-            return Result.Failure<RegisterExpenseResult>(ExpenseErrors.Validation("Categoria inválida."));
+        var category = Enum.Parse<ExpenseCategory>(command.Category, ignoreCase: true);
 
         var expense = Expense.Create(
             command.UserId,
@@ -43,13 +34,7 @@ public sealed class RegisterExpenseCommandHandler : ICommandHandler<RegisterExpe
 
         await _expenseRepository.SaveAsync(expense, cancellationToken);
 
-        return Result.Success(new RegisterExpenseResult(
-            expense.Id,
-            expense.Description,
-            expense.AmountInCents,
-            expense.Category.ToString(),
-            expense.ExpenseDate,
-            expense.CreatedAt));
+        return Result.Success(RegisterExpenseResult.FromExpense(expense));
     }
 }
 
@@ -59,4 +44,13 @@ public record RegisterExpenseResult(
     long AmountInCents,
     string Category,
     DateOnly ExpenseDate,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt)
+{
+    public static RegisterExpenseResult FromExpense(Expense expense) => new(
+        expense.Id,
+        expense.Description,
+        expense.AmountInCents,
+        expense.Category.ToString(),
+        expense.ExpenseDate,
+        expense.CreatedAt);
+}
