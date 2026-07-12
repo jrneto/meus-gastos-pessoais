@@ -12,11 +12,20 @@ Leve vs Fluxo Completo e a regra de organização de specs, e
   `backend/docs/constitution.md` e `backend/docs/architecture.md`.
 - **Sem LocalStack, sem Kong.** Nenhuma simulação local de infraestrutura
   AWS deve ser (re)introduzida.
-- IaC futuro será feito **exclusivamente em Terraform** — não
-  CloudFormation, não CDK. **Não gerar código Terraform até que seja
-  solicitado explicitamente.**
-- Hoje não existe nenhum código de provisionamento de infraestrutura
-  neste diretório (nenhum `.tf`).
+- IaC feito **exclusivamente em Terraform** — não CloudFormation, não
+  CDK. **Só gerar/alterar código Terraform para um recurso quando
+  solicitado explicitamente pelo usuário.**
+- Provisionamento via Terraform vive em `backend/infra/terraform/`,
+  iniciado pela tabela DynamoDB (`GastosApp` + `GSI1`, ver
+  `backend/docs/architecture.md` e `backend/docs/data-model.md`). State
+  remoto em bucket S3 (locking nativo do backend S3, `use_lockfile` —
+  sem tabela DynamoDB extra só para lock), criado por um módulo
+  `bootstrap/` separado que mantém o próprio state local (chicken-and-egg
+  do bucket que guarda seu próprio state). Passo a passo completo em
+  `backend/infra/terraform/README.md`.
+- Cognito e Parameter Store já existem, provisionados manualmente fora
+  do Terraform; não criar Terraform para eles sem pedido explícito do
+  usuário.
 
 ## Estado legado (pendente de decisão)
 

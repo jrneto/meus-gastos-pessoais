@@ -16,8 +16,11 @@ API de controle de gastos pessoal. Backend-first, frontend React depois.
 - Sem Scan no DynamoDB — apenas Query com PK ou GSI definidos
 - Toda infraestrutura é AWS. Desenvolvimento local conecta-se diretamente aos
   recursos AWS reais (Cognito, DynamoDB, Parameter Store), sem simulação
-  (sem LocalStack, sem Kong). IaC futuro será feito exclusivamente em
-  Terraform (não CloudFormation, não CDK)
+  (sem LocalStack, sem Kong). Provisionamento via Terraform (não
+  CloudFormation, não CDK), iniciado pela tabela DynamoDB
+  (`backend/infra/terraform/`). Cognito e Parameter Store já existem,
+  provisionados manualmente, e permanecem fora do Terraform até serem
+  migrados explicitamente
 
 ## Stack
 - Runtime: .NET 10, ASP.NET Core Minimal APIs

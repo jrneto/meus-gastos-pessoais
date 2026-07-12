@@ -1,0 +1,10 @@
+# Este módulo mantém state LOCAL propositalmente (ver main.tf) — não versionar.
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+*.tfvars.json
+*.tfplan
+crash.log
+crash.*.log
