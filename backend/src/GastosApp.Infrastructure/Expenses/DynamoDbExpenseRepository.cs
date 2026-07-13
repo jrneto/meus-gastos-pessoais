@@ -211,9 +211,14 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         {
             if (filter.DateFrom is not null && filter.DateTo is not null)
             {
+                // KeyConditionExpression aceita só uma condição por chave — não é possível combinar
+                // ">=" e "<" com AND (erro do DynamoDB: "must only contain one condition per key").
+                // BETWEEN é inclusivo nos dois limites; "~" (0x7E, maior que dígitos/hífen/"#" usados
+                // na SK) garante que o limite superior cubra toda a SK do dia de dateTo (que tem sufixo
+                // "#{id}" após a data), sem incluir o dia seguinte.
                 values[":skFrom"] = new AttributeValue { S = $"{skPrefix}{filter.DateFrom.Value.ToString(DateFormat)}" };
-                values[":skTo"] = new AttributeValue { S = $"{skPrefix}{filter.DateTo.Value.AddDays(1).ToString(DateFormat)}" };
-                return "#sk >= :skFrom AND #sk < :skTo";
+                values[":skTo"] = new AttributeValue { S = $"{skPrefix}{filter.DateTo.Value.ToString(DateFormat)}~" };
+                return "#sk BETWEEN :skFrom AND :skTo";
             }
 
             if (filter.DateFrom is not null)

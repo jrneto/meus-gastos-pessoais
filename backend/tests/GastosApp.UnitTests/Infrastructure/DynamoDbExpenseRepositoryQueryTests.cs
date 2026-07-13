@@ -97,7 +97,7 @@ public class DynamoDbExpenseRepositoryQueryTests
     }
 
     [Fact]
-    public async Task QueryAsync_ShouldUseExclusiveRangeCondition_WhenDateFromAndDateToAreInformed()
+    public async Task QueryAsync_ShouldUseBetweenRangeCondition_WhenDateFromAndDateToAreInformed()
     {
         var filter = new ExpenseQueryFilter(
             "user-1", null, null, new DateOnly(2025, 6, 1), new DateOnly(2025, 6, 10), null, null, null, 20);
@@ -107,9 +107,9 @@ public class DynamoDbExpenseRepositoryQueryTests
 
         await _dynamoDbClientMock.Received(1).QueryAsync(
             Arg.Is<QueryRequest>(r =>
-                r.KeyConditionExpression == "#pk = :pk AND #sk >= :skFrom AND #sk < :skTo"
+                r.KeyConditionExpression == "#pk = :pk AND #sk BETWEEN :skFrom AND :skTo"
                 && r.ExpressionAttributeValues[":skFrom"].S == "TXN#2025-06-01"
-                && r.ExpressionAttributeValues[":skTo"].S == "TXN#2025-06-11"),
+                && r.ExpressionAttributeValues[":skTo"].S == "TXN#2025-06-10~"),
             Arg.Any<CancellationToken>());
     }
 
@@ -124,7 +124,7 @@ public class DynamoDbExpenseRepositoryQueryTests
 
         await _dynamoDbClientMock.Received(1).QueryAsync(
             Arg.Is<QueryRequest>(r =>
-                r.KeyConditionExpression == "#pk = :pk AND #sk >= :skFrom AND #sk < :skTo"
+                r.KeyConditionExpression == "#pk = :pk AND #sk BETWEEN :skFrom AND :skTo"
                 && !r.ExpressionAttributeValues.ContainsKey(":skPrefix")),
             Arg.Any<CancellationToken>());
     }
