@@ -36,7 +36,6 @@ backend/
 │   ├── constitution.md
 │   ├── architecture.md
 │   ├── data-model.md
-│   ├── estado-atual-implementado.md
 │   └── README.md                  # explica o fluxo SDD do backend
 ├── specs/
 │   └── FEAT-XX-nome-feature/{spec.md, plan.md, tasks.md}
