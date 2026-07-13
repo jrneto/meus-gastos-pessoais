@@ -464,4 +464,83 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/internal-server-error");
     }
+
+    [Fact]
+    public async Task DeleteExpense_ComDespesaPropria_Retorna204SemCorpo()
+    {
+        AuthenticateAs("user-id-123");
+        _factory.ExpenseRepositoryMock
+            .DeleteAsync("user-id-123", "expense-1", Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var response = await _client.DeleteAsync("/expenses/expense-1");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await response.Content.ReadAsByteArrayAsync()).Should().BeEmpty();
+
+        await _factory.ExpenseRepositoryMock.Received(1).DeleteAsync(
+            "user-id-123", "expense-1", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteExpense_SemHeaderDeAutenticacao_Retorna401SemChamarRepositorio()
+    {
+        var response = await _client.DeleteAsync("/expenses/expense-1");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/unauthorized");
+
+        await _factory.ExpenseRepositoryMock.DidNotReceiveWithAnyArgs()
+            .DeleteAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task DeleteExpense_ComDespesaInexistenteOuDeOutroUsuario_Retorna404()
+    {
+        AuthenticateAs("user-id-123");
+        _factory.ExpenseRepositoryMock
+            .DeleteAsync("user-id-123", "expense-1", Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var response = await _client.DeleteAsync("/expenses/expense-1");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/not-found");
+    }
+
+    [Fact]
+    public async Task DeleteExpense_ChamadoDuasVezesParaMesmaDespesa_SegundaChamadaRetorna404()
+    {
+        AuthenticateAs("user-id-123");
+        _factory.ExpenseRepositoryMock
+            .DeleteAsync("user-id-123", "expense-1", Arg.Any<CancellationToken>())
+            .Returns(true, false);
+
+        var primeiraResposta = await _client.DeleteAsync("/expenses/expense-1");
+        var segundaResposta = await _client.DeleteAsync("/expenses/expense-1");
+
+        primeiraResposta.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        segundaResposta.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task DeleteExpense_QuandoRepositorioLancaExcecaoNaoPrevista_Retorna500()
+    {
+        AuthenticateAs("user-id-123");
+
+        _factory.ExpenseRepositoryMock
+            .DeleteAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException<bool>(new InvalidOperationException("Falha simulada")));
+
+        var response = await _client.DeleteAsync("/expenses/expense-1");
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/internal-server-error");
+    }
 }

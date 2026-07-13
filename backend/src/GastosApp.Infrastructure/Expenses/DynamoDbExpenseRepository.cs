@@ -14,6 +14,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
     private const string DateFormat = "yyyy-MM-dd";
     private const string BaseIndex = "Base";
     private const string Gsi1Index = "GSI1";
+    private const string Gsi2Index = "GSI2";
     private const int MaxPaginationIterations = 25;
 
     private readonly IAmazonDynamoDB _dynamoDbClient;
@@ -35,6 +36,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
             ["SK"] = new AttributeValue { S = $"TXN#{day}#{expense.Id}" },
             ["GSI1PK"] = new AttributeValue { S = $"USER#{expense.UserId}#{expense.Category}" },
             ["GSI1SK"] = new AttributeValue { S = $"{day}#{expense.Id}" },
+            ["GSI2PK"] = new AttributeValue { S = $"ID#{expense.Id}" },
             ["Description"] = new AttributeValue { S = expense.Description },
             ["AmountInCents"] = new AttributeValue { N = expense.AmountInCents.ToString() },
             ["Category"] = new AttributeValue { S = expense.Category.ToString() },
@@ -48,6 +50,50 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
             TableName = _options.TableName,
             Item = item
         }, cancellationToken);
+    }
+
+    public async Task<bool> DeleteAsync(string userId, string expenseId, CancellationToken cancellationToken = default)
+    {
+        var lookup = await _dynamoDbClient.QueryAsync(new QueryRequest
+        {
+            TableName = _options.TableName,
+            IndexName = Gsi2Index,
+            KeyConditionExpression = "GSI2PK = :gsi2pk",
+            ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                [":gsi2pk"] = new AttributeValue { S = $"ID#{expenseId}" }
+            },
+            Limit = 1
+        }, cancellationToken);
+
+        if (lookup.Items.Count == 0)
+            return false;
+
+        var pk = lookup.Items[0]["PK"].S;
+        var sk = lookup.Items[0]["SK"].S;
+
+        if (pk != $"USER#{userId}")
+            return false;
+
+        try
+        {
+            await _dynamoDbClient.DeleteItemAsync(new DeleteItemRequest
+            {
+                TableName = _options.TableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    ["PK"] = new AttributeValue { S = pk },
+                    ["SK"] = new AttributeValue { S = sk }
+                },
+                ConditionExpression = "attribute_exists(PK)"
+            }, cancellationToken);
+
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
     }
 
     public async Task<ExpenseQueryPage> QueryAsync(ExpenseQueryFilter filter, CancellationToken cancellationToken = default)
