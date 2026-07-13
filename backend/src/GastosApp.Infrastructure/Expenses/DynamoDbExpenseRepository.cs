@@ -96,6 +96,107 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         }
     }
 
+    public async Task<Expense?> UpdateAsync(
+        string userId,
+        string expenseId,
+        string description,
+        long amountInCents,
+        ExpenseCategory category,
+        DateOnly expenseDate,
+        CancellationToken cancellationToken = default)
+    {
+        var lookup = await _dynamoDbClient.QueryAsync(new QueryRequest
+        {
+            TableName = _options.TableName,
+            IndexName = Gsi2Index,
+            KeyConditionExpression = "GSI2PK = :gsi2pk",
+            ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                [":gsi2pk"] = new AttributeValue { S = $"ID#{expenseId}" }
+            },
+            Limit = 1
+        }, cancellationToken);
+
+        if (lookup.Items.Count == 0)
+            return null;
+
+        var pk = lookup.Items[0]["PK"].S;
+        var oldSk = lookup.Items[0]["SK"].S;
+
+        if (pk != $"USER#{userId}")
+            return null;
+
+        var current = await _dynamoDbClient.GetItemAsync(new GetItemRequest
+        {
+            TableName = _options.TableName,
+            Key = new Dictionary<string, AttributeValue>
+            {
+                ["PK"] = new AttributeValue { S = pk },
+                ["SK"] = new AttributeValue { S = oldSk }
+            }
+        }, cancellationToken);
+
+        if (!current.IsItemSet)
+            return null;
+
+        var createdAt = DateTimeOffset.Parse(
+            current.Item["CreatedAt"].S, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+        var newDay = expenseDate.ToString(DateFormat);
+        var newSk = $"TXN#{newDay}#{expenseId}";
+
+        var newItem = new Dictionary<string, AttributeValue>
+        {
+            ["PK"] = new AttributeValue { S = pk },
+            ["SK"] = new AttributeValue { S = newSk },
+            ["GSI1PK"] = new AttributeValue { S = $"{pk}#{category}" },
+            ["GSI1SK"] = new AttributeValue { S = $"{newDay}#{expenseId}" },
+            ["GSI2PK"] = new AttributeValue { S = $"ID#{expenseId}" },
+            ["Description"] = new AttributeValue { S = description },
+            ["AmountInCents"] = new AttributeValue { N = amountInCents.ToString() },
+            ["Category"] = new AttributeValue { S = category.ToString() },
+            ["ExpenseDate"] = new AttributeValue { S = newDay },
+            ["Tipo"] = new AttributeValue { S = "despesa" },
+            ["CreatedAt"] = new AttributeValue { S = createdAt.ToString("O") }
+        };
+
+        if (newSk == oldSk)
+        {
+            await _dynamoDbClient.PutItemAsync(new PutItemRequest
+            {
+                TableName = _options.TableName,
+                Item = newItem
+            }, cancellationToken);
+        }
+        else
+        {
+            await _dynamoDbClient.TransactWriteItemsAsync(new TransactWriteItemsRequest
+            {
+                TransactItems =
+                [
+                    new TransactWriteItem
+                    {
+                        Delete = new Delete
+                        {
+                            TableName = _options.TableName,
+                            Key = new Dictionary<string, AttributeValue>
+                            {
+                                ["PK"] = new AttributeValue { S = pk },
+                                ["SK"] = new AttributeValue { S = oldSk }
+                            },
+                            ConditionExpression = "attribute_exists(PK)"
+                        }
+                    },
+                    new TransactWriteItem
+                    {
+                        Put = new Put { TableName = _options.TableName, Item = newItem }
+                    }
+                ]
+            }, cancellationToken);
+        }
+
+        return Expense.Restore(expenseId, userId, description, amountInCents, category, expenseDate, createdAt);
+    }
+
     public async Task<ExpenseQueryPage> QueryAsync(ExpenseQueryFilter filter, CancellationToken cancellationToken = default)
     {
         var index = filter.Category is not null ? Gsi1Index : BaseIndex;

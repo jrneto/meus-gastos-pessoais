@@ -1,6 +1,7 @@
 using GastosApp.Api.Common;
 using GastosApp.Application.Expenses.Commands.DeleteExpense;
 using GastosApp.Application.Expenses.Commands.RegisterExpense;
+using GastosApp.Application.Expenses.Commands.UpdateExpense;
 using GastosApp.Application.Expenses.Queries.GetExpenses;
 using Mediator;
 using System.Security.Claims;
@@ -17,6 +18,7 @@ public static class ExpenseEndpoints
 
         group.MapPost("/", RegisterExpense);
         group.MapGet("/", GetExpenses);
+        group.MapPut("/{id}", UpdateExpense);
         group.MapDelete("/{id}", DeleteExpense);
 
         return app;
@@ -64,6 +66,27 @@ public static class ExpenseEndpoints
         return result.ToHttpResult(value => Results.Ok(value));
     }
 
+    private static async Task<IResult> UpdateExpense(
+        string id,
+        UpdateExpenseRequest request,
+        ClaimsPrincipal user,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        var command = new UpdateExpenseCommand(
+            userId!,
+            id,
+            request.Description,
+            request.AmountInCents,
+            request.Category,
+            request.ExpenseDate);
+
+        var result = await sender.Send(command, cancellationToken);
+        return result.ToHttpResult(value => Results.Ok(value));
+    }
+
     private static async Task<IResult> DeleteExpense(
         string id,
         ClaimsPrincipal user,
@@ -80,6 +103,8 @@ public static class ExpenseEndpoints
 }
 
 public record RegisterExpenseRequest(string Description, long AmountInCents, string Category, DateOnly ExpenseDate);
+
+public record UpdateExpenseRequest(string Description, long AmountInCents, string Category, DateOnly ExpenseDate);
 
 public record GetExpensesRequest(
     string? YearMonth,

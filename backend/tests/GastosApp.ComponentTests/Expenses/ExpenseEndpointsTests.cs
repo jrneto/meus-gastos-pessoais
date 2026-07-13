@@ -543,4 +543,166 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/internal-server-error");
     }
+
+    [Fact]
+    public async Task UpdateExpense_ComDespesaPropriaEDadosValidos_Retorna200ComCorpoAtualizado()
+    {
+        AuthenticateAs("user-id-123");
+        var updatedExpense = Expense.Restore(
+            "expense-1", "user-id-123", "Almoço atualizado", 5290,
+            ExpenseCategory.Alimentacao, new DateOnly(2025, 6, 16), DateTimeOffset.UtcNow);
+
+        _factory.ExpenseRepositoryMock
+            .UpdateAsync("user-id-123", "expense-1", "Almoço atualizado", 5290, ExpenseCategory.Alimentacao,
+                new DateOnly(2025, 6, 16), Arg.Any<CancellationToken>())
+            .Returns(updatedExpense);
+
+        var response = await _client.PutAsJsonAsync("/expenses/expense-1", new
+        {
+            description = "Almoço atualizado",
+            amountInCents = 5290,
+            category = "Alimentacao",
+            expenseDate = "2025-06-16"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("description").GetString().Should().Be("Almoço atualizado");
+        body.GetProperty("amountInCents").GetInt64().Should().Be(5290);
+        body.GetProperty("expenseDate").GetString().Should().Be("2025-06-16");
+    }
+
+    [Fact]
+    public async Task UpdateExpense_SemHeaderDeAutenticacao_Retorna401SemChamarRepositorio()
+    {
+        var response = await _client.PutAsJsonAsync("/expenses/expense-1", new
+        {
+            description = "Almoço",
+            amountInCents = 4590,
+            category = "Alimentacao",
+            expenseDate = "2025-06-15"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/unauthorized");
+
+        await _factory.ExpenseRepositoryMock.DidNotReceiveWithAnyArgs()
+            .UpdateAsync(default!, default!, default!, default, default, default, default);
+    }
+
+    [Fact]
+    public async Task UpdateExpense_ComDescricaoVazia_Retorna400SemChamarRepositorio()
+    {
+        AuthenticateAs("user-id-123");
+
+        var response = await _client.PutAsJsonAsync("/expenses/expense-1", new
+        {
+            description = "",
+            amountInCents = 4590,
+            category = "Alimentacao",
+            expenseDate = "2025-06-15"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/validation-error");
+
+        await _factory.ExpenseRepositoryMock.DidNotReceiveWithAnyArgs()
+            .UpdateAsync(default!, default!, default!, default, default, default, default);
+    }
+
+    [Fact]
+    public async Task UpdateExpense_ComValorMenorOuIgualAZero_Retorna400SemChamarRepositorio()
+    {
+        AuthenticateAs("user-id-123");
+
+        var response = await _client.PutAsJsonAsync("/expenses/expense-1", new
+        {
+            description = "Almoço",
+            amountInCents = 0,
+            category = "Alimentacao",
+            expenseDate = "2025-06-15"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/validation-error");
+
+        await _factory.ExpenseRepositoryMock.DidNotReceiveWithAnyArgs()
+            .UpdateAsync(default!, default!, default!, default, default, default, default);
+    }
+
+    [Fact]
+    public async Task UpdateExpense_ComCategoriaForaDoEnum_Retorna400SemChamarRepositorio()
+    {
+        AuthenticateAs("user-id-123");
+
+        var response = await _client.PutAsJsonAsync("/expenses/expense-1", new
+        {
+            description = "Almoço",
+            amountInCents = 4590,
+            category = "CategoriaInexistente",
+            expenseDate = "2025-06-15"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/validation-error");
+
+        await _factory.ExpenseRepositoryMock.DidNotReceiveWithAnyArgs()
+            .UpdateAsync(default!, default!, default!, default, default, default, default);
+    }
+
+    [Fact]
+    public async Task UpdateExpense_ComDespesaInexistenteOuDeOutroUsuario_Retorna404()
+    {
+        AuthenticateAs("user-id-123");
+        _factory.ExpenseRepositoryMock
+            .UpdateAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(),
+                Arg.Any<ExpenseCategory>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns((Expense?)null);
+
+        var response = await _client.PutAsJsonAsync("/expenses/expense-1", new
+        {
+            description = "Almoço",
+            amountInCents = 4590,
+            category = "Alimentacao",
+            expenseDate = "2025-06-15"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/not-found");
+    }
+
+    [Fact]
+    public async Task UpdateExpense_QuandoRepositorioLancaExcecaoNaoPrevista_Retorna500()
+    {
+        AuthenticateAs("user-id-123");
+
+        _factory.ExpenseRepositoryMock
+            .UpdateAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(),
+                Arg.Any<ExpenseCategory>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException<Expense?>(new InvalidOperationException("Falha simulada")));
+
+        var response = await _client.PutAsJsonAsync("/expenses/expense-1", new
+        {
+            description = "Almoço",
+            amountInCents = 4590,
+            category = "Alimentacao",
+            expenseDate = "2025-06-15"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/internal-server-error");
+    }
 }

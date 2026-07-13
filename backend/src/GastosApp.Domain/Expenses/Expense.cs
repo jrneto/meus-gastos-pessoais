@@ -44,4 +44,16 @@ public sealed class Expense
             expenseDate,
             DateTimeOffset.UtcNow);
     }
+
+    public static Expense Restore(
+        string id,
+        string userId,
+        string description,
+        long amountInCents,
+        ExpenseCategory category,
+        DateOnly expenseDate,
+        DateTimeOffset createdAt)
+    {
+        return new Expense(id, userId, description, amountInCents, category, expenseDate, createdAt);
+    }
 }
