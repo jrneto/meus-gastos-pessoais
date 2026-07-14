@@ -96,6 +96,52 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         }
     }
 
+    public async Task<Expense?> GetByIdAsync(string userId, string expenseId, CancellationToken cancellationToken = default)
+    {
+        var lookup = await _dynamoDbClient.QueryAsync(new QueryRequest
+        {
+            TableName = _options.TableName,
+            IndexName = Gsi2Index,
+            KeyConditionExpression = "GSI2PK = :gsi2pk",
+            ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                [":gsi2pk"] = new AttributeValue { S = $"ID#{expenseId}" }
+            },
+            Limit = 1
+        }, cancellationToken);
+
+        if (lookup.Items.Count == 0)
+            return null;
+
+        var pk = lookup.Items[0]["PK"].S;
+        var sk = lookup.Items[0]["SK"].S;
+
+        if (pk != $"USER#{userId}")
+            return null;
+
+        var current = await _dynamoDbClient.GetItemAsync(new GetItemRequest
+        {
+            TableName = _options.TableName,
+            Key = new Dictionary<string, AttributeValue>
+            {
+                ["PK"] = new AttributeValue { S = pk },
+                ["SK"] = new AttributeValue { S = sk }
+            }
+        }, cancellationToken);
+
+        if (!current.IsItemSet)
+            return null;
+
+        var createdAt = DateTimeOffset.Parse(
+            current.Item["CreatedAt"].S, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+        var expenseDate = DateOnly.ParseExact(current.Item["ExpenseDate"].S, DateFormat, CultureInfo.InvariantCulture);
+        var category = Enum.Parse<ExpenseCategory>(current.Item["Category"].S);
+        var amountInCents = long.Parse(current.Item["AmountInCents"].N, CultureInfo.InvariantCulture);
+        var description = current.Item["Description"].S;
+
+        return Expense.Restore(expenseId, userId, description, amountInCents, category, expenseDate, createdAt);
+    }
+
     public async Task<Expense?> UpdateAsync(
         string userId,
         string expenseId,

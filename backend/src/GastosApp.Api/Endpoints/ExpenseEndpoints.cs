@@ -2,6 +2,7 @@ using GastosApp.Api.Common;
 using GastosApp.Application.Expenses.Commands.DeleteExpense;
 using GastosApp.Application.Expenses.Commands.RegisterExpense;
 using GastosApp.Application.Expenses.Commands.UpdateExpense;
+using GastosApp.Application.Expenses.Queries.GetExpenseById;
 using GastosApp.Application.Expenses.Queries.GetExpenses;
 using Mediator;
 using System.Security.Claims;
@@ -18,6 +19,7 @@ public static class ExpenseEndpoints
 
         group.MapPost("/", RegisterExpense);
         group.MapGet("/", GetExpenses);
+        group.MapGet("/{id}", GetExpenseById);
         group.MapPut("/{id}", UpdateExpense);
         group.MapDelete("/{id}", DeleteExpense);
 
@@ -61,6 +63,20 @@ public static class ExpenseEndpoints
             request.MaxAmountInCents,
             request.Cursor,
             request.Limit);
+
+        var result = await sender.Send(query, cancellationToken);
+        return result.ToHttpResult(value => Results.Ok(value));
+    }
+
+    private static async Task<IResult> GetExpenseById(
+        string id,
+        ClaimsPrincipal user,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        var query = new GetExpenseByIdQuery(userId!, id);
 
         var result = await sender.Send(query, cancellationToken);
         return result.ToHttpResult(value => Results.Ok(value));
