@@ -1,8 +1,10 @@
 # Terraform — backend/infra
 
-Provisiona a infraestrutura AWS do backend. Hoje cobre apenas a tabela
-DynamoDB (`GastosApp` + `GSI1`) — Cognito e Parameter Store já existem,
-provisionados manualmente, e não são gerenciados por Terraform.
+Provisiona a infraestrutura AWS do backend: tabela DynamoDB (`GastosApp`
++ `GSI1` + `GSI2`, `dynamodb.tf`), Cognito User Pool + App Client
+(`cognito.tf`) e os parâmetros do Cognito no Parameter Store
+(`parameter-store.tf`). Toda a infraestrutura do backend está sob
+Terraform (ver `backend/specs/FEAT-09-terraform-cognito-parameter-store/`).
 
 Duas configurações independentes:
 
@@ -79,6 +81,9 @@ bucket de state precisar ser recriado.
 
 - Nenhum novo recurso Terraform deve ser criado sem pedido explícito do
   usuário (ver `backend/infra/CLAUDE.md`).
-- Cognito e Parameter Store permanecem fora do Terraform por decisão
-  atual — não os importe nem crie recursos equivalentes aqui sem
-  confirmação prévia.
+- Cognito (`cognito.tf`) e Parameter Store (`parameter-store.tf`) são
+  gerenciados por Terraform desde a FEAT-09. O User Pool/App Client
+  atuais foram **recriados** (não importados) — o pool anterior, criado
+  manualmente, foi mantido intacto até exclusão manual pelo usuário.
+  Os 3 parâmetros do Parameter Store foram trazidos via
+  `terraform import` (recurso simples, sem risco de dado).

@@ -15,17 +15,19 @@ Leve vs Fluxo Completo e a regra de organização de specs, e
 - IaC feito **exclusivamente em Terraform** — não CloudFormation, não
   CDK. **Só gerar/alterar código Terraform para um recurso quando
   solicitado explicitamente pelo usuário.**
-- Provisionamento via Terraform vive em `backend/infra/terraform/`,
-  iniciado pela tabela DynamoDB (`GastosApp` + `GSI1`, ver
-  `backend/docs/architecture.md` e `backend/docs/data-model.md`). State
+- Provisionamento via Terraform vive em `backend/infra/terraform/`:
+  tabela DynamoDB (`GastosApp` + `GSI1` + `GSI2`), Cognito User Pool +
+  App Client e parâmetros do Parameter Store — ver
+  `backend/docs/architecture.md`, `backend/docs/data-model.md` e
+  `backend/specs/FEAT-09-terraform-cognito-parameter-store/`. State
   remoto em bucket S3 (locking nativo do backend S3, `use_lockfile` —
   sem tabela DynamoDB extra só para lock), criado por um módulo
   `bootstrap/` separado que mantém o próprio state local (chicken-and-egg
   do bucket que guarda seu próprio state). Passo a passo completo em
   `backend/infra/terraform/README.md`.
-- Cognito e Parameter Store já existem, provisionados manualmente fora
-  do Terraform; não criar Terraform para eles sem pedido explícito do
-  usuário.
+- Cognito e Parameter Store estão sob Terraform desde a FEAT-09 (antes
+  eram provisionados manualmente). Qualquer novo recurso ou mudança
+  ainda exige pedido explícito do usuário.
 
 ## Estado legado (pendente de decisão)
 
