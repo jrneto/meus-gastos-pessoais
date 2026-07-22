@@ -1,0 +1,63 @@
+# Build efêmero do artefato Native AOT da Lambda (runtime customizado
+# provided.al2023). Não é publicado em lugar nenhum — só usado para
+# produzir o executável "bootstrap" que este próprio Dockerfile zipa
+# como function.zip. Ver
+# backend/specs/FEAT-10-deploy-lambda-aot-api-gateway/plan.md.
+#
+# Importante: a imagem base do estágio de build é Amazon Linux 2023 —
+# a MESMA base do runtime "provided.al2023" da Lambda. Um binário AOT
+# compilado numa distro com glibc mais nova (ex.: Ubuntu, usado na
+# imagem oficial do SDK .NET) não roda na Lambda: dá erro
+# "GLIBC_2.38 not found" (achado durante a implementação da FEAT-10).
+#
+# Contexto de build esperado: backend/ (para enxergar src/*)
+# Exemplo: docker build -f infra/lambda/Dockerfile.build --target export
+#          --output type=local,dest=infra/lambda/out .
+# (rodar a partir de backend/)
+
+FROM amazonlinux:2023 AS build
+
+RUN dnf install -y -q clang zlib-devel tar gzip \
+    && dnf clean all
+
+# O próprio CLI "dotnet" precisa de ICU (globalização) para rodar, e o
+# Amazon Linux 2023 não vem com libicu por padrão. Em vez de instalar a
+# lib, roda em modo invariant — consistente com o InvariantGlobalization
+# já usado na aplicação (achado durante a implementação da FEAT-10).
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+
+# Instala o SDK .NET via script oficial da Microsoft — garante o mesmo
+# canal/versão usado no restante do projeto (net10.0, ainda em preview).
+RUN curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh \
+    && chmod +x /tmp/dotnet-install.sh \
+    && /tmp/dotnet-install.sh --channel 10.0 --quality preview --install-dir /usr/share/dotnet
+ENV PATH="/usr/share/dotnet:${PATH}"
+
+WORKDIR /src
+COPY . .
+
+# NuGetPackageFolders explícito: evita o restore tentar usar uma pasta
+# de fallback do Windows herdada de metadados gerados pelo Visual
+# Studio no host (achado durante a implementação da FEAT-10).
+RUN dotnet publish src/GastosApp.Api/GastosApp.Api.csproj \
+    -c Release \
+    -r linux-x64 \
+    --self-contained \
+    -p:PublishAot=true \
+    -p:NuGetPackageFolders=/root/.nuget/packages \
+    -o /app/publish
+
+# Empacotamento roda em Linux (não no host Windows) para garantir que o
+# bit de execução Unix do "bootstrap" seja preservado dentro do zip —
+# a Lambda exige isso e o Compress-Archive do PowerShell não preserva
+# permissões Unix.
+FROM amazonlinux:2023 AS package
+RUN dnf install -y -q zip && dnf clean all
+WORKDIR /pkg
+COPY --from=build /app/publish/GastosApp.Api ./bootstrap
+COPY --from=build /app/publish/appsettings.json ./appsettings.json
+RUN chmod +x ./bootstrap \
+    && zip -j /function.zip bootstrap appsettings.json
+
+FROM scratch AS export
+COPY --from=package /function.zip /function.zip

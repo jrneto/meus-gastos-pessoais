@@ -42,7 +42,7 @@ public static class AuthEndpoints
             }, statusCode: StatusCodes.Status401Unauthorized, contentType: "application/problem+json");
         }
 
-        return Results.Ok(new { userId, email, name });
+        return Results.Ok(new UserInfoResponse(userId, email, name));
 
     }
 
@@ -69,3 +69,4 @@ public static class AuthEndpoints
 
 public record RegisterRequest(string Email, string Password);
 public record LoginRequest(string Email, string Password);
+public record UserInfoResponse(string UserId, string? Email, string? Name);

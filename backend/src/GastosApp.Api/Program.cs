@@ -1,3 +1,6 @@
+using Amazon.Lambda.AspNetCoreServer.Hosting;
+using Amazon.Lambda.Serialization.SystemTextJson;
+using GastosApp.Api.Common;
 using GastosApp.Api.Endpoints;
 using GastosApp.Api.Middlewares;
 using GastosApp.Application.DependencyInjection;
@@ -23,10 +26,21 @@ builder.Services.AddOpenApi();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// Contexto de serialização source-generated, obrigatório em Native AOT
+// (reflection-based System.Text.Json lança em runtime para tipos
+// desconhecidos — ver AppJsonSerializerContext).
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
+});
+
 builder.Services.AddAuthorization();
 
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
+builder.Services.AddAWSLambdaHosting(
+    LambdaEventSource.HttpApi,
+    new SourceGeneratorLambdaJsonSerializer<LambdaEventJsonSerializerContext>());
 
 var app = builder.Build();
 

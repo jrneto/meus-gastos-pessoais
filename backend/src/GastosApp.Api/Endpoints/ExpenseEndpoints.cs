@@ -55,13 +55,13 @@ public static class ExpenseEndpoints
 
         var query = new GetExpensesQuery(
             userId!,
-            request.YearMonth,
-            request.Category,
-            request.DateFrom,
-            request.DateTo,
+            NullIfEmpty(request.YearMonth),
+            NullIfEmpty(request.Category),
+            NullIfEmpty(request.DateFrom),
+            NullIfEmpty(request.DateTo),
             request.MinAmountInCents,
             request.MaxAmountInCents,
-            request.Cursor,
+            NullIfEmpty(request.Cursor),
             request.Limit);
 
         var result = await sender.Send(query, cancellationToken);
@@ -116,6 +116,8 @@ public static class ExpenseEndpoints
         var result = await sender.Send(command, cancellationToken);
         return result.ToHttpResult(() => Results.NoContent());
     }
+
+    private static string? NullIfEmpty(string value) => string.IsNullOrEmpty(value) ? null : value;
 }
 
 public record RegisterExpenseRequest(string Description, long AmountInCents, string Category, DateOnly ExpenseDate);
@@ -123,11 +125,11 @@ public record RegisterExpenseRequest(string Description, long AmountInCents, str
 public record UpdateExpenseRequest(string Description, long AmountInCents, string Category, DateOnly ExpenseDate);
 
 public record GetExpensesRequest(
-    string? YearMonth,
-    string? Category,
-    string? DateFrom,
-    string? DateTo,
-    long? MinAmountInCents,
-    long? MaxAmountInCents,
-    string? Cursor,
-    int? Limit);
+    string YearMonth = "",
+    string Category = "",
+    string DateFrom = "",
+    string DateTo = "",
+    long? MinAmountInCents = null,
+    long? MaxAmountInCents = null,
+    string Cursor = "",
+    int? Limit = null);

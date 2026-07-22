@@ -21,18 +21,30 @@ namespace GastosApp.Infrastructure.Extensions
             this IServiceCollection services,
             IConfiguration configuration)
         {
-            // Bind das configs para IOptions<CognitoOptions>
-            services.Configure<CognitoOptions>(
-                configuration.GetSection(CognitoOptions.SectionName));
+            // Leitura manual (sem ConfigurationBinder/reflection) — achado
+            // durante a implementação da FEAT-10: Configure<T>(IConfiguration)
+            // usa reflection para popular as propriedades e falha
+            // silenciosamente sob Native AOT (sem lançar exceção, só não
+            // preenche nada).
+            services.AddSingleton(_ =>
+            {
+                var section = configuration.GetSection(CognitoOptions.SectionName);
+                var options = new CognitoOptions
+                {
+                    Region = section["Region"]!,
+                    UserPoolId = section["UserPoolId"]!,
+                    ClientId = section["ClientId"]!,
+                    ServiceURL = section["ServiceURL"],
+                    AccessKey = section["AccessKey"],
+                    SecretKey = section["SecretKey"]
+                };
+
+                return Options.Create(options);
+            });
 
             services.AddSingleton<IAmazonCognitoIdentityProvider>(sp =>
             {
                 var options = sp.GetRequiredService<IOptions<CognitoOptions>>().Value;
-
-                // Debug temporário — remove depois
-                Console.WriteLine($"[DEBUG] Region: '{options.Region}'");
-                Console.WriteLine($"[DEBUG] UserPoolId: '{options.UserPoolId}'");
-                Console.WriteLine($"[DEBUG] ClientId: '{options.ClientId}'");
 
                 var config = new AmazonCognitoIdentityProviderConfig
                 {
@@ -87,16 +99,21 @@ namespace GastosApp.Infrastructure.Extensions
                 //}
                 //else
                 //{
-                    var cognitoOptions = configuration.GetSection(CognitoOptions.SectionName).Get<CognitoOptions>();
+                    // Leitura manual (sem .Get<T>()/reflection) — mesmo motivo
+                    // documentado em AddCognitoSdk acima.
+                    var cognitoSection = configuration.GetSection(CognitoOptions.SectionName);
+                    var cognitoRegion = cognitoSection["Region"];
+                    var cognitoUserPoolId = cognitoSection["UserPoolId"];
+                    var cognitoClientId = cognitoSection["ClientId"];
 
                     options.RequireHttpsMetadata = true;
-                    options.Authority = $"https://cognito-idp.{cognitoOptions!.Region}.amazonaws.com/{cognitoOptions.UserPoolId}";
+                    options.Authority = $"https://cognito-idp.{cognitoRegion}.amazonaws.com/{cognitoUserPoolId}";
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuerSigningKey = true,
                         ValidateIssuer = true,
                         ValidateAudience = true,
-                        ValidAudience = cognitoOptions.ClientId,
+                        ValidAudience = cognitoClientId,
                         ValidateLifetime = true
                     };
                 //}

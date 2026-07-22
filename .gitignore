@@ -7,6 +7,10 @@ backend/.vs/
 backend/**/bin/
 backend/**/obj/
 
+# Artefato de build da Lambda (gerado por infra/lambda/build.sh, regenerável)
+backend/infra/lambda/function.zip
+backend/infra/lambda/out/
+
 # User-specific files
 *.rsuser
 *.suo

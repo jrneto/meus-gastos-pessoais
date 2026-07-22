@@ -35,8 +35,19 @@ Atributos-chave:
 - Recursos na AWS (como DynamoDB e Cognito) são consumidos diretamente durante o desenvolvimento.
 
 
-## Infraestrutura de produção (fase futura)
-- Lambda + API Gateway (adapter: Amazon.Lambda.AspNetCoreServer)
-- DynamoDB na mesma conta AWS
-- Cognito User Pool dedicado
-- Custo estimado: ~US$0 no free tier permanente do DynamoDB
+## Infraestrutura de produção (implementada — FEAT-10)
+- Lambda .NET Native AOT (runtime customizado `provided.al2023`,
+  adapter `Amazon.Lambda.AspNetCoreServer.Hosting`), 256MB/10s,
+  provisionada via `backend/infra/terraform/lambda.tf`
+- API Gateway HTTP API na frente da Lambda (`api-gateway.tf`), sem
+  autorizador JWT no Gateway — autenticação continua só na aplicação
+  (FEAT-01). Throttling de 5 req/s (10 de rajada) no stage
+- Build/empacotamento do artefato AOT rodam num container Amazon Linux
+  2023 (mesma base do runtime da Lambda, necessário por compatibilidade
+  de glibc — ver `backend/infra/terraform/README.md` e
+  `backend/specs/FEAT-10-deploy-lambda-aot-api-gateway/`)
+- DynamoDB e Cognito na mesma conta AWS (FEAT-09)
+- CloudWatch Logs com retenção de 14 dias
+- Custo: DynamoDB e Lambda dentro do free tier permanente; API Gateway
+  HTTP API tem custo por requisição (~US$1/milhão) fora do free tier de
+  12 meses desta conta — desprezível no volume de uso pessoal previsto

@@ -9,3 +9,9 @@ variable "table_name" {
   type        = string
   default     = "GastosApp"
 }
+
+variable "frontend_origin" {
+  description = "Origem (URL) do frontend Angular permitida no CORS. Placeholder até o domínio existir."
+  type        = string
+  default     = "http://localhost:4200"
+}

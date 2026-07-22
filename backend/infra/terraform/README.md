@@ -2,9 +2,12 @@
 
 Provisiona a infraestrutura AWS do backend: tabela DynamoDB (`GastosApp`
 + `GSI1` + `GSI2`, `dynamodb.tf`), Cognito User Pool + App Client
-(`cognito.tf`) e os parâmetros do Cognito no Parameter Store
-(`parameter-store.tf`). Toda a infraestrutura do backend está sob
-Terraform (ver `backend/specs/FEAT-09-terraform-cognito-parameter-store/`).
+(`cognito.tf`), os parâmetros do Cognito no Parameter Store
+(`parameter-store.tf`), a Lambda .NET Native AOT da API
+(`lambda.tf`) e o API Gateway HTTP API que a expõe publicamente
+(`api-gateway.tf`). Toda a infraestrutura do backend está sob Terraform
+(ver `backend/specs/FEAT-09-terraform-cognito-parameter-store/` e
+`backend/specs/FEAT-10-deploy-lambda-aot-api-gateway/`).
 
 Duas configurações independentes:
 
@@ -87,3 +90,30 @@ bucket de state precisar ser recriado.
   manualmente, foi mantido intacto até exclusão manual pelo usuário.
   Os 3 parâmetros do Parameter Store foram trazidos via
   `terraform import` (recurso simples, sem risco de dado).
+
+## Deploy da Lambda (FEAT-10)
+
+A API .NET roda como Lambda Native AOT (runtime customizado
+`provided.al2023`), atrás de um API Gateway HTTP API — sem autorizador
+JWT no Gateway, autenticação continua só na aplicação (FEAT-01).
+
+Build e empacotamento (`infra/lambda/Dockerfile.build` +
+`infra/lambda/build.sh`) rodam num container **Amazon Linux 2023** (a
+mesma base do runtime da Lambda — necessário para compatibilidade de
+glibc; a imagem oficial do SDK .NET, baseada em Ubuntu, gera um binário
+que não roda na Lambda). O script gera `infra/lambda/function.zip`, que
+o `lambda.tf` referencia via `filename`/`source_code_hash`.
+
+Fluxo de deploy (manual, a partir da máquina do usuário):
+
+```bash
+cd backend
+bash infra/lambda/build.sh   # gera infra/lambda/function.zip
+cd infra/terraform
+terraform plan
+terraform apply
+```
+
+Toda vez que o código da API mudar, repita esse fluxo — o
+`source_code_hash` no `lambda.tf` muda junto com o zip, e o
+`terraform plan` mostra a atualização do código como a única mudança.
