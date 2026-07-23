@@ -12,14 +12,23 @@ public static class AuthEndpoints
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/auth")
-            .WithTags("Auth");
+            .WithTags("Auth")
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
-        group.MapPost("/register", RegisterUser);
+        group.MapPost("/register", RegisterUser)
+            .Produces<RegisterUserResult>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
-        group.MapPost("/login", Login);
+        group.MapPost("/login", Login)
+            .Produces<LoginUserResult>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         group.MapGet("/me", UserData)
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .Produces<UserInfoResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         return app;
     }

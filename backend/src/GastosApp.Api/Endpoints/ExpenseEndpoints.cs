@@ -15,13 +15,30 @@ public static class ExpenseEndpoints
     {
         var group = app.MapGroup("/expenses")
             .WithTags("Expenses")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
-        group.MapPost("/", RegisterExpense);
-        group.MapGet("/", GetExpenses);
-        group.MapGet("/{id}", GetExpenseById);
-        group.MapPut("/{id}", UpdateExpense);
-        group.MapDelete("/{id}", DeleteExpense);
+        group.MapPost("/", RegisterExpense)
+            .Produces<RegisterExpenseResult>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        group.MapGet("/", GetExpenses)
+            .Produces<GetExpensesResult>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        group.MapGet("/{id}", GetExpenseById)
+            .Produces<UpdateExpenseResult>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapPut("/{id}", UpdateExpense)
+            .Produces<UpdateExpenseResult>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapDelete("/{id}", DeleteExpense)
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         return app;
     }

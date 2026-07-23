@@ -24,6 +24,7 @@ namespace GastosApp.Api.Common;
 [JsonSerializable(typeof(GetExpensesResult))]
 [JsonSerializable(typeof(ExpenseSummary))]
 [JsonSerializable(typeof(UserInfoResponse))]
+[JsonSerializable(typeof(GetExpensesRequest))]
 public partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }
