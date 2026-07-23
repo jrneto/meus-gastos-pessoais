@@ -36,6 +36,18 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.AddAuthorization();
 
+// Origens do frontend liberadas via configuração ("Cors:AllowedOrigins"),
+// alimentada por appsettings.Development.json em dev local e por
+// Parameter Store em produção — evita hardcode do domínio do frontend.
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy => policy
+        .WithOrigins(allowedOrigins)
+        .AllowAnyHeader()
+        .AllowAnyMethod());
+});
+
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddAWSLambdaHosting(
@@ -53,6 +65,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapAuthEndpoints();
