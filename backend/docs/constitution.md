@@ -19,6 +19,14 @@ API de controle de gastos pessoal. Backend-first, frontend React depois.
   (sem LocalStack, sem Kong). Provisionamento via Terraform (não
   CloudFormation, não CDK) em `backend/infra/terraform/`, cobrindo
   DynamoDB, Cognito e Parameter Store (ver FEAT-09)
+- **Toda mudança de contrato de API** (novo endpoint, novo campo em
+  request/response, novo status code de erro) **exige regenerar
+  `backend/docs/openapi.json`** (via `backend/scripts/export-openapi.sh`)
+  como critério de aceite da feature — a spec só é considerada
+  concluída com o contrato OpenAPI atualizado refletindo a mudança.
+  É a fonte de verdade do contrato de wire (request/response/status
+  codes) consumida pelo frontend; `backend/specs/` continua sendo a
+  fonte das regras de negócio/validação que o schema não expressa
 
 ## Stack
 - Runtime: .NET 10, ASP.NET Core Minimal APIs

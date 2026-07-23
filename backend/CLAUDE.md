@@ -36,6 +36,7 @@ backend/
 │   ├── constitution.md
 │   ├── architecture.md
 │   ├── data-model.md
+│   ├── openapi.json                # contrato OpenAPI exportado (ver scripts/export-openapi.sh)
 │   └── README.md                  # explica o fluxo SDD do backend
 ├── specs/
 │   └── FEAT-XX-nome-feature/{spec.md, plan.md, tasks.md}
@@ -71,7 +72,17 @@ cd backend
 dotnet build GastosApp.sln
 dotnet test GastosApp.sln
 dotnet run --project src/GastosApp.Api
+./scripts/export-openapi.sh   # regenera docs/openapi.json a partir do contrato real
 ```
+
+## Contrato de API
+
+`backend/docs/openapi.json` é a fonte de verdade do contrato de wire
+(endpoints, request/response, status codes), consumida pelo frontend.
+**Toda mudança de contrato exige regenerar esse arquivo antes de a
+feature ser considerada concluída** (ver `backend/docs/constitution.md`).
+Regras de negócio/validação que o schema não expressa continuam em
+`backend/specs/`.
 
 ## Padrão de spec (Fluxo Completo)
 
