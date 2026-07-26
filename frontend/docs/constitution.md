@@ -79,10 +79,13 @@ Clean Architecture em camadas foi avaliada e descartada por adicionar
 complexidade desnecessária para o porte do projeto. O padrão adotado é
 organização **por feature de negócio** (referência:
 [bulletproof-react](https://github.com/alan2207/bulletproof-react)),
-hoje o mais usado em produção no ecossistema React:
+hoje o mais usado em produção no ecossistema React. O projeto Vite fica
+isolado em `frontend/app/`, separado de `docs/`/`specs/`/`infra/` —
+mesmo princípio do backend (`backend/src/` guarda o código, o resto
+fica ao lado):
 
 ```
-src/
+frontend/app/src/
 ├── app/            # bootstrap: main.tsx, App.tsx, providers, router
 ├── routes/         # páginas (rotas), compõem componentes das features
 ├── features/
