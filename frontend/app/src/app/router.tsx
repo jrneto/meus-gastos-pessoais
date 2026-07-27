@@ -1,7 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
-import { HomePage } from '@/routes/HomePage'
 import { LoginPage } from '@/routes/LoginPage'
+import { RegisterExpensePage } from '@/routes/RegisterExpensePage'
 
 export const router = createBrowserRouter([
   {
@@ -11,6 +11,6 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <ProtectedRoute />,
-    children: [{ index: true, element: <HomePage /> }],
+    children: [{ index: true, element: <RegisterExpensePage /> }],
   },
 ])
