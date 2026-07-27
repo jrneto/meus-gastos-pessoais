@@ -39,3 +39,17 @@ export class UnknownExpenseQueryError extends Error {
     this.name = 'UnknownExpenseQueryError'
   }
 }
+
+export class NotFoundError extends Error {
+  constructor() {
+    super('Despesa não encontrada.')
+    this.name = 'NotFoundError'
+  }
+}
+
+export class UpdateValidationError extends Error {
+  constructor() {
+    super('Não foi possível salvar as alterações. Verifique os dados informados.')
+    this.name = 'UpdateValidationError'
+  }
+}

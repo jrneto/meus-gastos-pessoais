@@ -2,9 +2,11 @@ import { httpClient } from '@/lib/httpClient'
 import {
   InvalidFilterError,
   NetworkError,
+  NotFoundError,
   SessionExpiredError,
   UnknownExpenseError,
   UnknownExpenseQueryError,
+  UpdateValidationError,
   ValidationError,
 } from '../errors/expenseErrors'
 
@@ -48,6 +50,22 @@ export interface GetExpensesResponse {
   nextCursor: string | null
 }
 
+export interface UpdateExpensePayload {
+  description: string
+  amountInCents: number
+  category: string
+  expenseDate: string
+}
+
+export interface ExpenseDetail {
+  id: string
+  description: string
+  amountInCents: number
+  category: string
+  expenseDate: string
+  createdAt: string
+}
+
 async function safeFetch(fn: () => Promise<Response>): Promise<Response> {
   try {
     return await fn()
@@ -77,6 +95,33 @@ function assertQueryOk(response: Response): void {
   }
   if (!response.ok) {
     throw new UnknownExpenseQueryError()
+  }
+}
+
+function assertDetailOk(response: Response): void {
+  if (response.status === 404) {
+    throw new NotFoundError()
+  }
+  if (response.status === 401) {
+    throw new SessionExpiredError()
+  }
+  if (!response.ok) {
+    throw new UnknownExpenseError()
+  }
+}
+
+function assertUpdateOk(response: Response): void {
+  if (response.status === 400) {
+    throw new UpdateValidationError()
+  }
+  if (response.status === 404) {
+    throw new NotFoundError()
+  }
+  if (response.status === 401) {
+    throw new SessionExpiredError()
+  }
+  if (!response.ok) {
+    throw new UnknownExpenseError()
   }
 }
 
@@ -113,4 +158,28 @@ async function getExpenses(
   return response.json() as Promise<GetExpensesResponse>
 }
 
-export const expensesApi = { registerExpense, getExpenses }
+async function getExpenseById(token: string, id: string): Promise<ExpenseDetail> {
+  const response = await safeFetch(() =>
+    httpClient.get(`/expenses/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  )
+  assertDetailOk(response)
+  return response.json() as Promise<ExpenseDetail>
+}
+
+async function updateExpense(
+  token: string,
+  id: string,
+  payload: UpdateExpensePayload,
+): Promise<ExpenseDetail> {
+  const response = await safeFetch(() =>
+    httpClient.put(`/expenses/${id}`, payload, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  )
+  assertUpdateOk(response)
+  return response.json() as Promise<ExpenseDetail>
+}
+
+export const expensesApi = { registerExpense, getExpenses, getExpenseById, updateExpense }

@@ -1,3 +1,5 @@
+import { Pencil } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import type { ExpenseQueryItem } from '../api/expensesApi'
@@ -52,7 +54,17 @@ export function ExpenseList({
                 {categoryLabel(item.category)} · {item.expenseDate}
               </span>
             </div>
-            <span className="font-medium">{formatCentsToCurrency(item.amountInCents)}</span>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{formatCentsToCurrency(item.amountInCents)}</span>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Editar despesa"
+                render={<Link to={`/expenses/${item.id}/edit`} />}
+              >
+                <Pencil className="size-4" />
+              </Button>
+            </div>
           </li>
         ))}
       </ul>

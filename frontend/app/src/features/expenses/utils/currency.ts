@@ -8,3 +8,10 @@ export function formatCentsToCurrency(cents: number): string {
     .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
     .replace(/ /g, ' ')
 }
+
+export function centsToAmountInput(cents: number): string {
+  return (cents / 100).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}

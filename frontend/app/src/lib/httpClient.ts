@@ -18,4 +18,10 @@ export const httpClient = {
       method: 'POST',
       body: body !== undefined ? JSON.stringify(body) : undefined,
     }),
+  put: (path: string, body?: unknown, init?: RequestInit) =>
+    request(path, {
+      ...init,
+      method: 'PUT',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }),
 }
