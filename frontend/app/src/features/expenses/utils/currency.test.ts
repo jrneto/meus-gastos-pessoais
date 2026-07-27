@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseCurrencyToCents } from './currency'
+import { formatCentsToCurrency, parseCurrencyToCents } from './currency'
 
 describe('parseCurrencyToCents', () => {
   it('converte valor simples com centavos', () => {
@@ -24,5 +24,23 @@ describe('parseCurrencyToCents', () => {
 
   it('lida com espaços em branco ao redor do valor', () => {
     expect(parseCurrencyToCents('  45,90  ')).toBe(4590)
+  })
+})
+
+describe('formatCentsToCurrency', () => {
+  it('formata centavos como moeda pt-BR', () => {
+    expect(formatCentsToCurrency(4590)).toBe('R$ 45,90')
+  })
+
+  it('formata valor com separador de milhar', () => {
+    expect(formatCentsToCurrency(123456)).toBe('R$ 1.234,56')
+  })
+
+  it('formata valor sem centavos', () => {
+    expect(formatCentsToCurrency(10000)).toBe('R$ 100,00')
+  })
+
+  it('formata valor pequeno', () => {
+    expect(formatCentsToCurrency(50)).toBe('R$ 0,50')
   })
 })

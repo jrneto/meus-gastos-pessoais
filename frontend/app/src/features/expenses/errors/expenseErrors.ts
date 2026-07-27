@@ -25,3 +25,17 @@ export class UnknownExpenseError extends Error {
     this.name = 'UnknownExpenseError'
   }
 }
+
+export class InvalidFilterError extends Error {
+  constructor() {
+    super('Um ou mais filtros são inválidos.')
+    this.name = 'InvalidFilterError'
+  }
+}
+
+export class UnknownExpenseQueryError extends Error {
+  constructor() {
+    super('Ocorreu um erro inesperado ao buscar as despesas. Tente novamente.')
+    this.name = 'UnknownExpenseQueryError'
+  }
+}
