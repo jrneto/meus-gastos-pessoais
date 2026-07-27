@@ -12,6 +12,7 @@ interface UseExpensesQueryResult {
   hasMore: boolean
   applyFilters: (filters: ExpenseFilterOutput) => void
   loadMore: () => void
+  removeItem: (id: string) => void
 }
 
 export function useExpensesQuery(): UseExpensesQueryResult {
@@ -72,5 +73,18 @@ export function useExpensesQuery(): UseExpensesQueryResult {
     fetchPage(filters, cursor, true)
   }
 
-  return { items, isLoading, isLoadingMore, error, hasMore: cursor !== null, applyFilters, loadMore }
+  function removeItem(id: string): void {
+    setItems((prev) => prev.filter((item) => item.id !== id))
+  }
+
+  return {
+    items,
+    isLoading,
+    isLoadingMore,
+    error,
+    hasMore: cursor !== null,
+    applyFilters,
+    loadMore,
+    removeItem,
+  }
 }

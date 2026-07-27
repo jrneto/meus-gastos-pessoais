@@ -24,4 +24,5 @@ export const httpClient = {
       method: 'PUT',
       body: body !== undefined ? JSON.stringify(body) : undefined,
     }),
+  delete: (path: string, init?: RequestInit) => request(path, { ...init, method: 'DELETE' }),
 }

@@ -16,6 +16,7 @@ export function ExpensesListPage() {
         error={query.error}
         hasMore={query.hasMore}
         onLoadMore={query.loadMore}
+        onDeleted={query.removeItem}
       />
     </div>
   )

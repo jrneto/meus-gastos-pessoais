@@ -1,10 +1,13 @@
-import { Pencil } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import type { ExpenseQueryItem } from '../api/expensesApi'
 import { EXPENSE_CATEGORIES } from '../constants/expenseCategories'
 import { formatCentsToCurrency } from '../utils/currency'
+import { ExpenseDeleteDialog } from './ExpenseDeleteDialog'
 
 interface ExpenseListProps {
   items: ExpenseQueryItem[]
@@ -13,6 +16,7 @@ interface ExpenseListProps {
   error: Error | null
   hasMore: boolean
   onLoadMore: () => void
+  onDeleted: (id: string) => void
 }
 
 function categoryLabel(value: string): string {
@@ -26,7 +30,10 @@ export function ExpenseList({
   error,
   hasMore,
   onLoadMore,
+  onDeleted,
 }: ExpenseListProps) {
+  const [deleteTarget, setDeleteTarget] = useState<ExpenseQueryItem | null>(null)
+
   return (
     <div className="flex w-full max-w-sm flex-col gap-4">
       {error && (
@@ -56,13 +63,20 @@ export function ExpenseList({
             </div>
             <div className="flex items-center gap-2">
               <span className="font-medium">{formatCentsToCurrency(item.amountInCents)}</span>
+              <Link
+                to={`/expenses/${item.id}/edit`}
+                aria-label="Editar despesa"
+                className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }))}
+              >
+                <Pencil className="size-4" />
+              </Link>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Editar despesa"
-                render={<Link to={`/expenses/${item.id}/edit`} />}
+                aria-label="Excluir despesa"
+                onClick={() => setDeleteTarget(item)}
               >
-                <Pencil className="size-4" />
+                <Trash2 className="size-4" />
               </Button>
             </div>
           </li>
@@ -74,6 +88,16 @@ export function ExpenseList({
           {isLoadingMore ? 'Carregando...' : 'Carregar mais'}
         </Button>
       )}
+
+      <ExpenseDeleteDialog
+        key={deleteTarget?.id ?? 'closed'}
+        expense={deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onDeleted={(id) => {
+          onDeleted(id)
+          setDeleteTarget(null)
+        }}
+      />
     </div>
   )
 }

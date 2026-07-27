@@ -125,6 +125,18 @@ function assertUpdateOk(response: Response): void {
   }
 }
 
+function assertDeleteOk(response: Response): void {
+  if (response.status === 404) {
+    throw new NotFoundError()
+  }
+  if (response.status === 401) {
+    throw new SessionExpiredError()
+  }
+  if (!response.ok) {
+    throw new UnknownExpenseError()
+  }
+}
+
 function toQueryString(params: GetExpensesParams): string {
   const entries = Object.entries(params).filter(([, value]) => value !== undefined && value !== '')
   const search = new URLSearchParams(entries.map(([key, value]) => [key, String(value)]))
@@ -182,4 +194,19 @@ async function updateExpense(
   return response.json() as Promise<ExpenseDetail>
 }
 
-export const expensesApi = { registerExpense, getExpenses, getExpenseById, updateExpense }
+async function deleteExpense(token: string, id: string): Promise<void> {
+  const response = await safeFetch(() =>
+    httpClient.delete(`/expenses/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  )
+  assertDeleteOk(response)
+}
+
+export const expensesApi = {
+  registerExpense,
+  getExpenses,
+  getExpenseById,
+  updateExpense,
+  deleteExpense,
+}

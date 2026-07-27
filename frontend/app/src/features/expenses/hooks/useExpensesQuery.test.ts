@@ -125,4 +125,21 @@ describe('useExpensesQuery', () => {
     expect(result.current.items).toEqual([])
     expect(result.current.error).toBeNull()
   })
+
+  it('removeItem remove só o item do id informado, mantendo os demais', async () => {
+    server.use(
+      http.get(EXPENSES_URL, () =>
+        HttpResponse.json({ items: [item('1'), item('2')], nextCursor: null }),
+      ),
+    )
+
+    const { result } = renderHook(() => useExpensesQuery())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.removeItem('1')
+    })
+
+    expect(result.current.items).toEqual([item('2')])
+  })
 })

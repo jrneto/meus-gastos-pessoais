@@ -3,7 +3,8 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import type { ExpenseDetail } from '../api/expensesApi'
 import { NotFoundError } from '../errors/expenseErrors'
 import { centsToAmountInput } from '../utils/currency'
@@ -67,7 +68,9 @@ export function EditExpenseForm({ expense }: EditExpenseFormProps) {
         <Button type="submit" disabled={isLoading}>
           {isLoading ? 'Salvando...' : 'Salvar'}
         </Button>
-        <Button variant="outline" type="button" render={<Link to="/expenses">Cancelar</Link>} />
+        <Link to="/expenses" className={cn(buttonVariants({ variant: 'outline' }))}>
+          Cancelar
+        </Link>
       </div>
     </form>
   )

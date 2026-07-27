@@ -1,7 +1,10 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useAuthStore } from '@/features/auth/store/authStore'
+import { server } from '@/test/msw/server'
 import type { ExpenseQueryItem } from '../api/expensesApi'
 import { ExpenseList } from './ExpenseList'
 
@@ -24,6 +27,7 @@ function renderExpenseList(props: Partial<React.ComponentProps<typeof ExpenseLis
         error={null}
         hasMore={false}
         onLoadMore={vi.fn()}
+        onDeleted={vi.fn()}
         {...props}
       />
     </MemoryRouter>,
@@ -31,6 +35,11 @@ function renderExpenseList(props: Partial<React.ComponentProps<typeof ExpenseLis
 }
 
 describe('ExpenseList', () => {
+  beforeEach(() => {
+    useAuthStore.getState().clearSession()
+    useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
+  })
+
   it('renderiza os itens formatados', () => {
     renderExpenseList({ items: [item] })
 
@@ -75,5 +84,30 @@ describe('ExpenseList', () => {
 
     const editLink = screen.getByRole('link', { name: /editar despesa/i })
     expect(editLink).toHaveAttribute('href', '/expenses/exp-1/edit')
+  })
+
+  it('clicar em excluir abre o dialog com a descrição da despesa', async () => {
+    const user = userEvent.setup()
+    renderExpenseList({ items: [item] })
+
+    await user.click(screen.getByRole('button', { name: /excluir despesa/i }))
+
+    expect(screen.getByText('Excluir despesa')).toBeInTheDocument()
+    expect(screen.getAllByText(/Almoço no restaurante/).length).toBeGreaterThan(0)
+  })
+
+  it('confirmar a exclusão chama a API e onDeleted com o id correto', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.delete('http://localhost:5049/expenses/exp-1', () => new HttpResponse(null, { status: 204 })),
+    )
+    const onDeleted = vi.fn()
+
+    renderExpenseList({ items: [item], onDeleted })
+
+    await user.click(screen.getByRole('button', { name: /excluir despesa/i }))
+    await user.click(screen.getByRole('button', { name: /^excluir$/i }))
+
+    await waitFor(() => expect(onDeleted).toHaveBeenCalledWith('exp-1'))
   })
 })
