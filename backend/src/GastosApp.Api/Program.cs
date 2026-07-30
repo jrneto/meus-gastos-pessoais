@@ -36,14 +36,20 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.AddAuthorization();
 
-// Origens do frontend liberadas via configuração ("Cors:AllowedOrigins"),
-// alimentada por appsettings.Development.json em dev local e por
-// Parameter Store em produção — evita hardcode do domínio do frontend.
+// Origens do frontend liberadas via configuração: "Cors:AllowedOrigins"
+// (appsettings.Development.json em dev local) + "Cors:ProductionOrigins"
+// (só Parameter Store, produção) — chaves separadas de propósito: as
+// duas convivem no mesmo Parameter Store /GastosApp/, lido em todo
+// ambiente (inclusive dev local), então uma chave só de produção evita
+// que o valor de produção sobrescreva o localhost de dev.
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+var productionOrigins = builder.Configuration.GetSection("Cors:ProductionOrigins").Get<string[]>() ?? [];
+var corsOrigins = allowedOrigins.Concat(productionOrigins).ToArray();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy => policy
-        .WithOrigins(allowedOrigins)
+        .WithOrigins(corsOrigins)
         .AllowAnyHeader()
         .AllowAnyMethod());
 });

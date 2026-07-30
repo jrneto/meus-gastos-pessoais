@@ -21,3 +21,21 @@ resource "aws_ssm_parameter" "cognito_region" {
   type  = "String"
   value = var.aws_region
 }
+
+# Origens de produção do frontend liberadas no CORS da aplicação
+# (Program.cs lê "Cors:ProductionOrigins", chave separada da lista de
+# dev local — ver backend/specs/FEAT-11-cors-producao/plan.md).
+# Parâmetros novos (não existiam manualmente), criação direta, sem
+# `terraform import`.
+
+resource "aws_ssm_parameter" "cors_production_origin_0" {
+  name  = "/GastosApp/Cors/ProductionOrigins/0"
+  type  = "String"
+  value = "https://jrnexpenses.com"
+}
+
+resource "aws_ssm_parameter" "cors_production_origin_1" {
+  name  = "/GastosApp/Cors/ProductionOrigins/1"
+  type  = "String"
+  value = "https://www.jrnexpenses.com"
+}

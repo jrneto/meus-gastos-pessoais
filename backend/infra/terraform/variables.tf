@@ -10,8 +10,8 @@ variable "table_name" {
   default     = "GastosApp"
 }
 
-variable "frontend_origin" {
-  description = "Origem (URL) do frontend Angular permitida no CORS. Placeholder até o domínio existir."
-  type        = string
-  default     = "http://localhost:4200"
+variable "frontend_origins" {
+  description = "Origens (URLs) do frontend de produção permitidas no CORS do API Gateway."
+  type        = list(string)
+  default     = ["https://jrnexpenses.com", "https://www.jrnexpenses.com"]
 }
