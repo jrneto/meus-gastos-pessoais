@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { AppShell } from '@/components/nav/AppShell'
 import { EditExpensePage } from '@/routes/EditExpensePage'
+import { ExpenseDetailPage } from '@/routes/ExpenseDetailPage'
 import { ExpensesListPage } from '@/routes/ExpensesListPage'
 import { HomePage } from '@/routes/HomePage'
 import { LoginPage } from '@/routes/LoginPage'
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
           { index: true, element: <HomePage /> },
           { path: 'expenses/new', element: <RegisterExpensePage /> },
           { path: 'expenses', element: <ExpensesListPage /> },
+          { path: 'expenses/:id', element: <ExpenseDetailPage /> },
           { path: 'expenses/:id/edit', element: <EditExpensePage /> },
           { path: 'settings', element: <SettingsPage /> },
         ],

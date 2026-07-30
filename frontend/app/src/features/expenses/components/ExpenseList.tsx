@@ -55,12 +55,12 @@ export function ExpenseList({
             key={item.id}
             className="flex items-center justify-between rounded-lg border border-border px-2.5 py-2 text-sm"
           >
-            <div className="flex flex-col">
-              <span className="font-medium">{item.description}</span>
+            <Link to={`/expenses/${item.id}`} className="flex flex-col">
+              <span className="font-medium hover:underline">{item.description}</span>
               <span className="text-muted-foreground">
                 {categoryLabel(item.category)} · {item.expenseDate}
               </span>
-            </div>
+            </Link>
             <div className="flex items-center gap-2">
               <span className="font-medium">{formatCentsToCurrency(item.amountInCents)}</span>
               <Link
