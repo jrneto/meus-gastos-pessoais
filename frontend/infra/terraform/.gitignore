@@ -1,0 +1,14 @@
+# State local (não versionar — pode conter dados sensíveis)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Arquivos de variáveis locais (podem conter credenciais/overrides)
+*.tfvars
+*.tfvars.json
+
+# Plan files
+*.tfplan
+crash.log
+crash.*.log
