@@ -91,6 +91,22 @@ bucket de state precisar ser recriado.
   Os 3 parâmetros do Parameter Store foram trazidos via
   `terraform import` (recurso simples, sem risco de dado).
 
+## Domínio customizado da API (FEAT-12)
+
+Além da URL padrão do API Gateway, a API responde em
+`https://api.jrnexpenses.com`, gerido pelos arquivos `acm.tf`
+(certificado ACM), `api-gateway-domain.tf` (`aws_apigatewayv2_domain_name`
++ `aws_apigatewayv2_api_mapping`) e `dns.tf` (records Route 53). Os 5
+recursos já existiam manualmente na conta e foram trazidos via
+`terraform import` — nenhum recurso novo foi criado.
+
+A hosted zone `jrnexpenses.com.` é gerenciada pelo Terraform do
+**frontend** (`frontend/infra/terraform/dns/`, FEAT-07), não pelo
+backend. `dns.tf` só lê essa zona por nome
+(`data "aws_route53_zone"`), sem duplicá-la ou geri-la, para poder
+gerenciar os records de `api.jrnexpenses.com` dentro dela. Ver
+`backend/specs/FEAT-12-terraform-dominio-customizado-api/`.
+
 ## Deploy da Lambda (FEAT-10)
 
 A API .NET roda como Lambda Native AOT (runtime customizado

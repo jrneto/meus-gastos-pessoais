@@ -28,6 +28,14 @@ Leve vs Fluxo Completo e a regra de organização de specs, e
 - Cognito e Parameter Store estão sob Terraform desde a FEAT-09 (antes
   eram provisionados manualmente). Qualquer novo recurso ou mudança
   ainda exige pedido explícito do usuário.
+- O domínio customizado da API (`api.jrnexpenses.com`) está sob
+  Terraform desde a FEAT-12: certificado ACM (`acm.tf`), domínio
+  customizado + mapeamento do API Gateway (`api-gateway-domain.tf`) e
+  os records DNS correspondentes (`dns.tf`). A hosted zone
+  `jrnexpenses.com.` continua gerenciada pelo Terraform do **frontend**
+  (`frontend/infra/terraform/dns/`, FEAT-07) — o backend só a lê via
+  `data "aws_route53_zone"` (por nome), sem duplicá-la ou geri-la — ver
+  `backend/specs/FEAT-12-terraform-dominio-customizado-api/`.
 
 ## Estado legado (pendente de decisão)
 
