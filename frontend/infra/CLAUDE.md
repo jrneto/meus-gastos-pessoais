@@ -40,6 +40,46 @@ o record de `api.jrnexpenses.com` (pertence ao contexto backend) e o
 registro do domínio em si (`jrnexpenses.com`, transferência de
 registrador — fora do alcance de qualquer IaC).
 
+## Ambiente de homologação
+
+Desde a FEAT-08 (`frontend/specs/FEAT-08-ambiente-homologacao/`),
+existe também um ambiente de **homologação**, isolado de produção,
+provisionado do zero via `terraform apply` (diferente de
+`environments/prod/`, que foi só `import`):
+
+- **`environments/hom/`** — mesma estrutura de `environments/prod/`
+  (bucket S3 `gastosapp-frontend-hom`, distribuição CloudFront, OAC,
+  certificado ACM `hom.jrnexpenses.com`), **mais um WAF WebACL próprio**
+  (`aws_wafv2_web_acl.hom`, mesmos 3 AWS Managed Rule Groups de
+  produção) — produção não tinha `waf.tf` na config principal porque o
+  WebACL foi importado já associado à distribuição pela FEAT-07; aqui
+  ele é criado do zero junto com o resto.
+- **`dns/`** ganha um segundo `data "terraform_remote_state"` (`"hom"`,
+  desacoplado do `"prod"`) e os records de `hom.jrnexpenses.com`
+  (A/AAAA + CNAME de validação do certificado ACM), na mesma hosted
+  zone já gerenciada. Sem variante `www.hom` (sem necessidade
+  identificada para um ambiente de homologação).
+- **Custo**: a distribuição de hom está assinada ao plano flat-rate
+  **Free** do CloudFront (o 2º dos 3 planos Free disponíveis na conta —
+  produção já usa 1), que cobre a distribuição + o WAF WebACL + DDoS
+  protection a US$0/mês, dentro de 1M requisições/100GB de transferência
+  por mês (folgado para tráfego de homologação).
+- **Gap conhecido**: a assinatura de uma distribuição ao plano Free é
+  feita hoje **manualmente no console AWS** — o recurso Terraform
+  correspondente (`aws_pricingplanmanager_subscription`) ainda não foi
+  lançado em nenhuma versão do provider (PR aberto e não mesclado,
+  [hashicorp/terraform-provider-aws#49235](https://github.com/hashicorp/terraform-provider-aws/pull/49235)).
+  Quando disponível, trazer essa assinatura (tanto a de hom quanto a de
+  prod) para o Terraform via `terraform import`.
+- **Deploy do build em hom continua manual** (`npm run build:hom` no
+  `frontend/app/`, seguido de `aws s3 sync dist/
+  s3://gastosapp-frontend-hom/ --delete`) — nenhum pipeline de CI/CD
+  automatiza isso ainda.
+- **Chamadas de API a partir de `hom.jrnexpenses.com` dependem de CORS
+  no backend** liberando essa origem em `https://api-hom.jrnexpenses.com`
+  — mudança do contexto backend, ainda não feita (fora do escopo da
+  FEAT-08).
+
 ## Princípios gerais (herdados do monorepo)
 
 - Toda infraestrutura é AWS.

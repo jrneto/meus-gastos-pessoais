@@ -1,26 +1,33 @@
 # Terraform — frontend/infra
 
-Traz a infraestrutura de hosting do frontend — já em produção, criada
-manualmente via console AWS — para dentro do Terraform via `terraform
-import` (ver `frontend/specs/FEAT-07-terraform-import-infra/`). Nenhum
-recurso é criado, recriado ou destruído por esta config; ela só passa a
-gerenciar o que já existe.
+Traz a infraestrutura de hosting do frontend para dentro do Terraform.
+`environments/prod/` foi só `import` da infra que já existia, criada
+manualmente via console (ver
+`frontend/specs/FEAT-07-terraform-import-infra/`) — nenhum recurso foi
+criado, recriado ou destruído nessa migração. `environments/hom/` foi
+criado do zero via `apply` (ver
+`frontend/specs/FEAT-08-ambiente-homologacao/`).
 
-Duas configurações independentes, cada uma com seu próprio state, ambas
+Três configurações independentes, cada uma com seu próprio state, todas
 no bucket `gastosapp-terraform-state-648443184523` (reaproveitado do
 backend, `key`s distintas — nenhum novo bootstrap é criado):
 
 - **`dns/`** — camada **persistente**, nunca destruída pelo pipeline de
   CI/CD futuro (`destroy`/recreate da infra de aplicação). Gerencia a
-  hosted zone `jrnexpenses.com.` (protegida com `prevent_destroy`) e os
-  6 records DNS do frontend. Lê o domínio do CloudFront e os dados de
-  validação do certificado ACM via `terraform_remote_state`, apontando
-  para o state de `environments/prod/` — assim, se a infra principal for
-  recriada no futuro, os records se atualizam sozinhos ao rodar `apply`
-  aqui.
+  hosted zone `jrnexpenses.com.` (protegida com `prevent_destroy`), os 6
+  records DNS de produção e os 3 de homologação (`hom.jrnexpenses.com`).
+  Lê o domínio do CloudFront e os dados de validação de certificado ACM
+  de cada ambiente via `terraform_remote_state` (um data source por
+  ambiente, desacoplados entre si) — assim, se a infra de um ambiente for
+  recriada no futuro, os records dele se atualizam sozinhos ao rodar
+  `apply` aqui.
 - **`environments/prod/`** — camada **efêmera**, destruível/recriável
   pelo pipeline futuro. Gerencia o bucket S3, a distribuição CloudFront,
-  o certificado ACM (`jrnexpenses.com`) e o WAF WebACL.
+  o certificado ACM (`jrnexpenses.com`) e o WAF WebACL de produção.
+- **`environments/hom/`** — mesma estrutura de `environments/prod/`, mais
+  um WAF WebACL próprio (aqui criado via `resource`, não importado).
+  Distribuição assinada ao plano flat-rate **Free** do CloudFront
+  (manualmente, ver seção abaixo) — custo US$0/mês.
 
 ## Pré-requisitos
 
@@ -86,6 +93,59 @@ terraform plan   # deve bater "No changes" — ajuste o HCL até chegar lá
 Cada `import`/`apply` é confirmado individualmente no momento da
 execução — nenhum roda de forma autônoma (ver spec, US8).
 
+### 3. `environments/hom/` (criação do zero, não import)
+
+```bash
+cd frontend/infra/terraform/environments/hom
+terraform init \
+  -backend-config="bucket=gastosapp-terraform-state-648443184523" \
+  -backend-config="region=us-east-1"
+
+terraform plan   # revisar antes de aplicar
+terraform apply
+```
+
+**Dependência circular ACM → DNS → CloudFront**: como os recursos são
+criados do zero (não importados), o certificado ACM nasce
+`PENDING_VALIDATION` e o CloudFront recusa associá-lo enquanto não
+virar `ISSUED` — mas a validação depende do CNAME em `dns/`, que por
+sua vez normalmente viria depois. Ordem que funciona (usada na
+FEAT-08):
+
+```bash
+# 1) primeiro apply em hom/ — cria bucket, WAF, OAC e o certificado
+#    ACM (PENDING_VALIDATION); a distribuição falha com
+#    "InvalidViewerCertificate" (esperado, não é erro real)
+terraform apply
+
+# 2) aplicar só o CNAME de validação do ACM em dns/ (a distribuição
+#    ainda não existe, então -target evita erro nos records hom_a/hom_aaaa)
+cd ../../dns
+terraform apply -target='aws_route53_record.acm_validation_hom["hom.jrnexpenses.com"]'
+
+# 3) aguardar o certificado virar ISSUED (alguns minutos)
+aws acm describe-certificate --region us-east-1 \
+  --certificate-arn <arn do certificado> \
+  --query 'Certificate.Status' --output text
+
+# 4) completar o apply em hom/ — cria a distribuição + bucket policy
+cd ../environments/hom
+terraform apply
+
+# 5) apply completo em dns/ — cria hom_a/hom_aaaa (distribuição já existe)
+cd ../../dns
+terraform apply
+```
+
+**Checkpoint manual pós-`apply`**: a distribuição de hom nasce em
+cobrança pay-as-you-go. No console AWS (CloudFront → Distributions →
+`gastosapp-cdn-hom` → **Manage plan**), assinar o plano **Free**
+(2º dos 3 disponíveis na conta) para zerar o custo — isso cobre a
+distribuição + o WAF WebACL associado. Sem esse passo manual, a
+distribuição fica com cobrança padrão. O recurso Terraform equivalente
+(`aws_pricingplanmanager_subscription`) ainda não existe em nenhuma
+versão publicada do provider — ver `frontend/infra/CLAUDE.md`.
+
 ## Explicitamente fora desta config
 
 - Records `NS`/`SOA` da zona (default, criados junto com a hosted zone)
@@ -99,7 +159,7 @@ execução — nenhum roda de forma autônoma (ver spec, US8).
 
 - Nenhum novo recurso Terraform deve ser criado sem pedido explícito do
   usuário (ver `frontend/infra/CLAUDE.md`).
-- Homologação futura (`hom.jrnexpenses.com`): a config já vive em
-  `environments/prod/` (em vez de `frontend/infra/terraform/` direto)
-  para que uma futura `environments/hom/` não exija mover state de uma
-  estrutura plana. Nenhuma lógica de ambiente é criada aqui.
+- Deploy do build para o bucket de hom continua manual: `cd
+  frontend/app && npm run build:hom && aws s3 sync dist/
+  s3://gastosapp-frontend-hom/ --delete`. Requer `frontend/app/.env.hom`
+  local (não versionado, a partir de `.env.hom.example`).

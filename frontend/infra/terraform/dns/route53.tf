@@ -77,3 +77,45 @@ resource "aws_route53_record" "acm_validation" {
   ttl     = 300
   records = [each.value.resource_record_value]
 }
+
+# Records do ambiente de homologação (hom.jrnexpenses.com). Alias único
+# — sem variante www (ver spec FEAT-08, "Fora do escopo").
+resource "aws_route53_record" "hom_a" {
+  zone_id = aws_route53_zone.main.zone_id
+  name    = "hom.${var.domain_name}"
+  type    = "A"
+
+  alias {
+    name                   = data.terraform_remote_state.hom.outputs.cloudfront_domain_name
+    zone_id                = data.terraform_remote_state.hom.outputs.cloudfront_hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "hom_aaaa" {
+  zone_id = aws_route53_zone.main.zone_id
+  name    = "hom.${var.domain_name}"
+  type    = "AAAA"
+
+  alias {
+    name                   = data.terraform_remote_state.hom.outputs.cloudfront_domain_name
+    zone_id                = data.terraform_remote_state.hom.outputs.cloudfront_hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+# CNAME de validação DNS do certificado ACM de hom.jrnexpenses.com — em
+# for_each separado do de prod (evita qualquer risco de colisão de key
+# entre os dois mapas, mesmo improvável já que os domain_names diferem).
+resource "aws_route53_record" "acm_validation_hom" {
+  for_each = {
+    for dvo in data.terraform_remote_state.hom.outputs.acm_domain_validation_options :
+    dvo.domain_name => dvo
+  }
+
+  zone_id = aws_route53_zone.main.zone_id
+  name    = each.value.resource_record_name
+  type    = each.value.resource_record_type
+  ttl     = 300
+  records = [each.value.resource_record_value]
+}

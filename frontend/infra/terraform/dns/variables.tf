@@ -21,3 +21,9 @@ variable "prod_state_key" {
   type        = string
   default     = "gastosapp-frontend/prod/terraform.tfstate"
 }
+
+variable "hom_state_key" {
+  description = "Key do state da config environments/hom/, lida via terraform_remote_state."
+  type        = string
+  default     = "gastosapp-frontend/hom/terraform.tfstate"
+}
