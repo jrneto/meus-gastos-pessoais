@@ -11,7 +11,7 @@ variable "table_name" {
 }
 
 variable "frontend_origins" {
-  description = "Origens (URLs) do frontend liberadas no CORS do API Gateway de homologação. Vazio por padrão — ainda não existe frontend de homologação."
+  description = "Origens (URLs) do frontend liberadas no CORS do API Gateway de homologação."
   type        = list(string)
-  default     = []
+  default     = ["https://hom.jrnexpenses.com"]
 }

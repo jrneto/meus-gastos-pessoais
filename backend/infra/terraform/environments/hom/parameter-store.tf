@@ -20,3 +20,17 @@ resource "aws_ssm_parameter" "cognito_region" {
   type  = "String"
   value = var.aws_region
 }
+
+# Origem do frontend de homologação liberada no CORS da aplicação
+# (Program.cs lê "Cors:ProductionOrigins" — mesma chave de produção,
+# sob o prefixo /GastosApp/Hom/ deste ambiente. Ver
+# backend/specs/FEAT-11-cors-producao/plan.md e
+# frontend/specs/FEAT-08-ambiente-homologacao/). Antes desta feature,
+# não existia frontend de homologação, então esse parâmetro não tinha
+# sido criado (só o placeholder em frontend_origins/callback_urls, ver
+# backend/infra/CLAUDE.md).
+resource "aws_ssm_parameter" "cors_hom_origin_0" {
+  name  = "/GastosApp/Hom/Cors/ProductionOrigins/0"
+  type  = "String"
+  value = "https://hom.jrnexpenses.com"
+}
