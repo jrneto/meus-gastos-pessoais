@@ -79,8 +79,8 @@ resource "aws_iam_role_policy" "lambda_exec" {
 resource "aws_lambda_function" "api" {
   function_name = "gastos-app-api"
 
-  filename         = "${path.module}/../lambda/function.zip"
-  source_code_hash = filebase64sha256("${path.module}/../lambda/function.zip")
+  filename         = "${path.module}/../../../lambda/function.zip"
+  source_code_hash = filebase64sha256("${path.module}/../../../lambda/function.zip")
 
   role    = aws_iam_role.lambda_exec.arn
   handler = "bootstrap"

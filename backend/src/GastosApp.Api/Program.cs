@@ -13,7 +13,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 if (!builder.Environment.IsEnvironment("Testing"))
 {
-    builder.Configuration.AddAwsParameterStore();
+    var parameterStorePath = builder.Configuration["ParameterStore:Path"] ?? "/GastosApp/";
+    builder.Configuration.AddAwsParameterStore(parameterStorePath);
 }
 
 Log.Logger = new LoggerConfiguration()

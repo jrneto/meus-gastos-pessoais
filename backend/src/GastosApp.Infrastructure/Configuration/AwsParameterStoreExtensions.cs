@@ -6,16 +6,20 @@ namespace GastosApp.Infrastructure.Configuration
 {
     public static class AwsParameterStoreExtensions
     {
-        private const string ParameterPath = "/GastosApp/";
-
         // Leitura direta via AWSSDK.SimpleSystemsManagement (mesmo padrão já
         // usado com sucesso pelos clientes de DynamoDB/Cognito) em vez da
         // lib de terceiros Amazon.Extensions.Configuration.SystemsManager —
         // achado durante a implementação da FEAT-10: essa lib retornava
         // configuração vazia dentro da Lambda (Native AOT), sem lançar
         // nenhum erro visível, deixando CognitoOptions inteiramente nulo.
+        //
+        // `path` é configurável (default igual ao valor fixo original) para
+        // permitir isolamento entre ambientes (produção lê "/GastosApp/",
+        // homologação lê "/GastosApp/Hom/" via variável de ambiente da
+        // Lambda) — ver FEAT-13.
         public static IConfigurationBuilder AddAwsParameterStore(
-            this IConfigurationBuilder builder)
+            this IConfigurationBuilder builder,
+            string path = "/GastosApp/")
         {
             using var client = new AmazonSimpleSystemsManagementClient(Amazon.RegionEndpoint.USEast1);
 
@@ -26,7 +30,7 @@ namespace GastosApp.Infrastructure.Configuration
             {
                 var response = client.GetParametersByPathAsync(new GetParametersByPathRequest
                 {
-                    Path = ParameterPath,
+                    Path = path,
                     Recursive = true,
                     WithDecryption = true,
                     NextToken = nextToken
@@ -34,7 +38,7 @@ namespace GastosApp.Infrastructure.Configuration
 
                 foreach (var parameter in response.Parameters)
                 {
-                    var key = parameter.Name[ParameterPath.Length..].Replace('/', ':');
+                    var key = parameter.Name[path.Length..].Replace('/', ':');
                     values[key] = parameter.Value;
                 }
 
@@ -44,7 +48,7 @@ namespace GastosApp.Infrastructure.Configuration
             if (values.Count == 0)
             {
                 throw new InvalidOperationException(
-                    $"Nenhum parâmetro encontrado em '{ParameterPath}' no Parameter Store.");
+                    $"Nenhum parâmetro encontrado em '{path}' no Parameter Store.");
             }
 
             return builder.AddInMemoryCollection(values);

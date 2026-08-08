@@ -13,7 +13,7 @@ terraform {
   # variar por conta AWS. Forneça os valores faltantes na hora do
   # 'terraform init' com -backend-config (ver backend/infra/terraform/README.md).
   backend "s3" {
-    key          = "gastosapp/terraform.tfstate"
+    key          = "gastosapp/prod/terraform.tfstate"
     use_lockfile = true # locking nativo do backend S3 — dispensa tabela DynamoDB extra
   }
 }

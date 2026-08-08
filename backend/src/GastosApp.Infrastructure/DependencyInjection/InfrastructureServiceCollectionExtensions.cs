@@ -8,6 +8,7 @@ using GastosApp.Infrastructure.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace GastosApp.Infrastructure.DependencyInjection
 {
@@ -35,7 +36,21 @@ namespace GastosApp.Infrastructure.DependencyInjection
             services.AddCognitoSdk(configuration);
             services.AddCognitoAuth(configuration, environment);
 
-            services.Configure<DynamoDbOptions>(configuration.GetSection(DynamoDbOptions.SectionName));
+            // Leitura manual (sem Configure<T>()/reflection) — mesmo motivo
+            // documentado em AddCognitoSdk: Configure<T>(IConfiguration) usa
+            // reflection para popular as propriedades e falha silenciosamente
+            // sob Native AOT (sem lançar exceção, só não preenche nada).
+            services.AddSingleton(_ =>
+            {
+                var section = configuration.GetSection(DynamoDbOptions.SectionName);
+                var options = new DynamoDbOptions
+                {
+                    TableName = section["TableName"] ?? "GastosApp",
+                    Region = section["Region"] ?? "us-east-1"
+                };
+
+                return Options.Create(options);
+            });
 
             services.AddSingleton<IAmazonDynamoDB>(sp =>
             {

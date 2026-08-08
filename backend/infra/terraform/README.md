@@ -9,16 +9,23 @@ Provisiona a infraestrutura AWS do backend: tabela DynamoDB (`GastosApp`
 (ver `backend/specs/FEAT-09-terraform-cognito-parameter-store/` e
 `backend/specs/FEAT-10-deploy-lambda-aot-api-gateway/`).
 
-Duas configurações independentes:
+Três configurações independentes:
 
-- `bootstrap/` — cria o bucket S3 que guarda o state remoto da
-  configuração principal. Mantém o **próprio state local** (não tem como
-  o bucket gerenciar o state que o cria). Aplicado uma única vez por
+- `bootstrap/` — cria o bucket S3 que guarda o state remoto das demais
+  configurações. Mantém o **próprio state local** (não tem como o
+  bucket gerenciar o state que o cria). Aplicado uma única vez por
   conta AWS (ou raramente, se precisar recriar o bucket).
-- raiz deste diretório (`versions.tf`, `dynamodb.tf`, ...) — a
-  configuração principal, com state remoto no bucket criado pelo
-  `bootstrap/`, usando o locking nativo do backend S3 (`use_lockfile`,
-  sem precisar de tabela DynamoDB extra só para lock).
+- `environments/prod/` — ambiente de **produção**
+  (`api.jrnexpenses.com`), state próprio no bucket criado pelo
+  `bootstrap/` (`key = gastosapp/prod/terraform.tfstate`), usando o
+  locking nativo do backend S3 (`use_lockfile`).
+- `environments/hom/` — ambiente de **homologação**
+  (`api-hom.jrnexpenses.com`, FEAT-13), isolado de produção (tabela,
+  Cognito, Parameter Store, Lambda e API Gateway próprios), state
+  próprio no mesmo bucket (`key = gastosapp/hom/terraform.tfstate`).
+
+Essa organização por ambiente replica o padrão já adotado pelo
+Terraform do frontend (`frontend/infra/terraform/environments/prod/`).
 
 ## Pré-requisitos
 
@@ -26,7 +33,8 @@ Duas configurações independentes:
 - AWS CLI configurado com credenciais válidas (profile `default`,
   região `us-east-1` — mesmo padrão usado pelo backend .NET em
   desenvolvimento local, ver `backend/docs/architecture.md`)
-- Permissão na conta AWS para criar bucket S3 e tabela DynamoDB
+- Permissão na conta AWS para criar bucket S3 e os recursos do ambiente
+  desejado
 
 ## Passo a passo (primeira vez, a partir da sua máquina local)
 
@@ -41,20 +49,24 @@ terraform apply
 Confirme a criação (`yes`). Ao final, anote o valor do output
 `bucket_name` (algo como `gastosapp-terraform-state-123456789012`).
 
-### 2. Inicializar a configuração principal apontando para esse bucket
+### 2. Inicializar o ambiente desejado apontando para esse bucket
 
 ```bash
-cd ../   # backend/infra/terraform
+cd ../environments/prod   # ou ../environments/hom
 terraform init \
   -backend-config="bucket=<bucket_name do passo 1>" \
   -backend-config="region=us-east-1"
 ```
 
+A `key` do state (`gastosapp/prod/terraform.tfstate` ou
+`gastosapp/hom/terraform.tfstate`) já vem fixa em `versions.tf` de cada
+ambiente — não precisa passar via `-backend-config`.
+
 O Terraform vai perguntar se quer copiar o state existente para o novo
 backend — como é a primeira vez, não há state anterior a migrar, apenas
 confirme.
 
-### 3. Criar a tabela DynamoDB
+### 3. Provisionar os recursos
 
 ```bash
 terraform plan
@@ -68,10 +80,10 @@ um artefato só local.
 
 ## Execuções seguintes
 
-Já com o backend configurado, basta:
+Já com o backend configurado, para qualquer um dos ambientes:
 
 ```bash
-cd backend/infra/terraform
+cd backend/infra/terraform/environments/prod   # ou environments/hom
 terraform init   # se ainda não rodou nesta máquina
 terraform plan
 terraform apply
@@ -85,26 +97,30 @@ bucket de state precisar ser recriado.
 - Nenhum novo recurso Terraform deve ser criado sem pedido explícito do
   usuário (ver `backend/infra/CLAUDE.md`).
 - Cognito (`cognito.tf`) e Parameter Store (`parameter-store.tf`) são
-  gerenciados por Terraform desde a FEAT-09. O User Pool/App Client
-  atuais foram **recriados** (não importados) — o pool anterior, criado
-  manualmente, foi mantido intacto até exclusão manual pelo usuário.
-  Os 3 parâmetros do Parameter Store foram trazidos via
-  `terraform import` (recurso simples, sem risco de dado).
+  gerenciados por Terraform desde a FEAT-09. Em produção, o User
+  Pool/App Client atuais foram **recriados** (não importados) — o pool
+  anterior, criado manualmente, foi mantido intacto até exclusão manual
+  pelo usuário. Os 3 parâmetros do Parameter Store de produção foram
+  trazidos via `terraform import` (recurso simples, sem risco de
+  dado). Em homologação (FEAT-13), todos os recursos são criados do
+  zero via Terraform, sem import.
 
 ## Domínio customizado da API (FEAT-12)
 
-Além da URL padrão do API Gateway, a API responde em
+Além da URL padrão do API Gateway, a API de produção responde em
 `https://api.jrnexpenses.com`, gerido pelos arquivos `acm.tf`
 (certificado ACM), `api-gateway-domain.tf` (`aws_apigatewayv2_domain_name`
-+ `aws_apigatewayv2_api_mapping`) e `dns.tf` (records Route 53). Os 5
-recursos já existiam manualmente na conta e foram trazidos via
-`terraform import` — nenhum recurso novo foi criado.
++ `aws_apigatewayv2_api_mapping`) e `dns.tf` (records Route 53), dentro
+de `environments/prod/`. Os 5 recursos já existiam manualmente na
+conta e foram trazidos via `terraform import` — nenhum recurso novo foi
+criado.
 
 A hosted zone `jrnexpenses.com.` é gerenciada pelo Terraform do
 **frontend** (`frontend/infra/terraform/dns/`, FEAT-07), não pelo
-backend. `dns.tf` só lê essa zona por nome
+backend. `dns.tf` (em cada ambiente) só lê essa zona por nome
 (`data "aws_route53_zone"`), sem duplicá-la ou geri-la, para poder
-gerenciar os records de `api.jrnexpenses.com` dentro dela. Ver
+gerenciar os records de `api.jrnexpenses.com` (prod) ou
+`api-hom.jrnexpenses.com` (hom) dentro dela. Ver
 `backend/specs/FEAT-12-terraform-dominio-customizado-api/`.
 
 ## Deploy da Lambda (FEAT-10)
@@ -118,18 +134,67 @@ Build e empacotamento (`infra/lambda/Dockerfile.build` +
 mesma base do runtime da Lambda — necessário para compatibilidade de
 glibc; a imagem oficial do SDK .NET, baseada em Ubuntu, gera um binário
 que não roda na Lambda). O script gera `infra/lambda/function.zip`, que
-o `lambda.tf` referencia via `filename`/`source_code_hash`.
+o `lambda.tf` de **cada ambiente** referencia via `filename`/
+`source_code_hash` (`${path.module}/../../../lambda/function.zip`) — é
+o **mesmo artefato físico** para produção e homologação, já que os dois
+ambientes rodam exatamente o mesmo código/contrato (ver FEAT-13). Não
+há processo de build separado por ambiente; rodar `apply` em cada
+ambiente publica o zip que estiver em disco no momento, então não há
+garantia automática de que produção e homologação estejam sempre no
+mesmo código a menos que se aplique o mesmo zip nos dois (aceitável
+enquanto o deploy for manual — ver seção seguinte).
 
 Fluxo de deploy (manual, a partir da máquina do usuário):
 
 ```bash
 cd backend
 bash infra/lambda/build.sh   # gera infra/lambda/function.zip
-cd infra/terraform
+cd infra/terraform/environments/prod   # ou environments/hom
 terraform plan
 terraform apply
 ```
 
-Toda vez que o código da API mudar, repita esse fluxo — o
-`source_code_hash` no `lambda.tf` muda junto com o zip, e o
-`terraform plan` mostra a atualização do código como a única mudança.
+Toda vez que o código da API mudar, repita esse fluxo para cada
+ambiente que precisar do deploy — o `source_code_hash` no `lambda.tf`
+muda junto com o zip, e o `terraform plan` mostra a atualização do
+código como a única mudança.
+
+## Ambiente de homologação (FEAT-13)
+
+`environments/hom/` provisiona uma cópia isolada da infraestrutura de
+produção, exposta em `https://api-hom.jrnexpenses.com`:
+
+- Tabela DynamoDB própria: `GastosApp-Hom`
+- Cognito User Pool + App Client próprios: `user-pool-gastos-app-hom`,
+  `controle-gastos-spa-hom` — `callback_urls` usa um placeholder
+  (`http://localhost:5173`), já que não existe frontend de
+  homologação ainda
+- Parameter Store em `/GastosApp/Hom/...` (em vez de `/GastosApp/...`)
+  — a Lambda de hom recebe a variável de ambiente
+  `ParameterStore__Path=/GastosApp/Hom/`, que sobrepõe o default
+  `/GastosApp/` lido em produção (mudança em
+  `AwsParameterStoreExtensions.cs`/`Program.cs`, sem alterar contrato
+  de API)
+- Tabela DynamoDB isolada via a variável de ambiente
+  `DynamoDb__TableName=GastosApp-Hom` na Lambda de hom (produção não
+  seta essa variável, cai no default `GastosApp`). Isso exigiu corrigir
+  `InfrastructureServiceCollectionExtensions.cs`: o binding de
+  `DynamoDbOptions` usava `services.Configure<T>(IConfiguration)`
+  (reflection), que **falha silenciosamente sob Native AOT** — mesmo
+  problema já corrigido para `CognitoOptions` na FEAT-10, mas nunca
+  replicado para `DynamoDbOptions` até este achado durante a validação
+  da FEAT-13. Nunca dava problema antes porque o default hardcoded
+  coincidia com o nome real da tabela de produção
+- Lambda (`gastos-app-api-hom`) e API Gateway HTTP API
+  (`gastos-app-api-hom`) próprios, mesmo artefato de produção
+- Certificado ACM próprio (`api-hom.jrnexpenses.com`), emitido do zero
+  via Terraform (diferente de produção, importado já `ISSUED`) —
+  `dns.tf` usa `aws_acm_certificate_validation` para esperar a
+  validação DNS completar antes do domínio customizado usar o
+  certificado
+- CORS (`frontend_origins`) vazio por padrão — sem frontend de
+  homologação, nenhuma origem de browser é liberada; chamadas via
+  curl/Postman/testes automatizados não são afetadas
+
+Ver `backend/specs/FEAT-13-ambiente-homologacao/` para a spec e o plano
+técnico completos.
