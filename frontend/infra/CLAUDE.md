@@ -71,14 +71,51 @@ provisionado do zero via `terraform apply` (diferente de
   [hashicorp/terraform-provider-aws#49235](https://github.com/hashicorp/terraform-provider-aws/pull/49235)).
   Quando disponível, trazer essa assinatura (tanto a de hom quanto a de
   prod) para o Terraform via `terraform import`.
-- **Deploy do build em hom continua manual** (`npm run build:hom` no
-  `frontend/app/`, seguido de `aws s3 sync dist/
-  s3://gastosapp-frontend-hom/ --delete`) — nenhum pipeline de CI/CD
-  automatiza isso ainda.
 - **Chamadas de API a partir de `hom.jrnexpenses.com` dependem de CORS
   no backend** liberando essa origem em `https://api-hom.jrnexpenses.com`
   — mudança do contexto backend, ainda não feita (fora do escopo da
   FEAT-08).
+
+## CI/CD (FEAT-09)
+
+Desde a FEAT-09 (`frontend/specs/FEAT-09-cicd-github-actions/`), o
+deploy do frontend em hom/prod é automatizado via GitHub Actions —
+substitui o processo manual descrito na FEAT-08.
+
+- **`.github/workflows/frontend-deploy-hom.yml`**: dispara em push em
+  `develop` que toque `frontend/app/**`. Job `quality` (lint + testes)
+  precisa passar antes do job `deploy`, que builda com
+  `VITE_API_BASE_URL=https://api-hom.jrnexpenses.com` e versão
+  `dev-<short-sha>`, publica em `gastosapp-frontend-hom` e invalida o
+  cache da distribuição de hom.
+- **`.github/workflows/frontend-deploy-prod.yml`**: dispara em GitHub
+  Release publicada (tag semântica `vX.Y.Z`) — builda exatamente o
+  código da tag, aponta para `https://api.jrnexpenses.com`, publica em
+  `gastosapp-frontend-prod` e invalida o cache de prod. A criação da
+  release é o próprio gate de promoção pra produção (sem "required
+  reviewer" adicional — recurso pago em repo privado, que se tornou
+  relevante desde que o repositório deixou de ser público).
+- **Rastreabilidade de versão no site**: `src/lib/appVersion.ts` +
+  `src/components/AppVersion.tsx`, exibido na `SettingsPage`. Em prod,
+  linka pra release do GitHub; em hom, pro commit (nunca sugere uma
+  release formal que não existe).
+- **Autenticação AWS via OIDC** (GitHub Actions → IAM Role
+  `gastosapp-frontend-cicd`), sem access key de longa duração em
+  secret.
+- **Gap conhecido — OIDC Provider + Role fora do Terraform**: ambos
+  foram **criados manualmente no console AWS**, não pelo Terraform
+  (`frontend/infra/terraform/cicd/`, código mantido como referência).
+  `terraform apply`/`import` falharam com `AccessDenied` em várias
+  ações de IAM (`Create`/`Get`/`List` para
+  OpenIDConnectProvider/Role/RolePolicy) — o perfil usado
+  (`agent-toolkit`) não tem essas permissões, aparentemente um
+  guardrail intencional (permission set/SCP) contra ações de federação
+  de identidade, mesmo sendo um perfil "Admin-Desenvolvedor". Detalhes,
+  ARNs reais e passo a passo de `import` (se a permissão for liberada
+  no futuro) em `frontend/infra/terraform/README.md`, seção "cicd/".
+- GitHub Environments `hom`/`prod` cadastrados manualmente (`gh` CLI
+  não disponível no ambiente de execução), com variáveis não-segredo
+  (`BUCKET_NAME`, `DISTRIBUTION_ID`, `CICD_ROLE_ARN`).
 
 ## Princípios gerais (herdados do monorepo)
 

@@ -28,6 +28,12 @@ backend, `key`s distintas — nenhum novo bootstrap é criado):
   um WAF WebACL próprio (aqui criado via `resource`, não importado).
   Distribuição assinada ao plano flat-rate **Free** do CloudFront
   (manualmente, ver seção abaixo) — custo US$0/mês.
+- **`cicd/`** — OIDC Provider + IAM Role usados pelos workflows de
+  deploy do GitHub Actions (`frontend/specs/FEAT-09-cicd-github-actions/`).
+  **Não está no state hoje** — os recursos existem na conta, criados
+  manualmente no console, mas o Terraform não consegue gerenciá-los
+  (create/import) com as credenciais atuais. Código mantido como
+  referência do estado desejado. Ver seção dedicada abaixo.
 
 ## Pré-requisitos
 
@@ -145,6 +151,54 @@ distribuição + o WAF WebACL associado. Sem esse passo manual, a
 distribuição fica com cobrança padrão. O recurso Terraform equivalente
 (`aws_pricingplanmanager_subscription`) ainda não existe em nenhuma
 versão publicada do provider — ver `frontend/infra/CLAUDE.md`.
+
+## `cicd/` — OIDC Provider + IAM Role (fora do state, gerenciados manualmente)
+
+`frontend/infra/terraform/cicd/` contém o código de referência
+(`oidc.tf`, `iam-role.tf`, `iam-policy.tf`) para o OIDC Provider do
+GitHub Actions e a IAM Role assumida pelos workflows de deploy
+(`.github/workflows/frontend-deploy-{hom,prod}.yml`) — mas **os
+recursos reais foram criados manualmente no console AWS, não pelo
+Terraform**, e não estão no state desta config.
+
+**Motivo**: tanto `terraform apply` (criação) quanto `terraform import`
+(trazer o que já existe) falharam com `AccessDenied` — o perfil usado
+(`agent-toolkit`, role `AWSReservedSSO_Perfil-Admin-Desenvolvedor`) não
+tem permissão para nenhuma ação de leitura/escrita sobre
+`aws_iam_openid_connect_provider`/Role relacionadas
+(`iam:CreateOpenIDConnectProvider`, `iam:GetOpenIDConnectProvider`,
+`iam:ListOpenIDConnectProviders`, `iam:GetRole`, `iam:GetRolePolicy`,
+`iam:ListRolePolicies` — todas negadas), mesmo sendo um perfil
+"Admin-Desenvolvedor". Aparenta ser um guardrail intencional (permission
+set ou SCP da AWS Organization) contra ações de federação de
+identidade/IAM, independente da permissão de admin no restante da
+conta.
+
+**Recursos existentes na conta** (criados manualmente, 2026-08-08):
+- OIDC Provider: `arn:aws:iam::648443184523:oidc-provider/token.actions.githubusercontent.com`
+- IAM Role: `arn:aws:iam::648443184523:role/gastosapp-frontend-cicd`
+  - Trust policy e policy inline (`gastosapp-frontend-cicd-deploy`)
+    criadas **byte a byte iguais** ao que `iam-role.tf`/`iam-policy.tf`
+    gerariam — conferido visualmente no console (não via `terraform
+    plan`, que também não funciona sem essas permissões).
+
+**Se a permissão for liberada no futuro** (permission set/SCP ajustado
+para permitir as ações acima), trazer para o state com:
+```bash
+cd frontend/infra/terraform/cicd
+terraform import aws_iam_openid_connect_provider.github \
+  arn:aws:iam::648443184523:oidc-provider/token.actions.githubusercontent.com
+terraform import aws_iam_role.frontend_cicd gastosapp-frontend-cicd
+terraform import aws_iam_role_policy.frontend_cicd \
+  gastosapp-frontend-cicd:gastosapp-frontend-cicd-deploy
+terraform plan   # deve dar "No changes" se o console bateu com o .tf
+```
+
+**Uso pelos workflows**: o ARN da Role
+(`arn:aws:iam::648443184523:role/gastosapp-frontend-cicd`) é cadastrado
+como variável `CICD_ROLE_ARN` nos GitHub Environments `hom`/`prod` — não
+depende do state do Terraform para funcionar, só do recurso existir de
+fato na conta (que existe, só não está sob Terraform).
 
 ## Explicitamente fora desta config
 

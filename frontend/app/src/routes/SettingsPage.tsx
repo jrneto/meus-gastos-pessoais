@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { AppVersion } from '@/components/AppVersion'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/features/auth/store/authStore'
 
@@ -17,6 +18,7 @@ export function SettingsPage() {
       <Button variant="outline" onClick={handleLogout}>
         Sair
       </Button>
+      <AppVersion />
     </div>
   )
 }

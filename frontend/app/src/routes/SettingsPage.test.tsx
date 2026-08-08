@@ -31,4 +31,10 @@ describe('SettingsPage', () => {
     expect(useAuthStore.getState().token).toBeNull()
     expect(screen.getByText('Login Page')).toBeInTheDocument()
   })
+
+  it('exibe a versão do build publicado (rastreabilidade FEAT-09)', () => {
+    renderSettingsPage()
+
+    expect(screen.getByText(/versão/i)).toBeInTheDocument()
+  })
 })

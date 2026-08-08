@@ -1,0 +1,73 @@
+name: Frontend — Deploy Homologação
+
+# Dispara só em push (pós-merge) na branch develop, e só quando o app do
+# frontend muda — evita gastar minutos da cota gratuita de Actions em
+# mudanças de backend/docs (ver frontend/specs/FEAT-09-cicd-github-actions/spec.md).
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'frontend/app/**'
+
+permissions:
+  id-token: write # necessário para autenticação AWS via OIDC (sem access key fixa)
+  contents: read
+
+defaults:
+  run:
+    working-directory: frontend/app
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/app/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test
+
+  deploy:
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: hom
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/app/package-lock.json
+
+      - run: npm ci
+
+      - name: Calcular short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build (aponta para a API de homologação)
+        run: npm run build:hom
+        env:
+          VITE_API_BASE_URL: https://api-hom.jrnexpenses.com
+          # Versão de homologação nunca é uma tag semântica — evita sugerir
+          # uma "release oficial" que não existe (ver spec.md, US4).
+          VITE_APP_VERSION: dev-${{ steps.sha.outputs.short }}
+          VITE_APP_COMMIT_SHA: ${{ github.sha }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CICD_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Publicar no S3 (hom)
+        run: aws s3 sync dist/ "s3://${{ vars.BUCKET_NAME }}/" --delete
+
+      - name: Invalidar cache CloudFront (hom)
+        run: aws cloudfront create-invalidation --distribution-id "${{ vars.DISTRIBUTION_ID }}" --paths "/*"
