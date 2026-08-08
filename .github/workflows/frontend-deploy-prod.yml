@@ -82,3 +82,29 @@ jobs:
 
       - name: Invalidar cache CloudFront (prod)
         run: aws cloudfront create-invalidation --distribution-id "${{ vars.DISTRIBUTION_ID }}" --paths "/*"
+
+  # Mantém main sempre refletindo o que está de fato em produção (FEAT-10)
+  # — só roda se o deploy acima terminou com sucesso. Idempotente (não
+  # duplica PR em releases consecutivas) e nunca mergeia sozinho.
+  open-pr-main:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Abrir PR develop → main (se ainda não existir)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          existing=$(gh pr list --head develop --base main \
+            --state open --json number --jq 'length')
+          if [ "$existing" -eq 0 ]; then
+            gh pr create --base main --head develop \
+              --title "Release ${{ github.event.release.tag_name }} → main" \
+              --body "Aberto automaticamente após deploy de produção bem-sucedido (release \`${{ github.event.release.tag_name }}\`)."
+          else
+            echo "PR develop → main já existe, nada a fazer."
+          fi
