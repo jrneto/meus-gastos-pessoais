@@ -1,8 +1,7 @@
 // Regex de tag semântica (ex.: v1.4.0) — usada tanto aqui quanto na
 // trust policy de deploy (FEAT-09) quanto no cálculo de patch bump do
-// job draft-release (FEAT-11). Sem mudança de comportamento;
-// comentário atualizado só para validar o gate de qualidade +
-// PR automático (FEAT-10) nesta branch.
+// job draft-release (FEAT-11). Sem mudança de comportamento; comentário
+// atualizado (teste 1/2) só pra validar idempotência do draft-release.
 const RELEASE_REGEX = /^v\d+\.\d+\.\d+$/
 const REPO_URL = 'https://github.com/jrneto/meus-gastos-pessoais'
 
