@@ -24,15 +24,23 @@ data "aws_iam_policy_document" "github_trust" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # Restringe quem pode assumir a Role: só o workflow de hom (push em
-    # develop) e o de prod (tag semântica de uma release), nunca um
-    # `repo:.../*` genérico que aceitaria qualquer branch/PR.
+    # Restringe quem pode assumir a Role: só os workflows que rodam contra
+    # os GitHub Environments hom/prod, nunca um `repo:.../*` genérico que
+    # aceitaria qualquer branch/PR.
+    #
+    # IMPORTANTE: quando um job especifica `environment:` (nosso caso, ver
+    # .github/workflows/frontend-deploy-{hom,prod}.yml), o GitHub Actions
+    # troca o claim `sub` do token OIDC de "ref:refs/heads/<branch>" para
+    # "environment:<nome>" — descoberto na validação end-to-end da FEAT-09
+    # (1º deploy real falhou com "Not authorized to perform:
+    # sts:AssumeRoleWithWebIdentity" até essa correção). Ver
+    # https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#example-subject-claims
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
       values = [
-        "repo:${var.github_org_repo}:ref:refs/heads/develop",
-        "repo:${var.github_org_repo}:ref:refs/tags/v*",
+        "repo:${var.github_org_repo}:environment:hom",
+        "repo:${var.github_org_repo}:environment:prod",
       ]
     }
   }
