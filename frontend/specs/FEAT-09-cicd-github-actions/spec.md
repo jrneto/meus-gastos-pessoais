@@ -166,32 +166,110 @@ mudanças observáveis são:
 
 ## Critérios de aceite
 
-- [ ] Pipeline de homologação: dispara automaticamente a partir de uma
+- [x] Pipeline de homologação: dispara automaticamente a partir de uma
       alteração integrada ao frontend, roda lint/testes/build, e só
       publica em `hom.jrnexpenses.com` se tudo passar
-- [ ] Pipeline de produção: dispara a partir de uma GitHub Release com
+- [x] Pipeline de produção: dispara a partir de uma GitHub Release com
       tag semântica, roda lint/testes/build para o código da tag, e só
       publica em `jrnexpenses.com` se tudo passar
-- [ ] Falha em qualquer etapa de qualidade (lint/teste/build) impede o
-      deploy, em ambos os pipelines
-- [ ] Após cada deploy bem-sucedido, o cache da distribuição CloudFront
-      correspondente é invalidado
-- [ ] O site em produção exibe a versão publicada (tag semântica) com
-      link clicável para a release correspondente no GitHub
-- [ ] O site em homologação exibe um identificador de versão/commit
-      rastreável, distinto do de produção
-- [ ] Deploy de homologação nunca afeta o bucket/distribuição de
+- [x] Falha em qualquer etapa de qualidade (lint/teste/build) impede o
+      deploy, em ambos os pipelines — garantido pela dependência
+      `deploy: needs: quality` (não exercitado com falha real, mas
+      `quality` passou 126/126 nos dois deploys reais)
+- [x] Após cada deploy bem-sucedido, o cache da distribuição CloudFront
+      correspondente é invalidado — validado nos dois ambientes
+      (`X-Cache: Miss from cloudfront` pós-deploy)
+- [x] O site em produção exibe a versão publicada (tag semântica) com
+      link clicável para a release correspondente no GitHub —
+      `v0.1.0` → `.../releases/tag/v0.1.0`, confirmado no bundle real
+- [x] O site em homologação exibe um identificador de versão/commit
+      rastreável, distinto do de produção — `dev-6f92f63` → link pro
+      commit, confirmado no bundle real
+- [x] Deploy de homologação nunca afeta o bucket/distribuição de
       produção, e vice-versa (sem regressão em nenhum dos dois
       ambientes)
-- [ ] Autenticação do pipeline na AWS feita via OIDC (IAM Role
+- [x] Autenticação do pipeline na AWS feita via OIDC (IAM Role
       assumida), sem access key de longa duração em secret
-- [ ] Nenhum recurso AWS novo (IAM Role, OIDC Provider) foi criado sem
-      aprovação explícita do usuário no momento da execução
+- [x] Nenhum recurso AWS novo (IAM Role, OIDC Provider) foi criado sem
+      aprovação explícita do usuário no momento da execução — criados
+      manualmente pelo usuário, com aprovação e conferência do
+      conteúdo (trust policy, policy inline) a cada etapa
 - [ ] Consumo de minutos de GitHub Actions, para o padrão de uso atual
       do projeto, fica confortavelmente dentro da cota gratuita de
-      2.000 min/mês (repositório privado)
-- [ ] Nenhum novo recurso AWS com custo fixo por hora/instância ligada
+      2.000 min/mês (repositório privado) — plausível pelo tempo de
+      execução observado (~2min/deploy), mas não há volume de uso real
+      acumulado ainda pra confirmar com dados; ver "Status"
+- [x] Nenhum novo recurso AWS com custo fixo por hora/instância ligada
       foi introduzido
+
+## Status
+
+**Implementado e validado end-to-end em hom e prod.**
+
+- Código: `src/lib/appVersion.ts` + `src/components/AppVersion.tsx`
+  (exibido na `SettingsPage`), `.github/workflows/frontend-deploy-{hom,prod}.yml`,
+  `frontend/infra/terraform/cicd/` (código de referência — ver gap
+  abaixo). Testes unitários/componente cobrindo a lógica de versão,
+  126/126 testes do frontend passando, `oxlint` e `tsc -b` limpos.
+- **Deploy de hom validado ao vivo** (push real em `develop`,
+  commit `6f92f63`): `hom.jrnexpenses.com` serve o bundle novo, só
+  referencia `api-hom.jrnexpenses.com`, exibe `dev-6f92f63` linkando
+  pro commit no GitHub.
+- **Deploy de prod validado ao vivo** (release real `v0.1.0`, tag
+  criada a partir de `develop`): `jrnexpenses.com` serve o bundle
+  novo, só referencia `api.jrnexpenses.com`, exibe `v0.1.0` linkando
+  pra release no GitHub.
+- **2 bugs reais encontrados e corrigidos durante a validação** (ver
+  `tasks.md`, task 23, para o detalhamento completo):
+  1. Trust policy da IAM Role com `sub` errado (`ref:refs/heads/develop`
+     em vez de `environment:hom`) — jobs com `environment:` mudam o
+     formato do claim `sub` do token OIDC do GitHub. Corrigido em
+     `iam-role.tf` e no console AWS.
+  2. Variável `DISTRIBUTION_ID` do GitHub Environment `hom` cadastrada
+     com o ID de produção por engano — causou invalidação de cache na
+     distribuição errada (efeito só em hom: `index.html` em cache
+     apontando pra um JS já deletado, `403`). Corrigido na variável do
+     Environment + invalidação manual de correção.
+  3. **`index.html` sem `Cache-Control` explícito** — detectado quando
+     o usuário acessou `jrnexpenses.com` pelo navegador (perfil normal,
+     não anônimo) logo após o deploy de `v0.1.0` e não viu a versão: o
+     navegador aplicou cache heurístico próprio (sem header explícito
+     do servidor) e ficou preso num `index.html` antigo, mesmo após
+     hard refresh — confirmado em aba anônima, que carregou certo.
+     Corrigido nos dois workflows: `aws s3 sync` dos assets com hash
+     (imutáveis) usa `Cache-Control: public,max-age=31536000,immutable`;
+     `index.html` é publicado à parte, por último, com
+     `Cache-Control: no-cache` — garante que visitantes recorrentes
+     sempre revalidam o HTML (que aponta pros assets certos) a cada
+     acesso. Aplicado retroativamente nos objetos já publicados
+     (`aws s3 cp --metadata-directive REPLACE`) + invalidação de
+     correção nos dois ambientes.
+- **Gap conhecido — OIDC Provider + IAM Role fora do Terraform**: o
+  perfil AWS disponível (`agent-toolkit`) não tem permissão para
+  nenhuma ação de `Create`/`Get`/`List` sobre
+  `aws_iam_openid_connect_provider`/Role relacionadas — nem `apply`
+  nem `import` funcionaram (`AccessDenied`), aparentando um guardrail
+  intencional contra ações de federação de identidade. Os dois
+  recursos foram **criados manualmente no console AWS** pelo usuário,
+  com a trust policy e a policy inline conferidas visualmente contra o
+  `.tf` (`frontend/infra/terraform/cicd/`, mantido como código de
+  referência, fora do state). Detalhes e ARNs reais em
+  `frontend/infra/terraform/README.md`, seção "cicd/". Se a permissão
+  for liberada no futuro, os 3 recursos podem ser importados.
+- **Gap conhecido — GitHub Environments fora de automação**: `gh` CLI
+  não disponível no ambiente de execução; os Environments `hom`/`prod`
+  e suas variáveis (`BUCKET_NAME`, `DISTRIBUTION_ID`, `CICD_ROLE_ARN`)
+  foram cadastrados manualmente pelo usuário via UI do GitHub.
+- **Achado fora do escopo desta feature, registrado para referência**:
+  a branch `main` estava 40 commits atrás de `develop` (nunca recebeu
+  merge de nenhuma feature anterior) — a release de teste `v0.1.0` foi
+  criada a partir de `develop` em vez de `main`, já que `main` não
+  refletia o código real do projeto. Não foi resolvido aqui (fora do
+  escopo de CI/CD); decisão de como/quando sincronizar `main` fica
+  para o usuário.
+- Critério de cota de minutos do GitHub Actions não totalmente
+  confirmável ainda (depende de volume de uso futuro, não de uma
+  execução isolada) — ver critério de aceite correspondente.
 
 ## Fora do escopo
 

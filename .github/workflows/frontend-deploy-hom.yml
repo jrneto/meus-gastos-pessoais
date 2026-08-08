@@ -66,8 +66,21 @@ jobs:
           role-to-assume: ${{ vars.CICD_ROLE_ARN }}
           aws-region: us-east-1
 
-      - name: Publicar no S3 (hom)
-        run: aws s3 sync dist/ "s3://${{ vars.BUCKET_NAME }}/" --delete
+      # Assets com hash no nome (imutáveis) primeiro, cache longo — depois
+      # index.html por último, sem cache, pra visitantes recorrentes nunca
+      # ficarem presos numa versão antiga (achado real na validação da
+      # FEAT-09: index.html sem Cache-Control deixava o navegador servir
+      # uma versão em cache apontando pra um JS já deletado pelo --delete).
+      - name: Publicar assets no S3 (hom, cache longo)
+        run: |
+          aws s3 sync dist/ "s3://${{ vars.BUCKET_NAME }}/" --delete \
+            --exclude index.html \
+            --cache-control "public,max-age=31536000,immutable"
+
+      - name: Publicar index.html no S3 (hom, sem cache)
+        run: |
+          aws s3 cp dist/index.html "s3://${{ vars.BUCKET_NAME }}/index.html" \
+            --cache-control "no-cache"
 
       - name: Invalidar cache CloudFront (hom)
         run: aws cloudfront create-invalidation --distribution-id "${{ vars.DISTRIBUTION_ID }}" --paths "/*"

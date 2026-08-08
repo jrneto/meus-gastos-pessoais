@@ -130,19 +130,47 @@
 
 ## Validação manual end-to-end (toca AWS/GitHub reais)
 
-- [ ] 23. Fazer um push de teste em `develop` (após aprovação do
-      usuário) e validar: workflow `frontend-deploy-hom.yml` dispara,
-      job `quality` passa, job `deploy` publica em
-      `hom.jrnexpenses.com`, cache invalidado, e
-      `https://hom.jrnexpenses.com` exibe a nova versão `dev-<sha>`
-      com link correto para o commit no GitHub
-- [ ] 24. Criar uma GitHub Release de teste (tag semântica, após
-      aprovação do usuário) e validar: workflow
-      `frontend-deploy-prod.yml` dispara, publica em
-      `jrnexpenses.com`, e o site exibe a tag da release com link
-      correto para `.../releases/tag/<tag>`
-- [ ] 25. Confirmar que nenhum dos dois deploys afetou o ambiente do
-      outro (produção inalterada após o teste de hom, e vice-versa)
+- [x] 23. Push real em `develop` (commit `6f92f63`, aprovado pelo
+      usuário) — validado com 2 bugs reais encontrados e corrigidos no
+      processo:
+      1. **Trust policy com `sub` errado**: 1º deploy falhou em
+         `configure-aws-credentials` (`Not authorized to perform:
+         sts:AssumeRoleWithWebIdentity`) — jobs com `environment:`
+         trocam o claim `sub` do token OIDC de `ref:refs/heads/<branch>`
+         para `environment:<nome>`. Corrigido em `iam-role.tf` (commit
+         `50471e0`) e no console AWS (trust policy da role); "Re-run
+         failed jobs" confirmou o fix (`quality` 126/126, `deploy` OK)
+      2. **`DISTRIBUTION_ID` do Environment `hom` cadastrado com o ID
+         de PROD** (`E2YCZNS0F94SCU` em vez de `ELE195A1APCLB`) — o
+         `aws s3 sync` publicou certo no bucket de hom, mas a
+         invalidação de cache atingiu a distribuição errada (efeito
+         colateral inofensivo em prod: 1 invalidação à toa, sem
+         mudança de conteúdo), deixando hom servindo um `index.html`
+         em cache apontando pra um JS já deletado pelo `--delete`
+         (`403` real). Corrigido: variável do Environment `hom`
+         ajustada pelo usuário + invalidação manual de correção
+         (`aws cloudfront create-invalidation --distribution-id
+         ELE195A1APCLB`) rodada para destravar o estado já quebrado
+      - **Resultado final validado**: `https://hom.jrnexpenses.com`
+        serve o bundle novo (`index-CmAmxQA3.js`, `200`), só referencia
+        `api-hom.jrnexpenses.com` (0 referências a prod), e exibe
+        `Versão: dev-6f92f63` linkando pra
+        `https://github.com/jrneto/meus-gastos-pessoais/commit/6f92f6345a4938e92288cd4cfbc0845961e932dd`
+        (conferido direto no bundle minificado)
+- [x] 24. Release `v0.1.0` publicada pelo usuário (tag criada a partir
+      de `develop`, já que `main` estava 40 commits atrás — nunca
+      recebeu merge, achado registrado abaixo). `frontend-deploy-prod.yml`
+      disparou, `quality` (126/126) e `deploy` verdes (1m40s total).
+      Validado ao vivo: `https://jrnexpenses.com` serve o bundle novo
+      (`index-CUippbRX.js`, `200`, `X-Cache: Miss`), só referencia
+      `api.jrnexpenses.com`, e exibe a versão `v0.1.0` linkando pra
+      `https://github.com/jrneto/meus-gastos-pessoais/releases/tag/v0.1.0`
+      — `DISTRIBUTION_ID` de prod já estava certo desde o início
+      (só o de hom tinha o bug)
+- [x] 25. Isolamento confirmado nos dois sentidos: deploy de hom não
+      alterou conteúdo de prod (task 23) e deploy de prod não alterou
+      conteúdo de hom (buckets/distribuições distintos, cada deploy só
+      referencia sua própria API)
 
 ## Documentação e fechamento
 
@@ -152,7 +180,9 @@
 - [ ] 27. Atualizar `frontend/infra/terraform/README.md` com o passo a
       passo de `cicd/` (incluindo a checagem de OIDC Provider
       pré-existente)
-- [ ] 28. Atualizar
+- [x] 28. Atualizar
       `frontend/specs/FEAT-09-cicd-github-actions/spec.md`, marcando
       os critérios de aceite concluídos (`- [x]`) e preenchendo uma
-      seção "Status" com o resumo do que foi implementado/validado
+      seção "Status" com o resumo do que foi implementado/validado —
+      1 critério (cota de minutos do Actions) deixado sem marcar, não
+      confirmável sem volume de uso real acumulado
