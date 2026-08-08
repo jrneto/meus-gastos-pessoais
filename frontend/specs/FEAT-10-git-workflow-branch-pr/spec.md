@@ -141,24 +141,64 @@ no fluxo de Git/GitHub:
 
 ## Critérios de aceite
 
-- [ ] `/CLAUDE.md` raiz documenta a convenção de nomear a branch como
+- [x] `/CLAUDE.md` raiz documenta a convenção de nomear a branch como
       a pasta de spec, para os dois contextos
-- [ ] Push numa branch `FEAT-XX-nome` (frontend) que altera
-      `frontend/app/**` roda o gate de qualidade (lint + testes)
-- [ ] Se o gate passar e não existir PR aberto para essa branch →
-      `develop`, um PR é aberto automaticamente
-- [ ] Pushes subsequentes na mesma branch não criam PR duplicado
+- [x] Push numa branch `FEAT-XX-nome` (frontend) que altera
+      `frontend/app/**` roda o gate de qualidade (lint + testes) —
+      validado ao vivo (`FEAT-10-git-workflow-branch-pr`, commit
+      `274bd1b`)
+- [x] Se o gate passar e não existir PR aberto para essa branch →
+      `develop`, um PR é aberto automaticamente — validado ao vivo
+      (PR #1)
+- [~] Pushes subsequentes na mesma branch não criam PR duplicado —
+      lógica implementada e revisada (`gh pr list` antes de `gh pr
+      create`), mas não exercitada com um 2º push real nesta rodada
+      (o PR #1 já foi aprovado e mergeado depois do 1º push) — ver
+      "Status"
 - [ ] Deploy de produção bem-sucedido (`frontend-deploy-prod.yml`)
       abre automaticamente um PR `develop → main`, se ainda não existir
-      um aberto
+      um aberto — **pendente de validação**, só ocorre numa próxima
+      GitHub Release real (ver "Status")
 - [ ] Releases/deploys de produção subsequentes não criam PR
-      `develop → main` duplicado
-- [ ] Nenhum dos dois PRs automáticos faz merge sozinho — ambos
-      aguardam aprovação manual
-- [ ] Nenhum recurso novo (AWS ou de terceiros) foi criado; consumo de
+      `develop → main` duplicado — mesma pendência acima
+- [x] Nenhum dos dois PRs automáticos faz merge sozinho — ambos
+      aguardam aprovação manual (confirmado: PR #1 foi mergeado
+      manualmente pelo usuário, não automaticamente)
+- [x] Nenhum recurso novo (AWS ou de terceiros) foi criado; consumo de
       minutos de Actions permanece dentro da cota gratuita
-- [ ] A permissão do repositório para Actions abrirem PR foi habilitada
+- [x] A permissão do repositório para Actions abrirem PR foi habilitada
       só após aprovação explícita do usuário
+
+## Status
+
+**Metade validada ao vivo (branch→develop); metade pendente
+(develop→main, depende de uma release real futura).**
+
+- **Bootstrap bem-sucedido**: esta própria feature nasceu numa branch
+  (`FEAT-10-git-workflow-branch-pr`, criada a partir de `develop` já
+  no `/specify`) e foi a primeira a validar o mecanismo que ela mesma
+  introduz — um push trivial em `frontend/app/**` nessa branch disparou
+  o `frontend-feature-pr.yml` recém-criado, que abriu o **PR #1**
+  automaticamente. Revisado e mergeado manualmente pelo usuário.
+- **Primeiro merge commit real do histórico do projeto**
+  (`a86067e`, "Merge pull request #1..."), rompendo o padrão de
+  histórico 100% linear (commits direto em `develop`) que valia até a
+  FEAT-09.
+- **Idempotência do PR branch→develop**: implementada e revisada em
+  código (`gh pr list` antes de `gh pr create`), mas não forçada com
+  um segundo push nesta rodada — o PR #1 foi aprovado e mergeado logo
+  depois do primeiro push. Validação real fica para a próxima feature
+  que receber mais de um push antes do merge.
+- **Automação `develop → main` (job `open-pr-main` em
+  `frontend-deploy-prod.yml`) ainda não validada ao vivo** — só
+  dispara num deploy de produção real (GitHub Release publicada), e
+  não fazia sentido criar uma release só para esse teste. Vai ser
+  validada organicamente na próxima release real do projeto; se algo
+  não funcionar como esperado, corrigir como Modo Leve (é um ajuste
+  pontual de workflow já existente, sem mudança de contrato).
+- Config de repositório (`Allow GitHub Actions to create and approve
+  pull requests`) habilitada manualmente pelo usuário, com aprovação
+  prévia, antes de qualquer teste.
 
 ## Fora do escopo
 
