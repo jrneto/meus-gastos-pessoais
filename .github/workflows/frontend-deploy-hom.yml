@@ -1,0 +1,138 @@
+name: Frontend — Deploy Homologação
+
+# Dispara só em push (pós-merge) na branch develop, e só quando o app do
+# frontend muda — evita gastar minutos da cota gratuita de Actions em
+# mudanças de backend/docs (ver frontend/specs/FEAT-09-cicd-github-actions/spec.md).
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'frontend/app/**'
+
+permissions:
+  id-token: write # necessário para autenticação AWS via OIDC (sem access key fixa)
+  contents: read
+
+defaults:
+  run:
+    working-directory: frontend/app
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/app/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test
+
+  deploy:
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: hom
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/app/package-lock.json
+
+      - run: npm ci
+
+      - name: Calcular short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build (aponta para a API de homologação)
+        run: npm run build:hom
+        env:
+          VITE_API_BASE_URL: https://api-hom.jrnexpenses.com
+          # Versão de homologação nunca é uma tag semântica — evita sugerir
+          # uma "release oficial" que não existe (ver spec.md, US4).
+          VITE_APP_VERSION: dev-${{ steps.sha.outputs.short }}
+          VITE_APP_COMMIT_SHA: ${{ github.sha }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CICD_ROLE_ARN }}
+          aws-region: us-east-1
+
+      # Assets com hash no nome (imutáveis) primeiro, cache longo — depois
+      # index.html por último, sem cache, pra visitantes recorrentes nunca
+      # ficarem presos numa versão antiga (achado real na validação da
+      # FEAT-09: index.html sem Cache-Control deixava o navegador servir
+      # uma versão em cache apontando pra um JS já deletado pelo --delete).
+      - name: Publicar assets no S3 (hom, cache longo)
+        run: |
+          aws s3 sync dist/ "s3://${{ vars.BUCKET_NAME }}/" --delete \
+            --exclude index.html \
+            --cache-control "public,max-age=31536000,immutable"
+
+      - name: Publicar index.html no S3 (hom, sem cache)
+        run: |
+          aws s3 cp dist/index.html "s3://${{ vars.BUCKET_NAME }}/index.html" \
+            --cache-control "no-cache"
+
+      - name: Invalidar cache CloudFront (hom)
+        run: aws cloudfront create-invalidation --distribution-id "${{ vars.DISTRIBUTION_ID }}" --paths "/*"
+
+  # Cria/atualiza uma GitHub Release em rascunho a cada deploy de hom
+  # bem-sucedido (FEAT-11) — nunca publica sozinho, só deixa pronta pra
+  # revisão. Publicar continua manual e dispara frontend-deploy-prod.yml
+  # normalmente, sem nenhuma mudança nesse workflow.
+  draft-release:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # necessário pra criar/deletar release (diferente de pull-requests: write da FEAT-10)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Criar/atualizar rascunho de release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+
+          # 1) Versão sugerida = patch bump da última release PUBLICADA
+          #    (exclui rascunhos — um rascunho pendente não conta como
+          #    referência de versão)
+          last_tag=$(gh release list --exclude-drafts --limit 1 \
+            --json tagName --jq '.[0].tagName // ""')
+
+          if [ -z "$last_tag" ]; then
+            new_tag="v0.0.1"
+          else
+            version="${last_tag#v}"
+            IFS='.' read -r major minor patch <<< "$version"
+            new_tag="v${major}.${minor}.$((patch + 1))"
+          fi
+
+          # 2) Se já existe um rascunho pendente, remove antes de criar
+          #    o novo — garante que nunca haja mais de um rascunho ao
+          #    mesmo tempo (US4 da spec)
+          existing_draft=$(gh release list --json tagName,isDraft \
+            --jq '[.[] | select(.isDraft)] | .[0].tagName // ""')
+
+          if [ -n "$existing_draft" ]; then
+            echo "Removendo rascunho pendente: $existing_draft"
+            gh release delete "$existing_draft" --yes
+          fi
+
+          # 3) Cria o novo rascunho, target = develop, notas geradas
+          #    automaticamente a partir dos PRs mergeados desde a
+          #    última release publicada (recurso nativo do GitHub)
+          gh release create "$new_tag" \
+            --draft \
+            --target develop \
+            --title "$new_tag" \
+            --generate-notes

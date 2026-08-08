@@ -1,0 +1,110 @@
+name: Frontend — Deploy Produção
+
+# Dispara a partir de uma GitHub Release publicada com tag semântica
+# (ex.: v1.4.0) — a criação da release é o próprio gate de promoção para
+# produção, sem filtro de `paths`: a release deve sempre refletir
+# exatamente o estado da tag, independente de quais arquivos mudaram
+# desde a última release (ver frontend/specs/FEAT-09-cicd-github-actions/plan.md).
+on:
+  release:
+    types: [published]
+
+permissions:
+  id-token: write # necessário para autenticação AWS via OIDC (sem access key fixa)
+  contents: read
+
+defaults:
+  run:
+    working-directory: frontend/app
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/app/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test
+
+  deploy:
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/app/package-lock.json
+
+      - run: npm ci
+
+      - name: Build (aponta para a API de produção)
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: https://api.jrnexpenses.com
+          VITE_APP_VERSION: ${{ github.event.release.tag_name }}
+          VITE_APP_COMMIT_SHA: ${{ github.sha }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CICD_ROLE_ARN }}
+          aws-region: us-east-1
+
+      # Assets com hash no nome (imutáveis) primeiro, cache longo — depois
+      # index.html por último, sem cache, pra visitantes recorrentes nunca
+      # ficarem presos numa versão antiga (achado real na validação da
+      # FEAT-09: index.html sem Cache-Control deixava o navegador servir
+      # uma versão em cache apontando pra um JS já deletado pelo --delete).
+      - name: Publicar assets no S3 (prod, cache longo)
+        run: |
+          aws s3 sync dist/ "s3://${{ vars.BUCKET_NAME }}/" --delete \
+            --exclude index.html \
+            --cache-control "public,max-age=31536000,immutable"
+
+      - name: Publicar index.html no S3 (prod, sem cache)
+        run: |
+          aws s3 cp dist/index.html "s3://${{ vars.BUCKET_NAME }}/index.html" \
+            --cache-control "no-cache"
+
+      - name: Invalidar cache CloudFront (prod)
+        run: aws cloudfront create-invalidation --distribution-id "${{ vars.DISTRIBUTION_ID }}" --paths "/*"
+
+  # Mantém main sempre refletindo o que está de fato em produção (FEAT-10)
+  # — só roda se o deploy acima terminou com sucesso. Idempotente (não
+  # duplica PR em releases consecutivas) e nunca mergeia sozinho.
+  open-pr-main:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Abrir PR develop → main (se ainda não existir)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          existing=$(gh pr list --head develop --base main \
+            --state open --json number --jq 'length')
+          if [ "$existing" -eq 0 ]; then
+            gh pr create --base main --head develop \
+              --title "Release ${{ github.event.release.tag_name }} → main" \
+              --body "Aberto automaticamente após deploy de produção bem-sucedido (release \`${{ github.event.release.tag_name }}\`)."
+          else
+            echo "PR develop → main já existe, nada a fazer."
+          fi

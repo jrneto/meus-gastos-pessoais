@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\GastosApp.Application\GastosApp.Application.csproj" />
+    <ProjectReference Include="..\GastosApp.Domain\GastosApp.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.CognitoIdentityProvider" Version="4.0.10.1" />
+    <PackageReference Include="AWSSDK.SimpleSystemsManagement" Version="4.0.6" />
+    <PackageReference Include="AWSSDK.DynamoDBv2" Version="4.0.6" />
+    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.4.11" />
+    <PackageReference Include="AWSSDK.SecretsManager" Version="4.0.5.8" />
+    <PackageReference Include="AWSSDK.SSO" Version="4.0.3.8" />
+    <PackageReference Include="AWSSDK.SSOOIDC" Version="4.0.4.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="2.3.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.9" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

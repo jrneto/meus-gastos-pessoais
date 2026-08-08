@@ -1,0 +1,5 @@
+**/obj/
+**/bin/
+.vs/
+infra/lambda/out/
+infra/lambda/function.zip
