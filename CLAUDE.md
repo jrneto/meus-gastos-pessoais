@@ -30,6 +30,31 @@ Toda spec vive em sua própria subpasta: `{contexto}/specs/{FEAT-XX-nome}/`,
 contendo `spec.md`, `plan.md` e `tasks.md`. **Nunca criar arquivos soltos
 direto em `specs/`.** Hoje só existe `backend/specs/`.
 
+## Fluxo de Git (branches e PRs)
+
+Desde a FEAT-10 (frontend), toda feature em **Fluxo Completo** segue:
+
+- A branch nasce **no `/specify`, antes de qualquer código** — a
+  partir de `develop`, nomeada exatamente igual à pasta criada em
+  `{contexto}/specs/` (ex.: `FEAT-10-nome-feature`). `spec.md`,
+  `plan.md`, `tasks.md` e todo o código da feature vivem nessa branch;
+  `develop` só recebe tudo de uma vez quando o PR é mergeado.
+- Ao final da implementação, um PR da branch para `develop` é aberto
+  — automaticamente nos contextos que já têm CI/CD próprio (hoje só o
+  frontend, a cada push verde na branch — ver
+  `frontend/specs/FEAT-10-*`), manualmente nos demais (hoje o backend,
+  que ainda não tem workflow de qualidade).
+- Depois de validado em homologação, uma **GitHub Release** publicada
+  manualmente dispara o deploy de produção; se esse deploy for
+  bem-sucedido, um PR `develop → main` é aberto automaticamente —
+  mantém `main` sempre refletindo o que está de fato em produção
+  (antes disso, `main` podia ficar desatualizada indefinidamente).
+- **Merge dos PRs (feature→develop e develop→main) continua sempre
+  manual** — os workflows só abrem o PR, nunca mergeiam sozinhos.
+- **Modo Leve não usa esse fluxo de branch**: como não cria pasta em
+  `specs/`, não há nome de branch a seguir — continua indo direto para
+  `develop`, como já documentado abaixo.
+
 ## Infraestrutura
 
 Toda infraestrutura, em qualquer contexto, é **AWS**. O plano futuro é
