@@ -76,7 +76,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
     {
         _factory.AuthServiceMock
             .LoginAsync("neto@email.com", "Senha123", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Result.Success(new LoginResult("eyJ...", 3600, "uuid-123"))));
+            .Returns(Task.FromResult(Result.Success(new LoginResult("eyJ...", 3600, "uuid-123", "refresh-token-abc"))));
 
         var response = await _client.PostAsJsonAsync("/auth/login", new { email = "neto@email.com", password = "Senha123" });
 
@@ -86,6 +86,16 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
         body.GetProperty("accessToken").GetString().Should().Be("eyJ...");
         body.GetProperty("expiresIn").GetInt32().Should().Be(3600);
         body.GetProperty("userId").GetString().Should().Be("uuid-123");
+        body.TryGetProperty("refreshToken", out _).Should().BeFalse();
+
+        response.Headers.TryGetValues("Set-Cookie", out var cookies).Should().BeTrue();
+        var cookie = cookies!.Single();
+        cookie.Should().StartWith("refreshToken=refresh-token-abc");
+        var cookieLower = cookie.ToLowerInvariant();
+        cookieLower.Should().Contain("httponly");
+        cookieLower.Should().Contain("secure");
+        cookieLower.Should().Contain("samesite=strict");
+        cookieLower.Should().Contain("path=/auth");
     }
 
     [Fact]
@@ -101,6 +111,83 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
 
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/invalid-credentials");
+    }
+
+    [Fact]
+    public async Task Refresh_ComCookieValido_Retorna200()
+    {
+        _factory.AuthServiceMock
+            .RefreshAsync("refresh-token-abc", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Success(new RefreshResult("novo-access-token", 3600, "uuid-123"))));
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/refresh");
+        request.Headers.Add("Cookie", "refreshToken=refresh-token-abc");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("accessToken").GetString().Should().Be("novo-access-token");
+        body.GetProperty("expiresIn").GetInt32().Should().Be(3600);
+        body.GetProperty("userId").GetString().Should().Be("uuid-123");
+
+        response.Headers.TryGetValues("Set-Cookie", out _).Should().BeFalse("sem rotação, o cookie não é reescrito no sucesso");
+    }
+
+    [Fact]
+    public async Task Refresh_SemCookie_Retorna401()
+    {
+        var response = await _client.PostAsync("/auth/refresh", content: null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/refresh-token-missing");
+
+        await _factory.AuthServiceMock.DidNotReceiveWithAnyArgs().RefreshAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task Refresh_ComCookieInvalidoOuExpirado_Retorna401ELimpaCookie()
+    {
+        _factory.AuthServiceMock
+            .RefreshAsync("refresh-token-expirado", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Failure<RefreshResult>(AuthErrors.InvalidRefreshToken)));
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/refresh");
+        request.Headers.Add("Cookie", "refreshToken=refresh-token-expirado");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/invalid-refresh-token");
+
+        response.Headers.TryGetValues("Set-Cookie", out var cookies).Should().BeTrue();
+        var cookie = cookies!.Single();
+        cookie.Should().Contain("refreshToken=");
+        cookie.Should().Contain("expires=Thu, 01 Jan 1970");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Logout_ComOuSemCookie_Retorna200ELimpaCookie(bool comCookie)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/logout");
+        if (comCookie)
+            request.Headers.Add("Cookie", "refreshToken=refresh-token-abc");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        response.Headers.TryGetValues("Set-Cookie", out var cookies).Should().BeTrue();
+        var cookie = cookies!.Single();
+        cookie.Should().Contain("refreshToken=");
+        cookie.Should().Contain("expires=Thu, 01 Jan 1970");
     }
 
     [Fact]

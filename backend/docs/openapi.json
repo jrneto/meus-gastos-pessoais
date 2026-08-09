@@ -116,6 +116,14 @@
           },
           "200": {
             "description": "OK",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Seta o cookie httpOnly `refreshToken` (Secure, SameSite=Strict, Path=/auth, Max-Age=432000 — 5 dias). Nunca trafega no corpo da resposta.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -140,6 +148,83 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshTokenResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Limpa o cookie `refreshToken` (Max-Age=0) — retornado em qualquer falha (token ausente ou inválido/expirado).",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Sempre limpa o cookie `refreshToken` (Max-Age=0), com ou sem cookie presente na requisição — idempotente.",
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -715,6 +800,30 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "RefreshTokenResult": {
+        "required": [
+          "accessToken",
+          "expiresIn",
+          "userId"
+        ],
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "expiresIn": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "userId": {
+            "type": "string"
           }
         }
       },

@@ -38,6 +38,7 @@ public static class ResultHttpExtensions
                 Detail = detail,
                 Type = type
             },
+            AppJsonSerializerContext.Default.ProblemDetails,
             statusCode: status,
             contentType: "application/problem+json");
     }

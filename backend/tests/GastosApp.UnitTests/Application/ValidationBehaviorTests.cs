@@ -66,7 +66,7 @@ public class ValidationBehaviorTests
     {
         var behavior = new ValidationBehavior<LoginUserCommand, Result<LoginUserResult>>([]);
         var command = new LoginUserCommand("neto@email.com", "Senha123");
-        var expected = Result.Success(new LoginUserResult("token", 3600, "user-id-123"));
+        var expected = Result.Success(new LoginUserResult("token", 3600, "user-id-123", "refresh-token-abc"));
 
         var result = await behavior.Handle(
             command, (_, _) => new ValueTask<Result<LoginUserResult>>(expected), CancellationToken.None);
