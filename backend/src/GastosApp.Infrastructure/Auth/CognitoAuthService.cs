@@ -73,7 +73,7 @@ public sealed class CognitoAuthService : IAuthService
             var name = userResponse.UserAttributes.FirstOrDefault(a => a.Name == "name")?.Value ?? string.Empty;
             var userId = userResponse.UserAttributes.FirstOrDefault(a => a.Name == "sub")?.Value ?? userResponse.Username;
 
-            return Result.Success(new LoginResult(result.IdToken, result.ExpiresIn ?? 3600, userId));
+            return Result.Success(new LoginResult(result.IdToken, result.ExpiresIn ?? 3600, userId, result.RefreshToken));
         }
         catch (NotAuthorizedException)
         {
@@ -82,6 +82,39 @@ public sealed class CognitoAuthService : IAuthService
         catch (UserNotFoundException)
         {
             return Result.Failure<LoginResult>(AuthErrors.InvalidCredentials);
+        }
+    }
+
+    public async Task<Result<RefreshResult>> RefreshAsync(
+        string refreshToken,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var authResponse = await _cognitoClient.InitiateAuthAsync(new InitiateAuthRequest
+            {
+                AuthFlow = AuthFlowType.REFRESH_TOKEN_AUTH,
+                ClientId = _options.ClientId,
+                AuthParameters = new Dictionary<string, string>
+                {
+                    ["REFRESH_TOKEN"] = refreshToken
+                }
+            }, cancellationToken);
+
+            var result = authResponse.AuthenticationResult;
+
+            var userResponse = await _cognitoClient.GetUserAsync(new GetUserRequest
+            {
+                AccessToken = result.AccessToken
+            }, cancellationToken);
+
+            var userId = userResponse.UserAttributes.FirstOrDefault(a => a.Name == "sub")?.Value ?? userResponse.Username;
+
+            return Result.Success(new RefreshResult(result.IdToken, result.ExpiresIn ?? 3600, userId));
+        }
+        catch (NotAuthorizedException)
+        {
+            return Result.Failure<RefreshResult>(AuthErrors.InvalidRefreshToken);
         }
     }
 }

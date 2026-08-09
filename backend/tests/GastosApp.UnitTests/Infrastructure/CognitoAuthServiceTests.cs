@@ -74,7 +74,8 @@ public class CognitoAuthServiceTests
                 AuthenticationResult = new AuthenticationResultType
                 {
                     IdToken = "access-token-123",
-                    ExpiresIn = 3600
+                    ExpiresIn = 3600,
+                    RefreshToken = "refresh-token-123"
                 }
             });
 
@@ -97,6 +98,7 @@ public class CognitoAuthServiceTests
         result.Value.AccessToken.Should().Be("access-token-123");
         result.Value.ExpiresIn.Should().Be(3600);
         result.Value.UserId.Should().Be("sub-123");
+        result.Value.RefreshToken.Should().Be("refresh-token-123");
     }
 
     [Fact]
@@ -133,5 +135,59 @@ public class CognitoAuthServiceTests
         result.IsFailure.Should().BeTrue();
         result.Error!.Type.Should().Be(ErrorType.Unauthorized);
         result.Error.Code.Should().Be("invalid-credentials");
+    }
+
+    [Fact]
+    public async Task RefreshAsync_ShouldRefreshSuccessfully_WhenCognitoCallSucceeds()
+    {
+        // Arrange
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.InitiateAuthAsync(Arg.Any<InitiateAuthRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new InitiateAuthResponse
+            {
+                AuthenticationResult = new AuthenticationResultType
+                {
+                    IdToken = "new-access-token-123",
+                    ExpiresIn = 3600
+                }
+            });
+
+        _cognitoMock.GetUserAsync(Arg.Any<GetUserRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new GetUserResponse
+            {
+                Username = "sub-123",
+                UserAttributes =
+                [
+                    new AttributeType { Name = "sub", Value = "sub-123" }
+                ]
+            });
+
+        // Act
+        var result = await service.RefreshAsync("refresh-token-123");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.AccessToken.Should().Be("new-access-token-123");
+        result.Value.ExpiresIn.Should().Be(3600);
+        result.Value.UserId.Should().Be("sub-123");
+    }
+
+    [Fact]
+    public async Task RefreshAsync_ShouldReturnUnauthorizedFailure_WhenCognitoThrowsNotAuthorizedException()
+    {
+        // Arrange
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.InitiateAuthAsync(Arg.Any<InitiateAuthRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<InitiateAuthResponse>(new NotAuthorizedException("Refresh token expired")));
+
+        // Act
+        var result = await service.RefreshAsync("refresh-token-expirado");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Unauthorized);
+        result.Error.Code.Should().Be("invalid-refresh-token");
     }
 }

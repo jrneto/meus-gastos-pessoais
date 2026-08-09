@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.Application.Common.Results;
 using Mediator;
@@ -26,8 +27,12 @@ public sealed class LoginUserCommandHandler : ICommandHandler<LoginUserCommand, 
         if (result.IsFailure)
             return Result.Failure<LoginUserResult>(result.Error!);
 
-        return Result.Success(new LoginUserResult(result.Value.AccessToken, result.Value.ExpiresIn, result.Value.UserId));
+        return Result.Success(LoginUserResult.FromLoginResult(result.Value));
     }
 }
 
-public record LoginUserResult(string AccessToken, int ExpiresIn, string UserId);
+public record LoginUserResult(string AccessToken, int ExpiresIn, string UserId, [property: JsonIgnore] string RefreshToken)
+{
+    public static LoginUserResult FromLoginResult(LoginResult result) =>
+        new(result.AccessToken, result.ExpiresIn, result.UserId, result.RefreshToken);
+}

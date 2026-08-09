@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using GastosApp.Api.Endpoints;
 using GastosApp.Application.Auth.Commands.Login;
+using GastosApp.Application.Auth.Commands.Refresh;
 using GastosApp.Application.Auth.Commands.Register;
 using GastosApp.Application.Expenses.Commands.RegisterExpense;
 using GastosApp.Application.Expenses.Commands.UpdateExpense;
@@ -20,6 +21,7 @@ namespace GastosApp.Api.Common;
 [JsonSerializable(typeof(UpdateExpenseRequest))]
 [JsonSerializable(typeof(RegisterUserResult))]
 [JsonSerializable(typeof(LoginUserResult))]
+[JsonSerializable(typeof(RefreshTokenResult))]
 [JsonSerializable(typeof(RegisterExpenseResult))]
 [JsonSerializable(typeof(UpdateExpenseResult))]
 [JsonSerializable(typeof(GetExpensesResult))]

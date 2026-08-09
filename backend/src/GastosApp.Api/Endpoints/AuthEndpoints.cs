@@ -1,5 +1,7 @@
 using GastosApp.Api.Common;
 using GastosApp.Application.Auth.Commands.Login;
+using GastosApp.Application.Auth.Commands.Logout;
+using GastosApp.Application.Auth.Commands.Refresh;
 using GastosApp.Application.Auth.Commands.Register;
 using Mediator;
 using Microsoft.AspNetCore.Mvc;
@@ -24,6 +26,13 @@ public static class AuthEndpoints
             .Produces<LoginUserResult>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+        group.MapPost("/refresh", Refresh)
+            .Produces<RefreshTokenResult>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+        group.MapPost("/logout", Logout)
+            .Produces(StatusCodes.Status200OK);
 
         group.MapGet("/me", UserData)
             .RequireAuthorization()
@@ -58,11 +67,41 @@ public static class AuthEndpoints
     private static async Task<IResult> Login(
         LoginRequest request,
         ISender sender,
+        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var command = new LoginUserCommand(request.Email, request.Password);
         var result = await sender.Send(command, cancellationToken);
+        return result.ToHttpResult(value =>
+        {
+            httpContext.Response.Cookies.Append(RefreshTokenCookie.Name, value.RefreshToken, RefreshTokenCookie.ForSet());
+            return Results.Ok(value);
+        });
+    }
+
+    private static async Task<IResult> Refresh(
+        ISender sender,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var refreshToken = httpContext.Request.Cookies[RefreshTokenCookie.Name];
+        var command = new RefreshTokenCommand(refreshToken ?? string.Empty);
+        var result = await sender.Send(command, cancellationToken);
+
+        if (result.IsFailure)
+            httpContext.Response.Cookies.Append(RefreshTokenCookie.Name, string.Empty, RefreshTokenCookie.ForClear());
+
         return result.ToHttpResult(Results.Ok);
+    }
+
+    private static async Task<IResult> Logout(
+        ISender sender,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        await sender.Send(new LogoutCommand(), cancellationToken);
+        httpContext.Response.Cookies.Append(RefreshTokenCookie.Name, string.Empty, RefreshTokenCookie.ForClear());
+        return Results.Ok();
     }
 
     private static async Task<IResult> RegisterUser(
