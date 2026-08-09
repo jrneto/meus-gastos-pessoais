@@ -155,15 +155,18 @@ no fluxo de Git/GitHub:
       create`), mas não exercitada com um 2º push real nesta rodada
       (o PR #1 já foi aprovado e mergeado depois do 1º push) — ver
       "Status"
-- [ ] Deploy de produção bem-sucedido (`frontend-deploy-prod.yml`)
+- [x] Deploy de produção bem-sucedido (`frontend-deploy-prod.yml`)
       abre automaticamente um PR `develop → main`, se ainda não existir
-      um aberto — **pendente de validação**, só ocorre numa próxima
-      GitHub Release real (ver "Status")
+      um aberto — validado ao vivo durante a FEAT-11: publicar a
+      release `v0.1.1` disparou o deploy de prod, que abriu o PR #3
+      (`develop → main`), mergeado manualmente pelo usuário
 - [ ] Releases/deploys de produção subsequentes não criam PR
-      `develop → main` duplicado — mesma pendência acima
+      `develop → main` duplicado — ainda não exercitado (só uma
+      release foi publicada até agora); validação real fica pra
+      próxima release
 - [x] Nenhum dos dois PRs automáticos faz merge sozinho — ambos
-      aguardam aprovação manual (confirmado: PR #1 foi mergeado
-      manualmente pelo usuário, não automaticamente)
+      aguardam aprovação manual (confirmado nos dois: PR #1 e PR #3
+      foram mergeados manualmente pelo usuário, não automaticamente)
 - [x] Nenhum recurso novo (AWS ou de terceiros) foi criado; consumo de
       minutos de Actions permanece dentro da cota gratuita
 - [x] A permissão do repositório para Actions abrirem PR foi habilitada
@@ -171,8 +174,9 @@ no fluxo de Git/GitHub:
 
 ## Status
 
-**Metade validada ao vivo (branch→develop); metade pendente
-(develop→main, depende de uma release real futura).**
+**Totalmente validado ao vivo** (a automação `develop → main`, que
+ficou pendente no fechamento inicial desta feature, acabou sendo
+validada durante a FEAT-11 — ver atualização abaixo).
 
 - **Bootstrap bem-sucedido**: esta própria feature nasceu numa branch
   (`FEAT-10-git-workflow-branch-pr`, criada a partir de `develop` já
@@ -189,13 +193,16 @@ no fluxo de Git/GitHub:
   um segundo push nesta rodada — o PR #1 foi aprovado e mergeado logo
   depois do primeiro push. Validação real fica para a próxima feature
   que receber mais de um push antes do merge.
-- **Automação `develop → main` (job `open-pr-main` em
-  `frontend-deploy-prod.yml`) ainda não validada ao vivo** — só
-  dispara num deploy de produção real (GitHub Release publicada), e
-  não fazia sentido criar uma release só para esse teste. Vai ser
-  validada organicamente na próxima release real do projeto; se algo
-  não funcionar como esperado, corrigir como Modo Leve (é um ajuste
-  pontual de workflow já existente, sem mudança de contrato).
+- **Atualização (durante a FEAT-11)**: a automação `develop → main`
+  (job `open-pr-main`) foi validada ao vivo — a FEAT-11
+  (`frontend/specs/FEAT-11-release-rascunho-automatica/`) introduziu
+  um mecanismo que gera releases em rascunho após cada deploy de hom;
+  o usuário publicou o rascunho `v0.1.1` manualmente para testar a
+  cadeia completa, disparando `frontend-deploy-prod.yml` de verdade
+  (deploy real em produção) e, por consequência, o PR #3
+  (`develop → main`), mergeado manualmente. Único ponto ainda não
+  exercitado: releases subsequentes não duplicarem esse PR (só uma
+  release foi publicada até agora).
 - Config de repositório (`Allow GitHub Actions to create and approve
   pull requests`) habilitada manualmente pelo usuário, com aprovação
   prévia, antes de qualquer teste.
