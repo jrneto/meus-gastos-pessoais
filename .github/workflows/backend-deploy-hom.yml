@@ -1,0 +1,156 @@
+name: Backend — Deploy Homologação
+
+# Dispara só em push (pós-merge) na branch develop, e só quando o
+# backend muda — evita gastar minutos da cota gratuita de Actions
+# (compartilhada com o frontend) em mudanças que não afetam a API (ver
+# backend/specs/FEAT-14-cicd-github-actions/spec.md).
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'backend/**'
+
+permissions:
+  id-token: write # necessário para autenticação AWS via OIDC (sem access key fixa)
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - run: dotnet build GastosApp.sln -c Release
+      - run: dotnet test GastosApp.sln -c Release
+
+  deploy:
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: backend-hom
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Calcular short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      # Build Native AOT em container Amazon Linux 2023 (mesma base do
+      # runtime da Lambda) — Docker já vem instalado nos runners
+      # ubuntu-latest, gera infra/lambda/function.zip.
+      - name: Build do artefato (Native AOT)
+        run: ./infra/lambda/build.sh
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CICD_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Publicar código na Lambda (hom)
+        run: |
+          aws lambda update-function-code \
+            --function-name "${{ vars.FUNCTION_NAME }}" \
+            --zip-file fileb://infra/lambda/function.zip \
+            --publish
+          aws lambda wait function-updated --function-name "${{ vars.FUNCTION_NAME }}"
+
+      # Versão de homologação nunca é uma tag semântica — evita sugerir
+      # uma "release oficial" que não existe (mesmo princípio do
+      # VITE_APP_VERSION do frontend, FEAT-09, US4). Faz merge com as
+      # variáveis já geridas pelo Terraform (ParameterStore__Path,
+      # DynamoDb__TableName) em vez de sobrescrevê-las — ver plan.md,
+      # decisão 2.
+      - name: Atualizar variáveis de versão na Lambda (hom)
+        run: |
+          current=$(aws lambda get-function-configuration \
+            --function-name "${{ vars.FUNCTION_NAME }}" \
+            --query 'Environment.Variables' --output json)
+
+          merged=$(echo "$current" | jq -c \
+            --arg version "dev-${{ steps.sha.outputs.short }}" \
+            --arg commit "${{ github.sha }}" \
+            '. + {APP_VERSION: $version, APP_COMMIT_SHA: $commit, APP_ENVIRONMENT: "hom"}')
+
+          aws lambda update-function-configuration \
+            --function-name "${{ vars.FUNCTION_NAME }}" \
+            --environment "Variables=$merged"
+          aws lambda wait function-updated --function-name "${{ vars.FUNCTION_NAME }}"
+
+  # Cria/atualiza uma GitHub Release em rascunho a cada deploy de hom
+  # bem-sucedido (mesmo princípio da FEAT-11 do frontend) — nunca
+  # publica sozinho, só deixa pronta pra revisão. Publicar continua
+  # manual e dispara backend-deploy-prod.yml normalmente.
+  #
+  # Usa o prefixo `backend-v` (distinto do `v` usado pelo frontend, ver
+  # plan.md, decisão 5) e filtra por esse prefixo em toda consulta —
+  # sem esse filtro, este job poderia apagar/confundir o rascunho
+  # pendente do frontend, e vice-versa.
+  draft-release:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # necessário pra criar/deletar release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Criar/atualizar rascunho de release do backend
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+
+          # 1) Versão sugerida = patch bump da última release PUBLICADA
+          #    com prefixo backend-v (exclui rascunhos e releases do
+          #    frontend)
+          last_tag=$(gh release list --exclude-drafts --json tagName \
+            --jq '[.[] | select(.tagName | startswith("backend-v"))] | .[0].tagName // ""')
+
+          if [ -z "$last_tag" ]; then
+            new_tag="backend-v0.0.1"
+          else
+            version="${last_tag#backend-v}"
+            IFS='.' read -r major minor patch <<< "$version"
+            new_tag="backend-v${major}.${minor}.$((patch + 1))"
+          fi
+
+          # 2) Se já existe um rascunho pendente do backend, remove
+          #    antes de criar o novo — nunca mais de um rascunho do
+          #    backend ao mesmo tempo (rascunhos do frontend não são
+          #    tocados, graças ao filtro de prefixo)
+          existing_draft=$(gh release list --json tagName,isDraft \
+            --jq '[.[] | select(.isDraft and (.tagName | startswith("backend-v")))] | .[0].tagName // ""')
+
+          if [ -n "$existing_draft" ]; then
+            echo "Removendo rascunho pendente do backend: $existing_draft"
+            gh release delete "$existing_draft" --yes
+          fi
+
+          # 3) Cria o novo rascunho, target = develop, notas geradas
+          #    automaticamente a partir dos PRs mergeados desde a
+          #    última release publicada do backend. --notes-start-tag
+          #    é essencial aqui: sem ele, `gh` usaria a release mais
+          #    recente do REPOSITÓRIO (que pode ser do frontend) como
+          #    referência, misturando changelogs dos dois contextos.
+          #    Só omitido na primeiríssima release do backend (nenhum
+          #    "backend-v" anterior existe ainda).
+          if [ -n "$last_tag" ]; then
+            gh release create "$new_tag" \
+              --draft \
+              --target develop \
+              --title "$new_tag" \
+              --generate-notes \
+              --notes-start-tag "$last_tag"
+          else
+            gh release create "$new_tag" \
+              --draft \
+              --target develop \
+              --title "$new_tag" \
+              --generate-notes
+          fi

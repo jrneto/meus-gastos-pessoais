@@ -14,7 +14,10 @@ critério de quando abrir uma spec, veja "Modo Leve vs Fluxo Completo" no
   contra o JWKS real do Cognito (nunca simulado)
 - AWS Systems Manager Parameter Store, prefixo `/GastosApp/`, para
   configuração (não há segredo em `appsettings.json`)
-- Deploy alvo: AWS Lambda via `Amazon.Lambda.AspNetCoreServer.Hosting`
+- Deploy alvo: AWS Lambda via `Amazon.Lambda.AspNetCoreServer.Hosting` —
+  automatizado via GitHub Actions desde a FEAT-14 (deploy em hom a cada
+  push em `develop`, deploy em prod a partir de uma GitHub Release
+  `backend-vX.Y.Z`), ver `backend/infra/CLAUDE.md`
 - Ambiente local conecta-se diretamente aos recursos AWS reais — sem
   LocalStack, sem Kong, sem simulação
 

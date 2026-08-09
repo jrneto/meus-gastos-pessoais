@@ -9,7 +9,7 @@ Provisiona a infraestrutura AWS do backend: tabela DynamoDB (`GastosApp`
 (ver `backend/specs/FEAT-09-terraform-cognito-parameter-store/` e
 `backend/specs/FEAT-10-deploy-lambda-aot-api-gateway/`).
 
-Três configurações independentes:
+Quatro configurações independentes:
 
 - `bootstrap/` — cria o bucket S3 que guarda o state remoto das demais
   configurações. Mantém o **próprio state local** (não tem como o
@@ -23,6 +23,11 @@ Três configurações independentes:
   (`api-hom.jrnexpenses.com`, FEAT-13), isolado de produção (tabela,
   Cognito, Parameter Store, Lambda e API Gateway próprios), state
   próprio no mesmo bucket (`key = gastosapp/hom/terraform.tfstate`).
+- `cicd/` — OIDC Provider (reaproveitado, não criado) + IAM Role usados
+  pelos workflows de deploy do GitHub Actions
+  (`backend/specs/FEAT-14-cicd-github-actions/`). **Provavelmente fora
+  do state hoje** — mesmo gap de permissão já documentado para o
+  frontend (ver seção dedicada abaixo).
 
 Essa organização por ambiente replica o padrão já adotado pelo
 Terraform do frontend (`frontend/infra/terraform/environments/prod/`).
@@ -144,7 +149,11 @@ garantia automática de que produção e homologação estejam sempre no
 mesmo código a menos que se aplique o mesmo zip nos dois (aceitável
 enquanto o deploy for manual — ver seção seguinte).
 
-Fluxo de deploy (manual, a partir da máquina do usuário):
+**Desde a FEAT-14, esse fluxo é automatizado via GitHub Actions** (ver
+seção "`cicd/`" abaixo) — os workflows publicam o zip direto na Lambda
+via `aws lambda update-function-code` (sem rodar `terraform apply`).
+O fluxo manual abaixo continua útil para desenvolvimento local ou
+qualquer situação fora do fluxo automatizado:
 
 ```bash
 cd backend
@@ -198,3 +207,48 @@ produção, exposta em `https://api-hom.jrnexpenses.com`:
 
 Ver `backend/specs/FEAT-13-ambiente-homologacao/` para a spec e o plano
 técnico completos.
+
+## `cicd/` — OIDC Provider (reaproveitado) + IAM Role do backend (FEAT-14)
+
+`backend/infra/terraform/cicd/` contém a IAM Role
+(`gastosapp-backend-cicd`) assumida via OIDC pelos workflows de deploy
+(`.github/workflows/backend-deploy-{hom,prod}.yml`), com permissão
+mínima (`lambda:UpdateFunctionCode`/`UpdateFunctionConfiguration`/
+`GetFunction`/`GetFunctionConfiguration`) escopada só às duas funções
+Lambda deste projeto. **Não cria um novo OIDC Provider** — `oidc.tf`
+usa `data "aws_iam_openid_connect_provider"` para referenciar o
+Provider já existente na conta (criado manualmente para o frontend na
+FEAT-09, é um recurso único por conta/URL de emissor).
+
+**Gap esperado (mesmo já documentado em
+`frontend/infra/terraform/README.md`, seção "cicd/")**: o perfil usado
+localmente para `terraform apply`/`import` provavelmente não tem
+permissão para nenhuma ação de leitura/escrita sobre
+`aws_iam_role`/`aws_iam_role_policy` relacionadas à federação OIDC
+(`AccessDenied`, mesmo guardrail já identificado no frontend). Se
+`apply` falhar, criar a Role manualmente no console AWS, conferindo
+trust policy e policy inline **byte a byte iguais** ao que
+`iam-role.tf`/`iam-policy.tf` gerariam — mesmo processo já usado para
+`gastosapp-frontend-cicd`. Depois de criada, importar pra trazer ao
+state:
+
+```bash
+cd backend/infra/terraform/cicd
+terraform import aws_iam_role.backend_cicd gastosapp-backend-cicd
+terraform import aws_iam_role_policy.backend_cicd \
+  gastosapp-backend-cicd:gastosapp-backend-cicd-deploy
+terraform plan   # deve dar "No changes" se o console bateu com o .tf
+```
+
+**Uso pelos workflows**: o ARN da Role é cadastrado como variável
+`CICD_ROLE_ARN` nos GitHub Environments `backend-hom`/`backend-prod`
+(distintos dos `hom`/`prod` já usados pelo frontend, pra não competir
+pela mesma variável com uma Role diferente) — não depende do state do
+Terraform para funcionar, só do recurso existir de fato na conta.
+
+**Convenção de tag `backend-v*`**: como o repositório é compartilhado
+com o frontend (que usa `vX.Y.Z`), as releases do backend usam o
+prefixo `backend-v` — necessário pros workflows de deploy de produção e
+de rascunho automático de release não se atropelarem entre os dois
+contextos (ver `backend/specs/FEAT-14-cicd-github-actions/plan.md`,
+decisão 5).

@@ -296,6 +296,53 @@ Não há mudança nos endpoints de negócio já documentados em
 - [ ] Nenhum rascunho é publicado automaticamente; publicá-lo
       manualmente dispara o deploy de produção do backend normalmente
 
+## Status
+
+**Código implementado e testado localmente; provisionamento real e
+validação end-to-end pendentes** (exigem credenciais AWS válidas e
+acesso ao GitHub, indisponíveis no ambiente onde a implementação foi
+feita) — nenhum critério de aceite acima foi marcado `[x]` porque
+nenhum ainda foi observado rodando de verdade.
+
+- **Endpoint `/health`**: implementado
+  (`GetHealthQuery`/`GetHealthQueryHandler`, `HealthEndpoints.cs`),
+  cobre US3. Testes 100% verdes localmente: 124 testes unitários (1
+  novo) + 62 de componente (2 novos) + 1 de integração —
+  `dotnet build`/`dotnet test GastosApp.sln` limpos.
+- **`backend/docs/openapi.json`**: **não regenerado** — o script
+  (`scripts/export-openapi.sh`) precisa subir a API contra o Cognito/
+  Parameter Store reais (sem simulação, ver `backend/infra/CLAUDE.md`),
+  e o ambiente onde a feature foi implementada não tem credenciais AWS
+  válidas (`InvalidClientTokenId`). Pendente: rodar
+  `./scripts/export-openapi.sh` numa máquina com AWS CLI autenticado.
+- **Workflows** (`backend-feature-pr.yml`, `backend-deploy-hom.yml`,
+  `backend-deploy-prod.yml`) e o ajuste combinado em
+  `frontend-deploy-hom.yml` (filtro de prefixo `backend-v`):
+  implementados, YAML revisado manualmente (sem linter de Actions
+  disponível no ambiente). **Não exercitados** — nenhum push/release
+  real foi feito ainda.
+- **Terraform `cicd/`** (`backend/infra/terraform/cicd/`): código
+  criado e validado sintaticamente (`terraform fmt`/`validate`, sem
+  backend real). **`init`/`plan`/`apply` não executados** — sem
+  credenciais AWS no ambiente de implementação; mesmo gap de permissão
+  já documentado no frontend é esperado (`AccessDenied` em ações de
+  IAM/OIDC), exigindo criação manual da Role no console.
+- **GitHub Environments `backend-hom`/`backend-prod`**: **não
+  criados** — `gh` CLI/API não usados neste ambiente; usuário precisa
+  criar via UI do GitHub e cadastrar `CICD_ROLE_ARN`/`FUNCTION_NAME`
+  (mesmo processo já usado pra `hom`/`prod` do frontend).
+- **Validação end-to-end** (US1–US13): nenhuma foi observada ao vivo
+  ainda — depende dos passos acima estarem prontos primeiro (Role
+  criada, Environments configurados, `openapi.json` atualizado).
+
+**Próximos passos, na ordem**: aplicar/criar a Role e os Environments
+→ mergear esta branch (o próprio merge já é o primeiro teste real do
+`backend-feature-pr.yml`) → observar o primeiro deploy de hom e
+rascunho de release → publicar o rascunho e observar o deploy de
+produção + PR `develop → main` → marcar os critérios de aceite
+conforme cada um for confirmado ao vivo, seguindo o mesmo padrão de
+honestidade já usado nas specs do frontend.
+
 ## Fora do escopo
 
 - **Mudança na infraestrutura já provisionada** (tabelas, Cognito,
