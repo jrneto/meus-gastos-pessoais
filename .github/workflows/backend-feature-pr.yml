@@ -11,7 +11,14 @@ on:
   push:
     branches: ['FEAT-*']
     paths:
-      - 'backend/**'
+      # Só código/infra de deploy real — backend/specs/**, backend/docs/**
+      # etc. não disparam gate/deploy (achado real durante a validação
+      # ao vivo da FEAT-14: 'backend/**' disparava deploy de hom a cada
+      # commit só de documentação).
+      - 'backend/src/**'
+      - 'backend/tests/**'
+      - 'backend/infra/lambda/**'
+      - 'backend/GastosApp.sln'
 
 defaults:
   run:
