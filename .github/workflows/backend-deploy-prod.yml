@@ -45,7 +45,7 @@ jobs:
           ref: ${{ github.event.release.tag_name }}
 
       - name: Build do artefato (Native AOT)
-        run: ./infra/lambda/build.sh
+        run: bash infra/lambda/build.sh
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:

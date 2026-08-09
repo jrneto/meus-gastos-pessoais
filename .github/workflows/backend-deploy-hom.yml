@@ -9,6 +9,10 @@ on:
     branches: [develop]
     paths:
       - 'backend/**'
+  # Permite re-disparar manualmente (ex.: depois de corrigir um
+  # workflow em .github/workflows/**, que não casa com o filtro de
+  # paths acima) sem precisar de um push real em backend/**.
+  workflow_dispatch:
 
 permissions:
   id-token: write # necessário para autenticação AWS via OIDC (sem access key fixa)
@@ -46,7 +50,7 @@ jobs:
       # runtime da Lambda) — Docker já vem instalado nos runners
       # ubuntu-latest, gera infra/lambda/function.zip.
       - name: Build do artefato (Native AOT)
-        run: ./infra/lambda/build.sh
+        run: bash infra/lambda/build.sh
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
