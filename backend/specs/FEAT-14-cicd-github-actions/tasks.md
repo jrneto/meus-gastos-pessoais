@@ -88,18 +88,14 @@
 
 ## GitHub Environments (configuração manual, fora do Terraform)
 
-- [ ] 22. Criar os Environments `backend-hom` e `backend-prod` no
-       repositório (`gh` CLI indisponível — orientar o usuário a criar
-       via UI, mesmo processo já usado para `hom`/`prod` do frontend)
-       — **pendente**, depende da Role (task 20) existir primeiro
-- [ ] 23. Cadastrar as variáveis `CICD_ROLE_ARN` (ARN da Role da task
-       15/20) e `FUNCTION_NAME` (`gastos-app-api-hom` /
-       `gastos-app-api`) em cada Environment — **pendente**
-- [ ] 24. Confirmar que "Allow GitHub Actions to create and approve
-       pull requests" já está habilitada (deveria estar desde a
-       FEAT-10 do frontend) — se não, pausar e pedir aprovação
-       explícita antes de habilitar — **pendente de confirmação do
-       usuário**
+- [x] 22. Criar os Environments `backend-hom` e `backend-prod` no
+       repositório — feito pelo usuário via UI do GitHub
+- [x] 23. Cadastrar as variáveis `CICD_ROLE_ARN`
+       (`arn:aws:iam::648443184523:role/gastosapp-backend-cicd`) e
+       `FUNCTION_NAME` (`gastos-app-api-hom` / `gastos-app-api`) em
+       cada Environment — feito
+- [x] 24. Confirmar que "Allow GitHub Actions to create and approve
+       pull requests" já está habilitada — confirmado pelo usuário
 
 ## Workflows GitHub Actions do backend
 

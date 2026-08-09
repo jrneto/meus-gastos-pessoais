@@ -333,13 +333,15 @@ nenhum ainda foi observado rodando de verdade.
   `terraform import` tentado em seguida — **também bloqueado**
   (`AccessDenied` em `iam:GetRole`/`ListOpenIDConnectProviders`); fica
   fora do state, mesma situação da Role do frontend.
-- **GitHub Environments `backend-hom`/`backend-prod`**: **não
-  criados** — usuário precisa criar via UI do GitHub e cadastrar
-  `CICD_ROLE_ARN=arn:aws:iam::648443184523:role/gastosapp-backend-cicd`
-  + `FUNCTION_NAME`.
-- **Validação end-to-end** (US1–US13): nenhuma foi observada ao vivo
-  ainda — depende dos passos acima estarem prontos primeiro (Role
-  criada manualmente, Environments configurados).
+- **GitHub Environments `backend-hom`/`backend-prod`**: **criados pelo
+  usuário**, com `CICD_ROLE_ARN`/`FUNCTION_NAME` cadastrados em cada um
+  (`gastos-app-api-hom`/`gastos-app-api`). Permissão "Allow GitHub
+  Actions to create and approve pull requests" confirmada já ativa
+  (herdada da FEAT-10 do frontend).
+- **Validação end-to-end** (US1–US13): ainda pendente — esta branch
+  (`FEAT-14-cicd-github-actions`) ainda não foi enviada ao GitHub;
+  falta o push (dispara `backend-feature-pr.yml` pela primeira vez),
+  merge do PR e observação do primeiro deploy real de hom/prod.
 
 **Próximos passos, na ordem**: aplicar/criar a Role e os Environments
 → mergear esta branch (o próprio merge já é o primeiro teste real do
