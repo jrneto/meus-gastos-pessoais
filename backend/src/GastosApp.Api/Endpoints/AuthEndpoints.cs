@@ -57,7 +57,7 @@ public static class AuthEndpoints
                 Status = StatusCodes.Status401Unauthorized,
                 Title = "Não autorizado",
                 Type = "https://gastosapp.dev/errors/unauthorized"
-            }, statusCode: StatusCodes.Status401Unauthorized, contentType: "application/problem+json");
+            }, AppJsonSerializerContext.Default.ProblemDetails, statusCode: StatusCodes.Status401Unauthorized, contentType: "application/problem+json");
         }
 
         return Results.Ok(new UserInfoResponse(userId, email, name));
