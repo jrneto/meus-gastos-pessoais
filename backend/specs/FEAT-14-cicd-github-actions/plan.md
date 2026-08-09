@@ -237,20 +237,19 @@ Não aplicável — `/health` não tem caminho de falha de negócio (sempre
 responder, o erro é infraestrutural — timeout/5xx do API Gateway — não
 um `Result` de falha do domínio).
 
-## Pontos que precisam confirmação do usuário antes do `/tasks`
+## Pontos que precisavam confirmação do usuário — todos confirmados
 
-1. **Prefixo de tag `backend-v*`** (decisão 5) — confirma essa
-   convenção, ou prefere outra forma de diferenciar releases de
-   backend/frontend no mesmo repositório?
+1. **Prefixo de tag `backend-v*`** (decisão 5) — **confirmado**.
 2. **Alterar `frontend-deploy-hom.yml` (job `draft-release`)** para
-   filtrar por prefixo (decisão 5) — sem isso, a primeira release
-   `backend-v*` pode ser apagada ou confundir o cálculo de patch bump
-   do lado do frontend. Autoriza essa mudança num workflow já em
-   produção?
+   filtrar por prefixo (decisão 5) — **confirmado**: o `tasks.md` deve
+   incluir essa alteração no workflow já em produção do frontend,
+   filtrando `tagName` que não comece com `backend-v` (ex.: regex
+   `^v[0-9]`) tanto na busca da última release publicada quanto na
+   busca de rascunho pendente a substituir.
 3. **2 novos GitHub Environments** (`backend-hom`, `backend-prod`) e a
-   IAM Role `gastosapp-backend-cicd` (decisões 3 e 4) — aprovação
-   explícita para criar, sabendo que (como aconteceu no frontend) o
-   `apply` do Terraform pode falhar por `AccessDenied` e exigir criação
-   manual no console.
-4. **Nome/rota do endpoint de versão** (`GET /health`) — confirma o
-   nome, ou prefere outro (ex.: `/version`, `/status`)?
+   IAM Role `gastosapp-backend-cicd` (decisões 3 e 4) — **aprovação
+   confirmada**; se o `apply` do Terraform falhar por `AccessDenied`
+   (mesmo padrão do gap já documentado no frontend), a criação manual
+   no console segue o mesmo processo de
+   `frontend/infra/terraform/README.md`, seção "cicd/".
+4. **Nome/rota do endpoint de versão**: **`GET /health`, confirmado**.
