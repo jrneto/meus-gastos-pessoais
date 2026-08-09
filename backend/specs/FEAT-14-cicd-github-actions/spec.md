@@ -306,15 +306,14 @@ nenhum ainda foi observado rodando de verdade.
 
 - **Endpoint `/health`**: implementado
   (`GetHealthQuery`/`GetHealthQueryHandler`, `HealthEndpoints.cs`),
-  cobre US3. Testes 100% verdes localmente: 124 testes unitários (1
-  novo) + 62 de componente (2 novos) + 1 de integração —
+  cobre US3. Testes 100% verdes localmente: 123 testes unitários (3
+  novos) + 61 de componente (2 novos) + 1 de integração —
   `dotnet build`/`dotnet test GastosApp.sln` limpos.
-- **`backend/docs/openapi.json`**: **não regenerado** — o script
-  (`scripts/export-openapi.sh`) precisa subir a API contra o Cognito/
-  Parameter Store reais (sem simulação, ver `backend/infra/CLAUDE.md`),
-  e o ambiente onde a feature foi implementada não tem credenciais AWS
-  válidas (`InvalidClientTokenId`). Pendente: rodar
-  `./scripts/export-openapi.sh` numa máquina com AWS CLI autenticado.
+- **`backend/docs/openapi.json`**: **regenerado** — `GET /health`
+  presente no contrato (`scripts/export-openapi.sh` rodou contra o
+  Cognito/Parameter Store reais, sem simulação), sem alterar nenhum
+  endpoint existente. `dotnet test GastosApp.sln` confirmado 100% verde
+  depois (123 unitários + 61 componente + 1 integração).
 - **Workflows** (`backend-feature-pr.yml`, `backend-deploy-hom.yml`,
   `backend-deploy-prod.yml`) e o ajuste combinado em
   `frontend-deploy-hom.yml` (filtro de prefixo `backend-v`):

@@ -35,14 +35,12 @@
 
 ## Contrato
 
-- [ ] 10. Rodar `./scripts/export-openapi.sh` para regenerar
-       `backend/docs/openapi.json` incluindo `GET /health` — **bloqueado**:
-       o script precisa de credenciais AWS reais (Cognito/Parameter
-       Store) para subir a API, indisponíveis no ambiente onde a
-       feature foi implementada (`InvalidClientTokenId`). Pendente:
-       rodar numa máquina com AWS CLI autenticado.
+- [x] 10. Rodar `./scripts/export-openapi.sh` para regenerar
+       `backend/docs/openapi.json` incluindo `GET /health` — feito com
+       credenciais AWS reais, só adição (nenhum endpoint existente
+       alterado)
 - [x] 11. Conferir `dotnet build` + `dotnet test GastosApp.sln` local
-       100% verde antes de seguir para a infra — 124 unitários + 62 de
+       100% verde antes de seguir para a infra — 123 unitários + 61 de
        componente + 1 de integração, todos verdes
 
 ## Terraform — `backend/infra/terraform/cicd/` (IAM Role do backend)
