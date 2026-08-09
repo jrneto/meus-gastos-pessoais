@@ -1,0 +1,56 @@
+name: Backend — PR automático para develop
+
+# Dispara em push em qualquer branch de feature (convenção: nomeada
+# como a pasta de spec, ex.: FEAT-14-nome-feature — ver /CLAUDE.md
+# raiz), só quando o backend muda. Se o gate de qualidade passar, abre
+# um PR pra develop automaticamente (idempotente — não duplica em
+# pushes seguintes). Merge continua sempre manual. Espelha
+# frontend-feature-pr.yml (FEAT-10 do frontend) — o filtro de `paths`
+# garante que os dois workflows nunca disparam para o mesmo push.
+on:
+  push:
+    branches: ['FEAT-*']
+    paths:
+      - 'backend/**'
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - run: dotnet build GastosApp.sln -c Release
+      - run: dotnet test GastosApp.sln -c Release
+
+  open-pr:
+    needs: quality
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write # só este job precisa — quality fica só com contents: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Abrir PR para develop (se ainda não existir)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          existing=$(gh pr list --head "${{ github.ref_name }}" --base develop \
+            --state open --json number --jq 'length')
+          if [ "$existing" -eq 0 ]; then
+            gh pr create --base develop --head "${{ github.ref_name }}" \
+              --title "${{ github.ref_name }}" \
+              --body "Aberto automaticamente pelo gate de qualidade (backend-feature-pr.yml) — FEAT-14."
+          else
+            echo "PR já existe para ${{ github.ref_name }} → develop, nada a fazer."
+          fi

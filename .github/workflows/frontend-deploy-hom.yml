@@ -89,6 +89,12 @@ jobs:
   # bem-sucedido (FEAT-11) — nunca publica sozinho, só deixa pronta pra
   # revisão. Publicar continua manual e dispara frontend-deploy-prod.yml
   # normalmente, sem nenhuma mudança nesse workflow.
+  #
+  # Filtra tudo por tag que NÃO comece com "backend-v": desde a FEAT-14
+  # do backend, o mesmo repositório passou a ter releases do backend
+  # com esse prefixo — sem o filtro, este job apagaria/confundiria o
+  # rascunho pendente do backend com o do frontend (ver
+  # backend/specs/FEAT-14-cicd-github-actions/plan.md, decisão 5).
   draft-release:
     needs: deploy
     runs-on: ubuntu-latest
@@ -104,10 +110,9 @@ jobs:
           set -e
 
           # 1) Versão sugerida = patch bump da última release PUBLICADA
-          #    (exclui rascunhos — um rascunho pendente não conta como
-          #    referência de versão)
-          last_tag=$(gh release list --exclude-drafts --limit 1 \
-            --json tagName --jq '.[0].tagName // ""')
+          #    do frontend (exclui rascunhos e qualquer tag "backend-v")
+          last_tag=$(gh release list --exclude-drafts --json tagName \
+            --jq '[.[] | select(.tagName | startswith("backend-v") | not)] | .[0].tagName // ""')
 
           if [ -z "$last_tag" ]; then
             new_tag="v0.0.1"
@@ -117,11 +122,12 @@ jobs:
             new_tag="v${major}.${minor}.$((patch + 1))"
           fi
 
-          # 2) Se já existe um rascunho pendente, remove antes de criar
-          #    o novo — garante que nunca haja mais de um rascunho ao
-          #    mesmo tempo (US4 da spec)
+          # 2) Se já existe um rascunho pendente do frontend, remove
+          #    antes de criar o novo — garante que nunca haja mais de
+          #    um rascunho do frontend ao mesmo tempo (US4 da spec),
+          #    sem tocar num eventual rascunho pendente do backend
           existing_draft=$(gh release list --json tagName,isDraft \
-            --jq '[.[] | select(.isDraft)] | .[0].tagName // ""')
+            --jq '[.[] | select(.isDraft and (.tagName | startswith("backend-v") | not))] | .[0].tagName // ""')
 
           if [ -n "$existing_draft" ]; then
             echo "Removendo rascunho pendente: $existing_draft"
@@ -130,9 +136,20 @@ jobs:
 
           # 3) Cria o novo rascunho, target = develop, notas geradas
           #    automaticamente a partir dos PRs mergeados desde a
-          #    última release publicada (recurso nativo do GitHub)
-          gh release create "$new_tag" \
-            --draft \
-            --target develop \
-            --title "$new_tag" \
-            --generate-notes
+          #    última release publicada do frontend. --notes-start-tag
+          #    evita que `gh` use a release mais recente do repositório
+          #    (que pode ser do backend) como referência.
+          if [ -n "$last_tag" ]; then
+            gh release create "$new_tag" \
+              --draft \
+              --target develop \
+              --title "$new_tag" \
+              --generate-notes \
+              --notes-start-tag "$last_tag"
+          else
+            gh release create "$new_tag" \
+              --draft \
+              --target develop \
+              --title "$new_tag" \
+              --generate-notes
+          fi

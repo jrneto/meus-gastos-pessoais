@@ -10,6 +10,25 @@
     }
   ],
   "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/register": {
       "post": {
         "tags": [
@@ -599,6 +618,29 @@
           }
         }
       },
+      "HealthResponse": {
+        "required": [
+          "status",
+          "version",
+          "commitSha",
+          "environment"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "commitSha": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "string"
+          }
+        }
+      },
       "LoginRequest": {
         "required": [
           "email",
@@ -868,6 +910,9 @@
     }
   },
   "tags": [
+    {
+      "name": "Health"
+    },
     {
       "name": "Auth"
     },

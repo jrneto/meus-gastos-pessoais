@@ -1,0 +1,106 @@
+name: Backend — Deploy Produção
+
+# Dispara a partir de uma GitHub Release publicada. Como frontend e
+# backend compartilham o mesmo repositório/evento `release: published`,
+# cada job verifica o prefixo da tag (`backend-v*`) antes de fazer
+# qualquer coisa — sem esse guard, uma release do frontend (`vX.Y.Z`)
+# também dispararia (e falharia, publicando código errado) este
+# pipeline, e vice-versa (ver
+# backend/specs/FEAT-14-cicd-github-actions/plan.md, decisão 5).
+on:
+  release:
+    types: [published]
+
+permissions:
+  id-token: write # necessário para autenticação AWS via OIDC (sem access key fixa)
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  quality:
+    if: startsWith(github.event.release.tag_name, 'backend-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - run: dotnet build GastosApp.sln -c Release
+      - run: dotnet test GastosApp.sln -c Release
+
+  deploy:
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: backend-prod
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Build do artefato (Native AOT)
+        run: ./infra/lambda/build.sh
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CICD_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Publicar código na Lambda (prod)
+        run: |
+          aws lambda update-function-code \
+            --function-name "${{ vars.FUNCTION_NAME }}" \
+            --zip-file fileb://infra/lambda/function.zip \
+            --publish
+          aws lambda wait function-updated --function-name "${{ vars.FUNCTION_NAME }}"
+
+      - name: Atualizar variáveis de versão na Lambda (prod)
+        run: |
+          current=$(aws lambda get-function-configuration \
+            --function-name "${{ vars.FUNCTION_NAME }}" \
+            --query 'Environment.Variables' --output json)
+
+          merged=$(echo "$current" | jq -c \
+            --arg version "${{ github.event.release.tag_name }}" \
+            --arg commit "${{ github.sha }}" \
+            '. + {APP_VERSION: $version, APP_COMMIT_SHA: $commit, APP_ENVIRONMENT: "prod"}')
+
+          aws lambda update-function-configuration \
+            --function-name "${{ vars.FUNCTION_NAME }}" \
+            --environment "Variables=$merged"
+          aws lambda wait function-updated --function-name "${{ vars.FUNCTION_NAME }}"
+
+  # Mantém main sempre refletindo o que está de fato em produção (mesmo
+  # princípio da FEAT-10 do frontend) — só roda se o deploy acima
+  # terminou com sucesso. Idempotente e convive com o job equivalente
+  # do frontend: como o par de branches é o mesmo (develop → main), o
+  # `existing` checado abaixo já reflete um PR aberto por qualquer um
+  # dos dois lados, nunca duplica.
+  open-pr-main:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Abrir PR develop → main (se ainda não existir)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          existing=$(gh pr list --head develop --base main \
+            --state open --json number --jq 'length')
+          if [ "$existing" -eq 0 ]; then
+            gh pr create --base main --head develop \
+              --title "Release ${{ github.event.release.tag_name }} → main" \
+              --body "Aberto automaticamente após deploy de produção do backend bem-sucedido (release \`${{ github.event.release.tag_name }}\`)."
+          else
+            echo "PR develop → main já existe, nada a fazer."
+          fi

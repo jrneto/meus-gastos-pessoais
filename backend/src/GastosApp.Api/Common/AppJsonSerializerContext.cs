@@ -5,6 +5,7 @@ using GastosApp.Application.Auth.Commands.Register;
 using GastosApp.Application.Expenses.Commands.RegisterExpense;
 using GastosApp.Application.Expenses.Commands.UpdateExpense;
 using GastosApp.Application.Expenses.Queries.GetExpenses;
+using GastosApp.Application.Health;
 
 namespace GastosApp.Api.Common;
 
@@ -25,6 +26,7 @@ namespace GastosApp.Api.Common;
 [JsonSerializable(typeof(ExpenseSummary))]
 [JsonSerializable(typeof(UserInfoResponse))]
 [JsonSerializable(typeof(GetExpensesRequest))]
+[JsonSerializable(typeof(HealthResponse))]
 public partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }
