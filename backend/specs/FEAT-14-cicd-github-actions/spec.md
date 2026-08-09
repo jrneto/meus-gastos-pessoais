@@ -308,10 +308,13 @@ Não há mudança nos endpoints de negócio já documentados em
       geradas automaticamente, sem colidir com tags do frontend —
       validado ao vivo: rascunho `backend-v0.0.1` criado, com notas
       geradas, prefixo correto
-- [ ] Um deploy de hom subsequente, com rascunho já pendente, atualiza
-      esse rascunho em vez de criar um novo
+- [x] Um deploy de hom subsequente, com rascunho já pendente, atualiza
+      esse rascunho em vez de criar um novo — validado ao vivo (2º
+      deploy de hom manteve um único rascunho `backend-v0.0.1`)
 - [ ] Nenhum rascunho é publicado automaticamente; publicá-lo
       manualmente dispara o deploy de produção do backend normalmente
+      — criação em modo draft confirmada; publicação manual → deploy
+      de prod ainda não exercitada
 
 ## Status
 

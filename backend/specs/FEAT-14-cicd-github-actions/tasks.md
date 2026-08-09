@@ -180,7 +180,9 @@
        `{"status":"ok","version":"dev-141f943","commitSha":"141f9439ed43fc8aa0cab0d24394a44441774792","environment":"hom"}`
        — `commitSha` bate exatamente com `git rev-parse HEAD` do commit
        que disparou o deploy. Rascunho `backend-v0.0.1` criado, com
-       notas geradas
+       notas geradas. **3º deploy de hom** (push só de docs em
+       `backend/specs/`) confirmou idempotência: rascunho continuou
+       único (`backend-v0.0.1` atualizado, não duplicado)
 - [x] 35. Validar que o rascunho de teste do frontend (se houver
        algum pendente) não foi afetado pela task 34, e vice-versa
        (confirma o filtro de prefixo das tasks 27/30) — rascunho criado
