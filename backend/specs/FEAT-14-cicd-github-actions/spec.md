@@ -256,29 +256,38 @@ Não há mudança nos endpoints de negócio já documentados em
 
 ## Critérios de aceite
 
-- [ ] Pipeline de homologação do backend: dispara automaticamente a
+- [x] Pipeline de homologação do backend: dispara automaticamente a
       partir de uma alteração em `backend/**` integrada a `develop`,
       roda `dotnet build` + `dotnet test`, e só publica na Lambda de
-      hom se tudo passar
+      hom se tudo passar — validado ao vivo (após corrigir 2 bugs reais
+      encontrados no processo, ver "Status")
 - [ ] Pipeline de produção do backend: dispara a partir de uma GitHub
       Release com tag semântica referente ao backend, roda
       build/testes para o código da tag, e só publica na Lambda de
-      prod se tudo passar
+      prod se tudo passar — ainda não exercitado
 - [ ] Falha em qualquer etapa de qualidade (build/teste) impede o
-      deploy, em ambos os pipelines
-- [ ] É possível identificar externamente a versão publicada em cada
-      ambiente (hom e prod) após um deploy
-- [ ] Deploy de homologação nunca afeta a Lambda/API Gateway de
-      produção, e vice-versa
-- [ ] Autenticação do pipeline na AWS feita via OIDC (IAM Role
-      assumida), sem access key de longa duração em secret
-- [ ] Nenhum recurso AWS novo (IAM Role, OIDC Provider) foi
+      deploy, em ambos os pipelines — não exercitado com falha real de
+      propósito (só falhas reais de infra, já corrigidas)
+- [~] É possível identificar externamente a versão publicada em cada
+      ambiente (hom e prod) após um deploy — confirmado em hom
+      (`curl https://api-hom.jrnexpenses.com/health`); prod ainda não
+      exercitado
+- [x] Deploy de homologação nunca afeta a Lambda/API Gateway de
+      produção, e vice-versa — confirmado via `curl`: hom respondendo
+      com o build novo, prod ainda `404` (código antigo, intocado)
+- [x] Autenticação do pipeline na AWS feita via OIDC (IAM Role
+      assumida), sem access key de longa duração em secret — confirmado
+      (job `deploy` passou por `configure-aws-credentials@v4` só com
+      `CICD_ROLE_ARN`, sem nenhuma access key em secret)
+- [x] Nenhum recurso AWS novo (IAM Role, OIDC Provider) foi
       criado/alterado sem aprovação explícita do usuário no momento da
-      execução
+      execução — Role criada manualmente pelo usuário, com aprovação e
+      conferência do JSON a cada etapa
 - [ ] Consumo de minutos de GitHub Actions, somado ao já usado pelo
       frontend, permanece dentro da cota gratuita de 2.000 min/mês
-      (repositório privado)
-- [ ] Nenhum novo recurso AWS com custo fixo por hora/instância ligada
+      (repositório privado) — plausível, mas sem volume de uso real
+      acumulado ainda pra confirmar com dados
+- [x] Nenhum novo recurso AWS com custo fixo por hora/instância ligada
       foi introduzido
 - [~] Push numa branch `FEAT-XX-nome` (backend) que altera
       `backend/**` roda o gate de qualidade e, se passar, abre PR
@@ -289,12 +298,16 @@ Não há mudança nos endpoints de negócio já documentados em
       exercitado: idempotência em push subsequente (sem duplicar PR)
 - [ ] Deploy de produção do backend bem-sucedido abre automaticamente
       um PR `develop → main`, se ainda não existir um aberto (sem
-      duplicar com a automação equivalente do frontend)
-- [ ] Nenhum dos PRs automáticos (feature→develop, develop→main) faz
-      merge sozinho
-- [ ] Deploy de hom do backend bem-sucedido cria/atualiza um rascunho
+      duplicar com a automação equivalente do frontend) — ainda não
+      exercitado (depende de publicar uma release de teste)
+- [~] Nenhum dos PRs automáticos (feature→develop, develop→main) faz
+      merge sozinho — confirmado pro PR #7 (feature→develop, mergeado
+      manualmente pelo usuário); develop→main ainda não exercitado
+- [x] Deploy de hom do backend bem-sucedido cria/atualiza um rascunho
       de release referente ao backend, com tag sugerida e notas
-      geradas automaticamente, sem colidir com tags do frontend
+      geradas automaticamente, sem colidir com tags do frontend —
+      validado ao vivo: rascunho `backend-v0.0.1` criado, com notas
+      geradas, prefixo correto
 - [ ] Um deploy de hom subsequente, com rascunho já pendente, atualiza
       esse rascunho em vez de criar um novo
 - [ ] Nenhum rascunho é publicado automaticamente; publicá-lo
@@ -302,11 +315,9 @@ Não há mudança nos endpoints de negócio já documentados em
 
 ## Status
 
-**Código implementado e testado localmente; provisionamento real e
-validação end-to-end pendentes** (exigem credenciais AWS válidas e
-acesso ao GitHub, indisponíveis no ambiente onde a implementação foi
-feita) — nenhum critério de aceite acima foi marcado `[x]` porque
-nenhum ainda foi observado rodando de verdade.
+**Deploy de homologação implementado e validado ao vivo, de ponta a
+ponta; deploy de produção e PR automático `develop → main` ainda
+pendentes de exercício real.**
 
 - **Endpoint `/health`**: implementado
   (`GetHealthQuery`/`GetHealthQueryHandler`, `HealthEndpoints.cs`),
@@ -318,12 +329,43 @@ nenhum ainda foi observado rodando de verdade.
   Cognito/Parameter Store reais, sem simulação), sem alterar nenhum
   endpoint existente. `dotnet test GastosApp.sln` confirmado 100% verde
   depois (123 unitários + 61 componente + 1 integração).
-- **Workflows** (`backend-feature-pr.yml`, `backend-deploy-hom.yml`,
-  `backend-deploy-prod.yml`) e o ajuste combinado em
-  `frontend-deploy-hom.yml` (filtro de prefixo `backend-v`):
-  implementados, YAML revisado manualmente (sem linter de Actions
-  disponível no ambiente). **Não exercitados** — nenhum push/release
-  real foi feito ainda.
+- **`backend-feature-pr.yml`**: validado ao vivo — push da branch
+  `FEAT-14-cicd-github-actions` disparou o workflow, `quality` passou,
+  PR #7 aberto automaticamente
+  (https://github.com/jrneto/meus-gastos-pessoais/pull/7), mergeado
+  manualmente pelo usuário.
+- **`backend-deploy-hom.yml`**: validado ao vivo, **2 bugs reais
+  encontrados e corrigidos durante a validação** (mesmo padrão já visto
+  no frontend, FEAT-09):
+  1. **`build.sh` sem bit de execução** — `infra/lambda/build.sh` está
+     `100644` no repo (sempre foi invocado como `bash
+     infra/lambda/build.sh` no fluxo manual); o workflow chamava
+     `./infra/lambda/build.sh` direto, que exige `+x` →
+     `Permission denied`. Corrigido em `771970a` (direto em `develop`,
+     bugfix pontual de pipeline, Modo Leve).
+  2. **Sintaxe do `--environment` no AWS CLI** — `aws lambda
+     update-function-configuration --environment "Variables=$json"`
+     falhava com `ParamValidation`: o prefixo `Variables=` faz o CLI
+     tentar interpretar como *shorthand syntax*, que não entende JSON
+     aninhado. Corrigido pra passar JSON puro (`{"Variables": {...}}`)
+     via `jq -n --argjson`, em `141f943`.
+  Depois dos 2 fixes, reexecução **passou 100%**
+  (`quality`/`deploy`/`draft-release` verdes), confirmado ao vivo:
+  `curl https://api-hom.jrnexpenses.com/health` →
+  `{"status":"ok","version":"dev-141f943","commitSha":"141f9439ed43fc8aa0cab0d24394a44441774792","environment":"hom"}`
+  (`commitSha` bate com `git rev-parse HEAD`); rascunho `backend-v0.0.1`
+  criado com notas geradas, prefixo correto (sem afetar rascunhos do
+  frontend); `api.jrnexpenses.com/health` (prod) continua `404` —
+  confirma isolamento.
+- **`backend-deploy-prod.yml`**: implementado, YAML revisado
+  manualmente. **Ainda não exercitado** — falta publicar o rascunho
+  `backend-v0.0.1` de teste.
+- **Ajuste em `frontend-deploy-hom.yml`** (filtro de prefixo
+  `backend-v`): implementado. Não exercitado diretamente (nenhum deploy
+  de hom do frontend rodou desde então), mas o rascunho `backend-v0.0.1`
+  criado pelo backend não apareceu confundido com nenhum rascunho do
+  frontend, indício indireto de que o filtro está funcionando nos dois
+  lados.
 - **Terraform `cicd/`** (`backend/infra/terraform/cicd/`): código
   criado e validado sintaticamente (`terraform fmt`/`validate`).
   `terraform plan` executado com credenciais AWS reais — **falhou
@@ -342,20 +384,16 @@ nenhum ainda foi observado rodando de verdade.
   (`gastos-app-api-hom`/`gastos-app-api`). Permissão "Allow GitHub
   Actions to create and approve pull requests" confirmada já ativa
   (herdada da FEAT-10 do frontend).
-- **Validação end-to-end**: **US8 validada ao vivo** — push desta
-  própria branch disparou `backend-feature-pr.yml`, `quality` passou,
-  PR #7 aberto automaticamente para `develop`
-  (https://github.com/jrneto/meus-gastos-pessoais/pull/7). Faltam:
-  merge do PR (dispara `backend-deploy-hom.yml` pela primeira vez,
-  US1/US3/US12) e, depois, publicar a release de teste (US2/US10).
+- **Validado ao vivo**: US1, US3 (parcial, só hom), US4, US6, US7, US8
+  (parcial — idempotência de push subsequente não exercitada), US12.
+- **Ainda pendente**: publicar o rascunho `backend-v0.0.1` e observar
+  `backend-deploy-prod.yml` (US2, US3 em prod, US10, US13), PR
+  `develop → main` (US10, US11 parcial), idempotência de US9/US10 em
+  releases subsequentes, e volume real de uso pra confirmar a cota de
+  minutos do Actions (US5).
 
-**Próximos passos, na ordem**: aplicar/criar a Role e os Environments
-→ mergear esta branch (o próprio merge já é o primeiro teste real do
-`backend-feature-pr.yml`) → observar o primeiro deploy de hom e
-rascunho de release → publicar o rascunho e observar o deploy de
-produção + PR `develop → main` → marcar os critérios de aceite
-conforme cada um for confirmado ao vivo, seguindo o mesmo padrão de
-honestidade já usado nas specs do frontend.
+**Próximo passo**: publicar manualmente o rascunho `backend-v0.0.1` no
+GitHub e observar `backend-deploy-prod.yml` rodar pela primeira vez.
 
 ## Fora do escopo
 

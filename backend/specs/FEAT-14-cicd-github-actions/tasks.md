@@ -174,20 +174,31 @@
           JSON aninhado. Corrigido pra passar JSON puro
           (`{"Variables": {...}}`) via `jq -n --argjson`, nos dois
           workflows (hom e prod).
-       Reexecução pendente de confirmação após o 2º fix
-- [ ] 35. Validar que o rascunho de teste do frontend (se houver
+       Reexecução (após os 2 fixes) **passou 100%**: `quality` +
+       `deploy` + `draft-release` verdes. Confirmado ao vivo via
+       `curl https://api-hom.jrnexpenses.com/health` →
+       `{"status":"ok","version":"dev-141f943","commitSha":"141f9439ed43fc8aa0cab0d24394a44441774792","environment":"hom"}`
+       — `commitSha` bate exatamente com `git rev-parse HEAD` do commit
+       que disparou o deploy. Rascunho `backend-v0.0.1` criado, com
+       notas geradas
+- [x] 35. Validar que o rascunho de teste do frontend (se houver
        algum pendente) não foi afetado pela task 34, e vice-versa
-       (confirma o filtro de prefixo das tasks 27/30) — **pendente**
+       (confirma o filtro de prefixo das tasks 27/30) — rascunho criado
+       foi exatamente `backend-v0.0.1` (prefixo correto), sem menção a
+       nenhum rascunho `v*` do frontend sendo tocado
 - [ ] 36. Publicar manualmente o rascunho `backend-v*` de teste e
        validar `backend-deploy-prod.yml`: `https://api.jrnexpenses.com/health`
        reflete a tag publicada, PR `develop → main` aberto (ou
        confirmado já existente, sem duplicar) — **pendente**
-- [ ] 37. Confirmar isolamento: nenhum deploy de hom afetou a Lambda de
-       prod, e vice-versa (comparar `/health` dos dois ambientes) —
-       **pendente**
-- [ ] 38. Confirmar autenticação AWS via OIDC nos logs do workflow
-       (sem `AWS_ACCESS_KEY_ID`/secret de longa duração em nenhum
-       step) — **pendente**
+- [x] 37. Confirmar isolamento: nenhum deploy de hom afetou a Lambda de
+       prod, e vice-versa — confirmado via `curl`:
+       `api-hom.jrnexpenses.com/health` responde com o build novo,
+       `api.jrnexpenses.com/health` continua `404` (código antigo,
+       ainda sem o endpoint `/health` — prod não foi tocada)
+- [x] 38. Confirmar autenticação AWS via OIDC nos logs do workflow —
+       job `deploy` passou pelo step `aws-actions/configure-aws-credentials@v4`
+       sem nenhuma access key configurada em secret (só `CICD_ROLE_ARN`
+       como variável pública do Environment)
 
 ## Fechamento
 
