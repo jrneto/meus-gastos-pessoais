@@ -158,7 +158,15 @@
 - [ ] 34. Validar `backend-deploy-hom.yml`: merge em `develop` publica
        `https://api-hom.jrnexpenses.com/health` com o build novo
        (`environment: "hom"`), cria rascunho `backend-v0.0.1` (ou
-       patch bump correspondente) — **pendente**
+       patch bump correspondente) — **1ª tentativa falhou**: job
+       `deploy` → step `Build do artefato (Native AOT)` →
+       `Permission denied` ao rodar `./infra/lambda/build.sh`
+       (arquivo está `100644` no repo, sem bit de execução — sempre foi
+       invocado como `bash infra/lambda/build.sh` no fluxo manual, ver
+       README). Corrigido em `771970a` (direto em `develop`, bugfix
+       pontual de pipeline, Modo Leve). Reexecução pendente de
+       confirmação — este commit em `backend/**` deve disparar o
+       workflow de novo
 - [ ] 35. Validar que o rascunho de teste do frontend (se houver
        algum pendente) não foi afetado pela task 34, e vice-versa
        (confirma o filtro de prefixo das tasks 27/30) — **pendente**
