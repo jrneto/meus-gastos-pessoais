@@ -71,9 +71,15 @@ jobs:
             --arg commit "${{ github.sha }}" \
             '. + {APP_VERSION: $version, APP_COMMIT_SHA: $commit, APP_ENVIRONMENT: "prod"}')
 
+          # --environment precisa de JSON puro ({"Variables": {...}}) —
+          # o prefixo "Variables=" faz o AWS CLI tentar interpretar como
+          # shorthand syntax, que não entende JSON aninhado (mesmo
+          # achado do backend-deploy-hom.yml).
+          environment_json=$(jq -n --argjson vars "$merged" '{Variables: $vars}')
+
           aws lambda update-function-configuration \
             --function-name "${{ vars.FUNCTION_NAME }}" \
-            --environment "Variables=$merged"
+            --environment "$environment_json"
           aws lambda wait function-updated --function-name "${{ vars.FUNCTION_NAME }}"
 
   # Mantém main sempre refletindo o que está de fato em produção (mesmo

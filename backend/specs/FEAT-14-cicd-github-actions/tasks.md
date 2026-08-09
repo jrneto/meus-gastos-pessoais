@@ -158,15 +158,23 @@
 - [ ] 34. Validar `backend-deploy-hom.yml`: merge em `develop` publica
        `https://api-hom.jrnexpenses.com/health` com o build novo
        (`environment: "hom"`), cria rascunho `backend-v0.0.1` (ou
-       patch bump correspondente) — **1ª tentativa falhou**: job
-       `deploy` → step `Build do artefato (Native AOT)` →
-       `Permission denied` ao rodar `./infra/lambda/build.sh`
-       (arquivo está `100644` no repo, sem bit de execução — sempre foi
-       invocado como `bash infra/lambda/build.sh` no fluxo manual, ver
-       README). Corrigido em `771970a` (direto em `develop`, bugfix
-       pontual de pipeline, Modo Leve). Reexecução pendente de
-       confirmação — este commit em `backend/**` deve disparar o
-       workflow de novo
+       patch bump correspondente) — **2 bugs reais encontrados e
+       corrigidos** (mesmo padrão de validação ao vivo já visto no
+       frontend, FEAT-09):
+       1. Job `deploy` → step `Build do artefato (Native AOT)` →
+          `Permission denied` ao rodar `./infra/lambda/build.sh`
+          (arquivo está `100644` no repo, sem bit de execução — sempre
+          foi invocado como `bash infra/lambda/build.sh` no fluxo
+          manual, ver README). Corrigido em `771970a`.
+       2. Job `deploy` → step `Atualizar variáveis de versão na Lambda
+          (hom)` → `aws lambda update-function-configuration` falhou
+          (`ParamValidation: Error parsing parameter '--environment'`)
+          — o prefixo `Variables=$merged` faz o AWS CLI tentar
+          interpretar o valor como *shorthand syntax*, que não entende
+          JSON aninhado. Corrigido pra passar JSON puro
+          (`{"Variables": {...}}`) via `jq -n --argjson`, nos dois
+          workflows (hom e prod).
+       Reexecução pendente de confirmação após o 2º fix
 - [ ] 35. Validar que o rascunho de teste do frontend (se houver
        algum pendente) não foi afetado pela task 34, e vice-versa
        (confirma o filtro de prefixo das tasks 27/30) — **pendente**

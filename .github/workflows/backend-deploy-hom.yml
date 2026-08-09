@@ -82,9 +82,15 @@ jobs:
             --arg commit "${{ github.sha }}" \
             '. + {APP_VERSION: $version, APP_COMMIT_SHA: $commit, APP_ENVIRONMENT: "hom"}')
 
+          # --environment precisa de JSON puro ({"Variables": {...}}) —
+          # o prefixo "Variables=" faz o AWS CLI tentar interpretar como
+          # shorthand syntax, que não entende JSON aninhado (achado real
+          # na 1ª execução desta feature).
+          environment_json=$(jq -n --argjson vars "$merged" '{Variables: $vars}')
+
           aws lambda update-function-configuration \
             --function-name "${{ vars.FUNCTION_NAME }}" \
-            --environment "Variables=$merged"
+            --environment "$environment_json"
           aws lambda wait function-updated --function-name "${{ vars.FUNCTION_NAME }}"
 
   # Cria/atualiza uma GitHub Release em rascunho a cada deploy de hom
