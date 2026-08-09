@@ -280,9 +280,13 @@ Não há mudança nos endpoints de negócio já documentados em
       (repositório privado)
 - [ ] Nenhum novo recurso AWS com custo fixo por hora/instância ligada
       foi introduzido
-- [ ] Push numa branch `FEAT-XX-nome` (backend) que altera
+- [~] Push numa branch `FEAT-XX-nome` (backend) que altera
       `backend/**` roda o gate de qualidade e, se passar, abre PR
-      automático para `develop` (sem duplicar em pushes subsequentes)
+      automático para `develop` — validado ao vivo (push nesta própria
+      branch disparou `backend-feature-pr.yml`, `quality` verde, PR #7
+      aberto automaticamente:
+      https://github.com/jrneto/meus-gastos-pessoais/pull/7). Ainda não
+      exercitado: idempotência em push subsequente (sem duplicar PR)
 - [ ] Deploy de produção do backend bem-sucedido abre automaticamente
       um PR `develop → main`, se ainda não existir um aberto (sem
       duplicar com a automação equivalente do frontend)
@@ -338,10 +342,12 @@ nenhum ainda foi observado rodando de verdade.
   (`gastos-app-api-hom`/`gastos-app-api`). Permissão "Allow GitHub
   Actions to create and approve pull requests" confirmada já ativa
   (herdada da FEAT-10 do frontend).
-- **Validação end-to-end** (US1–US13): ainda pendente — esta branch
-  (`FEAT-14-cicd-github-actions`) ainda não foi enviada ao GitHub;
-  falta o push (dispara `backend-feature-pr.yml` pela primeira vez),
-  merge do PR e observação do primeiro deploy real de hom/prod.
+- **Validação end-to-end**: **US8 validada ao vivo** — push desta
+  própria branch disparou `backend-feature-pr.yml`, `quality` passou,
+  PR #7 aberto automaticamente para `develop`
+  (https://github.com/jrneto/meus-gastos-pessoais/pull/7). Faltam:
+  merge do PR (dispara `backend-deploy-hom.yml` pela primeira vez,
+  US1/US3/US12) e, depois, publicar a release de teste (US2/US10).
 
 **Próximos passos, na ordem**: aplicar/criar a Role e os Environments
 → mergear esta branch (o próprio merge já é o primeiro teste real do

@@ -149,10 +149,12 @@
 
 ## Validação end-to-end
 
-- [ ] 33. Validar `backend-feature-pr.yml`: push numa branch de teste
-       alterando `backend/**` abre PR automático para `develop`, sem
-       duplicar em push subsequente — **pendente** (depende da Role +
-       Environments + push real no GitHub)
+- [x] 33. Validar `backend-feature-pr.yml`: push da própria branch
+       `FEAT-14-cicd-github-actions` disparou o workflow, `quality`
+       passou, PR #7 aberto automaticamente
+       (https://github.com/jrneto/meus-gastos-pessoais/pull/7). Não
+       exercitado ainda: idempotência em push subsequente (sem
+       duplicar PR)
 - [ ] 34. Validar `backend-deploy-hom.yml`: merge em `develop` publica
        `https://api-hom.jrnexpenses.com/health` com o build novo
        (`environment: "hom"`), cria rascunho `backend-v0.0.1` (ou
