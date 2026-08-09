@@ -290,8 +290,16 @@ policy (cola o JSON de policy acima, nome
 `gastosapp-backend-cicd-deploy`) → nome da Role:
 `gastosapp-backend-cicd`.
 
-Depois de criada, se a permissão de leitura for liberada no futuro,
-importar pra trazer ao state:
+**Role criada manualmente pelo usuário (2026-08-08)**:
+`arn:aws:iam::648443184523:role/gastosapp-backend-cicd`.
+`terraform import` tentado logo em seguida — **também falhou**
+(`AccessDenied` em `iam:ListOpenIDConnectProviders` e, testado à parte,
+`iam:GetRole` também negado) — o guardrail cobre leitura de IAM/OIDC de
+forma geral, não só escrita. A Role fica fora do state por enquanto,
+mesma situação de `gastosapp-frontend-cicd`.
+
+Se a permissão de leitura for liberada no futuro, importar pra trazer
+ao state:
 
 ```bash
 cd backend/infra/terraform/cicd

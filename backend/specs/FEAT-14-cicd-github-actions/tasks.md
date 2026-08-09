@@ -75,11 +75,12 @@
        configurado), `plan` **falhou** com `AccessDenied` (ver task 20)
 - [x] 20. Rodar `terraform apply` — **não rodou**: `plan` falhou antes,
        com `AccessDenied: iam:ListOpenIDConnectProviders`, confirmando
-       o mesmo gap do frontend (agora também em leitura, não só
-       escrita). Nenhum recurso foi criado. Gap documentado em
-       `backend/infra/terraform/README.md` com o JSON exato (trust
-       policy + policy inline) para criação manual no console —
-       **aguardando o usuário criar a Role `gastosapp-backend-cicd`**
+       o mesmo gap do frontend. Role `gastosapp-backend-cicd` criada
+       **manualmente pelo usuário** no console
+       (`arn:aws:iam::648443184523:role/gastosapp-backend-cicd`).
+       `terraform import` tentado em seguida — também bloqueado
+       (`AccessDenied` em `iam:GetRole`/`ListOpenIDConnectProviders`);
+       Role fica fora do state, mesma situação da do frontend
 - [x] 21. Atualizar `backend/infra/terraform/README.md` documentando a
        config `cicd/` (mesmo padrão da seção "cicd/" do README do
        frontend), incluindo o resultado real do `plan` e o JSON pra

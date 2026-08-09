@@ -327,11 +327,16 @@ nenhum ainda foi observado rodando de verdade.
   `AccessDenied: iam:ListOpenIDConnectProviders`, mesmo com o perfil
   admin. Nenhum recurso foi criado (falha ocorreu no `plan`, antes de
   qualquer `apply`). JSON exato da trust policy e da policy inline
-  documentado em `backend/infra/terraform/README.md`, seção "cicd/",
-  pra criação manual da Role `gastosapp-backend-cicd` no console.
+  documentado em `backend/infra/terraform/README.md`, seção "cicd/".
+- **Role `gastosapp-backend-cicd` criada manualmente pelo usuário**:
+  `arn:aws:iam::648443184523:role/gastosapp-backend-cicd`.
+  `terraform import` tentado em seguida — **também bloqueado**
+  (`AccessDenied` em `iam:GetRole`/`ListOpenIDConnectProviders`); fica
+  fora do state, mesma situação da Role do frontend.
 - **GitHub Environments `backend-hom`/`backend-prod`**: **não
-  criados** — depende da Role existir primeiro (para cadastrar
-  `CICD_ROLE_ARN`); usuário precisa criar via UI do GitHub.
+  criados** — usuário precisa criar via UI do GitHub e cadastrar
+  `CICD_ROLE_ARN=arn:aws:iam::648443184523:role/gastosapp-backend-cicd`
+  + `FUNCTION_NAME`.
 - **Validação end-to-end** (US1–US13): nenhuma foi observada ao vivo
   ainda — depende dos passos acima estarem prontos primeiro (Role
   criada manualmente, Environments configurados).
