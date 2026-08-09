@@ -84,6 +84,44 @@ Sem frontend de homologação ainda: CORS (`frontend_origins`) e
 (`[]` e `http://localhost:5173`, respectivamente) — trocar quando
 existir um frontend de homologação real.
 
+## Esteira de CI/CD (FEAT-14)
+
+Desde a FEAT-14, o deploy do backend (build Native AOT + publicação na
+Lambda) é automatizado via GitHub Actions, replicando as regras já
+validadas no frontend (FEAT-09/10/11):
+`.github/workflows/backend-feature-pr.yml` (PR automático
+branch→develop), `backend-deploy-hom.yml` (deploy automático em hom a
+cada push em `develop`, + rascunho de release) e
+`backend-deploy-prod.yml` (deploy disparado por GitHub Release, + PR
+automático develop→main) — ver
+`backend/specs/FEAT-14-cicd-github-actions/`.
+
+- **Deploy real feito fora do Terraform**: os workflows publicam o
+  artefato via `aws lambda update-function-code` e definem
+  `APP_VERSION`/`APP_COMMIT_SHA`/`APP_ENVIRONMENT` via
+  `aws lambda update-function-configuration` (com merge das variáveis
+  já geridas pelo Terraform) — nenhum `terraform apply` roda em CI, só
+  em execução manual e aprovada. Consequência: `lambda.tf` de cada
+  ambiente **não deve declarar** essas 3 chaves no bloco
+  `environment{}`, para não competir com o que o pipeline acabou de
+  publicar.
+- **Autenticação AWS via OIDC**: IAM Role dedicada
+  `gastosapp-backend-cicd` (`backend/infra/terraform/cicd/`),
+  reaproveitando o OIDC Provider do GitHub Actions já existente na
+  conta (criado para o frontend na FEAT-09 — é um recurso único por
+  conta, não por contexto). Mesmo gap conhecido do frontend é esperado
+  aqui: o perfil `agent-toolkit` provavelmente não tem permissão de
+  `iam:CreateRole`/`PutRolePolicy` — se `apply` falhar por
+  `AccessDenied`, a Role é criada manualmente no console, conferida
+  contra os `.tf`.
+- **Convenção de tag `backend-v*`**: como o repositório é compartilhado
+  com o frontend (que usa `vX.Y.Z`), releases do backend usam o
+  prefixo `backend-v` para não colidir em nenhum dos dois workflows
+  (deploy de produção, rascunho automático de release).
+- **GitHub Environments dedicados**: `backend-hom`/`backend-prod`
+  (distintos de `hom`/`prod`, já usados pelo frontend), cada um com as
+  variáveis `CICD_ROLE_ARN` e `FUNCTION_NAME`.
+
 ## Estado legado (pendente de decisão)
 
 `docker-compose.yml`, `kong.yml` e `scripts/` (incluindo

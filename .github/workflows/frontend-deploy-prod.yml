@@ -5,6 +5,12 @@ name: Frontend — Deploy Produção
 # produção, sem filtro de `paths`: a release deve sempre refletir
 # exatamente o estado da tag, independente de quais arquivos mudaram
 # desde a última release (ver frontend/specs/FEAT-09-cicd-github-actions/plan.md).
+#
+# Desde a FEAT-14 (backend), o mesmo repositório também publica releases
+# com prefixo "backend-v*" — o job `quality` ignora qualquer release
+# nesse prefixo, pra não fazer deploy do frontend a partir de uma
+# release que não é dele (bug real: aconteceu na validação ao vivo da
+# FEAT-14, publicar `backend-v0.0.1` disparou este workflow também).
 on:
   release:
     types: [published]
@@ -19,6 +25,7 @@ defaults:
 
 jobs:
   quality:
+    if: "!startsWith(github.event.release.tag_name, 'backend-v')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
