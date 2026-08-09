@@ -219,7 +219,8 @@
 ## Fechamento
 
 - [x] 39. Atualizar `backend/specs/FEAT-14-cicd-github-actions/spec.md`
-       — seção "Status" adicionada, honesta sobre o que está
-       implementado/testado localmente vs. pendente de provisionamento
-       real e validação ao vivo; nenhum critério de aceite marcado
-       `[x]` ainda, porque nenhum foi observado rodando de verdade
+       — todos os critérios de aceite validados ao vivo marcados `[x]`,
+       seção "Status" final resumindo os 3 bugs reais encontrados e
+       corrigidos, e a validação completa (PR #7 feature→develop e PR
+       #8 develop→main, ambos mergeados manualmente pelo usuário —
+       `main` agora reflete de fato produção, backend e frontend)

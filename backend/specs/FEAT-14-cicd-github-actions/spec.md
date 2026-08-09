@@ -302,10 +302,10 @@ Não há mudança nos endpoints de negócio já documentados em
 - [x] Deploy de produção do backend bem-sucedido abre automaticamente
       um PR `develop → main`, se ainda não existir um aberto — validado
       ao vivo (job `open-pr-main` abriu o PR após o deploy de prod)
-- [~] Nenhum dos PRs automáticos (feature→develop, develop→main) faz
-      merge sozinho — confirmado pro PR #7 (feature→develop, mergeado
-      manualmente pelo usuário); PR develop→main aberto e aguardando
-      revisão manual (ainda não mergeado no momento do registro)
+- [x] Nenhum dos PRs automáticos (feature→develop, develop→main) faz
+      merge sozinho — confirmado nos dois: PR #7 (feature→develop) e PR
+      #8 (develop→main), ambos mergeados manualmente pelo usuário,
+      nenhum merge automático em nenhum dos dois
 - [x] Deploy de hom do backend bem-sucedido cria/atualiza um rascunho
       de release referente ao backend, com tag sugerida e notas
       geradas automaticamente, sem colidir com tags do frontend —
@@ -408,9 +408,12 @@ FEAT-09/10/11 do frontend.
   Actions to create and approve pull requests" confirmada já ativa
   (herdada da FEAT-10 do frontend).
 - **Validado ao vivo**: US1, US2, US3, US4, US6, US7, US8 (parcial),
-  US10, US12, US13. PR #7 (feature→develop) mergeado manualmente; PR
-  develop→main aberto automaticamente, aguardando revisão/merge manual
-  do usuário (US11 confirmado no primeiro, consistente no segundo).
+  US10, US11, US12, US13. PR #7 (feature→develop) e PR #8
+  (develop→main) — ambos abertos automaticamente pelos workflows,
+  ambos mergeados manualmente pelo usuário, nenhum merge automático em
+  nenhum dos dois. `main` agora reflete de fato o que está publicado em
+  produção (backend e frontend), fechando o objetivo central da
+  FEAT-10 do frontend também pro lado do backend.
 - **3 bugs reais encontrados e corrigidos durante a validação** (mesmo
   padrão de rigor já visto nas FEAT-09/10/11 do frontend): (1)
   `build.sh` sem bit de execução, (2) sintaxe do `--environment` no AWS
