@@ -121,20 +121,55 @@ GitHub:
 
 ## Critérios de aceite
 
-- [ ] Deploy de hom bem-sucedido cria um rascunho de release, se não
-      existir nenhum pendente
-- [ ] A tag sugerida do rascunho é o patch bump da última release
-      publicada (ou `v0.0.1` se não houver nenhuma publicada ainda)
-- [ ] As notas do rascunho são geradas automaticamente a partir dos
-      PRs mergeados desde a última release publicada
-- [ ] Um deploy de hom subsequente, com um rascunho já pendente,
-      atualiza esse rascunho em vez de criar um novo
-- [ ] Nenhum rascunho é publicado automaticamente em nenhum momento
-- [ ] Publicar manualmente um rascunho criado por esta automação
+- [x] Deploy de hom bem-sucedido cria um rascunho de release, se não
+      existir nenhum pendente — validado ao vivo (`v0.1.1` criado
+      após o merge da própria FEAT-11 em `develop`)
+- [x] A tag sugerida do rascunho é o patch bump da última release
+      publicada (ou `v0.0.1` se não houver nenhuma publicada ainda) —
+      `v0.1.0` → `v0.1.1` → `v0.1.2`, confirmado nas 2 rodadas de teste
+- [x] As notas do rascunho são geradas automaticamente a partir dos
+      PRs mergeados desde a última release publicada — confirmado
+      (`v0.1.2` listou os PRs #4 e #5 corretamente em "What's Changed")
+- [x] Um deploy de hom subsequente, com um rascunho já pendente,
+      atualiza esse rascunho em vez de criar um novo — validado ao
+      vivo com 2 pushes consecutivos sem publicar entre eles: só um
+      rascunho (`v0.1.2`) permaneceu, com o changelog acumulando os 2
+      PRs
+- [x] Nenhum rascunho é publicado automaticamente em nenhum momento —
+      confirmado (`v0.1.1` apareceu como Draft, precisou de clique
+      manual em "Publish release")
+- [x] Publicar manualmente um rascunho criado por esta automação
       dispara `frontend-deploy-prod.yml` normalmente, sem diferença
-      em relação a uma release criada do zero
-- [ ] Nenhum recurso novo (AWS ou de terceiros) foi criado; consumo de
+      em relação a uma release criada do zero — validado ao vivo
+      (publicar `v0.1.1` disparou o deploy de produção normalmente,
+      inclusive a automação `develop → main` da FEAT-10, antes
+      pendente de teste)
+- [x] Nenhum recurso novo (AWS ou de terceiros) foi criado; consumo de
       minutos de Actions permanece dentro da cota gratuita
+
+## Status
+
+**Implementado e validado end-to-end, incluindo idempotência.**
+
+- Merge da própria FEAT-11 em `develop` (via PR automático da FEAT-10)
+  disparou o primeiro deploy de hom real com o job `draft-release` —
+  criou `v0.1.1` como rascunho, com notas geradas automaticamente.
+- Usuário publicou `v0.1.1` manualmente para testar a cadeia completa:
+  isso disparou `frontend-deploy-prod.yml` normalmente (deploy de
+  produção real, confirmado via bundle ao vivo em `jrnexpenses.com`) e,
+  por consequência, a automação `develop → main` da FEAT-10 (antes
+  pendente de validação) — o PR `develop → main` foi aberto e
+  mergeado, fechando também aquele gap em aberto.
+- **Idempotência testada de propósito**: 2 branches de teste
+  (`FEAT-99-teste-idempotencia-draft-release{,-2}`, sem spec própria —
+  só validação, não features reais) geraram 2 pushes consecutivos em
+  `develop` sem publicar o rascunho entre eles. Resultado: só um
+  rascunho (`v0.1.2`) permaneceu, com o changelog acumulando os PRs
+  #4 e #5 — confirma que o delete+recreate funciona como desenhado,
+  sem acumular rascunhos.
+- Rascunho de teste `v0.1.2` (só conteúdo trivial) deixado como está,
+  por decisão do usuário — será substituído automaticamente na
+  próxima mudança real.
 
 ## Fora do escopo
 
