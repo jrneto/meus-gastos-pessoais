@@ -188,10 +188,24 @@
        (confirma o filtro de prefixo das tasks 27/30) — rascunho criado
        foi exatamente `backend-v0.0.1` (prefixo correto), sem menção a
        nenhum rascunho `v*` do frontend sendo tocado
-- [ ] 36. Publicar manualmente o rascunho `backend-v*` de teste e
-       validar `backend-deploy-prod.yml`: `https://api.jrnexpenses.com/health`
-       reflete a tag publicada, PR `develop → main` aberto (ou
-       confirmado já existente, sem duplicar) — **pendente**
+- [x] 36. Publicar manualmente o rascunho `backend-v0.0.1` e validar
+       `backend-deploy-prod.yml` — **3º bug real encontrado**: publicar
+       a release do backend também disparou
+       `frontend-deploy-prod.yml` (sem nenhum filtro de tag), que
+       deployou o frontend em produção com
+       `VITE_APP_VERSION=backend-v0.0.1` — bundle publicado com a
+       versão errada (`jrnexpenses.com` mostrando `backend-v0.0.1` em
+       vez de `v0.1.2`). Corrigido em `e4b6f13` (guard
+       `if: !startsWith(tag_name, 'backend-v')` no job `quality` de
+       `frontend-deploy-prod.yml`, espelhando o guard já existente do
+       lado do backend). Remediado ao vivo: usuário re-rodou o run
+       original da release `v0.1.2` ("Re-run all jobs"), confirmado via
+       bundle real que `jrnexpenses.com` voltou a mostrar `v0.1.2`.
+       `backend-deploy-prod.yml` em si passou 100%:
+       `curl https://api.jrnexpenses.com/health` →
+       `{"status":"ok","version":"backend-v0.0.1","commitSha":"777b3d130198580f8f70d41f8fd10ad41a974c2a","environment":"prod"}`.
+       PR `develop → main` aberto automaticamente pelo job
+       `open-pr-main`
 - [x] 37. Confirmar isolamento: nenhum deploy de hom afetou a Lambda de
        prod, e vice-versa — confirmado via `curl`:
        `api-hom.jrnexpenses.com/health` responde com o build novo,

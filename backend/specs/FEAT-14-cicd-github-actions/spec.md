@@ -261,17 +261,20 @@ Não há mudança nos endpoints de negócio já documentados em
       roda `dotnet build` + `dotnet test`, e só publica na Lambda de
       hom se tudo passar — validado ao vivo (após corrigir 2 bugs reais
       encontrados no processo, ver "Status")
-- [ ] Pipeline de produção do backend: dispara a partir de uma GitHub
+- [x] Pipeline de produção do backend: dispara a partir de uma GitHub
       Release com tag semântica referente ao backend, roda
       build/testes para o código da tag, e só publica na Lambda de
-      prod se tudo passar — ainda não exercitado
+      prod se tudo passar — validado ao vivo (release `backend-v0.0.1`
+      publicada, deploy de prod passou 100%; achado colateral real
+      documentado em "Status" — `frontend-deploy-prod.yml` também
+      disparou por falta de guard, corrigido e remediado)
 - [ ] Falha em qualquer etapa de qualidade (build/teste) impede o
       deploy, em ambos os pipelines — não exercitado com falha real de
       propósito (só falhas reais de infra, já corrigidas)
-- [~] É possível identificar externamente a versão publicada em cada
-      ambiente (hom e prod) após um deploy — confirmado em hom
-      (`curl https://api-hom.jrnexpenses.com/health`); prod ainda não
-      exercitado
+- [x] É possível identificar externamente a versão publicada em cada
+      ambiente (hom e prod) após um deploy — confirmado nos dois:
+      `curl https://api-hom.jrnexpenses.com/health` → `dev-<sha>`;
+      `curl https://api.jrnexpenses.com/health` → `backend-v0.0.1`
 - [x] Deploy de homologação nunca afeta a Lambda/API Gateway de
       produção, e vice-versa — confirmado via `curl`: hom respondendo
       com o build novo, prod ainda `404` (código antigo, intocado)
@@ -296,13 +299,13 @@ Não há mudança nos endpoints de negócio já documentados em
       aberto automaticamente:
       https://github.com/jrneto/meus-gastos-pessoais/pull/7). Ainda não
       exercitado: idempotência em push subsequente (sem duplicar PR)
-- [ ] Deploy de produção do backend bem-sucedido abre automaticamente
-      um PR `develop → main`, se ainda não existir um aberto (sem
-      duplicar com a automação equivalente do frontend) — ainda não
-      exercitado (depende de publicar uma release de teste)
+- [x] Deploy de produção do backend bem-sucedido abre automaticamente
+      um PR `develop → main`, se ainda não existir um aberto — validado
+      ao vivo (job `open-pr-main` abriu o PR após o deploy de prod)
 - [~] Nenhum dos PRs automáticos (feature→develop, develop→main) faz
       merge sozinho — confirmado pro PR #7 (feature→develop, mergeado
-      manualmente pelo usuário); develop→main ainda não exercitado
+      manualmente pelo usuário); PR develop→main aberto e aguardando
+      revisão manual (ainda não mergeado no momento do registro)
 - [x] Deploy de hom do backend bem-sucedido cria/atualiza um rascunho
       de release referente ao backend, com tag sugerida e notas
       geradas automaticamente, sem colidir com tags do frontend —
@@ -311,16 +314,17 @@ Não há mudança nos endpoints de negócio já documentados em
 - [x] Um deploy de hom subsequente, com rascunho já pendente, atualiza
       esse rascunho em vez de criar um novo — validado ao vivo (2º
       deploy de hom manteve um único rascunho `backend-v0.0.1`)
-- [ ] Nenhum rascunho é publicado automaticamente; publicá-lo
+- [x] Nenhum rascunho é publicado automaticamente; publicá-lo
       manualmente dispara o deploy de produção do backend normalmente
-      — criação em modo draft confirmada; publicação manual → deploy
-      de prod ainda não exercitada
+      — validado ao vivo (rascunho ficou em draft até publicação
+      manual; publicar disparou `backend-deploy-prod.yml` normalmente)
 
 ## Status
 
-**Deploy de homologação implementado e validado ao vivo, de ponta a
-ponta; deploy de produção e PR automático `develop → main` ainda
-pendentes de exercício real.**
+**Implementado e validado end-to-end em hom e prod**, incluindo o
+fluxo de branch/PR e release em rascunho — mesmo padrão de validação ao
+vivo (com bugs reais encontrados e corrigidos no processo) já visto nas
+FEAT-09/10/11 do frontend.
 
 - **Endpoint `/health`**: implementado
   (`GetHealthQuery`/`GetHealthQueryHandler`, `HealthEndpoints.cs`),
@@ -360,15 +364,31 @@ pendentes de exercício real.**
   criado com notas geradas, prefixo correto (sem afetar rascunhos do
   frontend); `api.jrnexpenses.com/health` (prod) continua `404` —
   confirma isolamento.
-- **`backend-deploy-prod.yml`**: implementado, YAML revisado
-  manualmente. **Ainda não exercitado** — falta publicar o rascunho
-  `backend-v0.0.1` de teste.
+- **`backend-deploy-prod.yml`**: validado ao vivo — rascunho
+  `backend-v0.0.1` publicado manualmente pelo usuário, disparou o
+  workflow, `quality`/`deploy`/`open-pr-main` verdes. Confirmado via
+  `curl https://api.jrnexpenses.com/health` →
+  `{"status":"ok","version":"backend-v0.0.1","commitSha":"777b3d130198580f8f70d41f8fd10ad41a974c2a","environment":"prod"}`.
+  PR `develop → main` aberto automaticamente.
+- **3º bug real encontrado e corrigido**: publicar a release
+  `backend-v0.0.1` também disparou `frontend-deploy-prod.yml` — esse
+  workflow não tinha nenhum filtro de tag (só o `draft-release` do
+  `frontend-deploy-hom.yml` havia sido protegido, ver decisão 5 do
+  `plan.md`). Resultado real: `jrnexpenses.com` foi republicado com
+  `VITE_APP_VERSION=backend-v0.0.1` — bundle correto (mesmo código),
+  mas com a versão exibida errada. Corrigido em `e4b6f13` (guard
+  `if: !startsWith(github.event.release.tag_name, 'backend-v')` no job
+  `quality`, espelhando o guard já existente em
+  `backend-deploy-prod.yml`). **Remediado ao vivo**: usuário re-rodou
+  ("Re-run all jobs") o run original da última release legítima do
+  frontend (`v0.1.2`); confirmado via bundle real que
+  `jrnexpenses.com` voltou a mostrar `v0.1.2`.
 - **Ajuste em `frontend-deploy-hom.yml`** (filtro de prefixo
-  `backend-v`): implementado. Não exercitado diretamente (nenhum deploy
-  de hom do frontend rodou desde então), mas o rascunho `backend-v0.0.1`
-  criado pelo backend não apareceu confundido com nenhum rascunho do
-  frontend, indício indireto de que o filtro está funcionando nos dois
-  lados.
+  `backend-v` no job `draft-release`): implementado, não exercitado
+  diretamente (nenhum deploy de hom do frontend rodou desde então), mas
+  os 2 rascunhos `backend-v0.0.1` (criado e depois atualizado pelo
+  backend) nunca apareceram confundidos com nenhum rascunho do
+  frontend, indício indireto de que o filtro funciona.
 - **Terraform `cicd/`** (`backend/infra/terraform/cicd/`): código
   criado e validado sintaticamente (`terraform fmt`/`validate`).
   `terraform plan` executado com credenciais AWS reais — **falhou
@@ -387,16 +407,21 @@ pendentes de exercício real.**
   (`gastos-app-api-hom`/`gastos-app-api`). Permissão "Allow GitHub
   Actions to create and approve pull requests" confirmada já ativa
   (herdada da FEAT-10 do frontend).
-- **Validado ao vivo**: US1, US3 (parcial, só hom), US4, US6, US7, US8
-  (parcial — idempotência de push subsequente não exercitada), US12.
-- **Ainda pendente**: publicar o rascunho `backend-v0.0.1` e observar
-  `backend-deploy-prod.yml` (US2, US3 em prod, US10, US13), PR
-  `develop → main` (US10, US11 parcial), idempotência de US9/US10 em
-  releases subsequentes, e volume real de uso pra confirmar a cota de
-  minutos do Actions (US5).
-
-**Próximo passo**: publicar manualmente o rascunho `backend-v0.0.1` no
-GitHub e observar `backend-deploy-prod.yml` rodar pela primeira vez.
+- **Validado ao vivo**: US1, US2, US3, US4, US6, US7, US8 (parcial),
+  US10, US12, US13. PR #7 (feature→develop) mergeado manualmente; PR
+  develop→main aberto automaticamente, aguardando revisão/merge manual
+  do usuário (US11 confirmado no primeiro, consistente no segundo).
+- **3 bugs reais encontrados e corrigidos durante a validação** (mesmo
+  padrão de rigor já visto nas FEAT-09/10/11 do frontend): (1)
+  `build.sh` sem bit de execução, (2) sintaxe do `--environment` no AWS
+  CLI, (3) `frontend-deploy-prod.yml` sem guard de tag, disparando com
+  a release do backend — os três detalhados acima, os três remediados
+  ao vivo.
+- **Ainda pendente**: idempotência de US9/US10 em releases
+  subsequentes (só uma release publicada até agora), teste de falha
+  proposital no gate de qualidade, e volume real de uso pra confirmar a
+  cota de minutos do Actions (US5) — mesmos gaps residuais já aceitos
+  nas specs do frontend nesse estágio.
 
 ## Fora do escopo
 
