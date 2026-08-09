@@ -220,17 +220,78 @@ usa `data "aws_iam_openid_connect_provider"` para referenciar o
 Provider já existente na conta (criado manualmente para o frontend na
 FEAT-09, é um recurso único por conta/URL de emissor).
 
-**Gap esperado (mesmo já documentado em
-`frontend/infra/terraform/README.md`, seção "cicd/")**: o perfil usado
-localmente para `terraform apply`/`import` provavelmente não tem
-permissão para nenhuma ação de leitura/escrita sobre
-`aws_iam_role`/`aws_iam_role_policy` relacionadas à federação OIDC
-(`AccessDenied`, mesmo guardrail já identificado no frontend). Se
-`apply` falhar, criar a Role manualmente no console AWS, conferindo
-trust policy e policy inline **byte a byte iguais** ao que
-`iam-role.tf`/`iam-policy.tf` gerariam — mesmo processo já usado para
-`gastosapp-frontend-cicd`. Depois de criada, importar pra trazer ao
-state:
+**Gap confirmado (2026-08-08, mesmo já documentado em
+`frontend/infra/terraform/README.md`, seção "cicd/")**: `terraform
+plan` falha já na leitura do OIDC Provider existente —
+`AccessDenied: User: .../josereato-admin is not authorized to perform:
+iam:ListOpenIDConnectProviders` — mesmo com o perfil
+`AWSReservedSSO_Perfil-Admin-Desenvolvedor`. Nenhum recurso chegou a
+ser criado (a falha é no `plan`, antes de qualquer `apply`). Mesmo
+guardrail identificado no frontend, agora confirmado também para ações
+de **leitura** sobre OIDC, não só criação.
+
+A Role precisa ser criada **manualmente no console AWS**, com o JSON
+abaixo (gerado a partir de `iam-role.tf`/`iam-policy.tf`, byte a byte
+igual ao que o Terraform aplicaria):
+
+**Trust policy** (`gastosapp-backend-cicd`):
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::648443184523:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": [
+            "repo:jrneto/meus-gastos-pessoais:environment:backend-hom",
+            "repo:jrneto/meus-gastos-pessoais:environment:backend-prod"
+          ]
+        }
+      }
+    }
+  ]
+}
+```
+
+**Policy inline** (`gastosapp-backend-cicd-deploy`):
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "UpdateBackendLambdaCode",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration"
+      ],
+      "Resource": [
+        "arn:aws:lambda:us-east-1:648443184523:function:gastos-app-api-hom",
+        "arn:aws:lambda:us-east-1:648443184523:function:gastos-app-api"
+      ]
+    }
+  ]
+}
+```
+
+Passo a passo no console: IAM → Roles → Create role → Custom trust
+policy (cola o JSON de trust acima) → Add permissions → Create inline
+policy (cola o JSON de policy acima, nome
+`gastosapp-backend-cicd-deploy`) → nome da Role:
+`gastosapp-backend-cicd`.
+
+Depois de criada, se a permissão de leitura for liberada no futuro,
+importar pra trazer ao state:
 
 ```bash
 cd backend/infra/terraform/cicd

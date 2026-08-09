@@ -321,18 +321,20 @@ nenhum ainda foi observado rodando de verdade.
   disponível no ambiente). **Não exercitados** — nenhum push/release
   real foi feito ainda.
 - **Terraform `cicd/`** (`backend/infra/terraform/cicd/`): código
-  criado e validado sintaticamente (`terraform fmt`/`validate`, sem
-  backend real). **`init`/`plan`/`apply` não executados** — sem
-  credenciais AWS no ambiente de implementação; mesmo gap de permissão
-  já documentado no frontend é esperado (`AccessDenied` em ações de
-  IAM/OIDC), exigindo criação manual da Role no console.
+  criado e validado sintaticamente (`terraform fmt`/`validate`).
+  `terraform plan` executado com credenciais AWS reais — **falhou
+  confirmando o mesmo gap do frontend**:
+  `AccessDenied: iam:ListOpenIDConnectProviders`, mesmo com o perfil
+  admin. Nenhum recurso foi criado (falha ocorreu no `plan`, antes de
+  qualquer `apply`). JSON exato da trust policy e da policy inline
+  documentado em `backend/infra/terraform/README.md`, seção "cicd/",
+  pra criação manual da Role `gastosapp-backend-cicd` no console.
 - **GitHub Environments `backend-hom`/`backend-prod`**: **não
-  criados** — `gh` CLI/API não usados neste ambiente; usuário precisa
-  criar via UI do GitHub e cadastrar `CICD_ROLE_ARN`/`FUNCTION_NAME`
-  (mesmo processo já usado pra `hom`/`prod` do frontend).
+  criados** — depende da Role existir primeiro (para cadastrar
+  `CICD_ROLE_ARN`); usuário precisa criar via UI do GitHub.
 - **Validação end-to-end** (US1–US13): nenhuma foi observada ao vivo
   ainda — depende dos passos acima estarem prontos primeiro (Role
-  criada, Environments configurados, `openapi.json` atualizado).
+  criada manualmente, Environments configurados).
 
 **Próximos passos, na ordem**: aplicar/criar a Role e os Environments
 → mergear esta branch (o próprio merge já é o primeiro teste real do

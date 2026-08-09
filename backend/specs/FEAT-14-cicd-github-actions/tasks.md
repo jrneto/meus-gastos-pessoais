@@ -67,20 +67,23 @@
 - [x] 17. Criar `backend/infra/terraform/cicd/outputs.tf`
        (`cicd_role_arn`) — código validado com `terraform fmt`/
        `validate` (sem backend real, `.terraform`/lock gitignorados)
-- [ ] 18. **Pausar e confirmar com o usuário** antes de
-       `terraform init`/`plan`/`apply` reais desta config — **pendente**:
-       ambiente de implementação não tem credenciais AWS; usuário
-       precisa rodar localmente
-- [ ] 19. Rodar `terraform init` + `terraform plan` em
-       `backend/infra/terraform/cicd/` e revisar o plano com o usuário
-       — **pendente**, mesmo motivo da task 18
-- [ ] 20. Rodar `terraform apply` (ou, se `AccessDenied` como
-       aconteceu no frontend, documentar o gap e orientar criação
-       manual no console, conferindo trust policy/policy inline
-       contra os `.tf`) — **pendente**, mesmo motivo da task 18
+- [x] 18. **Pausar e confirmar com o usuário** antes de
+       `terraform init`/`plan`/`apply` reais desta config — aprovação já
+       confirmada no `plan.md`; execução feita com credenciais AWS reais
+- [x] 19. Rodar `terraform init` + `terraform plan` em
+       `backend/infra/terraform/cicd/` — `init` OK (backend S3
+       configurado), `plan` **falhou** com `AccessDenied` (ver task 20)
+- [x] 20. Rodar `terraform apply` — **não rodou**: `plan` falhou antes,
+       com `AccessDenied: iam:ListOpenIDConnectProviders`, confirmando
+       o mesmo gap do frontend (agora também em leitura, não só
+       escrita). Nenhum recurso foi criado. Gap documentado em
+       `backend/infra/terraform/README.md` com o JSON exato (trust
+       policy + policy inline) para criação manual no console —
+       **aguardando o usuário criar a Role `gastosapp-backend-cicd`**
 - [x] 21. Atualizar `backend/infra/terraform/README.md` documentando a
        config `cicd/` (mesmo padrão da seção "cicd/" do README do
-       frontend)
+       frontend), incluindo o resultado real do `plan` e o JSON pra
+       criação manual
 
 ## GitHub Environments (configuração manual, fora do Terraform)
 
