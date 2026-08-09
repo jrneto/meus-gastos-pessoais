@@ -1,3 +1,4 @@
+using GastosApp.Api.Common;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -29,7 +30,7 @@ public class GlobalExceptionHandler : IExceptionHandler
         httpContext.Response.StatusCode = problemDetails.Status.Value;
         await httpContext.Response.WriteAsJsonAsync(
             problemDetails,
-            options: (System.Text.Json.JsonSerializerOptions?)null,
+            AppJsonSerializerContext.Default.ProblemDetails,
             contentType: "application/problem+json",
             cancellationToken: cancellationToken);
 

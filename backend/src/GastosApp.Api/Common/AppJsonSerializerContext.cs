@@ -7,6 +7,7 @@ using GastosApp.Application.Expenses.Commands.RegisterExpense;
 using GastosApp.Application.Expenses.Commands.UpdateExpense;
 using GastosApp.Application.Expenses.Queries.GetExpenses;
 using GastosApp.Application.Health;
+using Microsoft.AspNetCore.Mvc;
 
 namespace GastosApp.Api.Common;
 
@@ -29,6 +30,7 @@ namespace GastosApp.Api.Common;
 [JsonSerializable(typeof(UserInfoResponse))]
 [JsonSerializable(typeof(GetExpensesRequest))]
 [JsonSerializable(typeof(HealthResponse))]
+[JsonSerializable(typeof(ProblemDetails))]
 public partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }
