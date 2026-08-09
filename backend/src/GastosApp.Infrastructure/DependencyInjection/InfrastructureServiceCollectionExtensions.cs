@@ -34,7 +34,6 @@ namespace GastosApp.Infrastructure.DependencyInjection
             var region = RegionEndpoint.GetBySystemName(regionStr);
 
             services.AddCognitoSdk(configuration);
-            services.AddCognitoAuth(configuration, environment);
 
             // Leitura manual (sem Configure<T>()/reflection) — mesmo motivo
             // documentado em AddCognitoSdk: Configure<T>(IConfiguration) usa

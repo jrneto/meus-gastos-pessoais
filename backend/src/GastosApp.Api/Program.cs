@@ -35,6 +35,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
 });
 
+builder.Services.AddCognitoAuth(builder.Configuration);
 builder.Services.AddAuthorization();
 
 // Origens do frontend liberadas via configuração: "Cors:AllowedOrigins"
