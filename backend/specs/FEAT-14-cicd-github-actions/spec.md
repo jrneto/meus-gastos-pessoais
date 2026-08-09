@@ -420,6 +420,15 @@ FEAT-09/10/11 do frontend.
   CLI, (3) `frontend-deploy-prod.yml` sem guard de tag, disparando com
   a release do backend — os três detalhados acima, os três remediados
   ao vivo.
+- **Melhoria adicional pós-validação**: `paths: ['backend/**']` em
+  `backend-feature-pr.yml`/`backend-deploy-hom.yml` incluía
+  `backend/specs/**`/`backend/docs/**` — cada commit só de
+  documentação (registrando os próprios achados desta validação)
+  disparava um deploy real de hom e um novo rascunho de release à toa,
+  gastando minutos de Actions sem necessidade. Restrito pra
+  `backend/src/**`, `backend/tests/**`, `backend/infra/lambda/**` e
+  `backend/GastosApp.sln` — só o que de fato afeta o artefato
+  publicado.
 - **Ainda pendente**: idempotência de US9/US10 em releases
   subsequentes (só uma release publicada até agora), teste de falha
   proposital no gate de qualidade, e volume real de uso pra confirmar a
