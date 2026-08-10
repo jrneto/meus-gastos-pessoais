@@ -53,7 +53,13 @@ builder.Services.AddCors(options =>
     options.AddPolicy("Frontend", policy => policy
         .WithOrigins(corsOrigins)
         .AllowAnyHeader()
-        .AllowAnyMethod());
+        .AllowAnyMethod()
+        // Necessário para o cookie httpOnly de refresh token (FEAT-15)
+        // ser enviado pelo navegador em `credentials: 'include'`. Só é
+        // válido combinado com WithOrigins (lista explícita) — nunca
+        // com AllowAnyOrigin, que o ASP.NET Core rejeita em runtime
+        // junto de AllowCredentials.
+        .AllowCredentials());
 });
 
 builder.Services.AddApplicationServices();
