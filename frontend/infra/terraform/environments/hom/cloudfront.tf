@@ -38,6 +38,22 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
+  # SPA (React Router, client-side routing) — mesmo fix de
+  # environments/prod/cloudfront.tf: sem isso, F5 em qualquer rota que
+  # não seja "/" recebe 403 do S3 (bucket privado via OAC) em vez do
+  # index.html.
+  custom_error_response {
+    error_code         = 403
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
+  custom_error_response {
+    error_code         = 404
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
   viewer_certificate {
     acm_certificate_arn      = aws_acm_certificate.hom.arn
     ssl_support_method       = "sni-only"
