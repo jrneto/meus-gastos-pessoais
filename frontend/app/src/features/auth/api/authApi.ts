@@ -1,5 +1,10 @@
 import { httpClient } from '@/lib/httpClient'
-import { InvalidCredentialsError, NetworkError, UnknownAuthError } from '../errors/authErrors'
+import {
+  InvalidCredentialsError,
+  NetworkError,
+  RefreshFailedError,
+  UnknownAuthError,
+} from '../errors/authErrors'
 import type { LoginCredentials } from '../schemas/loginSchema'
 
 interface LoginResponse {
@@ -45,4 +50,26 @@ async function me(token: string): Promise<MeResponse> {
   return response.json() as Promise<MeResponse>
 }
 
-export const authApi = { login, me }
+// Sem request body — o refreshToken é lido pelo backend a partir do
+// cookie httpOnly (Path=/auth), nunca do corpo da requisição.
+async function refresh(): Promise<LoginResponse> {
+  const response = await safeFetch(() => httpClient.post('/auth/refresh'))
+  if (response.status === 401) {
+    throw new RefreshFailedError()
+  }
+  if (!response.ok) {
+    throw new UnknownAuthError()
+  }
+  return response.json() as Promise<LoginResponse>
+}
+
+// Idempotente no backend (200 mesmo sem cookie presente) — erros são
+// tratados pelo chamador (ver features/auth/hooks/useLogout.ts).
+async function logout(): Promise<void> {
+  const response = await safeFetch(() => httpClient.post('/auth/logout'))
+  if (!response.ok) {
+    throw new UnknownAuthError()
+  }
+}
+
+export const authApi = { login, me, refresh, logout }
