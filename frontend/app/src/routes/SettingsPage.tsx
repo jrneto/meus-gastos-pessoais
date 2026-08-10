@@ -1,14 +1,14 @@
 import { useNavigate } from 'react-router-dom'
 import { AppVersion } from '@/components/AppVersion'
 import { Button } from '@/components/ui/button'
-import { useAuthStore } from '@/features/auth/store/authStore'
+import { useLogout } from '@/features/auth/hooks/useLogout'
 
 export function SettingsPage() {
-  const clearSession = useAuthStore((state) => state.clearSession)
+  const { logout } = useLogout()
   const navigate = useNavigate()
 
-  function handleLogout() {
-    clearSession()
+  async function handleLogout() {
+    await logout()
     navigate('/login', { replace: true })
   }
 

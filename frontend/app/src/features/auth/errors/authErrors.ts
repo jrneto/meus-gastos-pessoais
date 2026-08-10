@@ -18,3 +18,10 @@ export class UnknownAuthError extends Error {
     this.name = 'UnknownAuthError'
   }
 }
+
+export class RefreshFailedError extends Error {
+  constructor() {
+    super('Refresh token ausente, inválido ou expirado.')
+    this.name = 'RefreshFailedError'
+  }
+}

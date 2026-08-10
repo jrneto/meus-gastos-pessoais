@@ -84,4 +84,21 @@ public sealed class CorsTests : IClassFixture<ComponentTestWebApplicationFactory
         response.Headers.TryGetValues("Access-Control-Allow-Origin", out var values).Should().BeTrue();
         values!.Should().ContainSingle().Which.Should().Be(ProductionOrigin);
     }
+
+    [Fact]
+    public async Task Requisicao_ComOrigemPermitida_RecebeAccessControlAllowCredentialsTrue()
+    {
+        // Necessário para o cookie httpOnly de refresh token (FEAT-15)
+        // ser enviado pelo navegador em chamadas com `credentials:
+        // 'include'` (consumo no frontend, FEAT-12).
+        var client = CreateClientWithCorsConfig();
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/expenses");
+        request.Headers.Add("Origin", DevOrigin);
+
+        var response = await client.SendAsync(request);
+
+        response.Headers.TryGetValues("Access-Control-Allow-Credentials", out var values).Should().BeTrue();
+        values!.Should().ContainSingle().Which.Should().Be("true");
+    }
 }
