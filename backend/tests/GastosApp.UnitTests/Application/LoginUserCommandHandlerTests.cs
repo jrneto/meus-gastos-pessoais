@@ -24,7 +24,7 @@ public class LoginUserCommandHandlerTests
     {
         // Arrange
         var command = new LoginUserCommand("neto@email.com", "Senha123");
-        var expectedResult = new LoginResult("token-jwt-123", 3600, "user-id-123");
+        var expectedResult = new LoginResult("token-jwt-123", 3600, "user-id-123", "refresh-token-abc");
 
         _authServiceMock.LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
             .Returns(Result.Success(expectedResult));
@@ -37,6 +37,7 @@ public class LoginUserCommandHandlerTests
         result.Value.AccessToken.Should().Be("token-jwt-123");
         result.Value.ExpiresIn.Should().Be(3600);
         result.Value.UserId.Should().Be("user-id-123");
+        result.Value.RefreshToken.Should().Be("refresh-token-abc");
 
         await _authServiceMock.Received(1).LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>());
     }

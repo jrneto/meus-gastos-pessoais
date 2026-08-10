@@ -1,11 +1,13 @@
 using System.Text.Json.Serialization;
 using GastosApp.Api.Endpoints;
 using GastosApp.Application.Auth.Commands.Login;
+using GastosApp.Application.Auth.Commands.Refresh;
 using GastosApp.Application.Auth.Commands.Register;
 using GastosApp.Application.Expenses.Commands.RegisterExpense;
 using GastosApp.Application.Expenses.Commands.UpdateExpense;
 using GastosApp.Application.Expenses.Queries.GetExpenses;
 using GastosApp.Application.Health;
+using Microsoft.AspNetCore.Mvc;
 
 namespace GastosApp.Api.Common;
 
@@ -20,6 +22,7 @@ namespace GastosApp.Api.Common;
 [JsonSerializable(typeof(UpdateExpenseRequest))]
 [JsonSerializable(typeof(RegisterUserResult))]
 [JsonSerializable(typeof(LoginUserResult))]
+[JsonSerializable(typeof(RefreshTokenResult))]
 [JsonSerializable(typeof(RegisterExpenseResult))]
 [JsonSerializable(typeof(UpdateExpenseResult))]
 [JsonSerializable(typeof(GetExpensesResult))]
@@ -27,6 +30,7 @@ namespace GastosApp.Api.Common;
 [JsonSerializable(typeof(UserInfoResponse))]
 [JsonSerializable(typeof(GetExpensesRequest))]
 [JsonSerializable(typeof(HealthResponse))]
+[JsonSerializable(typeof(ProblemDetails))]
 public partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }

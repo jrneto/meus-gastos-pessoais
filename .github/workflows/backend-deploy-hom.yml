@@ -8,7 +8,15 @@ on:
   push:
     branches: [develop]
     paths:
-      - 'backend/**'
+      # Só código/infra de deploy real — backend/specs/**, backend/docs/**
+      # etc. não disparam deploy (achado real durante a validação ao
+      # vivo da FEAT-14: 'backend/**' redeployava hom a cada commit só
+      # de documentação, gastando minutos e criando rascunho de release
+      # à toa).
+      - 'backend/src/**'
+      - 'backend/tests/**'
+      - 'backend/infra/lambda/**'
+      - 'backend/GastosApp.sln'
   # Permite re-disparar manualmente (ex.: depois de corrigir um
   # workflow em .github/workflows/**, que não casa com o filtro de
   # paths acima) sem precisar de um push real em backend/**.
