@@ -14,9 +14,11 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
 {
     public IAuthService AuthServiceMock { get; private set; } = Substitute.For<IAuthService>();
     public IExpenseRepository ExpenseRepositoryMock { get; private set; } = Substitute.For<IExpenseRepository>();
+    public ICategoryRepository CategoryRepositoryMock { get; private set; } = Substitute.For<ICategoryRepository>();
 
     public void ResetAuthServiceMock() => AuthServiceMock = Substitute.For<IAuthService>();
     public void ResetExpenseRepositoryMock() => ExpenseRepositoryMock = Substitute.For<IExpenseRepository>();
+    public void ResetCategoryRepositoryMock() => CategoryRepositoryMock = Substitute.For<ICategoryRepository>();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -41,6 +43,9 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
 
             services.RemoveAll<IExpenseRepository>();
             services.AddScoped(_ => ExpenseRepositoryMock);
+
+            services.RemoveAll<ICategoryRepository>();
+            services.AddScoped(_ => CategoryRepositoryMock);
 
             services.AddAuthentication()
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });

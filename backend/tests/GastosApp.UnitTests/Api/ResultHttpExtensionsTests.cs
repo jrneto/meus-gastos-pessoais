@@ -21,14 +21,16 @@ public class ResultHttpExtensionsTests
 
     [Theory]
     [InlineData(ErrorType.Validation, StatusCodes.Status400BadRequest, "Parâmetros inválidos")]
-    [InlineData(ErrorType.Unauthorized, StatusCodes.Status401Unauthorized, "Email ou senha inválidos")]
-    [InlineData(ErrorType.Conflict, StatusCodes.Status409Conflict, "Email já cadastrado")]
-    [InlineData(ErrorType.NotFound, StatusCodes.Status404NotFound, "Não encontrado")]
+    [InlineData(ErrorType.Unauthorized, StatusCodes.Status401Unauthorized, "Não autorizado")]
+    [InlineData(ErrorType.Conflict, StatusCodes.Status409Conflict, "Conflito")]
+    [InlineData(ErrorType.NotFound, StatusCodes.Status404NotFound, "Recurso não encontrado")]
+    [InlineData(ErrorType.UnprocessableEntity, StatusCodes.Status422UnprocessableEntity, "Regra de negócio violada")]
     [InlineData(ErrorType.Failure, StatusCodes.Status500InternalServerError, "Erro interno do servidor")]
-    public void ToHttpResult_ShouldMapErrorTypeToExpectedStatusAndTitle(ErrorType errorType, int expectedStatus, string expectedTitle)
+    public void ToHttpResult_ShouldMapErrorTypeToExpectedStatusAndFixedGenericTitle(ErrorType errorType, int expectedStatus, string expectedTitle)
     {
-        // Para Validation/Failure o título é fixo; para os demais, o título é a própria mensagem do erro.
-        var error = new Error("some-code", expectedTitle, errorType);
+        // Título é sempre fixo e genérico por ErrorType (RFC 9457) — a mensagem específica do
+        // erro vai em detail, nunca em title.
+        var error = new Error("some-code", "mensagem específica do erro", errorType);
         var result = Result<string>.Failure(error);
 
         var httpResult = result.ToHttpResult(Results.Ok);
@@ -39,6 +41,18 @@ public class ResultHttpExtensionsTests
         var problemDetails = ((JsonHttpResult<ProblemDetails>)httpResult).Value!;
         problemDetails.Status.Should().Be(expectedStatus);
         problemDetails.Title.Should().Be(expectedTitle);
+    }
+
+    [Fact]
+    public void ToHttpResult_ShouldPopulateDetailWithErrorMessage_ForNonFailureErrorTypes()
+    {
+        var error = new Error("not-found", "Categoria não encontrada.", ErrorType.NotFound);
+        var result = Result<string>.Failure(error);
+
+        var httpResult = (JsonHttpResult<ProblemDetails>)result.ToHttpResult(Results.Ok);
+
+        httpResult.Value!.Title.Should().Be("Recurso não encontrado");
+        httpResult.Value.Detail.Should().Be("Categoria não encontrada.");
     }
 
     [Fact]
