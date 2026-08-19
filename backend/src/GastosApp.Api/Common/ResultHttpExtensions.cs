@@ -17,13 +17,16 @@ public static class ResultHttpExtensions
 
     private static IResult BuildProblem(Error error)
     {
+        // Título fixo e genérico por ErrorType (RFC 9457: "SHOULD NOT change from occurrence
+        // to occurrence"), mensagem específica sempre em detail — exceto Failure, cujo detail
+        // nunca é populado para não vazar detalhe interno (ver GlobalExceptionHandler).
         var (status, title, detail) = error.Type switch
         {
             ErrorType.Validation => (StatusCodes.Status400BadRequest, "Parâmetros inválidos", error.Message),
-            ErrorType.Conflict => (StatusCodes.Status409Conflict, error.Message, (string?)null),
-            ErrorType.Unauthorized => (StatusCodes.Status401Unauthorized, error.Message, (string?)null),
-            ErrorType.NotFound => (StatusCodes.Status404NotFound, error.Message, (string?)null),
-            ErrorType.UnprocessableEntity => (StatusCodes.Status422UnprocessableEntity, error.Message, (string?)null),
+            ErrorType.Conflict => (StatusCodes.Status409Conflict, "Conflito", error.Message),
+            ErrorType.Unauthorized => (StatusCodes.Status401Unauthorized, "Não autorizado", error.Message),
+            ErrorType.NotFound => (StatusCodes.Status404NotFound, "Recurso não encontrado", error.Message),
+            ErrorType.UnprocessableEntity => (StatusCodes.Status422UnprocessableEntity, "Regra de negócio violada", error.Message),
             _ => (StatusCodes.Status500InternalServerError, "Erro interno do servidor", (string?)null)
         };
 

@@ -38,8 +38,14 @@ restrito ao CRUD.
   (lista vazia para um cliente novo, até ele criar sua primeira
   categoria via `POST /categories`)
 - `nome`: obrigatório, texto não vazio, até 50 caracteres, único por
-  cliente (comparação sem diferenciar maiúsculas/minúsculas — não pode
-  existir "Lazer" e "lazer" ao mesmo tempo para o mesmo cliente)
+  cliente. A comparação de unicidade usa um slug do nome — minúsculo,
+  sem acento, sem caractere especial, espaços colapsados em `-` — não
+  só ignorando maiúsculas/minúsculas: não podem coexistir para o mesmo
+  cliente, por exemplo, "Lazer"/"lazer", "Compras e Serviços"/"compras
+  e servicos" (sem cedilha), nem "Compras e Serviços"/"Compras  e
+  Serviços" (espaços duplicados). Um `nome` que não sobra nenhuma letra
+  ou número depois dessa normalização (ex.: `"!!!"`, só emoji) é
+  rejeitado com 400, por não gerar uma chave de unicidade válida
 - `cor`: obrigatória, formato hexadecimal `#RRGGBB`
 - `icone`: obrigatório, identificador textual livre, até 50 caracteres
   (sem catálogo fechado de ícones nesta feature — validação é só de
@@ -83,8 +89,8 @@ restrito ao CRUD.
 **US5 — Validar dados obrigatórios na criação**
 - Given um usuário autenticado
 - When ele envia `POST /categories` com campo obrigatório ausente ou
-  inválido (`nome` vazio, `cor` fora do formato `#RRGGBB`, `icone`
-  vazio)
+  inválido (`nome` vazio, `nome` sem nenhuma letra ou número — ex.:
+  `"!!!"`, `cor` fora do formato `#RRGGBB`, `icone` vazio)
 - Then a API retorna 400 com detalhe do(s) campo(s) inválido(s) e
   nenhuma categoria é criada
 
@@ -205,7 +211,7 @@ categoria.
 ```json
 {
   "type": "https://gastosapp.dev/errors/category-in-use",
-  "title": "Category In Use",
+  "title": "Regra de negócio violada",
   "status": 422,
   "detail": "A categoria não pode ser excluída enquanto houver despesas associadas a ela."
 }
@@ -213,13 +219,21 @@ categoria.
 
 ### Erros comuns a todas as rotas
 
+Formato padrão de erro do projeto (`ResultHttpExtensions.BuildProblem`,
+reaproveitado por toda a API): `title` é sempre um rótulo fixo e
+genérico por tipo de erro (RFC 9457 — não muda de ocorrência pra
+ocorrência), a mensagem específica sempre vai em `detail`. Exceção:
+`Failure` (500) nunca preenche `detail`, para não vazar detalhe interno.
+A fonte de verdade exata deste formato é `backend/docs/openapi.json`
+(gerado a partir da API real).
+
 Response 400 (validation-error):
 ```json
 {
   "type": "https://gastosapp.dev/errors/validation-error",
-  "title": "Validation Error",
+  "title": "Parâmetros inválidos",
   "status": 400,
-  "detail": "Um ou mais campos são inválidos."
+  "detail": "Nome é obrigatório."
 }
 ```
 
@@ -227,7 +241,7 @@ Response 401 (unauthorized):
 ```json
 {
   "type": "https://gastosapp.dev/errors/unauthorized",
-  "title": "Unauthorized",
+  "title": "Não autorizado",
   "status": 401
 }
 ```
@@ -236,8 +250,19 @@ Response 404 (not-found):
 ```json
 {
   "type": "https://gastosapp.dev/errors/not-found",
-  "title": "Not Found",
-  "status": 404
+  "title": "Recurso não encontrado",
+  "status": 404,
+  "detail": "Categoria não encontrada."
+}
+```
+
+Response 422 (name-conflict):
+```json
+{
+  "type": "https://gastosapp.dev/errors/name-conflict",
+  "title": "Regra de negócio violada",
+  "status": 422,
+  "detail": "Já existe uma categoria com esse nome."
 }
 ```
 
@@ -249,10 +274,11 @@ Response 404 (not-found):
       usuário
 - [x] POST /categories com dados válidos retorna 201 com a categoria
       criada, vinculada ao `userId` do token
-- [x] POST /categories com `nome` já usado (mesmo usuário, sem
-      diferenciar maiúsculas/minúsculas) retorna 422
-- [x] POST /categories com campo obrigatório ausente/inválido retorna
-      400
+- [x] POST /categories com `nome` já usado pelo mesmo usuário — mesmo
+      slug, ignorando maiúsculas/minúsculas, acento e espaços
+      duplicados — retorna 422
+- [x] POST /categories com campo obrigatório ausente/inválido, ou
+      `nome` que não gera slug válido (ex.: `"!!!"`), retorna 400
 - [x] PUT /categories/{id} com dados válidos atualiza e retorna 200
 - [x] PUT /categories/{id} para nome já usado por outra categoria do
       mesmo usuário retorna 422
@@ -275,9 +301,17 @@ Handlers + Validators + `CategoryErrors`/`ICategoryRepository`/
 `GET`/`POST`/`PUT`/`DELETE /categories` (Api) implementados conforme
 `plan.md`. Novo `ErrorType.UnprocessableEntity` mapeado para 422 em
 `ResultHttpExtensions`. Nenhum recurso AWS novo — reaproveita a tabela
-`GastosApp` e os índices `GSI1`/`GSI2` já provisionados. Suíte completa
-(`dotnet test` na solução) passa: 277/277 (1 IntegrationTests
-placeholder + 85 ComponentTests + 191 UnitTests).
+`GastosApp` e os índices `GSI1`/`GSI2` já provisionados.
+
+Na revisão pós-implementação (testado manualmente via Postman),
+identificado que `ResultHttpExtensions.BuildProblem` não seguia a RFC
+9457 corretamente (título com a mensagem específica, `detail` sempre
+vazio para 404/409/422/401) — corrigido para título fixo genérico por
+`ErrorType` + mensagem específica em `detail`, afetando o corpo de erro
+de toda a API (Auth/Expenses/Categories), não só desta feature.
+
+Suíte completa (`dotnet test` na solução) passa: 279/279 (1
+IntegrationTests placeholder + 85 ComponentTests + 193 UnitTests).
 
 ## Fora do escopo
 
