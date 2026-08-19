@@ -23,6 +23,7 @@ public static class ResultHttpExtensions
             ErrorType.Conflict => (StatusCodes.Status409Conflict, error.Message, (string?)null),
             ErrorType.Unauthorized => (StatusCodes.Status401Unauthorized, error.Message, (string?)null),
             ErrorType.NotFound => (StatusCodes.Status404NotFound, error.Message, (string?)null),
+            ErrorType.UnprocessableEntity => (StatusCodes.Status422UnprocessableEntity, error.Message, (string?)null),
             _ => (StatusCodes.Status500InternalServerError, "Erro interno do servidor", (string?)null)
         };
 
