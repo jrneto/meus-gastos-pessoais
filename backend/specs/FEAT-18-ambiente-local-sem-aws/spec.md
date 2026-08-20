@@ -131,34 +131,75 @@ ficam para `plan.md`).
 
 ## Critérios de aceite
 
-- [ ] `backend/infra/docker-compose.yml` novo sobe LocalStack
+- [x] `backend/infra/docker-compose.yml` novo sobe LocalStack
       (DynamoDB + SSM Parameter Store) e cognito-local, substituindo os
       artefatos legados removidos (`kong.yml`,
       `scripts/localstack-init/` antigos)
-- [ ] Script de inicialização cria a tabela DynamoDB (mesmo modelo de
+- [x] Script de inicialização cria a tabela DynamoDB (mesmo modelo de
       dados — PK/SK, GSI1, GSI2 — de produção), os parâmetros
       equivalentes no Parameter Store local e um user pool +
       app client no cognito-local, de forma repetível
       (`docker compose up` + script funcionam do zero em uma máquina
       limpa)
-- [ ] Endpoints de DynamoDB, Parameter Store e Cognito usados pelo
+- [x] Endpoints de DynamoDB, Parameter Store e Cognito usados pelo
       backend são configuráveis via variável de ambiente /
       `appsettings.Development.json`, com default igual ao valor real
       da AWS (produção/homologação inalteradas)
-- [ ] Fluxo completo validado localmente: registro → login →
+- [x] Fluxo completo validado localmente: registro → login →
       criar/consultar/atualizar/excluir despesa → criar/consultar
       categoria, tudo contra os serviços locais, sem nenhuma chamada à
       AWS real (confirmável por ausência de credenciais AWS
       configuradas na máquina de teste)
-- [ ] `dotnet build`/`dotnet test` continuam passando sem alteração
-- [ ] Produção e homologação validadas sem regressão após a mudança
+- [x] `dotnet build`/`dotnet test` continuam passando sem alteração
+- [x] Produção e homologação validadas sem regressão após a mudança
       (mesmo comportamento observável de antes desta feature)
-- [ ] `backend/docs/constitution.md`, `backend/CLAUDE.md` e
+- [x] `backend/docs/constitution.md`, `backend/CLAUDE.md` e
       `backend/infra/CLAUDE.md` atualizados para refletir o novo
       princípio (ambiente local emulado; produção/homologação
       continuam 100% AWS real)
-- [ ] `backend/infra/README.md` (ou seção equivalente) documenta como
+- [x] `backend/infra/README.md` (ou seção equivalente) documenta como
       subir e usar o ambiente local do zero
+
+## Status
+
+**Implementado e validado.**
+
+- `DynamoDbOptions` e `AddAwsParameterStore` ganharam
+  `ServiceURL`/`AccessKey`/`SecretKey` opcionais (mesmo padrão já usado
+  em `CognitoOptions`); `AddCognitoAuth` passou a montar
+  `Authority`/`RequireHttpsMetadata` a partir de `Cognito:ServiceURL`
+  quando presente. Produção/homologação não declaram essas chaves —
+  comportamento inalterado, confirmado por smoke test (`401` sem token
+  em `api.jrnexpenses.com` e `api-hom.jrnexpenses.com`, idêntico a
+  antes da feature).
+- Artefatos legados de LocalStack/Kong removidos;
+  `backend/infra/docker-compose.yml` novo sobe LocalStack (DynamoDB +
+  SSM, edição Community) e cognito-local (build próprio a partir do
+  pacote npm `cognito-local@5.3.0`, já que Cognito não está disponível
+  na edição gratuita do LocalStack).
+- Scripts idempotentes (`local-init.sh` + 3 scripts) criam o User Pool,
+  a tabela `GastosApp-Local` e os parâmetros em `/GastosApp/` no SSM
+  local — testados rodando duas vezes seguidas sem duplicar recursos.
+- **Achado durante a validação**: no Git Bash/MSYS (Windows),
+  argumentos de linha de comando começando com `/` (ex.:
+  `/GastosApp/...`) são reescritos como caminho de arquivo Windows
+  antes de chegar no AWS CLI, corrompendo nomes de parâmetro
+  silenciosamente (o `put-parameter` "funcionava" mas gravava em outro
+  nome; `get-parameters-by-path` não encontrava nada). Corrigido
+  exportando `MSYS_NO_PATHCONV=1` nos scripts — sem efeito em bash real
+  (Linux/macOS/WSL).
+- Validação manual end-to-end, do zero (`docker compose up` +
+  `local-init.sh` numa máquina limpa): `POST /auth/register` →
+  `admin-confirm-sign-up` (cognito-local) → `POST /auth/login` →
+  `GET /auth/me` → `POST /categories` → `GET /categories` →
+  `POST /expenses` → `GET /expenses` → `PUT /expenses/{id}` →
+  `DELETE /expenses/{id}` → `DELETE /categories/{id}`, tudo contra os
+  containers locais.
+- `dotnet build`/`dotnet test` sem alteração: 195 testes unitários + 89
+  de componente + 1 de integração, 100% passando.
+- Documentação atualizada: `backend/docs/constitution.md`,
+  `backend/CLAUDE.md`, `backend/infra/CLAUDE.md` e novo
+  `backend/infra/README.md`.
 
 ## Fora do escopo
 
