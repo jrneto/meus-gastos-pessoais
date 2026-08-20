@@ -13,8 +13,18 @@ var builder = WebApplication.CreateBuilder(args);
 
 if (!builder.Environment.IsEnvironment("Testing"))
 {
-    var parameterStorePath = builder.Configuration["ParameterStore:Path"] ?? "/GastosApp/";
-    builder.Configuration.AddAwsParameterStore(parameterStorePath);
+    var parameterStoreSection = builder.Configuration.GetSection("ParameterStore");
+    var parameterStorePath = parameterStoreSection["Path"] ?? "/GastosApp/";
+
+    // ServiceURL/AccessKey/SecretKey são só para dev local (LocalStack) —
+    // ver FEAT-18. Em produção/homologação essas chaves não existem, e o
+    // comportamento continua sendo SSM real com credenciais do ambiente.
+    builder.Configuration.AddAwsParameterStore(
+        parameterStorePath,
+        parameterStoreSection["ServiceURL"],
+        parameterStoreSection["Region"] ?? "us-east-1",
+        parameterStoreSection["AccessKey"],
+        parameterStoreSection["SecretKey"]);
 }
 
 Log.Logger = new LoggerConfiguration()

@@ -34,9 +34,17 @@ public static class JwtAuthenticationExtensions
             var cognitoRegion = cognitoSection["Region"];
             var cognitoUserPoolId = cognitoSection["UserPoolId"];
             var cognitoClientId = cognitoSection["ClientId"];
+            var cognitoServiceURL = cognitoSection["ServiceURL"];
 
-            options.RequireHttpsMetadata = true;
-            options.Authority = $"https://cognito-idp.{cognitoRegion}.amazonaws.com/{cognitoUserPoolId}";
+            // ServiceURL só é definido em dev local (cognito-local, ver
+            // FEAT-18) — nesse caso o JWKS é servido em HTTP puro, e o
+            // Authority aponta pro emulador em vez do domínio real do
+            // Cognito. Produção/homologação não declaram essa chave, então
+            // o comportamento real fica inalterado.
+            options.RequireHttpsMetadata = string.IsNullOrEmpty(cognitoServiceURL);
+            options.Authority = !string.IsNullOrEmpty(cognitoServiceURL)
+                ? $"{cognitoServiceURL}/{cognitoUserPoolId}"
+                : $"https://cognito-idp.{cognitoRegion}.amazonaws.com/{cognitoUserPoolId}";
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,

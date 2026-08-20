@@ -1,3 +1,4 @@
+using Amazon.Runtime;
 using Amazon.SimpleSystemsManagement;
 using Amazon.SimpleSystemsManagement.Model;
 using Microsoft.Extensions.Configuration;
@@ -17,11 +18,33 @@ namespace GastosApp.Infrastructure.Configuration
         // permitir isolamento entre ambientes (produção lê "/GastosApp/",
         // homologação lê "/GastosApp/Hom/" via variável de ambiente da
         // Lambda) — ver FEAT-13.
+        //
+        // `serviceURL`/`region`/`accessKey`/`secretKey` são só para dev
+        // local (LocalStack) — ver FEAT-18. Quando omitidos, comportamento
+        // idêntico ao anterior (SSM real em us-east-1, credenciais do
+        // ambiente/IAM Role).
         public static IConfigurationBuilder AddAwsParameterStore(
             this IConfigurationBuilder builder,
-            string path = "/GastosApp/")
+            string path = "/GastosApp/",
+            string? serviceURL = null,
+            string region = "us-east-1",
+            string? accessKey = null,
+            string? secretKey = null)
         {
-            using var client = new AmazonSimpleSystemsManagementClient(Amazon.RegionEndpoint.USEast1);
+            var config = new AmazonSimpleSystemsManagementConfig
+            {
+                RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(region)
+            };
+
+            if (!string.IsNullOrEmpty(serviceURL))
+            {
+                config.ServiceURL = serviceURL;
+                config.AuthenticationRegion = region;
+            }
+
+            using var client = !string.IsNullOrEmpty(accessKey) && !string.IsNullOrEmpty(secretKey)
+                ? new AmazonSimpleSystemsManagementClient(new BasicAWSCredentials(accessKey, secretKey), config)
+                : new AmazonSimpleSystemsManagementClient(config); // usa IAM Role / credenciais do ambiente
 
             var values = new Dictionary<string, string?>();
             string? nextToken = null;
