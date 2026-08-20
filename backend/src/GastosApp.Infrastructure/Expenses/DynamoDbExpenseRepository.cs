@@ -17,6 +17,17 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
     private const string Gsi2Index = "GSI2";
     private const int MaxPaginationIterations = 25;
 
+    // GSI2 (GSI2PK = "ID#{id}") é compartilhado com outros tipos de item de
+    // usuário (ex.: categorias, mesmo formato de chave) — sem esse
+    // discriminador, um id de categoria passado a um endpoint de despesa
+    // encontraria o item errado (crash ao ler atributos que só despesa tem,
+    // ou pior: update/delete operando sobre o item errado). "Tipo" já era
+    // gravado em todo item de despesa (SaveAsync/UpdateAsync) mas nunca era
+    // conferido na leitura — bug encontrado ao consultar GET /expenses/{id}
+    // com um categoryId por engano (500 em vez de 404).
+    private const string TipoAttribute = "Tipo";
+    private const string TipoDespesa = "despesa";
+
     private readonly IAmazonDynamoDB _dynamoDbClient;
     private readonly DynamoDbOptions _options;
 
@@ -85,7 +96,14 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
                     ["PK"] = new AttributeValue { S = pk },
                     ["SK"] = new AttributeValue { S = sk }
                 },
-                ConditionExpression = "attribute_exists(PK)"
+                // "AND #tipo = :tipo" garante que só um item de despesa é apagado — sem isso, um
+                // categoryId passado por engano em DELETE /expenses/{id} apagaria a categoria.
+                ConditionExpression = "attribute_exists(PK) AND #tipo = :tipo",
+                ExpressionAttributeNames = new Dictionary<string, string> { ["#tipo"] = TipoAttribute },
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":tipo"] = new AttributeValue { S = TipoDespesa }
+                }
             }, cancellationToken);
 
             return true;
@@ -129,7 +147,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
             }
         }, cancellationToken);
 
-        if (!current.IsItemSet)
+        if (!current.IsItemSet || !IsDespesaItem(current.Item))
             return null;
 
         var createdAt = DateTimeOffset.Parse(
@@ -182,7 +200,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
             }
         }, cancellationToken);
 
-        if (!current.IsItemSet)
+        if (!current.IsItemSet || !IsDespesaItem(current.Item))
             return null;
 
         var createdAt = DateTimeOffset.Parse(
@@ -242,6 +260,9 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
 
         return Expense.Restore(expenseId, userId, description, amountInCents, categoryId, expenseDate, createdAt);
     }
+
+    private static bool IsDespesaItem(Dictionary<string, AttributeValue> item) =>
+        item.TryGetValue(TipoAttribute, out var tipo) && tipo.S == TipoDespesa;
 
     public async Task<bool> ExistsByCategoryAsync(string userId, string categoryId, CancellationToken cancellationToken = default)
     {
