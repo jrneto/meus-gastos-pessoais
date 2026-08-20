@@ -43,6 +43,24 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
+  # SPA (React Router, client-side routing): sem isso, dar F5 em
+  # qualquer rota que não seja "/" pede esse path literal ao S3, que
+  # não tem esse objeto e responde 403 (bucket privado via OAC) — o
+  # CloudFront repassava esse XML direto pro navegador. Redireciona
+  # 403/404 pro index.html (200), deixando o React Router decidir a
+  # rota no client.
+  custom_error_response {
+    error_code         = 403
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
+  custom_error_response {
+    error_code         = 404
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
   viewer_certificate {
     acm_certificate_arn      = aws_acm_certificate.frontend.arn
     ssl_support_method       = "sni-only"

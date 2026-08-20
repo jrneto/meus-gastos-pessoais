@@ -2,6 +2,7 @@
 using Amazon.CognitoIdentityProvider;
 using Amazon.DynamoDBv2;
 using GastosApp.Application.Common.Interfaces;
+using GastosApp.Infrastructure.Categories;
 using GastosApp.Infrastructure.Configuration;
 using GastosApp.Infrastructure.Expenses;
 using GastosApp.Infrastructure.Extensions;
@@ -20,6 +21,7 @@ namespace GastosApp.Infrastructure.DependencyInjection
             services.AddAwsInfrastructure(configuration, environment);
 
             services.AddScoped<IExpenseRepository, DynamoDbExpenseRepository>();
+            services.AddScoped<ICategoryRepository, DynamoDbCategoryRepository>();
 
             return services;
         }

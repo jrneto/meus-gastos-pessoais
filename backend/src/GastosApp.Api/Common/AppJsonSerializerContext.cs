@@ -3,6 +3,9 @@ using GastosApp.Api.Endpoints;
 using GastosApp.Application.Auth.Commands.Login;
 using GastosApp.Application.Auth.Commands.Refresh;
 using GastosApp.Application.Auth.Commands.Register;
+using GastosApp.Application.Categories.Commands.CreateCategory;
+using GastosApp.Application.Categories.Commands.UpdateCategory;
+using GastosApp.Application.Categories.Queries.GetCategories;
 using GastosApp.Application.Expenses.Commands.RegisterExpense;
 using GastosApp.Application.Expenses.Commands.UpdateExpense;
 using GastosApp.Application.Expenses.Queries.GetExpenses;
@@ -31,6 +34,12 @@ namespace GastosApp.Api.Common;
 [JsonSerializable(typeof(GetExpensesRequest))]
 [JsonSerializable(typeof(HealthResponse))]
 [JsonSerializable(typeof(ProblemDetails))]
+[JsonSerializable(typeof(CreateCategoryRequest))]
+[JsonSerializable(typeof(UpdateCategoryRequest))]
+[JsonSerializable(typeof(CreateCategoryResult))]
+[JsonSerializable(typeof(UpdateCategoryResult))]
+[JsonSerializable(typeof(GetCategoriesResult))]
+[JsonSerializable(typeof(CategorySummary))]
 public partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }

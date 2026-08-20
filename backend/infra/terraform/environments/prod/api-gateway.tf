@@ -8,9 +8,10 @@ resource "aws_apigatewayv2_api" "main" {
   protocol_type = "HTTP"
 
   cors_configuration {
-    allow_origins = var.frontend_origins
-    allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    allow_headers = ["Authorization", "Content-Type"]
+    allow_origins     = var.frontend_origins
+    allow_methods     = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allow_headers     = ["Authorization", "Content-Type"]
+    allow_credentials = true # cookie httpOnly do refresh token (FEAT-15/FEAT-12)
   }
 }
 

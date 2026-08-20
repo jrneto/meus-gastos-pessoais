@@ -84,6 +84,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapAuthEndpoints();
 app.MapExpenseEndpoints();
+app.MapCategoryEndpoints();
 app.MapHealthEndpoints();
 
 app.Run();

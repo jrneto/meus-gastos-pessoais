@@ -243,6 +243,23 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         return Expense.Restore(expenseId, userId, description, amountInCents, category, expenseDate, createdAt);
     }
 
+    public async Task<bool> ExistsByCategoryAsync(string userId, string category, CancellationToken cancellationToken = default)
+    {
+        var response = await _dynamoDbClient.QueryAsync(new QueryRequest
+        {
+            TableName = _options.TableName,
+            IndexName = Gsi1Index,
+            KeyConditionExpression = "GSI1PK = :gsi1pk",
+            ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                [":gsi1pk"] = new AttributeValue { S = $"USER#{userId}#{category}" }
+            },
+            Limit = 1
+        }, cancellationToken);
+
+        return response.Items.Count > 0;
+    }
+
     public async Task<ExpenseQueryPage> QueryAsync(ExpenseQueryFilter filter, CancellationToken cancellationToken = default)
     {
         var index = filter.Category is not null ? Gsi1Index : BaseIndex;
