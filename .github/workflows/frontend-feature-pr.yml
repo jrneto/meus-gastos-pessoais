@@ -1,13 +1,14 @@
 name: Frontend — PR automático para develop
 
-# Dispara em push em qualquer branch de feature (convenção: nomeada
+# Dispara em push em branch de Fluxo Completo (convenção: nomeada
 # como a pasta de spec, ex.: FEAT-11-nome-feature — ver /CLAUDE.md
-# raiz), só quando o app do frontend muda. Se o gate de qualidade
-# passar, abre um PR pra develop automaticamente (idempotente — não
-# duplica em pushes seguintes). Merge continua sempre manual.
+# raiz) ou de Modo Leve (prefixo fix/*, ex.: fix/nome-do-bug), só
+# quando o app do frontend muda. Se o gate de qualidade passar, abre
+# um PR pra develop automaticamente (idempotente — não duplica em
+# pushes seguintes). Merge continua sempre manual.
 on:
   push:
-    branches: ['FEAT-*']
+    branches: ['FEAT-*', 'fix/*']
     paths:
       - 'frontend/app/**'
 
