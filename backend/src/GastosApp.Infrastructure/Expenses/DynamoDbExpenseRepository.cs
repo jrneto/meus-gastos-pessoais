@@ -401,6 +401,16 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
             return "begins_with(#sk, :skPrefix)";
         }
 
+        // Sem filtro de data/mês: no índice base a PK é compartilhada com outros tipos de item
+        // (ex.: categorias). É preciso restringir explicitamente a SK a despesas (prefixo "TXN#"),
+        // senão a query retorna itens que não têm os atributos de despesa e MapToExpenseQueryItem
+        // quebra. No GSI1 isso não é necessário: só despesas possuem GSI1PK.
+        if (skPrefix.Length > 0)
+        {
+            values[":skPrefix"] = new AttributeValue { S = skPrefix };
+            return "begins_with(#sk, :skPrefix)";
+        }
+
         names.Remove("#sk");
         return null;
     }
