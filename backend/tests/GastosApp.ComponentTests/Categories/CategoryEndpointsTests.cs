@@ -74,6 +74,47 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
         await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs().ListAsync(default!, default);
     }
 
+    // ----- GET /categories/{id} -----
+
+    [Fact]
+    public async Task GetCategoryById_ComCategoriaPropria_Retorna200ComCorpo()
+    {
+        AuthenticateAs("user-id-123");
+        _factory.CategoryRepositoryMock.GetByIdAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
+            .Returns(SampleCategory(nome: "Viagem"));
+
+        var response = await _client.GetAsync("/categories/category-1");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("id").GetString().Should().Be("category-1");
+        body.GetProperty("nome").GetString().Should().Be("Viagem");
+    }
+
+    [Fact]
+    public async Task GetCategoryById_SemHeaderDeAutenticacao_Retorna401SemChamarRepositorio()
+    {
+        var response = await _client.GetAsync("/categories/category-1");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs()
+            .GetByIdAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task GetCategoryById_ComCategoriaInexistenteOuDeOutroUsuario_Retorna404()
+    {
+        AuthenticateAs("user-id-123");
+        _factory.CategoryRepositoryMock.GetByIdAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((Category?)null);
+
+        var response = await _client.GetAsync("/categories/category-inexistente");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/not-found");
+    }
+
     // ----- POST /categories -----
 
     [Fact]
