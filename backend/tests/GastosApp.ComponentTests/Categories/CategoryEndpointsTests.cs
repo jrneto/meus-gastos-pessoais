@@ -247,7 +247,7 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
         AuthenticateAs("user-id-123");
         _factory.CategoryRepositoryMock.GetByIdAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(SampleCategory(nome: "Viagem"));
-        _factory.ExpenseRepositoryMock.ExistsByCategoryAsync("user-id-123", "Viagem", Arg.Any<CancellationToken>())
+        _factory.ExpenseRepositoryMock.ExistsByCategoryAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(false);
         _factory.CategoryRepositoryMock.DeleteAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(true);
@@ -264,7 +264,7 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
         AuthenticateAs("user-id-123");
         _factory.CategoryRepositoryMock.GetByIdAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(SampleCategory(nome: "Alimentacao"));
-        _factory.ExpenseRepositoryMock.ExistsByCategoryAsync("user-id-123", "Alimentacao", Arg.Any<CancellationToken>())
+        _factory.ExpenseRepositoryMock.ExistsByCategoryAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(true);
 
         var response = await _client.DeleteAsync("/categories/category-1");

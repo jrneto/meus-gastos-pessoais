@@ -1,7 +1,6 @@
 using FluentAssertions;
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.Application.Expenses.Queries.GetExpenses;
-using GastosApp.Domain.Expenses;
 using NSubstitute;
 using Xunit;
 
@@ -23,11 +22,11 @@ public class GetExpensesQueryHandlerTests
     {
         // Arrange
         var query = new GetExpensesQuery(
-            "user-id-123", "2025-06", "Alimentacao", "2025-06-01", "2025-06-30", 1000, 5000, null, 10);
+            "user-id-123", "2025-06", "category-1", "2025-06-01", "2025-06-30", 1000, 5000, null, 10);
 
         var page = new ExpenseQueryPage(
             [
-                new ExpenseQueryItem("expense-1", "Almoço", 4590, ExpenseCategory.Alimentacao,
+                new ExpenseQueryItem("expense-1", "Almoço", 4590, "category-1",
                     new DateOnly(2025, 6, 15), DateTimeOffset.UtcNow)
             ],
             "next-cursor-token");
@@ -42,14 +41,14 @@ public class GetExpensesQueryHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Items.Should().ContainSingle();
         result.Value.Items[0].Id.Should().Be("expense-1");
-        result.Value.Items[0].Category.Should().Be("Alimentacao");
+        result.Value.Items[0].CategoryId.Should().Be("category-1");
         result.Value.NextCursor.Should().Be("next-cursor-token");
 
         await _expenseRepositoryMock.Received(1).QueryAsync(
             Arg.Is<ExpenseQueryFilter>(f =>
                 f.UserId == "user-id-123"
                 && f.YearMonth == "2025-06"
-                && f.Category == ExpenseCategory.Alimentacao
+                && f.CategoryId == "category-1"
                 && f.DateFrom == new DateOnly(2025, 6, 1)
                 && f.DateTo == new DateOnly(2025, 6, 30)
                 && f.MinAmountInCents == 1000
@@ -73,7 +72,7 @@ public class GetExpensesQueryHandlerTests
 
         // Assert
         await _expenseRepositoryMock.Received(1).QueryAsync(
-            Arg.Is<ExpenseQueryFilter>(f => f.Limit == 20 && f.Category == null),
+            Arg.Is<ExpenseQueryFilter>(f => f.Limit == 20 && f.CategoryId == null),
             Arg.Any<CancellationToken>());
     }
 

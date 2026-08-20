@@ -1,7 +1,6 @@
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using FluentAssertions;
-using GastosApp.Domain.Expenses;
 using GastosApp.Infrastructure.Configuration;
 using GastosApp.Infrastructure.Expenses;
 using Microsoft.Extensions.Options;
@@ -50,7 +49,7 @@ public class DynamoDbExpenseRepositoryUpdateTests
 
         // Act
         var result = await _repository.UpdateAsync(
-            "user-1", "expense-inexistente", "Almoço", 4590, ExpenseCategory.Alimentacao, new DateOnly(2025, 6, 15));
+            "user-1", "expense-inexistente", "Almoço", 4590, "category-1", new DateOnly(2025, 6, 15));
 
         // Assert
         result.Should().BeNull();
@@ -68,7 +67,7 @@ public class DynamoDbExpenseRepositoryUpdateTests
 
         // Act
         var result = await _repository.UpdateAsync(
-            "user-1", "expense-1", "Almoço", 4590, ExpenseCategory.Alimentacao, new DateOnly(2025, 6, 15));
+            "user-1", "expense-1", "Almoço", 4590, "category-1", new DateOnly(2025, 6, 15));
 
         // Assert
         result.Should().BeNull();
@@ -86,7 +85,7 @@ public class DynamoDbExpenseRepositoryUpdateTests
 
         // Act
         var result = await _repository.UpdateAsync(
-            "user-1", "expense-1", "Almoço", 4590, ExpenseCategory.Alimentacao, new DateOnly(2025, 6, 15));
+            "user-1", "expense-1", "Almoço", 4590, "category-1", new DateOnly(2025, 6, 15));
 
         // Assert
         result.Should().BeNull();
@@ -105,19 +104,21 @@ public class DynamoDbExpenseRepositoryUpdateTests
 
         // Act
         var result = await _repository.UpdateAsync(
-            "user-1", "expense-1", "Almoço atualizado", 5290, ExpenseCategory.Alimentacao, new DateOnly(2025, 6, 15));
+            "user-1", "expense-1", "Almoço atualizado", 5290, "category-1", new DateOnly(2025, 6, 15));
 
         // Assert
         result.Should().NotBeNull();
         result!.Description.Should().Be("Almoço atualizado");
         result.AmountInCents.Should().Be(5290);
+        result.CategoryId.Should().Be("category-1");
         result.CreatedAt.Should().Be(OriginalCreatedAt);
 
         await _dynamoDbClientMock.Received(1).PutItemAsync(
             Arg.Is<PutItemRequest>(r =>
                 r.Item["PK"].S == "USER#user-1"
                 && r.Item["SK"].S == "TXN#2025-06-15#expense-1"
-                && r.Item["Description"].S == "Almoço atualizado"),
+                && r.Item["Description"].S == "Almoço atualizado"
+                && r.Item["CategoryId"].S == "category-1"),
             Arg.Any<CancellationToken>());
         await _dynamoDbClientMock.DidNotReceiveWithAnyArgs().TransactWriteItemsAsync(default!, default);
     }
@@ -133,7 +134,7 @@ public class DynamoDbExpenseRepositoryUpdateTests
 
         // Act
         var result = await _repository.UpdateAsync(
-            "user-1", "expense-1", "Almoço", 4590, ExpenseCategory.Alimentacao, new DateOnly(2025, 6, 20));
+            "user-1", "expense-1", "Almoço", 4590, "category-1", new DateOnly(2025, 6, 20));
 
         // Assert
         result.Should().NotBeNull();

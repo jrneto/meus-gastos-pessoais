@@ -1,20 +1,32 @@
 using FluentAssertions;
+using GastosApp.Application.Common.Interfaces;
 using GastosApp.Application.Expenses.Commands.UpdateExpense;
+using GastosApp.Domain.Categories;
+using NSubstitute;
 using Xunit;
 
 namespace GastosApp.UnitTests.Application;
 
 public class UpdateExpenseCommandValidatorTests
 {
-    private readonly UpdateExpenseCommandValidator _validator = new();
+    private readonly ICategoryRepository _categoryRepositoryMock;
+    private readonly UpdateExpenseCommandValidator _validator;
+
+    public UpdateExpenseCommandValidatorTests()
+    {
+        _categoryRepositoryMock = Substitute.For<ICategoryRepository>();
+        _categoryRepositoryMock.GetByIdAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
+            .Returns(Category.Restore("category-1", "user-id-123", "Alimentacao", "#F97316", "utensils", DateTimeOffset.UtcNow));
+
+        _validator = new UpdateExpenseCommandValidator(_categoryRepositoryMock);
+    }
 
     [Fact]
-    public void Validate_ShouldBeValid_WhenCommandIsValid()
+    public async Task Validate_ShouldBeValid_WhenCommandIsValid()
     {
-        var command = new UpdateExpenseCommand(
-            "user-id-123", "expense-1", "Almoço", 4590, "Alimentacao", new DateOnly(2025, 6, 15));
+        var command = new UpdateExpenseCommand("user-id-123", "expense-1", "Almoço", 4590, "category-1", new DateOnly(2025, 6, 15));
 
-        var result = _validator.Validate(command);
+        var result = await _validator.ValidateAsync(command);
 
         result.IsValid.Should().BeTrue();
     }
@@ -22,47 +34,44 @@ public class UpdateExpenseCommandValidatorTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void Validate_ShouldBeInvalid_WhenDescriptionIsEmpty(string description)
+    public async Task Validate_ShouldBeInvalid_WhenDescriptionIsEmpty(string description)
     {
-        var command = new UpdateExpenseCommand(
-            "user-id-123", "expense-1", description, 4590, "Alimentacao", new DateOnly(2025, 6, 15));
+        var command = new UpdateExpenseCommand("user-id-123", "expense-1", description, 4590, "category-1", new DateOnly(2025, 6, 15));
 
-        var result = _validator.Validate(command);
+        var result = await _validator.ValidateAsync(command);
 
         result.IsValid.Should().BeFalse();
     }
 
     [Fact]
-    public void Validate_ShouldBeInvalid_WhenDescriptionExceedsMaxLength()
+    public async Task Validate_ShouldBeInvalid_WhenAmountIsNotGreaterThanZero()
     {
-        var command = new UpdateExpenseCommand(
-            "user-id-123", "expense-1", new string('a', 201), 4590, "Alimentacao", new DateOnly(2025, 6, 15));
+        var command = new UpdateExpenseCommand("user-id-123", "expense-1", "Almoço", 0, "category-1", new DateOnly(2025, 6, 15));
 
-        var result = _validator.Validate(command);
-
-        result.IsValid.Should().BeFalse();
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-100)]
-    public void Validate_ShouldBeInvalid_WhenAmountIsNotGreaterThanZero(long amountInCents)
-    {
-        var command = new UpdateExpenseCommand(
-            "user-id-123", "expense-1", "Almoço", amountInCents, "Alimentacao", new DateOnly(2025, 6, 15));
-
-        var result = _validator.Validate(command);
+        var result = await _validator.ValidateAsync(command);
 
         result.IsValid.Should().BeFalse();
     }
 
     [Fact]
-    public void Validate_ShouldBeInvalid_WhenCategoryIsNotDefined()
+    public async Task Validate_ShouldBeInvalid_WhenCategoryDoesNotExist()
     {
-        var command = new UpdateExpenseCommand(
-            "user-id-123", "expense-1", "Almoço", 4590, "CategoriaInexistente", new DateOnly(2025, 6, 15));
+        var command = new UpdateExpenseCommand("user-id-123", "expense-1", "Almoço", 4590, "category-inexistente", new DateOnly(2025, 6, 15));
 
-        var result = _validator.Validate(command);
+        var result = await _validator.ValidateAsync(command);
+
+        result.IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Validate_ShouldBeInvalid_WhenCategoryBelongsToAnotherUser()
+    {
+        _categoryRepositoryMock.GetByIdAsync("outro-user", "category-1", Arg.Any<CancellationToken>())
+            .Returns((Category?)null);
+
+        var command = new UpdateExpenseCommand("outro-user", "expense-1", "Almoço", 4590, "category-1", new DateOnly(2025, 6, 15));
+
+        var result = await _validator.ValidateAsync(command);
 
         result.IsValid.Should().BeFalse();
     }

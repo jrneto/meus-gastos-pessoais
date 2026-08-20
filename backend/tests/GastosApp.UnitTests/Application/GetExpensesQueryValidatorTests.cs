@@ -49,23 +49,15 @@ public class GetExpensesQueryValidatorTests
     }
 
     [Fact]
-    public void Validate_ShouldBeValid_WhenCategoryIsDefined()
+    public void Validate_ShouldBeValid_WhenCategoryIdIsAnyNonEmptyString()
     {
-        var query = EmptyQuery with { Category = "Alimentacao" };
+        // Não há validação de formato/existência para o filtro categoryId (ver plan.md FEAT-17) —
+        // um id que não existe simplesmente não retorna resultados, não é erro de validação.
+        var query = EmptyQuery with { CategoryId = "qualquer-valor" };
 
         var result = _validator.Validate(query);
 
         result.IsValid.Should().BeTrue();
-    }
-
-    [Fact]
-    public void Validate_ShouldBeInvalid_WhenCategoryIsNotDefined()
-    {
-        var query = EmptyQuery with { Category = "CategoriaInexistente" };
-
-        var result = _validator.Validate(query);
-
-        result.IsValid.Should().BeFalse();
     }
 
     [Theory]

@@ -9,7 +9,7 @@ public sealed record RegisterExpenseCommand(
     string UserId,
     string Description,
     long AmountInCents,
-    string Category,
+    string CategoryId,
     DateOnly ExpenseDate) : ICommand<Result<RegisterExpenseResult>>;
 
 public sealed class RegisterExpenseCommandHandler : ICommandHandler<RegisterExpenseCommand, Result<RegisterExpenseResult>>
@@ -23,13 +23,11 @@ public sealed class RegisterExpenseCommandHandler : ICommandHandler<RegisterExpe
 
     public async ValueTask<Result<RegisterExpenseResult>> Handle(RegisterExpenseCommand command, CancellationToken cancellationToken)
     {
-        var category = Enum.Parse<ExpenseCategory>(command.Category, ignoreCase: true);
-
         var expense = Expense.Create(
             command.UserId,
             command.Description,
             command.AmountInCents,
-            category,
+            command.CategoryId,
             command.ExpenseDate);
 
         await _expenseRepository.SaveAsync(expense, cancellationToken);
@@ -42,7 +40,7 @@ public record RegisterExpenseResult(
     string Id,
     string Description,
     long AmountInCents,
-    string Category,
+    string CategoryId,
     DateOnly ExpenseDate,
     DateTimeOffset CreatedAt)
 {
@@ -50,7 +48,7 @@ public record RegisterExpenseResult(
         expense.Id,
         expense.Description,
         expense.AmountInCents,
-        expense.Category.ToString(),
+        expense.CategoryId,
         expense.ExpenseDate,
         expense.CreatedAt);
 }

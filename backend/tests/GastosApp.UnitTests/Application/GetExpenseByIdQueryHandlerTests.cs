@@ -27,7 +27,7 @@ public class GetExpenseByIdQueryHandlerTests
 
         var expense = Expense.Restore(
             "expense-1", "user-id-123", "Almoço no restaurante", 4590,
-            ExpenseCategory.Alimentacao, new DateOnly(2025, 6, 15), DateTimeOffset.UtcNow);
+            "category-1", new DateOnly(2025, 6, 15), DateTimeOffset.UtcNow);
 
         _expenseRepositoryMock.GetByIdAsync("user-id-123", "expense-1", Arg.Any<CancellationToken>())
             .Returns(expense);
@@ -40,7 +40,7 @@ public class GetExpenseByIdQueryHandlerTests
         result.Value.Id.Should().Be("expense-1");
         result.Value.Description.Should().Be("Almoço no restaurante");
         result.Value.AmountInCents.Should().Be(4590);
-        result.Value.Category.Should().Be("Alimentacao");
+        result.Value.CategoryId.Should().Be("category-1");
         result.Value.ExpenseDate.Should().Be(new DateOnly(2025, 6, 15));
     }
 

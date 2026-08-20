@@ -1,5 +1,5 @@
 using FluentValidation;
-using GastosApp.Domain.Expenses;
+using GastosApp.Application.Common.Interfaces;
 
 namespace GastosApp.Application.Expenses.Commands.RegisterExpense;
 
@@ -7,8 +7,12 @@ public sealed class RegisterExpenseCommandValidator : AbstractValidator<Register
 {
     private const int MaxDescriptionLength = 200;
 
-    public RegisterExpenseCommandValidator()
+    private readonly ICategoryRepository _categoryRepository;
+
+    public RegisterExpenseCommandValidator(ICategoryRepository categoryRepository)
     {
+        _categoryRepository = categoryRepository;
+
         ClassLevelCascadeMode = CascadeMode.Stop;
 
         RuleFor(c => c.Description)
@@ -18,10 +22,12 @@ public sealed class RegisterExpenseCommandValidator : AbstractValidator<Register
         RuleFor(c => c.AmountInCents)
             .GreaterThan(0).WithMessage("Valor deve ser maior que zero.");
 
-        RuleFor(c => c.Category)
-            .Must(BeAValidCategory).WithMessage("Categoria inválida.");
+        RuleFor(c => c.CategoryId)
+            .NotEmpty().WithMessage("Categoria é obrigatória.")
+            .MustAsync(BeAnOwnedCategoryAsync).WithMessage("Categoria inválida.");
     }
 
-    private static bool BeAValidCategory(string category) =>
-        Enum.TryParse<ExpenseCategory>(category, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed);
+    private async Task<bool> BeAnOwnedCategoryAsync(
+        RegisterExpenseCommand command, string categoryId, CancellationToken cancellationToken) =>
+        await _categoryRepository.GetByIdAsync(command.UserId, categoryId, cancellationToken) is not null;
 }

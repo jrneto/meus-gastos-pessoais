@@ -1,7 +1,6 @@
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using FluentAssertions;
-using GastosApp.Domain.Expenses;
 using GastosApp.Infrastructure.Configuration;
 using GastosApp.Infrastructure.Expenses;
 using Microsoft.Extensions.Options;
@@ -39,7 +38,7 @@ public class DynamoDbExpenseRepositoryGetByIdTests
             ["SK"] = new AttributeValue { S = sk },
             ["Description"] = new AttributeValue { S = "Almoço no restaurante" },
             ["AmountInCents"] = new AttributeValue { N = "4590" },
-            ["Category"] = new AttributeValue { S = "Alimentacao" },
+            ["CategoryId"] = new AttributeValue { S = "category-1" },
             ["ExpenseDate"] = new AttributeValue { S = "2025-06-15" },
             ["CreatedAt"] = new AttributeValue { S = CreatedAt.ToString("O") }
         }
@@ -109,7 +108,7 @@ public class DynamoDbExpenseRepositoryGetByIdTests
         result.UserId.Should().Be("user-1");
         result.Description.Should().Be("Almoço no restaurante");
         result.AmountInCents.Should().Be(4590);
-        result.Category.Should().Be(ExpenseCategory.Alimentacao);
+        result.CategoryId.Should().Be("category-1");
         result.ExpenseDate.Should().Be(new DateOnly(2025, 6, 15));
         result.CreatedAt.Should().Be(CreatedAt);
     }

@@ -6,7 +6,7 @@ public sealed class Expense
     public string UserId { get; }
     public string Description { get; }
     public long AmountInCents { get; }
-    public ExpenseCategory Category { get; }
+    public string CategoryId { get; }
     public DateOnly ExpenseDate { get; }
     public DateTimeOffset CreatedAt { get; }
 
@@ -15,7 +15,7 @@ public sealed class Expense
         string userId,
         string description,
         long amountInCents,
-        ExpenseCategory category,
+        string categoryId,
         DateOnly expenseDate,
         DateTimeOffset createdAt)
     {
@@ -23,7 +23,7 @@ public sealed class Expense
         UserId = userId;
         Description = description;
         AmountInCents = amountInCents;
-        Category = category;
+        CategoryId = categoryId;
         ExpenseDate = expenseDate;
         CreatedAt = createdAt;
     }
@@ -32,7 +32,7 @@ public sealed class Expense
         string userId,
         string description,
         long amountInCents,
-        ExpenseCategory category,
+        string categoryId,
         DateOnly expenseDate)
     {
         return new Expense(
@@ -40,7 +40,7 @@ public sealed class Expense
             userId,
             description,
             amountInCents,
-            category,
+            categoryId,
             expenseDate,
             DateTimeOffset.UtcNow);
     }
@@ -50,10 +50,10 @@ public sealed class Expense
         string userId,
         string description,
         long amountInCents,
-        ExpenseCategory category,
+        string categoryId,
         DateOnly expenseDate,
         DateTimeOffset createdAt)
     {
-        return new Expense(id, userId, description, amountInCents, category, expenseDate, createdAt);
+        return new Expense(id, userId, description, amountInCents, categoryId, expenseDate, createdAt);
     }
 }
