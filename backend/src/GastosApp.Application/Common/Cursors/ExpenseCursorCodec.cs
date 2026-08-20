@@ -9,7 +9,7 @@ public static class ExpenseCursorCodec
 
     public static string Encode(ExpenseCursorPayload payload)
     {
-        var json = JsonSerializer.Serialize(payload);
+        var json = JsonSerializer.Serialize(payload, ExpenseCursorJsonContext.Default.ExpenseCursorPayload);
         var bytes = Encoding.UTF8.GetBytes(json);
         return Base64UrlEncode(bytes);
     }
@@ -22,7 +22,7 @@ public static class ExpenseCursorCodec
         {
             var bytes = Base64UrlDecode(cursor);
             var json = Encoding.UTF8.GetString(bytes);
-            var decoded = JsonSerializer.Deserialize<ExpenseCursorPayload>(json);
+            var decoded = JsonSerializer.Deserialize(json, ExpenseCursorJsonContext.Default.ExpenseCursorPayload);
 
             if (decoded is null
                 || !ValidIndexes.Contains(decoded.Index)
