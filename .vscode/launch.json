@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "GastosApp.Api",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/backend/src/GastosApp.Api/bin/Debug/net10.0/GastosApp.Api.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/backend/src/GastosApp.Api",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "console": "internalConsole",
+      "stopAtEntry": false
+    }
+  ]
+}
