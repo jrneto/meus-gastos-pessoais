@@ -14,11 +14,15 @@ API de controle de gastos pessoal. Backend-first, frontend React depois.
   e dependências externas, ver `backend/specs/FEAT-03-testes-componentes/spec.md`)
   antes de ser considerado concluído
 - Sem Scan no DynamoDB — apenas Query com PK ou GSI definidos
-- Toda infraestrutura é AWS. Desenvolvimento local conecta-se diretamente aos
-  recursos AWS reais (Cognito, DynamoDB, Parameter Store), sem simulação
-  (sem LocalStack, sem Kong). Provisionamento via Terraform (não
-  CloudFormation, não CDK) em `backend/infra/terraform/`, cobrindo
-  DynamoDB, Cognito e Parameter Store (ver FEAT-09)
+- Toda infraestrutura de produção/homologação é AWS real, provisionada via
+  Terraform (não CloudFormation, não CDK) em `backend/infra/terraform/`,
+  cobrindo DynamoDB, Cognito e Parameter Store (ver FEAT-09). Desde a
+  FEAT-18, desenvolvimento local roda contra serviços emulados em
+  containers Docker — LocalStack (DynamoDB + SSM Parameter Store) e
+  cognito-local (Cognito, não disponível na edição gratuita do
+  LocalStack) — sem depender de credenciais AWS reais nem afetar
+  produção/homologação; ver `backend/infra/CLAUDE.md` e
+  `backend/infra/README.md`
 - **Toda mudança de contrato de API** (novo endpoint, novo campo em
   request/response, novo status code de erro) **exige regenerar
   `backend/docs/openapi.json`** (via `backend/scripts/export-openapi.sh`)

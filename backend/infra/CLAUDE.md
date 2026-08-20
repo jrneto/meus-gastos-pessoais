@@ -6,12 +6,24 @@ Leve vs Fluxo Completo e a regra de organização de specs, e
 
 ## Princípios
 
-- Toda infraestrutura é **100% AWS**. Não há ambiente simulado: mesmo em
-  desenvolvimento local, o backend se conecta diretamente aos recursos
-  AWS reais (Cognito, DynamoDB, Parameter Store) — ver
-  `backend/docs/constitution.md` e `backend/docs/architecture.md`.
-- **Sem LocalStack, sem Kong.** Nenhuma simulação local de infraestrutura
-  AWS deve ser (re)introduzida.
+- Toda infraestrutura de **produção e homologação** é **100% AWS real**
+  — ver `backend/docs/constitution.md` e `backend/docs/architecture.md`.
+- Desde a FEAT-18, **desenvolvimento local roda contra serviços
+  emulados em Docker** (`backend/infra/docker-compose.yml`): LocalStack
+  (DynamoDB + SSM Parameter Store, edição Community/gratuita) e
+  **cognito-local** (Cognito, indisponível na edição gratuita do
+  LocalStack — ver `backend/infra/cognito-local/`). Isso substitui a
+  tentativa anterior baseada em LocalStack/Kong (ver "Estado legado"
+  abaixo) e elimina a dependência de credenciais AWS reais para
+  desenvolvimento do dia a dia. Passo a passo em
+  `backend/infra/README.md`.
+- **Isolamento garantido por configuração, não por convenção**: os
+  endpoints locais (`Cognito:ServiceURL`, `DynamoDb:ServiceURL`,
+  `ParameterStore:ServiceURL`) só existem em
+  `appsettings.Development.json` e nos parâmetros seedados no SSM
+  local — produção e homologação nunca declaram essas chaves, então o
+  comportamento real (AWS real, credenciais do ambiente/IAM Role)
+  nunca muda.
 - IaC feito **exclusivamente em Terraform** — não CloudFormation, não
   CDK. **Só gerar/alterar código Terraform para um recurso quando
   solicitado explicitamente pelo usuário.**
@@ -122,15 +134,30 @@ automático develop→main) — ver
   (distintos de `hom`/`prod`, já usados pelo frontend), cada um com as
   variáveis `CICD_ROLE_ARN` e `FUNCTION_NAME`.
 
-## Estado legado (pendente de decisão)
+## Ambiente local (FEAT-18)
 
-`docker-compose.yml`, `kong.yml` e `scripts/` (incluindo
-`scripts/localstack-init/`) são artefatos de uma abordagem anterior
-baseada em LocalStack/Kong, que contradiz o princípio acima (infra 100%
-AWS real, sem simulação). Não os use como referência para novo trabalho,
-e não os modifique/estenda sem antes confirmar com o usuário — a remoção
-ou substituição por Terraform é uma decisão pendente do usuário, ainda
-não tomada.
+`docker-compose.yml` sobe dois serviços: `localstack` (DynamoDB + SSM
+Parameter Store) e `cognito-local` (build próprio a partir do pacote
+npm `cognito-local`, `backend/infra/cognito-local/Dockerfile` — não há
+imagem oficial mantida no Docker Hub). `scripts/local-init.sh`
+orquestra a criação idempotente do User Pool local, da tabela
+`GastosApp-Local` e dos parâmetros em `/GastosApp/` no SSM local
+(mesma estrutura de produção/homologação, mais
+`ServiceURL`/`AccessKey`/`SecretKey`, que sinalizam "modo local" pro
+backend). A API roda fora do Docker (`dotnet run`), apontando pra esses
+containers via `appsettings.Development.json`. Passo a passo completo
+em `backend/infra/README.md`.
+
+Achado durante a implementação: no Git Bash/MSYS (Windows), argumentos
+de linha de comando começando com `/` (ex.: `/GastosApp/...`) são
+reescritos como caminho de arquivo Windows antes de chegar no AWS CLI,
+corrompendo nomes de parâmetro silenciosamente — os scripts exportam
+`MSYS_NO_PATHCONV=1` para evitar isso (sem efeito em bash real).
+
+Esta é a substituição definitiva da tentativa anterior baseada em
+LocalStack/Kong (removida nesta feature — Kong não faz parte da
+solução atual, e as suposições de LocalStack para Cognito estavam
+desatualizadas — ver `backend/specs/FEAT-18-ambiente-local-sem-aws/`).
 
 ## Specs
 
