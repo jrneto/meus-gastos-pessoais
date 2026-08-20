@@ -23,7 +23,7 @@ public sealed class DeleteCategoryCommandHandler : ICommandHandler<DeleteCategor
         if (category is null)
             return Result.Failure(CategoryErrors.NotFound);
 
-        var inUse = await _expenseRepository.ExistsByCategoryAsync(command.UserId, category.Nome, cancellationToken);
+        var inUse = await _expenseRepository.ExistsByCategoryAsync(command.UserId, command.CategoryId, cancellationToken);
         if (inUse)
             return Result.Failure(CategoryErrors.CategoryInUse);
 

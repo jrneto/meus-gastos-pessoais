@@ -1,6 +1,5 @@
 using FluentAssertions;
 using GastosApp.Application.Common.Interfaces;
-using GastosApp.Application.Common.Results;
 using GastosApp.Application.Expenses.Commands.RegisterExpense;
 using GastosApp.Domain.Expenses;
 using NSubstitute;
@@ -24,7 +23,7 @@ public class RegisterExpenseCommandHandlerTests
     {
         // Arrange
         var command = new RegisterExpenseCommand(
-            "user-id-123", "Almoço no restaurante", 4590, "Alimentacao", new DateOnly(2025, 6, 15));
+            "user-id-123", "Almoço no restaurante", 4590, "category-1", new DateOnly(2025, 6, 15));
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -33,7 +32,7 @@ public class RegisterExpenseCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Description.Should().Be(command.Description);
         result.Value.AmountInCents.Should().Be(command.AmountInCents);
-        result.Value.Category.Should().Be("Alimentacao");
+        result.Value.CategoryId.Should().Be("category-1");
         result.Value.ExpenseDate.Should().Be(command.ExpenseDate);
         result.Value.Id.Should().NotBeNullOrWhiteSpace();
 
@@ -49,7 +48,7 @@ public class RegisterExpenseCommandHandlerTests
     {
         // Arrange
         var expenseDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(daysOffset));
-        var command = new RegisterExpenseCommand("user-id-123", "Despesa", 100, "Outros", expenseDate);
+        var command = new RegisterExpenseCommand("user-id-123", "Despesa", 100, "category-1", expenseDate);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);

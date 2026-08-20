@@ -43,13 +43,13 @@ public class DeleteCategoryCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnCategoryInUse_WhenExpensesReferenceCategoryName()
+    public async Task Handle_ShouldReturnCategoryInUse_WhenExpensesReferenceCategoryId()
     {
         // Arrange
         var command = new DeleteCategoryCommand("user-id-123", "category-1");
         _categoryRepositoryMock.GetByIdAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(SampleCategory("Alimentacao"));
-        _expenseRepositoryMock.ExistsByCategoryAsync("user-id-123", "Alimentacao", Arg.Any<CancellationToken>())
+        _expenseRepositoryMock.ExistsByCategoryAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(true);
 
         // Act
@@ -70,7 +70,7 @@ public class DeleteCategoryCommandHandlerTests
         var command = new DeleteCategoryCommand("user-id-123", "category-1");
         _categoryRepositoryMock.GetByIdAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(SampleCategory("Viagem"));
-        _expenseRepositoryMock.ExistsByCategoryAsync("user-id-123", "Viagem", Arg.Any<CancellationToken>())
+        _expenseRepositoryMock.ExistsByCategoryAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(false);
         _categoryRepositoryMock.DeleteAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(true);
@@ -84,7 +84,7 @@ public class DeleteCategoryCommandHandlerTests
         Received.InOrder(() =>
         {
             _categoryRepositoryMock.GetByIdAsync("user-id-123", "category-1", Arg.Any<CancellationToken>());
-            _expenseRepositoryMock.ExistsByCategoryAsync("user-id-123", "Viagem", Arg.Any<CancellationToken>());
+            _expenseRepositoryMock.ExistsByCategoryAsync("user-id-123", "category-1", Arg.Any<CancellationToken>());
             _categoryRepositoryMock.DeleteAsync("user-id-123", "category-1", Arg.Any<CancellationToken>());
         });
     }

@@ -8,13 +8,13 @@ public interface IExpenseRepository
     Task<ExpenseQueryPage> QueryAsync(ExpenseQueryFilter filter, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(string userId, string expenseId, CancellationToken cancellationToken = default);
     Task<Expense?> GetByIdAsync(string userId, string expenseId, CancellationToken cancellationToken = default);
-    Task<bool> ExistsByCategoryAsync(string userId, string category, CancellationToken cancellationToken = default);
+    Task<bool> ExistsByCategoryAsync(string userId, string categoryId, CancellationToken cancellationToken = default);
     Task<Expense?> UpdateAsync(
         string userId,
         string expenseId,
         string description,
         long amountInCents,
-        ExpenseCategory category,
+        string categoryId,
         DateOnly expenseDate,
         CancellationToken cancellationToken = default);
 }

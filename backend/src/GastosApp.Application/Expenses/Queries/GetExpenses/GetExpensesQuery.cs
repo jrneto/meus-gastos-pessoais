@@ -1,7 +1,6 @@
 using System.Globalization;
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.Application.Common.Results;
-using GastosApp.Domain.Expenses;
 using Mediator;
 
 namespace GastosApp.Application.Expenses.Queries.GetExpenses;
@@ -9,7 +8,7 @@ namespace GastosApp.Application.Expenses.Queries.GetExpenses;
 public sealed record GetExpensesQuery(
     string UserId,
     string? YearMonth,
-    string? Category,
+    string? CategoryId,
     string? DateFrom,
     string? DateTo,
     long? MinAmountInCents,
@@ -31,14 +30,10 @@ public sealed class GetExpensesQueryHandler : IQueryHandler<GetExpensesQuery, Re
 
     public async ValueTask<Result<GetExpensesResult>> Handle(GetExpensesQuery query, CancellationToken cancellationToken)
     {
-        var category = query.Category is null
-            ? (ExpenseCategory?)null
-            : Enum.Parse<ExpenseCategory>(query.Category, ignoreCase: true);
-
         var filter = new ExpenseQueryFilter(
             UserId: query.UserId,
             YearMonth: query.YearMonth,
-            Category: category,
+            CategoryId: query.CategoryId,
             DateFrom: query.DateFrom is null ? null : DateOnly.ParseExact(query.DateFrom, DateFormat, CultureInfo.InvariantCulture),
             DateTo: query.DateTo is null ? null : DateOnly.ParseExact(query.DateTo, DateFormat, CultureInfo.InvariantCulture),
             MinAmountInCents: query.MinAmountInCents,
@@ -65,7 +60,7 @@ public sealed record ExpenseSummary(
     string Id,
     string Description,
     long AmountInCents,
-    string Category,
+    string CategoryId,
     DateOnly ExpenseDate,
     DateTimeOffset CreatedAt)
 {
@@ -73,7 +68,7 @@ public sealed record ExpenseSummary(
         item.Id,
         item.Description,
         item.AmountInCents,
-        item.Category.ToString(),
+        item.CategoryId,
         item.ExpenseDate,
         item.CreatedAt);
 }

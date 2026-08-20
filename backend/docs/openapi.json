@@ -319,7 +319,7 @@
             }
           },
           {
-            "name": "Category",
+            "name": "CategoryId",
             "in": "query",
             "schema": {
               "type": "string",
@@ -955,7 +955,7 @@
           "id",
           "description",
           "amountInCents",
-          "category",
+          "categoryId",
           "expenseDate",
           "createdAt"
         ],
@@ -975,7 +975,7 @@
             ],
             "format": "int64"
           },
-          "category": {
+          "categoryId": {
             "type": "string"
           },
           "expenseDate": {
@@ -1151,7 +1151,7 @@
         "required": [
           "description",
           "amountInCents",
-          "category",
+          "categoryId",
           "expenseDate"
         ],
         "type": "object",
@@ -1167,7 +1167,7 @@
             ],
             "format": "int64"
           },
-          "category": {
+          "categoryId": {
             "type": "string"
           },
           "expenseDate": {
@@ -1181,7 +1181,7 @@
           "id",
           "description",
           "amountInCents",
-          "category",
+          "categoryId",
           "expenseDate",
           "createdAt"
         ],
@@ -1201,7 +1201,7 @@
             ],
             "format": "int64"
           },
-          "category": {
+          "categoryId": {
             "type": "string"
           },
           "expenseDate": {
@@ -1295,7 +1295,7 @@
         "required": [
           "description",
           "amountInCents",
-          "category",
+          "categoryId",
           "expenseDate"
         ],
         "type": "object",
@@ -1311,7 +1311,7 @@
             ],
             "format": "int64"
           },
-          "category": {
+          "categoryId": {
             "type": "string"
           },
           "expenseDate": {
@@ -1325,7 +1325,7 @@
           "id",
           "description",
           "amountInCents",
-          "category",
+          "categoryId",
           "expenseDate",
           "createdAt"
         ],
@@ -1345,7 +1345,7 @@
             ],
             "format": "int64"
           },
-          "category": {
+          "categoryId": {
             "type": "string"
           },
           "expenseDate": {
