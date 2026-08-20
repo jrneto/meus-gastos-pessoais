@@ -38,17 +38,37 @@ A API sobe em `http://localhost:5049` (ver
 ## Confirmando um usuário
 
 O cognito-local exige confirmação depois do `POST /auth/register`,
-igual ao Cognito real. Com AWS CLI apontando pro endpoint local:
+igual ao Cognito real — sem confirmar, o `POST /auth/login` desse
+usuário falha com `User is not confirmed.`. Não existe usuário nem
+confirmação automática: `local-init.sh` só cria o User Pool e o App
+Client (estrutura vazia), o usuário é criado por você via
+`POST /auth/register`.
+
+Para confirmar, use `admin-confirm-sign-up` do AWS CLI apontando pro
+endpoint do cognito-local (`http://localhost:9229`), passando o
+`UserPoolId` local (gerado por `local-init.sh` e salvo em
+`.local-cognito-ids`, na raiz de `backend/infra/`) e o e-mail cadastrado
+como `--username`. **Rode a partir de `backend/infra/`** — é onde
+`.local-cognito-ids` fica (o `grep` abaixo falha silenciosamente com
+`UserPoolId` vazio se rodado de outro diretório):
 
 ```bash
+cd backend/infra  # se ainda não estiver aqui
+
 export AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1
 export MSYS_NO_PATHCONV=1  # só no Git Bash/Windows — ver nota abaixo
 
+# lê o UserPoolId gerado por local-init.sh (ex.: local_6Enm3gxX)
 USER_POOL_ID=$(grep USER_POOL_ID .local-cognito-ids | cut -d= -f2)
 
+# exemplo: confirma o usuário teste-local@jrnexpenses.com
 aws --endpoint-url http://localhost:9229 cognito-idp admin-confirm-sign-up \
-  --user-pool-id "$USER_POOL_ID" --username <email-cadastrado>
+  --user-pool-id "$USER_POOL_ID" --username teste-local@jrnexpenses.com
 ```
+
+Depois de confirmado, `POST /auth/login` com esse e-mail/senha funciona
+normalmente. Repita o comando (trocando `--username`) para cada novo
+usuário de teste que precisar de login.
 
 ## Parando/limpando
 
