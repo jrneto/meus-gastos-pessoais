@@ -1,6 +1,7 @@
 ﻿using Amazon;
 using Amazon.CognitoIdentityProvider;
 using Amazon.DynamoDBv2;
+using Amazon.Runtime;
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.Infrastructure.Categories;
 using GastosApp.Infrastructure.Configuration;
@@ -32,9 +33,6 @@ namespace GastosApp.Infrastructure.DependencyInjection
         public static IServiceCollection AddAwsInfrastructure(
             this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
         {
-            var regionStr = configuration["Cognito:Region"] ?? "us-east-1";
-            var region = RegionEndpoint.GetBySystemName(regionStr);
-
             services.AddCognitoSdk(configuration);
 
             // Leitura manual (sem Configure<T>()/reflection) — mesmo motivo
@@ -47,7 +45,10 @@ namespace GastosApp.Infrastructure.DependencyInjection
                 var options = new DynamoDbOptions
                 {
                     TableName = section["TableName"] ?? "GastosApp",
-                    Region = section["Region"] ?? "us-east-1"
+                    Region = section["Region"] ?? "us-east-1",
+                    ServiceURL = section["ServiceURL"],
+                    AccessKey = section["AccessKey"],
+                    SecretKey = section["SecretKey"]
                 };
 
                 return Options.Create(options);
@@ -55,9 +56,27 @@ namespace GastosApp.Infrastructure.DependencyInjection
 
             services.AddSingleton<IAmazonDynamoDB>(sp =>
             {
-                var dynamoDbRegionStr = configuration["DynamoDb:Region"] ?? regionStr;
-                var dynamoDbRegion = RegionEndpoint.GetBySystemName(dynamoDbRegionStr);
-                return new AmazonDynamoDBClient(dynamoDbRegion);
+                var options = sp.GetRequiredService<IOptions<DynamoDbOptions>>().Value;
+
+                var config = new AmazonDynamoDBConfig
+                {
+                    RegionEndpoint = RegionEndpoint.GetBySystemName(options.Region)
+                };
+
+                if (!string.IsNullOrEmpty(options.ServiceURL))
+                {
+                    config.ServiceURL = options.ServiceURL;
+                    config.AuthenticationRegion = options.Region;
+                }
+
+                // Em produção na AWS, use IAM Role — sem AccessKey/SecretKey hardcoded
+                if (!string.IsNullOrEmpty(options.AccessKey) && !string.IsNullOrEmpty(options.SecretKey))
+                {
+                    var credentials = new BasicAWSCredentials(options.AccessKey, options.SecretKey);
+                    return new AmazonDynamoDBClient(credentials, config);
+                }
+
+                return new AmazonDynamoDBClient(config); // usa IAM Role / credenciais do ambiente
             });
 
             return services;
