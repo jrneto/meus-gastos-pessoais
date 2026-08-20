@@ -6,6 +6,7 @@ using FluentAssertions;
 using GastosApp.Application.Common.Cursors;
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.ComponentTests.Support;
+using GastosApp.Domain.Categories;
 using GastosApp.Domain.Expenses;
 using NSubstitute;
 
@@ -13,6 +14,8 @@ namespace GastosApp.ComponentTests.Expenses;
 
 public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplicationFactory>
 {
+    private const string CategoryId = "7f3e9a10-4b2c-4d1a-9e8f-2c1b3a4d5e6f";
+
     private readonly ComponentTestWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
@@ -20,6 +23,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
     {
         _factory = factory;
         _factory.ResetExpenseRepositoryMock();
+        _factory.ResetCategoryRepositoryMock();
         _client = factory.CreateClient();
     }
 
@@ -29,16 +33,21 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
             new AuthenticationHeaderValue(TestAuthHandler.SchemeName, $"{userId}|{email}|{name}");
     }
 
+    private void MockOwnedCategory(string userId, string categoryId) =>
+        _factory.CategoryRepositoryMock.GetByIdAsync(userId, categoryId, Arg.Any<CancellationToken>())
+            .Returns(Category.Restore(categoryId, userId, "Alimentacao", "#F97316", "utensils", DateTimeOffset.UtcNow));
+
     [Fact]
     public async Task RegisterExpense_ComDadosValidosEUsuarioAutenticado_Retorna201ComLocationEBody()
     {
         AuthenticateAs("user-id-123");
+        MockOwnedCategory("user-id-123", CategoryId);
 
         var response = await _client.PostAsJsonAsync("/expenses", new
         {
             description = "Almoço no restaurante",
             amountInCents = 4590,
-            category = "Alimentacao",
+            categoryId = CategoryId,
             expenseDate = "2025-06-15"
         });
 
@@ -48,7 +57,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("description").GetString().Should().Be("Almoço no restaurante");
         body.GetProperty("amountInCents").GetInt64().Should().Be(4590);
-        body.GetProperty("category").GetString().Should().Be("Alimentacao");
+        body.GetProperty("categoryId").GetString().Should().Be(CategoryId);
         body.GetProperty("expenseDate").GetString().Should().Be("2025-06-15");
 
         await _factory.ExpenseRepositoryMock.Received(1).SaveAsync(
@@ -63,7 +72,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         {
             description = "Almoço",
             amountInCents = 4590,
-            category = "Alimentacao",
+            categoryId = CategoryId,
             expenseDate = "2025-06-15"
         });
 
@@ -79,12 +88,13 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
     public async Task RegisterExpense_ComDescricaoVazia_Retorna400SemChamarRepositorio()
     {
         AuthenticateAs("user-id-123");
+        MockOwnedCategory("user-id-123", CategoryId);
 
         var response = await _client.PostAsJsonAsync("/expenses", new
         {
             description = "",
             amountInCents = 4590,
-            category = "Alimentacao",
+            categoryId = CategoryId,
             expenseDate = "2025-06-15"
         });
 
@@ -100,12 +110,13 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
     public async Task RegisterExpense_ComValorMenorOuIgualAZero_Retorna400SemChamarRepositorio()
     {
         AuthenticateAs("user-id-123");
+        MockOwnedCategory("user-id-123", CategoryId);
 
         var response = await _client.PostAsJsonAsync("/expenses", new
         {
             description = "Almoço",
             amountInCents = 0,
-            category = "Alimentacao",
+            categoryId = CategoryId,
             expenseDate = "2025-06-15"
         });
 
@@ -118,15 +129,41 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
     }
 
     [Fact]
-    public async Task RegisterExpense_ComCategoriaForaDoEnum_Retorna400SemChamarRepositorio()
+    public async Task RegisterExpense_ComCategoriaInexistente_Retorna400SemChamarRepositorio()
     {
         AuthenticateAs("user-id-123");
+        _factory.CategoryRepositoryMock.GetByIdAsync("user-id-123", "category-inexistente", Arg.Any<CancellationToken>())
+            .Returns((Category?)null);
 
         var response = await _client.PostAsJsonAsync("/expenses", new
         {
             description = "Almoço",
             amountInCents = 4590,
-            category = "CategoriaInexistente",
+            categoryId = "category-inexistente",
+            expenseDate = "2025-06-15"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/validation-error");
+
+        await _factory.ExpenseRepositoryMock.DidNotReceiveWithAnyArgs().SaveAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task RegisterExpense_ComCategoriaDeOutroUsuario_Retorna400SemChamarRepositorio()
+    {
+        AuthenticateAs("user-id-A");
+        // Categoria existe, mas pertence a outro usuário — GetByIdAsync (já filtra por posse) retorna null pra este userId.
+        _factory.CategoryRepositoryMock.GetByIdAsync("user-id-A", CategoryId, Arg.Any<CancellationToken>())
+            .Returns((Category?)null);
+
+        var response = await _client.PostAsJsonAsync("/expenses", new
+        {
+            description = "Almoço",
+            amountInCents = 4590,
+            categoryId = CategoryId,
             expenseDate = "2025-06-15"
         });
 
@@ -144,12 +181,13 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
     public async Task RegisterExpense_ComDataRetroativaOuFutura_Retorna201(string expenseDate)
     {
         AuthenticateAs("user-id-123");
+        MockOwnedCategory("user-id-123", CategoryId);
 
         var response = await _client.PostAsJsonAsync("/expenses", new
         {
             description = "Despesa",
             amountInCents = 100,
-            category = "Outros",
+            categoryId = CategoryId,
             expenseDate
         });
 
@@ -160,20 +198,22 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
     public async Task RegisterExpense_ComDoisUsuariosDiferentes_AssociaCadaDespesaAoUserIdDoRespectivoToken()
     {
         AuthenticateAs("user-id-A");
+        MockOwnedCategory("user-id-A", CategoryId);
         await _client.PostAsJsonAsync("/expenses", new
         {
             description = "Despesa do usuário A",
             amountInCents = 100,
-            category = "Outros",
+            categoryId = CategoryId,
             expenseDate = "2025-06-15"
         });
 
         AuthenticateAs("user-id-B");
+        MockOwnedCategory("user-id-B", CategoryId);
         await _client.PostAsJsonAsync("/expenses", new
         {
             description = "Despesa do usuário B",
             amountInCents = 200,
-            category = "Outros",
+            categoryId = CategoryId,
             expenseDate = "2025-06-15"
         });
 
@@ -189,6 +229,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
     public async Task RegisterExpense_QuandoRepositorioLancaExcecaoNaoPrevista_Retorna500()
     {
         AuthenticateAs("user-id-123");
+        MockOwnedCategory("user-id-123", CategoryId);
 
         _factory.ExpenseRepositoryMock
             .SaveAsync(Arg.Any<Expense>(), Arg.Any<CancellationToken>())
@@ -198,7 +239,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         {
             description = "Despesa",
             amountInCents = 100,
-            category = "Outros",
+            categoryId = CategoryId,
             expenseDate = "2025-06-15"
         });
 
@@ -211,7 +252,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
     private static ExpenseQueryPage EmptyPage() => new([], null);
 
     private static ExpenseQueryItem SampleItem(string id = "expense-1") => new(
-        id, "Almoço", 4590, ExpenseCategory.Alimentacao, new DateOnly(2025, 6, 15), DateTimeOffset.UtcNow);
+        id, "Almoço", 4590, CategoryId, new DateOnly(2025, 6, 15), DateTimeOffset.UtcNow);
 
     [Fact]
     public async Task GetExpenses_SemFiltros_Retorna200ComItensPaginados()
@@ -234,7 +275,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
             Arg.Is<ExpenseQueryFilter>(f =>
                 f.UserId == "user-id-123"
                 && f.YearMonth == null
-                && f.Category == null
+                && f.CategoryId == null
                 && f.DateFrom == null
                 && f.DateTo == null
                 && f.MinAmountInCents == null
@@ -260,34 +301,49 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
     }
 
     [Fact]
-    public async Task GetExpenses_ComCategory_RepassaFiltroAoRepositorio()
+    public async Task GetExpenses_ComCategoryId_RepassaFiltroAoRepositorio()
     {
         AuthenticateAs("user-id-123");
         _factory.ExpenseRepositoryMock
             .QueryAsync(Arg.Any<ExpenseQueryFilter>(), Arg.Any<CancellationToken>())
             .Returns(EmptyPage());
 
-        var response = await _client.GetAsync("/expenses?category=Alimentacao");
+        var response = await _client.GetAsync($"/expenses?categoryId={CategoryId}");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         await _factory.ExpenseRepositoryMock.Received(1).QueryAsync(
-            Arg.Is<ExpenseQueryFilter>(f => f.Category == ExpenseCategory.Alimentacao),
+            Arg.Is<ExpenseQueryFilter>(f => f.CategoryId == CategoryId),
             Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task GetExpenses_ComCategoryEYearMonth_RepassaAmbosOsFiltros()
+    public async Task GetExpenses_ComCategoryIdSemDespesasCorrespondentes_Retorna200ComListaVazia()
     {
         AuthenticateAs("user-id-123");
         _factory.ExpenseRepositoryMock
             .QueryAsync(Arg.Any<ExpenseQueryFilter>(), Arg.Any<CancellationToken>())
             .Returns(EmptyPage());
 
-        var response = await _client.GetAsync("/expenses?category=Alimentacao&yearMonth=2025-06");
+        var response = await _client.GetAsync("/expenses?categoryId=categoria-sem-despesas");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("items").GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetExpenses_ComCategoryIdEYearMonth_RepassaAmbosOsFiltros()
+    {
+        AuthenticateAs("user-id-123");
+        _factory.ExpenseRepositoryMock
+            .QueryAsync(Arg.Any<ExpenseQueryFilter>(), Arg.Any<CancellationToken>())
+            .Returns(EmptyPage());
+
+        var response = await _client.GetAsync($"/expenses?categoryId={CategoryId}&yearMonth=2025-06");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         await _factory.ExpenseRepositoryMock.Received(1).QueryAsync(
-            Arg.Is<ExpenseQueryFilter>(f => f.Category == ExpenseCategory.Alimentacao && f.YearMonth == "2025-06"),
+            Arg.Is<ExpenseQueryFilter>(f => f.CategoryId == CategoryId && f.YearMonth == "2025-06"),
             Arg.Any<CancellationToken>());
     }
 
@@ -333,13 +389,13 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
             .Returns(EmptyPage());
 
         var response = await _client.GetAsync(
-            "/expenses?category=Alimentacao&yearMonth=2025-06&dateFrom=2025-06-01&dateTo=2025-06-30" +
+            $"/expenses?categoryId={CategoryId}&yearMonth=2025-06&dateFrom=2025-06-01&dateTo=2025-06-30" +
             "&minAmountInCents=1000&maxAmountInCents=5000&limit=10");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         await _factory.ExpenseRepositoryMock.Received(1).QueryAsync(
             Arg.Is<ExpenseQueryFilter>(f =>
-                f.Category == ExpenseCategory.Alimentacao
+                f.CategoryId == CategoryId
                 && f.YearMonth == "2025-06"
                 && f.DateFrom == new DateOnly(2025, 6, 1)
                 && f.DateTo == new DateOnly(2025, 6, 30)
@@ -405,7 +461,6 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
     [InlineData("dateFrom=2025-06-20&dateTo=2025-06-10")]
     [InlineData("minAmountInCents=5000&maxAmountInCents=1000")]
     [InlineData("yearMonth=2025-13")]
-    [InlineData("category=CategoriaInexistente")]
     [InlineData("cursor=not-a-valid-cursor")]
     [InlineData("dateFrom=not-a-date")]
     [InlineData("minAmountInCents=0")]
@@ -550,7 +605,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         AuthenticateAs("user-id-123");
         var expense = Expense.Restore(
             "expense-1", "user-id-123", "Almoço no restaurante", 4590,
-            ExpenseCategory.Alimentacao, new DateOnly(2025, 6, 15), DateTimeOffset.UtcNow);
+            CategoryId, new DateOnly(2025, 6, 15), DateTimeOffset.UtcNow);
 
         _factory.ExpenseRepositoryMock
             .GetByIdAsync("user-id-123", "expense-1", Arg.Any<CancellationToken>())
@@ -564,7 +619,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         body.GetProperty("id").GetString().Should().Be("expense-1");
         body.GetProperty("description").GetString().Should().Be("Almoço no restaurante");
         body.GetProperty("amountInCents").GetInt64().Should().Be(4590);
-        body.GetProperty("category").GetString().Should().Be("Alimentacao");
+        body.GetProperty("categoryId").GetString().Should().Be(CategoryId);
         body.GetProperty("expenseDate").GetString().Should().Be("2025-06-15");
     }
 
@@ -619,12 +674,13 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
     public async Task UpdateExpense_ComDespesaPropriaEDadosValidos_Retorna200ComCorpoAtualizado()
     {
         AuthenticateAs("user-id-123");
+        MockOwnedCategory("user-id-123", CategoryId);
         var updatedExpense = Expense.Restore(
             "expense-1", "user-id-123", "Almoço atualizado", 5290,
-            ExpenseCategory.Alimentacao, new DateOnly(2025, 6, 16), DateTimeOffset.UtcNow);
+            CategoryId, new DateOnly(2025, 6, 16), DateTimeOffset.UtcNow);
 
         _factory.ExpenseRepositoryMock
-            .UpdateAsync("user-id-123", "expense-1", "Almoço atualizado", 5290, ExpenseCategory.Alimentacao,
+            .UpdateAsync("user-id-123", "expense-1", "Almoço atualizado", 5290, CategoryId,
                 new DateOnly(2025, 6, 16), Arg.Any<CancellationToken>())
             .Returns(updatedExpense);
 
@@ -632,7 +688,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         {
             description = "Almoço atualizado",
             amountInCents = 5290,
-            category = "Alimentacao",
+            categoryId = CategoryId,
             expenseDate = "2025-06-16"
         });
 
@@ -651,7 +707,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         {
             description = "Almoço",
             amountInCents = 4590,
-            category = "Alimentacao",
+            categoryId = CategoryId,
             expenseDate = "2025-06-15"
         });
 
@@ -661,19 +717,20 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/unauthorized");
 
         await _factory.ExpenseRepositoryMock.DidNotReceiveWithAnyArgs()
-            .UpdateAsync(default!, default!, default!, default, default, default, default);
+            .UpdateAsync(default!, default!, default!, default, default!, default, default);
     }
 
     [Fact]
     public async Task UpdateExpense_ComDescricaoVazia_Retorna400SemChamarRepositorio()
     {
         AuthenticateAs("user-id-123");
+        MockOwnedCategory("user-id-123", CategoryId);
 
         var response = await _client.PutAsJsonAsync("/expenses/expense-1", new
         {
             description = "",
             amountInCents = 4590,
-            category = "Alimentacao",
+            categoryId = CategoryId,
             expenseDate = "2025-06-15"
         });
 
@@ -683,19 +740,20 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/validation-error");
 
         await _factory.ExpenseRepositoryMock.DidNotReceiveWithAnyArgs()
-            .UpdateAsync(default!, default!, default!, default, default, default, default);
+            .UpdateAsync(default!, default!, default!, default, default!, default, default);
     }
 
     [Fact]
     public async Task UpdateExpense_ComValorMenorOuIgualAZero_Retorna400SemChamarRepositorio()
     {
         AuthenticateAs("user-id-123");
+        MockOwnedCategory("user-id-123", CategoryId);
 
         var response = await _client.PutAsJsonAsync("/expenses/expense-1", new
         {
             description = "Almoço",
             amountInCents = 0,
-            category = "Alimentacao",
+            categoryId = CategoryId,
             expenseDate = "2025-06-15"
         });
 
@@ -705,19 +763,21 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/validation-error");
 
         await _factory.ExpenseRepositoryMock.DidNotReceiveWithAnyArgs()
-            .UpdateAsync(default!, default!, default!, default, default, default, default);
+            .UpdateAsync(default!, default!, default!, default, default!, default, default);
     }
 
     [Fact]
-    public async Task UpdateExpense_ComCategoriaForaDoEnum_Retorna400SemChamarRepositorio()
+    public async Task UpdateExpense_ComCategoriaInexistente_Retorna400SemChamarRepositorio()
     {
         AuthenticateAs("user-id-123");
+        _factory.CategoryRepositoryMock.GetByIdAsync("user-id-123", "category-inexistente", Arg.Any<CancellationToken>())
+            .Returns((Category?)null);
 
         var response = await _client.PutAsJsonAsync("/expenses/expense-1", new
         {
             description = "Almoço",
             amountInCents = 4590,
-            category = "CategoriaInexistente",
+            categoryId = "category-inexistente",
             expenseDate = "2025-06-15"
         });
 
@@ -727,23 +787,24 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/validation-error");
 
         await _factory.ExpenseRepositoryMock.DidNotReceiveWithAnyArgs()
-            .UpdateAsync(default!, default!, default!, default, default, default, default);
+            .UpdateAsync(default!, default!, default!, default, default!, default, default);
     }
 
     [Fact]
     public async Task UpdateExpense_ComDespesaInexistenteOuDeOutroUsuario_Retorna404()
     {
         AuthenticateAs("user-id-123");
+        MockOwnedCategory("user-id-123", CategoryId);
         _factory.ExpenseRepositoryMock
             .UpdateAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(),
-                Arg.Any<ExpenseCategory>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns((Expense?)null);
 
         var response = await _client.PutAsJsonAsync("/expenses/expense-1", new
         {
             description = "Almoço",
             amountInCents = 4590,
-            category = "Alimentacao",
+            categoryId = CategoryId,
             expenseDate = "2025-06-15"
         });
 
@@ -757,17 +818,18 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
     public async Task UpdateExpense_QuandoRepositorioLancaExcecaoNaoPrevista_Retorna500()
     {
         AuthenticateAs("user-id-123");
+        MockOwnedCategory("user-id-123", CategoryId);
 
         _factory.ExpenseRepositoryMock
             .UpdateAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(),
-                Arg.Any<ExpenseCategory>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<Expense?>(new InvalidOperationException("Falha simulada")));
 
         var response = await _client.PutAsJsonAsync("/expenses/expense-1", new
         {
             description = "Almoço",
             amountInCents = 4590,
-            category = "Alimentacao",
+            categoryId = CategoryId,
             expenseDate = "2025-06-15"
         });
 

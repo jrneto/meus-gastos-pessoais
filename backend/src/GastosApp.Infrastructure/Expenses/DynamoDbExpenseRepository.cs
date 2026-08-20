@@ -34,12 +34,12 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         {
             ["PK"] = new AttributeValue { S = $"USER#{expense.UserId}" },
             ["SK"] = new AttributeValue { S = $"TXN#{day}#{expense.Id}" },
-            ["GSI1PK"] = new AttributeValue { S = $"USER#{expense.UserId}#{expense.Category}" },
+            ["GSI1PK"] = new AttributeValue { S = $"USER#{expense.UserId}#{expense.CategoryId}" },
             ["GSI1SK"] = new AttributeValue { S = $"{day}#{expense.Id}" },
             ["GSI2PK"] = new AttributeValue { S = $"ID#{expense.Id}" },
             ["Description"] = new AttributeValue { S = expense.Description },
             ["AmountInCents"] = new AttributeValue { N = expense.AmountInCents.ToString() },
-            ["Category"] = new AttributeValue { S = expense.Category.ToString() },
+            ["CategoryId"] = new AttributeValue { S = expense.CategoryId },
             ["ExpenseDate"] = new AttributeValue { S = expense.ExpenseDate.ToString(DateFormat) },
             ["Tipo"] = new AttributeValue { S = "despesa" },
             ["CreatedAt"] = new AttributeValue { S = expense.CreatedAt.ToString("O") }
@@ -135,11 +135,11 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         var createdAt = DateTimeOffset.Parse(
             current.Item["CreatedAt"].S, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
         var expenseDate = DateOnly.ParseExact(current.Item["ExpenseDate"].S, DateFormat, CultureInfo.InvariantCulture);
-        var category = Enum.Parse<ExpenseCategory>(current.Item["Category"].S);
+        var categoryId = current.Item["CategoryId"].S;
         var amountInCents = long.Parse(current.Item["AmountInCents"].N, CultureInfo.InvariantCulture);
         var description = current.Item["Description"].S;
 
-        return Expense.Restore(expenseId, userId, description, amountInCents, category, expenseDate, createdAt);
+        return Expense.Restore(expenseId, userId, description, amountInCents, categoryId, expenseDate, createdAt);
     }
 
     public async Task<Expense?> UpdateAsync(
@@ -147,7 +147,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         string expenseId,
         string description,
         long amountInCents,
-        ExpenseCategory category,
+        string categoryId,
         DateOnly expenseDate,
         CancellationToken cancellationToken = default)
     {
@@ -194,12 +194,12 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         {
             ["PK"] = new AttributeValue { S = pk },
             ["SK"] = new AttributeValue { S = newSk },
-            ["GSI1PK"] = new AttributeValue { S = $"{pk}#{category}" },
+            ["GSI1PK"] = new AttributeValue { S = $"{pk}#{categoryId}" },
             ["GSI1SK"] = new AttributeValue { S = $"{newDay}#{expenseId}" },
             ["GSI2PK"] = new AttributeValue { S = $"ID#{expenseId}" },
             ["Description"] = new AttributeValue { S = description },
             ["AmountInCents"] = new AttributeValue { N = amountInCents.ToString() },
-            ["Category"] = new AttributeValue { S = category.ToString() },
+            ["CategoryId"] = new AttributeValue { S = categoryId },
             ["ExpenseDate"] = new AttributeValue { S = newDay },
             ["Tipo"] = new AttributeValue { S = "despesa" },
             ["CreatedAt"] = new AttributeValue { S = createdAt.ToString("O") }
@@ -240,10 +240,10 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
             }, cancellationToken);
         }
 
-        return Expense.Restore(expenseId, userId, description, amountInCents, category, expenseDate, createdAt);
+        return Expense.Restore(expenseId, userId, description, amountInCents, categoryId, expenseDate, createdAt);
     }
 
-    public async Task<bool> ExistsByCategoryAsync(string userId, string category, CancellationToken cancellationToken = default)
+    public async Task<bool> ExistsByCategoryAsync(string userId, string categoryId, CancellationToken cancellationToken = default)
     {
         var response = await _dynamoDbClient.QueryAsync(new QueryRequest
         {
@@ -252,7 +252,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
             KeyConditionExpression = "GSI1PK = :gsi1pk",
             ExpressionAttributeValues = new Dictionary<string, AttributeValue>
             {
-                [":gsi1pk"] = new AttributeValue { S = $"USER#{userId}#{category}" }
+                [":gsi1pk"] = new AttributeValue { S = $"USER#{userId}#{categoryId}" }
             },
             Limit = 1
         }, cancellationToken);
@@ -262,7 +262,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
 
     public async Task<ExpenseQueryPage> QueryAsync(ExpenseQueryFilter filter, CancellationToken cancellationToken = default)
     {
-        var index = filter.Category is not null ? Gsi1Index : BaseIndex;
+        var index = filter.CategoryId is not null ? Gsi1Index : BaseIndex;
 
         Dictionary<string, AttributeValue>? exclusiveStartKey = null;
         if (filter.Cursor is not null && ExpenseCursorCodec.TryDecode(filter.Cursor, out var cursorPayload))
@@ -330,7 +330,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         if (index == Gsi1Index)
         {
             names["#pk"] = "GSI1PK";
-            values[":pk"] = new AttributeValue { S = $"USER#{filter.UserId}#{filter.Category}" };
+            values[":pk"] = new AttributeValue { S = $"USER#{filter.UserId}#{filter.CategoryId}" };
             keyConditionExpression = "#pk = :pk";
 
             var skCondition = BuildSkCondition(filter, names, values, skAttributeName: "GSI1SK", skPrefix: string.Empty);
@@ -438,7 +438,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
             Id: id,
             Description: item["Description"].S,
             AmountInCents: long.Parse(item["AmountInCents"].N, CultureInfo.InvariantCulture),
-            Category: Enum.Parse<ExpenseCategory>(item["Category"].S),
+            CategoryId: item["CategoryId"].S,
             ExpenseDate: DateOnly.ParseExact(item["ExpenseDate"].S, DateFormat, CultureInfo.InvariantCulture),
             CreatedAt: DateTimeOffset.Parse(item["CreatedAt"].S, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
     }

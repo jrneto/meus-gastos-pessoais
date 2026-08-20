@@ -30,7 +30,7 @@ public class ValidationBehaviorTests
             nextCalled = true;
             return new ValueTask<Result<RegisterExpenseResult>>(
                 Result.Success(RegisterExpenseResult.FromExpense(
-                    Expense.Create("user-id-123", "x", 1, ExpenseCategory.Outros, command.ExpenseDate))));
+                    Expense.Create("user-id-123", "x", 1, "category-1", command.ExpenseDate))));
         }
 
         var result = await behavior.Handle(command, Next, CancellationToken.None);
@@ -53,7 +53,7 @@ public class ValidationBehaviorTests
         var behavior = new ValidationBehavior<RegisterExpenseCommand, Result<RegisterExpenseResult>>([validator]);
         var command = new RegisterExpenseCommand("user-id-123", "Almoço", 100, "Outros", new DateOnly(2025, 6, 15));
         var expected = Result.Success(RegisterExpenseResult.FromExpense(
-            Expense.Create("user-id-123", "Almoço", 100, ExpenseCategory.Outros, command.ExpenseDate)));
+            Expense.Create("user-id-123", "Almoço", 100, "category-1", command.ExpenseDate)));
 
         var result = await behavior.Handle(
             command, (_, _) => new ValueTask<Result<RegisterExpenseResult>>(expected), CancellationToken.None);

@@ -3,6 +3,7 @@ using GastosApp.Application.Categories.Commands.CreateCategory;
 using GastosApp.Application.Categories.Commands.DeleteCategory;
 using GastosApp.Application.Categories.Commands.UpdateCategory;
 using GastosApp.Application.Categories.Queries.GetCategories;
+using GastosApp.Application.Categories.Queries.GetCategoryById;
 using Mediator;
 using System.Security.Claims;
 
@@ -20,6 +21,10 @@ public static class CategoryEndpoints
 
         group.MapGet("/", GetCategories)
             .Produces<GetCategoriesResult>(StatusCodes.Status200OK);
+
+        group.MapGet("/{id}", GetCategoryById)
+            .Produces<UpdateCategoryResult>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPost("/", CreateCategory)
             .Produces<CreateCategoryResult>(StatusCodes.Status201Created)
@@ -48,6 +53,20 @@ public static class CategoryEndpoints
         var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         var query = new GetCategoriesQuery(userId!);
+
+        var result = await sender.Send(query, cancellationToken);
+        return result.ToHttpResult(value => Results.Ok(value));
+    }
+
+    private static async Task<IResult> GetCategoryById(
+        string id,
+        ClaimsPrincipal user,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        var query = new GetCategoryByIdQuery(userId!, id);
 
         var result = await sender.Send(query, cancellationToken);
         return result.ToHttpResult(value => Results.Ok(value));

@@ -10,7 +10,7 @@ public sealed record UpdateExpenseCommand(
     string ExpenseId,
     string Description,
     long AmountInCents,
-    string Category,
+    string CategoryId,
     DateOnly ExpenseDate) : ICommand<Result<UpdateExpenseResult>>;
 
 public sealed class UpdateExpenseCommandHandler : ICommandHandler<UpdateExpenseCommand, Result<UpdateExpenseResult>>
@@ -24,14 +24,12 @@ public sealed class UpdateExpenseCommandHandler : ICommandHandler<UpdateExpenseC
 
     public async ValueTask<Result<UpdateExpenseResult>> Handle(UpdateExpenseCommand command, CancellationToken cancellationToken)
     {
-        var category = Enum.Parse<ExpenseCategory>(command.Category, ignoreCase: true);
-
         var updated = await _expenseRepository.UpdateAsync(
             command.UserId,
             command.ExpenseId,
             command.Description,
             command.AmountInCents,
-            category,
+            command.CategoryId,
             command.ExpenseDate,
             cancellationToken);
 
@@ -45,7 +43,7 @@ public record UpdateExpenseResult(
     string Id,
     string Description,
     long AmountInCents,
-    string Category,
+    string CategoryId,
     DateOnly ExpenseDate,
     DateTimeOffset CreatedAt)
 {
@@ -53,7 +51,7 @@ public record UpdateExpenseResult(
         expense.Id,
         expense.Description,
         expense.AmountInCents,
-        expense.Category.ToString(),
+        expense.CategoryId,
         expense.ExpenseDate,
         expense.CreatedAt);
 }

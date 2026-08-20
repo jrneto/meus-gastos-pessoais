@@ -24,14 +24,14 @@ public class UpdateExpenseCommandHandlerTests
     {
         // Arrange
         var command = new UpdateExpenseCommand(
-            "user-id-123", "expense-1", "Almoço atualizado", 5290, "Alimentacao", new DateOnly(2025, 6, 16));
+            "user-id-123", "expense-1", "Almoço atualizado", 5290, "category-1", new DateOnly(2025, 6, 16));
 
         var updatedExpense = Expense.Restore(
             "expense-1", "user-id-123", "Almoço atualizado", 5290,
-            ExpenseCategory.Alimentacao, new DateOnly(2025, 6, 16), DateTimeOffset.UtcNow);
+            "category-1", new DateOnly(2025, 6, 16), DateTimeOffset.UtcNow);
 
         _expenseRepositoryMock.UpdateAsync(
-            "user-id-123", "expense-1", "Almoço atualizado", 5290, ExpenseCategory.Alimentacao,
+            "user-id-123", "expense-1", "Almoço atualizado", 5290, "category-1",
             new DateOnly(2025, 6, 16), Arg.Any<CancellationToken>())
             .Returns(updatedExpense);
 
@@ -43,11 +43,11 @@ public class UpdateExpenseCommandHandlerTests
         result.Value.Id.Should().Be("expense-1");
         result.Value.Description.Should().Be("Almoço atualizado");
         result.Value.AmountInCents.Should().Be(5290);
-        result.Value.Category.Should().Be("Alimentacao");
+        result.Value.CategoryId.Should().Be("category-1");
         result.Value.ExpenseDate.Should().Be(new DateOnly(2025, 6, 16));
 
         await _expenseRepositoryMock.Received(1).UpdateAsync(
-            "user-id-123", "expense-1", "Almoço atualizado", 5290, ExpenseCategory.Alimentacao,
+            "user-id-123", "expense-1", "Almoço atualizado", 5290, "category-1",
             new DateOnly(2025, 6, 16), Arg.Any<CancellationToken>());
     }
 
@@ -56,11 +56,11 @@ public class UpdateExpenseCommandHandlerTests
     {
         // Arrange
         var command = new UpdateExpenseCommand(
-            "user-id-123", "expense-inexistente", "Almoço", 4590, "Alimentacao", new DateOnly(2025, 6, 15));
+            "user-id-123", "expense-inexistente", "Almoço", 4590, "category-1", new DateOnly(2025, 6, 15));
 
         _expenseRepositoryMock.UpdateAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(),
-            Arg.Any<ExpenseCategory>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns((Expense?)null);
 
         // Act

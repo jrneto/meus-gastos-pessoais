@@ -3,7 +3,6 @@ using Amazon.DynamoDBv2.Model;
 using FluentAssertions;
 using GastosApp.Application.Common.Cursors;
 using GastosApp.Application.Common.Interfaces;
-using GastosApp.Domain.Expenses;
 using GastosApp.Infrastructure.Configuration;
 using GastosApp.Infrastructure.Expenses;
 using Microsoft.Extensions.Options;
@@ -34,7 +33,7 @@ public class DynamoDbExpenseRepositoryQueryTests
         ["GSI1SK"] = new AttributeValue { S = $"{day}#{id}" },
         ["Description"] = new AttributeValue { S = description },
         ["AmountInCents"] = new AttributeValue { N = amountInCents.ToString() },
-        ["Category"] = new AttributeValue { S = category },
+        ["CategoryId"] = new AttributeValue { S = category },
         ["ExpenseDate"] = new AttributeValue { S = day },
         ["Tipo"] = new AttributeValue { S = "despesa" },
         ["CreatedAt"] = new AttributeValue { S = DateTimeOffset.UtcNow.ToString("O") }
@@ -66,7 +65,7 @@ public class DynamoDbExpenseRepositoryQueryTests
     public async Task QueryAsync_ShouldUseGsi1_WhenCategoryIsPresent()
     {
         var filter = new ExpenseQueryFilter(
-            "user-1", null, ExpenseCategory.Alimentacao, null, null, null, null, null, 20);
+            "user-1", null, "category-1", null, null, null, null, null, 20);
         SetupSingleResponse(new QueryResponse { Items = [], LastEvaluatedKey = null });
 
         await _repository.QueryAsync(filter);
@@ -76,7 +75,7 @@ public class DynamoDbExpenseRepositoryQueryTests
                 r.IndexName == "GSI1"
                 && r.KeyConditionExpression == "#pk = :pk"
                 && r.ExpressionAttributeNames["#pk"] == "GSI1PK"
-                && r.ExpressionAttributeValues[":pk"].S == "USER#user-1#Alimentacao"),
+                && r.ExpressionAttributeValues[":pk"].S == "USER#user-1#category-1"),
             Arg.Any<CancellationToken>());
     }
 

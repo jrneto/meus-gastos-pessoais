@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using FluentValidation;
 using GastosApp.Application.Common.Cursors;
-using GastosApp.Domain.Expenses;
 
 namespace GastosApp.Application.Expenses.Queries.GetExpenses;
 
@@ -18,10 +17,6 @@ public sealed partial class GetExpensesQueryValidator : AbstractValidator<GetExp
         RuleFor(q => q.YearMonth)
             .Must(ym => ym is null || YearMonthRegex().IsMatch(ym))
             .WithMessage("yearMonth deve estar no formato YYYY-MM.");
-
-        RuleFor(q => q.Category)
-            .Must(BeAValidCategory)
-            .WithMessage("Categoria inválida.");
 
         RuleFor(q => q.DateFrom)
             .Must(BeAValidDate)
@@ -59,9 +54,6 @@ public sealed partial class GetExpensesQueryValidator : AbstractValidator<GetExp
             .WithMessage("cursor inválido ou corrompido.")
             .When(q => q.Cursor is not null);
     }
-
-    private static bool BeAValidCategory(string? category) =>
-        category is null || (Enum.TryParse<ExpenseCategory>(category, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed));
 
     private static bool BeAValidDate(string? date) =>
         date is null || DateOnly.TryParseExact(date, DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
