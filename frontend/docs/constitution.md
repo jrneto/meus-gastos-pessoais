@@ -67,7 +67,15 @@ seção de infraestrutura).
 - Roteamento: `react-router-dom`
 - Estado global: Zustand
 - Formulário: React Hook Form + Zod (`zodResolver`)
-- UI: shadcn/ui + Tailwind CSS
+- UI: **em transição** — o design system visual do projeto está sendo
+  trocado tela por tela para o **Modernist** (ver
+  `frontend/design-system/`, pasta de referência com os tokens/protótipo
+  originais; a stylesheet de produção fica vendorizada e escopada em
+  `frontend/app/src/styles/modernist/`, sob a classe `.ds-modernist` —
+  ver `frontend/specs/FEAT-14-design-system-modernist-login/plan.md`
+  para o racional do escopo). Hoje: Login já migrado para Modernist; o
+  restante do app ainda usa shadcn/ui + Tailwind CSS, removidos somente
+  quando toda a superfície estiver migrada
 - Gráficos: Tremor (adicionado apenas quando a primeira feature que
   precisar de gráfico for planejada — não instalado antecipadamente)
 - Testes: Vitest + React Testing Library + MSW (mock de chamadas HTTP)
