@@ -49,9 +49,10 @@ describe('flattenNavItems', () => {
     expect(categories?.mobilePrimary).toBeFalsy()
   })
 
-  it('"Despesas" é um único item apontando para a listagem (FEAT-15)', () => {
+  it('"Transações" é um único item apontando para a listagem de despesas (FEAT-16)', () => {
     const expenses = flattenNavItems().find((item) => item.id === 'expenses')
 
+    expect(expenses?.label).toBe('Transações')
     expect(expenses?.to).toBe('/expenses')
     expect(expenses?.children).toBeUndefined()
   })

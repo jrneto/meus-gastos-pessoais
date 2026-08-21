@@ -15,6 +15,16 @@ describe('ExpensesListPage', () => {
     server.use(http.get(EXPENSES_URL, () => HttpResponse.json({ items: [], nextCursor: null })))
   })
 
+  it('exibe o título "Transações" (FEAT-16)', () => {
+    render(
+      <MemoryRouter>
+        <ExpensesListPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Transações' })).toBeInTheDocument()
+  })
+
   it('exibe um link "+ Nova despesa" para /expenses/new (FEAT-15)', () => {
     render(
       <MemoryRouter>

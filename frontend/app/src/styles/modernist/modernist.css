@@ -35,9 +35,15 @@
   --color-accent-100: #fff2ef;
   --color-accent-600: #dd2b0f;
   --color-accent-700: #ae1800;
+  --color-accent-800: #7c1405;
+  --color-neutral-100: #f8f4f4;
   --color-neutral-200: #eae7e7;
+  --color-neutral-300: #d7d3d3;
+  --color-neutral-400: #bab6b6;
   --color-neutral-500: #9b9797;
+  --color-neutral-600: #7d7979;
   --color-neutral-700: #605d5d;
+  --color-neutral-800: #444141;
   --color-neutral-900: #2d2b2b;
 
   --font-heading: 'Archivo Variable', system-ui, sans-serif;
@@ -234,6 +240,59 @@
   outline-offset: -2px;
 }
 
+/* — tags (chips de filtro + coluna Categoria da tabela, FEAT-16) — */
+.ds-modernist .tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 3px 10px;
+  border-radius: calc(var(--radius-md) * 0.75);
+}
+.ds-modernist .tag-neutral {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-800);
+}
+.ds-modernist .tag-accent {
+  background: var(--color-accent-100);
+  color: var(--color-accent-800);
+}
+.ds-modernist button.tag {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--color-divider);
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-800);
+}
+.ds-modernist button.tag[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-100);
+  color: var(--color-accent-800);
+}
+
+/* — table (listagem de transações, FEAT-16) — */
+.ds-modernist .table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.ds-modernist .table th {
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 60%, transparent);
+  padding: var(--space-2);
+  border-bottom: 2px solid var(--color-divider);
+}
+.ds-modernist .table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-divider);
+}
+.ds-modernist .table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-text) 4%, transparent);
+}
+
 /* — dialog (painel "Mais" da navegação mobile, FEAT-15) — */
 .ds-modernist .dialog-backdrop {
   position: fixed;
@@ -259,4 +318,14 @@
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
   font-size: 17px;
+}
+.ds-modernist .dialog-body {
+  font-size: 14px;
+  opacity: 0.85;
+}
+.ds-modernist .dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }

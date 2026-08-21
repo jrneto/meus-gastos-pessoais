@@ -23,7 +23,7 @@ export const NAV_TREE: NavItem[] = [
   { id: 'home', label: 'Início', icon: Home, to: '/', status: 'placeholder', mobilePrimary: true },
   {
     id: 'expenses',
-    label: 'Despesas',
+    label: 'Transações',
     icon: ListFilter,
     to: '/expenses',
     status: 'active',

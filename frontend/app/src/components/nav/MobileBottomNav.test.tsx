@@ -20,7 +20,7 @@ describe('MobileBottomNav', () => {
 
     const nav = screen.getByRole('navigation', { name: /navegação principal/i })
     expect(within(nav).getByRole('link', { name: /início/i })).toBeInTheDocument()
-    expect(within(nav).getByRole('link', { name: /despesas/i })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: /transações/i })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: /configurações/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /mais/i })).toBeInTheDocument()
   })
@@ -29,7 +29,7 @@ describe('MobileBottomNav', () => {
     renderBottomNav('/expenses')
 
     const nav = screen.getByRole('navigation', { name: /navegação principal/i })
-    expect(within(nav).getByRole('link', { name: /despesas/i })).toHaveAttribute(
+    expect(within(nav).getByRole('link', { name: /transações/i })).toHaveAttribute(
       'aria-current',
       'page',
     )

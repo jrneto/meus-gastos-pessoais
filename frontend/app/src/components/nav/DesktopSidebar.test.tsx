@@ -27,7 +27,7 @@ describe('DesktopSidebar', () => {
     renderSidebar('/')
 
     expect(screen.getByText('Início')).toBeInTheDocument()
-    expect(screen.getByText('Despesas')).toBeInTheDocument()
+    expect(screen.getByText('Transações')).toBeInTheDocument()
     expect(screen.queryByText('Nova despesa')).not.toBeInTheDocument()
     expect(screen.queryByText('Listagem / Filtros')).not.toBeInTheDocument()
     expect(screen.getByText('Relatórios')).toBeInTheDocument()
@@ -38,8 +38,8 @@ describe('DesktopSidebar', () => {
   it('destaca o item correspondente à rota atual', () => {
     renderSidebar('/expenses')
 
-    const despesas = screen.getByRole('link', { name: /despesas/i })
-    expect(despesas).toHaveAttribute('aria-current', 'page')
+    const transacoes = screen.getByRole('link', { name: /transações/i })
+    expect(transacoes).toHaveAttribute('aria-current', 'page')
 
     const categorias = screen.getByRole('link', { name: /categorias/i })
     expect(categorias).not.toHaveAttribute('aria-current')
@@ -58,8 +58,8 @@ describe('DesktopSidebar', () => {
 
     await user.click(screen.getByRole('button', { name: /colapsar menu/i }))
 
-    expect(screen.queryByText('Despesas')).not.toBeInTheDocument()
-    expect(screen.getByTitle('Despesas')).toBeInTheDocument()
+    expect(screen.queryByText('Transações')).not.toBeInTheDocument()
+    expect(screen.getByTitle('Transações')).toBeInTheDocument()
     expect(screen.getByTitle('Início')).toBeInTheDocument()
     expect(screen.getByTitle('Relatórios')).toBeInTheDocument()
     expect(screen.getByTitle('Categorias')).toBeInTheDocument()
