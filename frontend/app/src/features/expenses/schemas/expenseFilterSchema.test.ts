@@ -8,7 +8,7 @@ describe('expenseFilterSchema', () => {
     if (result.success) {
       expect(result.data).toEqual({
         yearMonth: undefined,
-        category: undefined,
+        categoryId: undefined,
         dateFrom: undefined,
         dateTo: undefined,
         minAmountInCents: undefined,
@@ -25,11 +25,11 @@ describe('expenseFilterSchema', () => {
     }
   })
 
-  it('aceita apenas category informada', () => {
-    const result = expenseFilterSchema.safeParse({ category: 'Alimentacao' })
+  it('aceita apenas categoryId informado', () => {
+    const result = expenseFilterSchema.safeParse({ categoryId: 'cat-1' })
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.data.category).toBe('Alimentacao')
+      expect(result.data.categoryId).toBe('cat-1')
     }
   })
 
@@ -71,7 +71,7 @@ describe('expenseFilterSchema', () => {
   it('aceita todos os filtros combinados', () => {
     const result = expenseFilterSchema.safeParse({
       yearMonth: '2025-06',
-      category: 'Alimentacao',
+      categoryId: 'cat-1',
       dateFrom: '2025-06-01',
       dateTo: '2025-06-30',
       minAmount: '10,00',

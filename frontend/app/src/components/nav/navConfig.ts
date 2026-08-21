@@ -40,7 +40,7 @@ export const NAV_TREE: NavItem[] = [
     ],
   },
   { id: 'reports', label: 'Relatórios', icon: BarChart3, status: 'disabled' },
-  { id: 'categories', label: 'Categorias', icon: Tag, status: 'disabled' },
+  { id: 'categories', label: 'Categorias', icon: Tag, to: '/categories', status: 'active' },
   {
     id: 'settings',
     label: 'Configurações',

@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useCategories } from '@/lib/categories/useCategories'
 import type { ExpenseDetail } from '../api/expensesApi'
 import { NotFoundError } from '../errors/expenseErrors'
 import { centsToAmountInput } from '../utils/currency'
@@ -23,6 +24,7 @@ interface EditExpenseFormProps {
 
 export function EditExpenseForm({ expense }: EditExpenseFormProps) {
   const { updateExpense, isLoading, error, success } = useUpdateExpense(expense.id)
+  const { items: categories, isLoading: categoriesLoading } = useCategories()
   const navigate = useNavigate()
   const {
     register,
@@ -34,7 +36,7 @@ export function EditExpenseForm({ expense }: EditExpenseFormProps) {
     defaultValues: {
       description: expense.description,
       amount: centsToAmountInput(expense.amountInCents),
-      category: expense.category,
+      categoryId: expense.categoryId,
       expenseDate: expense.expenseDate,
     },
   })
@@ -47,6 +49,19 @@ export function EditExpenseForm({ expense }: EditExpenseFormProps) {
 
   if (error instanceof NotFoundError) {
     return <ExpenseNotFound />
+  }
+
+  if (!categoriesLoading && categories.length === 0) {
+    return (
+      <div className="flex w-full max-w-sm flex-col items-center gap-4 py-8 text-center">
+        <p className="text-sm text-muted-foreground">
+          Você ainda não tem nenhuma categoria cadastrada.
+        </p>
+        <Link to="/categories/new" className={cn(buttonVariants({}))}>
+          Criar categoria
+        </Link>
+      </div>
+    )
   }
 
   return (
@@ -62,7 +77,7 @@ export function EditExpenseForm({ expense }: EditExpenseFormProps) {
         </Alert>
       )}
 
-      <ExpenseFormFields register={register} control={control} errors={errors} />
+      <ExpenseFormFields register={register} control={control} errors={errors} categories={categories} />
 
       <div className="flex gap-2">
         <Button type="submit" disabled={isLoading}>

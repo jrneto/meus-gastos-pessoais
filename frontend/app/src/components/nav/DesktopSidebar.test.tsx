@@ -45,7 +45,7 @@ describe('DesktopSidebar', () => {
     expect(novaDespesa).not.toHaveAttribute('aria-current')
   })
 
-  it('Relatórios e Categorias não são links e não navegam ao clicar', async () => {
+  it('Relatórios não é link e não navega ao clicar', async () => {
     const user = userEvent.setup()
     renderSidebar('/')
 

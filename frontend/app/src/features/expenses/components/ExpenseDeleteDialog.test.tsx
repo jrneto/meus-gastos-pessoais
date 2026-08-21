@@ -13,7 +13,7 @@ const expense: ExpenseQueryItem = {
   id: 'exp-1',
   description: 'Almoço no restaurante',
   amountInCents: 4590,
-  category: 'Alimentacao',
+  categoryId: 'cat-1',
   expenseDate: '2025-06-15',
   createdAt: '2025-06-15T12:00:00Z',
 }
