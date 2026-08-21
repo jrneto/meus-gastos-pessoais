@@ -36,7 +36,20 @@ public class DynamoDbExpenseRepositoryUpdateTests
         {
             ["PK"] = new AttributeValue { S = $"USER#{userId}" },
             ["SK"] = new AttributeValue { S = sk },
+            ["CreatedAt"] = new AttributeValue { S = OriginalCreatedAt.ToString("O") },
+            ["Tipo"] = new AttributeValue { S = "despesa" }
+        }
+    };
+
+    private static GetItemResponse BuildNonDespesaGetItemResponse(string userId, string sk) => new()
+    {
+        IsItemSet = true,
+        Item = new Dictionary<string, AttributeValue>
+        {
+            ["PK"] = new AttributeValue { S = $"USER#{userId}" },
+            ["SK"] = new AttributeValue { S = sk },
             ["CreatedAt"] = new AttributeValue { S = OriginalCreatedAt.ToString("O") }
+            // sem "Tipo" = "despesa" — simula colisão de GSI2PK com item de outro tipo.
         }
     };
 
@@ -86,6 +99,26 @@ public class DynamoDbExpenseRepositoryUpdateTests
         // Act
         var result = await _repository.UpdateAsync(
             "user-1", "expense-1", "Almoço", 4590, "category-1", new DateOnly(2025, 6, 15));
+
+        // Assert
+        result.Should().BeNull();
+        await _dynamoDbClientMock.DidNotReceiveWithAnyArgs().PutItemAsync(default!, default);
+        await _dynamoDbClientMock.DidNotReceiveWithAnyArgs().TransactWriteItemsAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ShouldReturnNull_WhenItemFoundIsNotAnExpense()
+    {
+        // Arrange — sem essa checagem, um categoryId passado por engano faria PutItem/
+        // TransactWriteItems apagar a categoria e criar uma despesa no lugar dela.
+        _dynamoDbClientMock.QueryAsync(Arg.Any<QueryRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryResponse { Items = [BuildKeyItem("user-1", "CAT#mercado")] });
+        _dynamoDbClientMock.GetItemAsync(Arg.Any<GetItemRequest>(), Arg.Any<CancellationToken>())
+            .Returns(BuildNonDespesaGetItemResponse("user-1", "CAT#mercado"));
+
+        // Act
+        var result = await _repository.UpdateAsync(
+            "user-1", "category-1", "Almoço", 4590, "category-1", new DateOnly(2025, 6, 15));
 
         // Assert
         result.Should().BeNull();

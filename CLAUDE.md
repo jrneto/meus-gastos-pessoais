@@ -40,10 +40,9 @@ Desde a FEAT-10 (frontend), toda feature em **Fluxo Completo** segue:
   `plan.md`, `tasks.md` e todo o código da feature vivem nessa branch;
   `develop` só recebe tudo de uma vez quando o PR é mergeado.
 - Ao final da implementação, um PR da branch para `develop` é aberto
-  — automaticamente nos contextos que já têm CI/CD próprio (hoje só o
-  frontend, a cada push verde na branch — ver
-  `frontend/specs/FEAT-10-*`), manualmente nos demais (hoje o backend,
-  que ainda não tem workflow de qualidade).
+  automaticamente pelo CI/CD de cada contexto (backend e frontend têm
+  workflow próprio — `{contexto}-feature-pr.yml` — disparado a cada
+  push verde na branch).
 - Depois de validado em homologação, uma **GitHub Release** publicada
   manualmente dispara o deploy de produção; se esse deploy for
   bem-sucedido, um PR `develop → main` é aberto automaticamente —
@@ -51,9 +50,13 @@ Desde a FEAT-10 (frontend), toda feature em **Fluxo Completo** segue:
   (antes disso, `main` podia ficar desatualizada indefinidamente).
 - **Merge dos PRs (feature→develop e develop→main) continua sempre
   manual** — os workflows só abrem o PR, nunca mergeiam sozinhos.
-- **Modo Leve não usa esse fluxo de branch**: como não cria pasta em
-  `specs/`, não há nome de branch a seguir — continua indo direto para
-  `develop`, como já documentado abaixo.
+- **Modo Leve também usa branch própria + PR automático**, mas sem
+  passar por `/specify`: a branch nasce a partir de `develop` com
+  prefixo `fix/` (ex.: `fix/nome-do-bug`), pois não há pasta em
+  `specs/` para nomeá-la. O workflow `{contexto}-feature-pr.yml`
+  dispara tanto para `FEAT-*` quanto para `fix/*`. Ainda não é
+  necessário criar pasta em `specs/` nem passar por `/specify` —
+  ver regras completas em "Modo Leve vs Fluxo Completo" abaixo.
 
 ## Infraestrutura
 
