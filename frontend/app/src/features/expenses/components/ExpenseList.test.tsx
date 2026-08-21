@@ -8,11 +8,21 @@ import { server } from '@/test/msw/server'
 import type { ExpenseQueryItem } from '../api/expensesApi'
 import { ExpenseList } from './ExpenseList'
 
+const CATEGORIES_URL = 'http://localhost:5049/categories'
+
+const category = {
+  id: 'cat-1',
+  nome: 'Alimentação',
+  cor: '#F97316',
+  icone: 'utensils',
+  createdAt: '2025-06-15T12:00:00Z',
+}
+
 const item: ExpenseQueryItem = {
   id: 'exp-1',
   description: 'Almoço no restaurante',
   amountInCents: 4590,
-  category: 'Alimentacao',
+  categoryId: 'cat-1',
   expenseDate: '2025-06-15',
   createdAt: '2025-06-15T12:00:00Z',
 }
@@ -38,14 +48,21 @@ describe('ExpenseList', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
+    server.use(http.get(CATEGORIES_URL, () => HttpResponse.json({ items: [category] })))
   })
 
-  it('renderiza os itens formatados', () => {
+  it('renderiza os itens formatados', async () => {
     renderExpenseList({ items: [item] })
 
     expect(screen.getByText('Almoço no restaurante')).toBeInTheDocument()
     expect(screen.getByText('R$ 45,90')).toBeInTheDocument()
-    expect(screen.getByText(/Alimentação/)).toBeInTheDocument()
+    expect(await screen.findByText('Alimentação')).toBeInTheDocument()
+  })
+
+  it('categoryId sem correspondência renderiza rótulo genérico, sem quebrar', () => {
+    renderExpenseList({ items: [{ ...item, categoryId: 'inexistente' }] })
+
+    expect(screen.getByText('Categoria não encontrada')).toBeInTheDocument()
   })
 
   it('exibe estado vazio quando não há itens', () => {

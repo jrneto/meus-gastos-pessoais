@@ -14,7 +14,7 @@ function item(id: string) {
     id,
     description: `Despesa ${id}`,
     amountInCents: 1000,
-    category: 'Alimentacao',
+    categoryId: 'cat-1',
     expenseDate: '2025-06-15',
     createdAt: '2025-06-15T12:00:00Z',
   }
@@ -60,7 +60,7 @@ describe('useExpensesQuery', () => {
 
     const filters: ExpenseFilterOutput = {
       yearMonth: undefined,
-      category: 'Transporte',
+      categoryId: 'cat-2',
       dateFrom: undefined,
       dateTo: undefined,
       minAmountInCents: undefined,

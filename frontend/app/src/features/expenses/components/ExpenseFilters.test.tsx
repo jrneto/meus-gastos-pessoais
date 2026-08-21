@@ -1,9 +1,28 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { http, HttpResponse } from 'msw'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useAuthStore } from '@/features/auth/store/authStore'
+import { server } from '@/test/msw/server'
 import { ExpenseFilters } from './ExpenseFilters'
 
+const CATEGORIES_URL = 'http://localhost:5049/categories'
+
+const category = {
+  id: 'cat-1',
+  nome: 'Alimentação',
+  cor: '#F97316',
+  icone: 'utensils',
+  createdAt: '2025-06-15T12:00:00Z',
+}
+
 describe('ExpenseFilters', () => {
+  beforeEach(() => {
+    useAuthStore.getState().clearSession()
+    useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
+    server.use(http.get(CATEGORIES_URL, () => HttpResponse.json({ items: [category] })))
+  })
+
   it('submit sem nenhum filtro chama onApply com todos os campos undefined', async () => {
     const user = userEvent.setup()
     const onApply = vi.fn()
@@ -13,7 +32,7 @@ describe('ExpenseFilters', () => {
 
     expect(onApply).toHaveBeenCalledWith({
       yearMonth: undefined,
-      category: undefined,
+      categoryId: undefined,
       dateFrom: undefined,
       dateTo: undefined,
       minAmountInCents: undefined,
@@ -39,7 +58,7 @@ describe('ExpenseFilters', () => {
 
     expect(onApply).toHaveBeenCalledWith({
       yearMonth: '2025-06',
-      category: 'Alimentacao',
+      categoryId: 'cat-1',
       dateFrom: '2025-06-01',
       dateTo: '2025-06-30',
       minAmountInCents: 1000,

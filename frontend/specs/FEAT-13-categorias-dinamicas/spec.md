@@ -235,32 +235,32 @@ todas as rotas").
 
 ## Critérios de aceite
 
-- [ ] Nova tela `/categories` (com item de navegação no `AppShell`)
+- [x] Nova tela `/categories` (com item de navegação no `AppShell`)
       lista as categorias do usuário, vazia quando ele não tem nenhuma
-- [ ] Formulário de criar categoria com nome, color picker e ícone
+- [x] Formulário de criar categoria com nome, color picker e ícone
       picker (lista curada `lucide-react`), com validação client-side
       (Zod) espelhando as regras do backend
-- [ ] Criar categoria com sucesso atualiza a lista e exibe confirmação
-- [ ] Criar/editar categoria com nome duplicado exibe erro inline (422)
-- [ ] Criar/editar categoria com dado inválido exibe erro inline (400)
-- [ ] Editar categoria existente atualiza nome/cor/ícone na lista
-- [ ] Excluir categoria sem despesas associadas remove da lista (204)
-- [ ] Excluir categoria com despesas associadas exibe mensagem de
+- [x] Criar categoria com sucesso atualiza a lista e exibe confirmação
+- [x] Criar/editar categoria com nome duplicado exibe erro inline (422)
+- [x] Criar/editar categoria com dado inválido exibe erro inline (400)
+- [x] Editar categoria existente atualiza nome/cor/ícone na lista
+- [x] Excluir categoria sem despesas associadas remove da lista (204)
+- [x] Excluir categoria com despesas associadas exibe mensagem de
       bloqueio e mantém a categoria (422)
-- [ ] Formulário de cadastro/edição de despesa usa `Select` populado
+- [x] Formulário de cadastro/edição de despesa usa `Select` populado
       via `GET /categories`, enviando `categoryId` (não mais `category`)
       em `POST`/`PUT /expenses`
-- [ ] Usuário sem nenhuma categoria cadastrada é orientado a criar uma
+- [x] Usuário sem nenhuma categoria cadastrada é orientado a criar uma
       antes de conseguir cadastrar despesa
-- [ ] Filtro de despesas por categoria usa `categoryId` e retorna
+- [x] Filtro de despesas por categoria usa `categoryId` e retorna
       somente despesas daquela categoria
-- [ ] Listagem/detalhe de despesa exibe nome/cor/ícone da categoria
+- [x] Listagem/detalhe de despesa exibe nome/cor/ícone da categoria
       resolvendo `categoryId` via `GET /categories`, sem quebrar quando
       não encontrar correspondência
-- [ ] Nenhuma referência residual ao enum antigo `EXPENSE_CATEGORIES`/
+- [x] Nenhuma referência residual ao enum antigo `EXPENSE_CATEGORIES`/
       campo `category` permanece no código de despesas
-- [ ] Erros 401 em qualquer fluxo acima redirecionam para `/login`
-- [ ] 100% dos testes (unitários/componente) passando
+- [x] Erros 401 em qualquer fluxo acima redirecionam para `/login`
+- [x] 100% dos testes (unitários/componente) passando
 
 ## Fora do escopo
 

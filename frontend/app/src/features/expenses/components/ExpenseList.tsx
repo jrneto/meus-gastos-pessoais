@@ -1,11 +1,12 @@
 import { Pencil, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { CategoryBadge } from '@/lib/categories/CategoryBadge'
+import { useCategories } from '@/lib/categories/useCategories'
 import type { ExpenseQueryItem } from '../api/expensesApi'
-import { EXPENSE_CATEGORIES } from '../constants/expenseCategories'
 import { formatCentsToCurrency } from '../utils/currency'
 import { ExpenseDeleteDialog } from './ExpenseDeleteDialog'
 
@@ -19,10 +20,6 @@ interface ExpenseListProps {
   onDeleted: (id: string) => void
 }
 
-function categoryLabel(value: string): string {
-  return EXPENSE_CATEGORIES.find((category) => category.value === value)?.label ?? value
-}
-
 export function ExpenseList({
   items,
   isLoading,
@@ -33,6 +30,11 @@ export function ExpenseList({
   onDeleted,
 }: ExpenseListProps) {
   const [deleteTarget, setDeleteTarget] = useState<ExpenseQueryItem | null>(null)
+  const { items: categories } = useCategories()
+  const categoryById = useMemo(
+    () => new Map(categories.map((category) => [category.id, category])),
+    [categories],
+  )
 
   return (
     <div className="flex w-full max-w-sm flex-col gap-4">
@@ -58,7 +60,7 @@ export function ExpenseList({
             <Link to={`/expenses/${item.id}`} className="flex flex-col">
               <span className="font-medium hover:underline">{item.description}</span>
               <span className="text-muted-foreground">
-                {categoryLabel(item.category)} · {item.expenseDate}
+                <CategoryBadge category={categoryById.get(item.categoryId)} /> · {item.expenseDate}
               </span>
             </Link>
             <div className="flex items-center gap-2">

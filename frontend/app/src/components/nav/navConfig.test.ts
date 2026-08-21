@@ -38,13 +38,21 @@ describe('flattenNavItems', () => {
     expect(mobilePrimaryIds).toEqual(['home', 'expenses-new', 'expenses-list', 'settings'])
   })
 
-  it('itens desabilitados (Relatórios, Categorias) não têm rota nem são mobilePrimary', () => {
+  it('itens desabilitados (Relatórios) não têm rota nem são mobilePrimary', () => {
     const disabled = NAV_TREE.filter((item) => item.status === 'disabled')
 
-    expect(disabled).toHaveLength(2)
+    expect(disabled).toHaveLength(1)
     for (const item of disabled) {
       expect(item.to).toBeUndefined()
       expect(item.mobilePrimary).toBeFalsy()
     }
+  })
+
+  it('"Categorias" está ativa, navegável e fora do mobilePrimary (FEAT-13)', () => {
+    const categories = flattenNavItems().find((item) => item.id === 'categories')
+
+    expect(categories?.status).toBe('active')
+    expect(categories?.to).toBe('/categories')
+    expect(categories?.mobilePrimary).toBeFalsy()
   })
 })

@@ -9,14 +9,27 @@ import type { ExpenseDetail } from '../api/expensesApi'
 import { EditExpenseForm } from './EditExpenseForm'
 
 const EXPENSE_URL = 'http://localhost:5049/expenses/exp-1'
+const CATEGORIES_URL = 'http://localhost:5049/categories'
+
+const category = {
+  id: 'cat-1',
+  nome: 'Alimentação',
+  cor: '#F97316',
+  icone: 'utensils',
+  createdAt: '2025-06-15T12:00:00Z',
+}
 
 const expense: ExpenseDetail = {
   id: 'exp-1',
   description: 'Almoço no restaurante',
   amountInCents: 4590,
-  category: 'Alimentacao',
+  categoryId: 'cat-1',
   expenseDate: '2025-06-15',
   createdAt: '2025-06-15T12:00:00Z',
+}
+
+function mockCategories(items: unknown[] = [category]) {
+  server.use(http.get(CATEGORIES_URL, () => HttpResponse.json({ items })))
 }
 
 function renderEditForm() {
@@ -36,16 +49,18 @@ describe('EditExpenseForm', () => {
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
   })
 
-  it('pré-preenche o formulário com os dados da despesa', () => {
+  it('pré-preenche o formulário com os dados da despesa', async () => {
+    mockCategories()
     renderEditForm()
 
-    expect(screen.getByLabelText('Descrição')).toHaveValue('Almoço no restaurante')
+    expect(await screen.findByLabelText('Descrição')).toHaveValue('Almoço no restaurante')
     expect(screen.getByLabelText('Valor')).toHaveValue('45,90')
     expect(screen.getByLabelText('Data')).toHaveValue('2025-06-15')
     expect(screen.getByRole('combobox', { name: 'Categoria' })).toHaveTextContent('Alimentação')
   })
 
   it('exibe erro inline e não chama a API ao apagar um campo obrigatório', async () => {
+    mockCategories()
     const user = userEvent.setup()
     let apiCalled = false
     server.use(
@@ -56,6 +71,7 @@ describe('EditExpenseForm', () => {
     )
 
     renderEditForm()
+    await screen.findByLabelText('Descrição')
     await user.clear(screen.getByLabelText('Descrição'))
     await user.click(screen.getByRole('button', { name: /salvar/i }))
 
@@ -64,6 +80,7 @@ describe('EditExpenseForm', () => {
   })
 
   it('salvar com sucesso navega para /expenses', async () => {
+    mockCategories()
     const user = userEvent.setup()
     server.use(
       http.put(EXPENSE_URL, () =>
@@ -72,6 +89,7 @@ describe('EditExpenseForm', () => {
     )
 
     renderEditForm()
+    await screen.findByLabelText('Descrição')
     await user.clear(screen.getByLabelText('Descrição'))
     await user.type(screen.getByLabelText('Descrição'), 'Almoço atualizado')
     await user.click(screen.getByRole('button', { name: /salvar/i }))
@@ -80,10 +98,12 @@ describe('EditExpenseForm', () => {
   })
 
   it('erro 400 da API exibe alerta genérico e mantém os dados preenchidos', async () => {
+    mockCategories()
     const user = userEvent.setup()
     server.use(http.put(EXPENSE_URL, () => new HttpResponse(null, { status: 400 })))
 
     renderEditForm()
+    await screen.findByLabelText('Descrição')
     await user.click(screen.getByRole('button', { name: /salvar/i }))
 
     expect(await screen.findByText('Não foi possível salvar')).toBeInTheDocument()
@@ -91,10 +111,12 @@ describe('EditExpenseForm', () => {
   })
 
   it('erro 404 ao salvar troca o formulário por ExpenseNotFound', async () => {
+    mockCategories()
     const user = userEvent.setup()
     server.use(http.put(EXPENSE_URL, () => new HttpResponse(null, { status: 404 })))
 
     renderEditForm()
+    await screen.findByLabelText('Descrição')
     await user.click(screen.getByRole('button', { name: /salvar/i }))
 
     expect(await screen.findByText('Despesa não encontrada.')).toBeInTheDocument()
@@ -102,6 +124,7 @@ describe('EditExpenseForm', () => {
   })
 
   it('cancelar navega para /expenses sem chamar a API', async () => {
+    mockCategories()
     const user = userEvent.setup()
     let apiCalled = false
     server.use(
@@ -112,9 +135,19 @@ describe('EditExpenseForm', () => {
     )
 
     renderEditForm()
+    await screen.findByLabelText('Descrição')
     await user.click(screen.getByRole('link', { name: /cancelar/i }))
 
     await waitFor(() => expect(screen.getByText('Expenses List Page')).toBeInTheDocument())
     expect(apiCalled).toBe(false)
+  })
+
+  it('usuário sem nenhuma categoria cadastrada é orientado a criar uma', async () => {
+    mockCategories([])
+    renderEditForm()
+
+    expect(
+      await screen.findByText('Você ainda não tem nenhuma categoria cadastrada.'),
+    ).toBeInTheDocument()
   })
 })

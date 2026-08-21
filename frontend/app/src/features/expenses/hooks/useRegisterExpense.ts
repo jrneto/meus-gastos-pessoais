@@ -25,7 +25,7 @@ export function useRegisterExpense(): UseRegisterExpenseResult {
       await expensesApi.registerExpense(token ?? '', {
         description: data.description,
         amountInCents: data.amount,
-        category: data.category,
+        categoryId: data.categoryId,
         expenseDate: data.expenseDate,
       })
       setSuccess(true)

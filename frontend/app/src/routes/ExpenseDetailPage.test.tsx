@@ -8,12 +8,21 @@ import { server } from '@/test/msw/server'
 import { ExpenseDetailPage } from './ExpenseDetailPage'
 
 const EXPENSE_URL = 'http://localhost:5049/expenses/exp-1'
+const CATEGORIES_URL = 'http://localhost:5049/categories'
+
+const category = {
+  id: 'cat-1',
+  nome: 'Alimentação',
+  cor: '#F97316',
+  icone: 'utensils',
+  createdAt: '2025-06-15T12:00:00Z',
+}
 
 const expenseDetail = {
   id: 'exp-1',
   description: 'Almoço no restaurante',
   amountInCents: 4590,
-  category: 'Alimentacao',
+  categoryId: 'cat-1',
   expenseDate: '2025-06-15',
   createdAt: '2025-06-15T12:00:00Z',
 }
@@ -34,6 +43,7 @@ describe('ExpenseDetailPage', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
+    server.use(http.get(CATEGORIES_URL, () => HttpResponse.json({ items: [category] })))
   })
 
   it('exibe estado de carregamento e depois os detalhes da despesa, incluindo id e data de criação', async () => {
@@ -44,7 +54,7 @@ describe('ExpenseDetailPage', () => {
     expect(screen.getByText('Carregando...')).toBeInTheDocument()
     expect(await screen.findByText('Almoço no restaurante')).toBeInTheDocument()
     expect(screen.getByText('R$ 45,90')).toBeInTheDocument()
-    expect(screen.getByText(/Alimentação/)).toBeInTheDocument()
+    expect(await screen.findByText('Alimentação')).toBeInTheDocument()
     expect(screen.getByText('exp-1')).toBeInTheDocument()
     expect(screen.getByText(new Date(expenseDetail.createdAt).toLocaleString('pt-BR'))).toBeInTheDocument()
   })

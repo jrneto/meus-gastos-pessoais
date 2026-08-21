@@ -13,7 +13,7 @@ import {
 interface RegisterExpensePayload {
   description: string
   amountInCents: number
-  category: string
+  categoryId: string
   expenseDate: string
 }
 
@@ -21,14 +21,14 @@ interface RegisterExpenseResponse {
   id: string
   description: string
   amountInCents: number
-  category: string
+  categoryId: string
   expenseDate: string
   createdAt: string
 }
 
 export interface GetExpensesParams {
   yearMonth?: string
-  category?: string
+  categoryId?: string
   dateFrom?: string
   dateTo?: string
   minAmountInCents?: number
@@ -40,7 +40,7 @@ export interface ExpenseQueryItem {
   id: string
   description: string
   amountInCents: number
-  category: string
+  categoryId: string
   expenseDate: string
   createdAt: string
 }
@@ -53,7 +53,7 @@ export interface GetExpensesResponse {
 export interface UpdateExpensePayload {
   description: string
   amountInCents: number
-  category: string
+  categoryId: string
   expenseDate: string
 }
 
@@ -61,7 +61,7 @@ export interface ExpenseDetail {
   id: string
   description: string
   amountInCents: number
-  category: string
+  categoryId: string
   expenseDate: string
   createdAt: string
 }

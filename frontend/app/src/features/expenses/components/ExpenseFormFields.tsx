@@ -9,16 +9,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { EXPENSE_CATEGORIES } from '../constants/expenseCategories'
+import type { CategoryItem } from '@/lib/categories/types'
 import type { ExpenseFormInput, ExpenseFormOutput } from '../schemas/expenseSchema'
 
 interface ExpenseFormFieldsProps {
   register: UseFormRegister<ExpenseFormInput>
   control: Control<ExpenseFormInput, unknown, ExpenseFormOutput>
   errors: FieldErrors<ExpenseFormInput>
+  categories: CategoryItem[]
 }
 
-export function ExpenseFormFields({ register, control, errors }: ExpenseFormFieldsProps) {
+export function ExpenseFormFields({ register, control, errors, categories }: ExpenseFormFieldsProps) {
   return (
     <>
       <div className="flex flex-col gap-1.5">
@@ -52,32 +53,32 @@ export function ExpenseFormFields({ register, control, errors }: ExpenseFormFiel
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="category">Categoria</Label>
+        <Label htmlFor="categoryId">Categoria</Label>
         <Controller
           control={control}
-          name="category"
+          name="categoryId"
           render={({ field }) => (
             <Select value={field.value ?? ''} onValueChange={field.onChange}>
-              <SelectTrigger id="category" aria-invalid={!!errors.category} className="w-full">
+              <SelectTrigger id="categoryId" aria-invalid={!!errors.categoryId} className="w-full">
                 <SelectValue placeholder="Selecione uma categoria">
                   {(value: string) =>
-                    EXPENSE_CATEGORIES.find((category) => category.value === value)?.label ?? ''
+                    categories.find((category) => category.id === value)?.nome ?? ''
                   }
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {EXPENSE_CATEGORIES.map((category) => (
-                  <SelectItem key={category.value} value={category.value}>
-                    {category.label}
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.nome}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           )}
         />
-        {errors.category && (
+        {errors.categoryId && (
           <p className="text-sm text-destructive" role="alert">
-            {errors.category.message}
+            {errors.categoryId.message}
           </p>
         )}
       </div>
