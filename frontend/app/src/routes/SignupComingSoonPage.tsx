@@ -7,7 +7,7 @@ import '@/styles/modernist/modernist.css'
 export function SignupComingSoonPage() {
   return (
     <div
-      className="ds-modernist"
+      className="ds-modernist ds-modernist-page"
       style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
     >
       <div style={{ width: '100%', maxWidth: '360px', display: 'flex', flexDirection: 'column', gap: '16px' }}>

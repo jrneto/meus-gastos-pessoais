@@ -10,6 +10,7 @@ import { HomePage } from '@/routes/HomePage'
 import { LoginPage } from '@/routes/LoginPage'
 import { NewCategoryPage } from '@/routes/NewCategoryPage'
 import { RegisterExpensePage } from '@/routes/RegisterExpensePage'
+import { ReportsComingSoonPage } from '@/routes/ReportsComingSoonPage'
 import { SettingsPage } from '@/routes/SettingsPage'
 import { SignupComingSoonPage } from '@/routes/SignupComingSoonPage'
 
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
           { path: 'categories', element: <CategoriesPage /> },
           { path: 'categories/new', element: <NewCategoryPage /> },
           { path: 'categories/:id/edit', element: <EditCategoryPage /> },
+          { path: 'reports', element: <ReportsComingSoonPage /> },
           { path: 'settings', element: <SettingsPage /> },
         ],
       },

@@ -31,4 +31,11 @@ describe('AppShell', () => {
     expect(screen.queryByText('Home Content')).not.toBeInTheDocument()
     expect(screen.getAllByRole('navigation', { name: /navegação principal/i })).toHaveLength(2)
   })
+
+  it('o conteúdo do Outlet não herda o escopo .ds-modernist da navegação (FEAT-15)', () => {
+    renderAppShell('/')
+
+    const content = screen.getByText('Home Content')
+    expect(content.closest('.ds-modernist')).toBeNull()
+  })
 })

@@ -15,28 +15,38 @@ function renderBottomNav(initialPath = '/') {
 }
 
 describe('MobileBottomNav', () => {
-  it('renderiza os 4 itens principais e o botão "Mais"', () => {
+  it('renderiza os 3 itens primários (FEAT-15) e o botão "Mais"', () => {
     renderBottomNav()
 
     const nav = screen.getByRole('navigation', { name: /navegação principal/i })
     expect(within(nav).getByRole('link', { name: /início/i })).toBeInTheDocument()
-    expect(within(nav).getByRole('link', { name: /nova despesa/i })).toBeInTheDocument()
-    expect(within(nav).getByRole('link', { name: /listagem \/ filtros/i })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: /despesas/i })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: /configurações/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /mais/i })).toBeInTheDocument()
   })
 
-  it('clicar em "Mais" abre o sheet com Relatórios não-clicável e Categorias navegável', async () => {
+  it('destaca o item ativo pela rota atual', () => {
+    renderBottomNav('/expenses')
+
+    const nav = screen.getByRole('navigation', { name: /navegação principal/i })
+    expect(within(nav).getByRole('link', { name: /despesas/i })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(within(nav).getByRole('link', { name: /início/i })).not.toHaveAttribute('aria-current')
+  })
+
+  it('clicar em "Mais" abre o painel com Relatórios e Categorias, ambos navegáveis', async () => {
     const user = userEvent.setup()
     renderBottomNav()
 
     await user.click(screen.getByRole('button', { name: /mais/i }))
 
-    expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    const relatorios = screen.getByText('Relatórios').closest('[role="button"]')
-    expect(relatorios).toHaveAttribute('aria-disabled', 'true')
+    const dialog = await screen.findByRole('dialog')
+    const relatorios = within(dialog).getByRole('link', { name: /relatórios/i })
+    expect(relatorios).toHaveAttribute('href', '/reports')
 
-    const categorias = screen.getByRole('link', { name: /categorias/i })
+    const categorias = within(dialog).getByRole('link', { name: /categorias/i })
     expect(categorias).toHaveAttribute('href', '/categories')
   })
 })
