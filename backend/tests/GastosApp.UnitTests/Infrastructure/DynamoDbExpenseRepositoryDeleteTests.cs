@@ -96,7 +96,9 @@ public class DynamoDbExpenseRepositoryDeleteTests
                 r.TableName == "GastosApp-unitTests"
                 && r.Key["PK"].S == "USER#user-1"
                 && r.Key["SK"].S == "TXN#2025-06-15#expense-1"
-                && r.ConditionExpression == "attribute_exists(PK)"),
+                && r.ConditionExpression == "attribute_exists(PK) AND #tipo = :tipo"
+                && r.ExpressionAttributeNames!["#tipo"] == "Tipo"
+                && r.ExpressionAttributeValues![":tipo"].S == "despesa"),
             Arg.Any<CancellationToken>());
     }
 
@@ -111,6 +113,25 @@ public class DynamoDbExpenseRepositoryDeleteTests
 
         // Act
         var result = await _repository.DeleteAsync("user-1", "expense-1");
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_ShouldReturnFalse_WhenItemFoundIsNotAnExpense()
+    {
+        // Arrange — GSI2PK "ID#{id}" é compartilhado com outros tipos de item (ex.: categoria).
+        // O ConditionExpression "#tipo = :tipo" faz o DynamoDB falhar a condição nesse caso
+        // (simulado aqui via ConditionalCheckFailedException), sem round-trip extra de leitura,
+        // evitando que um categoryId passado por engano apague a categoria.
+        _dynamoDbClientMock.QueryAsync(Arg.Any<QueryRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryResponse { Items = [BuildKeyItem("user-1", "CAT#mercado")] });
+        _dynamoDbClientMock.DeleteItemAsync(Arg.Any<DeleteItemRequest>(), Arg.Any<CancellationToken>())
+            .Returns<DeleteItemResponse>(_ => throw new ConditionalCheckFailedException("condição falhou"));
+
+        // Act
+        var result = await _repository.DeleteAsync("user-1", "category-1");
 
         // Assert
         result.Should().BeFalse();

@@ -40,7 +40,22 @@ public class DynamoDbExpenseRepositoryGetByIdTests
             ["AmountInCents"] = new AttributeValue { N = "4590" },
             ["CategoryId"] = new AttributeValue { S = "category-1" },
             ["ExpenseDate"] = new AttributeValue { S = "2025-06-15" },
+            ["CreatedAt"] = new AttributeValue { S = CreatedAt.ToString("O") },
+            ["Tipo"] = new AttributeValue { S = "despesa" }
+        }
+    };
+
+    private static GetItemResponse BuildNonDespesaGetItemResponse(string userId, string sk) => new()
+    {
+        IsItemSet = true,
+        Item = new Dictionary<string, AttributeValue>
+        {
+            ["PK"] = new AttributeValue { S = $"USER#{userId}" },
+            ["SK"] = new AttributeValue { S = sk },
+            ["Nome"] = new AttributeValue { S = "Mercado" },
             ["CreatedAt"] = new AttributeValue { S = CreatedAt.ToString("O") }
+            // sem "Tipo" = "despesa" — simula o item de outro tipo (ex.: categoria)
+            // encontrado por colisão de GSI2PK (mesmo formato "ID#{id}" pros dois).
         }
     };
 
@@ -85,6 +100,23 @@ public class DynamoDbExpenseRepositoryGetByIdTests
 
         // Act
         var result = await _repository.GetByIdAsync("user-1", "expense-1");
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_ShouldReturnNull_WhenItemFoundIsNotAnExpense()
+    {
+        // Arrange — GSI2PK "ID#{id}" é compartilhado com outros tipos de item (ex.: categoria);
+        // passar o id de uma categoria não deve estourar exceção, deve virar 404 (null aqui).
+        _dynamoDbClientMock.QueryAsync(Arg.Any<QueryRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryResponse { Items = [BuildKeyItem("user-1", "CAT#mercado")] });
+        _dynamoDbClientMock.GetItemAsync(Arg.Any<GetItemRequest>(), Arg.Any<CancellationToken>())
+            .Returns(BuildNonDespesaGetItemResponse("user-1", "CAT#mercado"));
+
+        // Act
+        var result = await _repository.GetByIdAsync("user-1", "category-1");
 
         // Assert
         result.Should().BeNull();

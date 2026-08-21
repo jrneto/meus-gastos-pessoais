@@ -18,8 +18,11 @@ critério de quando abrir uma spec, veja "Modo Leve vs Fluxo Completo" no
   automatizado via GitHub Actions desde a FEAT-14 (deploy em hom a cada
   push em `develop`, deploy em prod a partir de uma GitHub Release
   `backend-vX.Y.Z`), ver `backend/infra/CLAUDE.md`
-- Ambiente local conecta-se diretamente aos recursos AWS reais — sem
-  LocalStack, sem Kong, sem simulação
+- Ambiente local roda contra serviços emulados em Docker desde a
+  FEAT-18 — LocalStack (DynamoDB + SSM Parameter Store) e cognito-local
+  (Cognito) — sem depender de credenciais AWS reais; produção e
+  homologação continuam 100% AWS real. Ver `backend/infra/CLAUDE.md` e
+  `backend/infra/README.md`
 
 ## Estrutura de projetos (Clean Architecture)
 
@@ -45,7 +48,11 @@ backend/
 │   └── FEAT-XX-nome-feature/{spec.md, plan.md, tasks.md}
 └── infra/
     ├── CLAUDE.md                  # contexto de infra do backend
-    └── docker-compose.yml, kong.yml, scripts/  # legado LocalStack/Kong, ver infra/CLAUDE.md
+    ├── README.md                  # como subir o ambiente local (FEAT-18)
+    ├── docker-compose.yml         # LocalStack + cognito-local (dev local)
+    ├── cognito-local/             # Dockerfile do emulador de Cognito
+    ├── scripts/                   # seed idempotente (Cognito, DynamoDB, Parameter Store)
+    └── terraform/                 # infra real (produção/homologação)
 ```
 
 Fluxo de dependência: `Api → Application → Domain` e

@@ -435,3 +435,9 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Estado dos containers do ambiente local do backend (FEAT-18) —
+# LocalStack e cognito-local, dados voláteis, não código
+backend/infra/.localstack/
+backend/infra/.cognito-local/
+backend/infra/.local-cognito-ids

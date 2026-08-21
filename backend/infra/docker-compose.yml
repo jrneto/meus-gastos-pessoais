@@ -1,49 +1,37 @@
-# DOCKER COMPOSE PARA AMBIENTE DE DESENVOLVIMENTO LOCAL - GASTOSAPP
-# Configurado para desenvolvimento local conectado diretamente à nuvem AWS real.
+# Ambiente local do backend GastosApp, sem dependência de AWS real
+# (FEAT-18). LocalStack (Community, gratuito) emula DynamoDB e SSM
+# Parameter Store; cognito-local emula o Cognito, que não está
+# disponível na edição Community do LocalStack. A API .NET roda fora
+# do Docker (dotnet run), apontando para estes dois serviços via
+# appsettings.Development.json.
+#
+# Uso: docker compose up -d && ./scripts/local-init.sh
+# Detalhes em backend/infra/README.md.
 
 services:
-  # API ASP.NET Core 10 (Minimal APIs)
-  api:
-    image: gastosapp-api:latest
-    container_name: gastosapp-api
+  localstack:
+    image: localstack/localstack:4
+    container_name: gastosapp-localstack
+    environment:
+      - SERVICES=dynamodb,ssm
+      - DEFAULT_REGION=us-east-1
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./.localstack:/var/lib/localstack
+
+  cognito-local:
     build:
-      context: ../backend
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
+      context: ./cognito-local
+    container_name: gastosapp-cognito-local
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - AWS__Region=us-east-1
-      - AWS_PROFILE=developer # Usa o profile conectado via AWS CLI / Identity Center
-    volumes:
-      # 🔒 Compartilha as credenciais temporárias do seu computador com o container de forma segura
-      - ~/.aws:/root/.aws:ro
-    networks:
-      - gastos-network
-
-  # API Gateway Kong rodando em modo DB-less (sem banco de dados)
-  kong:
-    image: kong:3.9.3
-    container_name: gastosapp-kong
-    environment:
-      - KONG_DATABASE=off
-      - KONG_DECLARATIVE_CONFIG=/etc/kong/kong.yml
-      - KONG_PROXY_ACCESS_LOG=/dev/stdout
-      - KONG_ADMIN_ACCESS_LOG=/dev/stdout
-      - KONG_PROXY_ERROR_LOG=/dev/stderr
-      - KONG_ADMIN_ERROR_LOG=/dev/stderr
-      - KONG_ADMIN_LISTEN=0.0.0.0:8001
+      # cognito-local só lê hostname/porta de bind de HOST/PORT (env vars),
+      # não do config.json — precisa de 0.0.0.0 pra aceitar conexões de
+      # fora do container (o config.json fixa o IssuerDomain em
+      # localhost:9229, que é o que importa pra validação do JWT).
+      - HOST=0.0.0.0
+      - PORT=9229
     ports:
-      - "8000:8000"
-      - "8001:8001"
+      - "9229:9229"
     volumes:
-      # Monta a configuração declarativa de rotas do Kong (somente leitura)
-      - ./kong.yml:/etc/kong/kong.yml:ro
-    depends_on:
-      - api
-    networks:
-      - gastos-network
-
-networks:
-  gastos-network:
-    driver: bridge
+      - ./.cognito-local:/app/.cognito

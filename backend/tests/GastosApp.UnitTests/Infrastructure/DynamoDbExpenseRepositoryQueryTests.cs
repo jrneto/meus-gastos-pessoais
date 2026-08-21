@@ -55,9 +55,11 @@ public class DynamoDbExpenseRepositoryQueryTests
             Arg.Is<QueryRequest>(r =>
                 r.IndexName == null
                 && r.TableName == "GastosApp-unitTests"
-                && r.KeyConditionExpression == "#pk = :pk"
+                && r.KeyConditionExpression == "#pk = :pk AND begins_with(#sk, :skPrefix)"
                 && r.ExpressionAttributeNames["#pk"] == "PK"
-                && r.ExpressionAttributeValues[":pk"].S == "USER#user-1"),
+                && r.ExpressionAttributeNames["#sk"] == "SK"
+                && r.ExpressionAttributeValues[":pk"].S == "USER#user-1"
+                && r.ExpressionAttributeValues[":skPrefix"].S == "TXN#"),
             Arg.Any<CancellationToken>());
     }
 
