@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { vi } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
 import { ExpenseFilters } from './ExpenseFilters'
@@ -16,6 +17,12 @@ const category = {
   createdAt: '2025-06-15T12:00:00Z',
 }
 
+async function openAdvancedPanel() {
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: /filtros avançados/i }))
+  return user
+}
+
 describe('ExpenseFilters', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
@@ -24,11 +31,11 @@ describe('ExpenseFilters', () => {
   })
 
   it('submit sem nenhum filtro chama onApply com todos os campos undefined', async () => {
-    const user = userEvent.setup()
     const onApply = vi.fn()
 
     render(<ExpenseFilters onApply={onApply} />)
-    await user.click(screen.getByRole('button', { name: /filtrar/i }))
+    const user = await openAdvancedPanel()
+    await user.click(screen.getByRole('button', { name: /^filtrar$/i }))
 
     expect(onApply).toHaveBeenCalledWith({
       yearMonth: undefined,
@@ -40,25 +47,50 @@ describe('ExpenseFilters', () => {
     })
   })
 
-  it('submit com filtros preenchidos chama onApply com dados transformados', async () => {
-    const user = userEvent.setup()
+  it('clicar em um chip de categoria aplica o filtro imediatamente', async () => {
     const onApply = vi.fn()
+    const user = userEvent.setup()
 
     render(<ExpenseFilters onApply={onApply} />)
 
+    const chip = await screen.findByRole('button', { name: 'Alimentação' })
+    await user.click(chip)
+
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ categoryId: 'cat-1' }))
+    expect(chip).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('clicar de novo no mesmo chip limpa o filtro de categoria', async () => {
+    const onApply = vi.fn()
+    const user = userEvent.setup()
+
+    render(<ExpenseFilters onApply={onApply} />)
+
+    const chip = await screen.findByRole('button', { name: 'Alimentação' })
+    await user.click(chip)
+    await user.click(chip)
+
+    expect(onApply).toHaveBeenLastCalledWith(expect.objectContaining({ categoryId: undefined }))
+    expect(chip).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('submit com filtros avançados preenchidos chama onApply com dados transformados', async () => {
+    const onApply = vi.fn()
+
+    render(<ExpenseFilters onApply={onApply} />)
+    const user = await openAdvancedPanel()
+
     fireEvent.change(screen.getByLabelText('Mês'), { target: { value: '2025-06' } })
-    await user.click(screen.getByRole('combobox', { name: 'Categoria' }))
-    await user.click(await screen.findByRole('option', { name: 'Alimentação' }))
     fireEvent.change(screen.getByLabelText('De'), { target: { value: '2025-06-01' } })
     fireEvent.change(screen.getByLabelText('Até'), { target: { value: '2025-06-30' } })
     await user.type(screen.getByLabelText('Valor mín.'), '10,00')
     await user.type(screen.getByLabelText('Valor máx.'), '100,00')
 
-    await user.click(screen.getByRole('button', { name: /filtrar/i }))
+    await user.click(screen.getByRole('button', { name: /^filtrar$/i }))
 
     expect(onApply).toHaveBeenCalledWith({
       yearMonth: '2025-06',
-      categoryId: 'cat-1',
+      categoryId: undefined,
       dateFrom: '2025-06-01',
       dateTo: '2025-06-30',
       minAmountInCents: 1000,
@@ -66,16 +98,28 @@ describe('ExpenseFilters', () => {
     })
   })
 
+  it('exibe um indicador visual quando algum filtro avançado está ativo', async () => {
+    render(<ExpenseFilters onApply={vi.fn()} />)
+    await openAdvancedPanel()
+
+    const toggle = screen.getByRole('button', { name: /filtros avançados/i })
+    expect(toggle.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('De'), { target: { value: '2025-06-01' } })
+
+    expect(toggle.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
+  })
+
   it('exibe erro inline e não chama onApply quando dateFrom é posterior a dateTo', async () => {
-    const user = userEvent.setup()
     const onApply = vi.fn()
 
     render(<ExpenseFilters onApply={onApply} />)
+    const user = await openAdvancedPanel()
 
     fireEvent.change(screen.getByLabelText('De'), { target: { value: '2025-06-30' } })
     fireEvent.change(screen.getByLabelText('Até'), { target: { value: '2025-06-01' } })
 
-    await user.click(screen.getByRole('button', { name: /filtrar/i }))
+    await user.click(screen.getByRole('button', { name: /^filtrar$/i }))
 
     expect(
       await screen.findByText('Data inicial não pode ser depois da data final.'),
@@ -84,15 +128,15 @@ describe('ExpenseFilters', () => {
   })
 
   it('exibe erro inline e não chama onApply quando minAmount é maior que maxAmount', async () => {
-    const user = userEvent.setup()
     const onApply = vi.fn()
 
     render(<ExpenseFilters onApply={onApply} />)
+    const user = await openAdvancedPanel()
 
     await user.type(screen.getByLabelText('Valor mín.'), '100,00')
     await user.type(screen.getByLabelText('Valor máx.'), '10,00')
 
-    await user.click(screen.getByRole('button', { name: /filtrar/i }))
+    await user.click(screen.getByRole('button', { name: /^filtrar$/i }))
 
     expect(
       await screen.findByText('Valor mínimo não pode ser maior que o máximo.'),
