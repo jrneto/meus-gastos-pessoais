@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-a01587a5-394c-4dcb-a692-c51267a2ceac/styles.css">
+<script src="_ds/modernist-a01587a5-394c-4dcb-a692-c51267a2ceac/_ds_bundle.js"></script>
+<script src="./image-slot.js"></script>
+<style>
+  body{margin:0}
+  .je-track{height:6px;background:var(--color-neutral-300);position:relative;overflow:hidden}
+  .je-fill{height:100%}
+  .je-toggle{width:44px;height:24px;border:2px solid var(--color-divider);position:relative;flex:none;cursor:pointer}
+  .je-knob{position:absolute;top:1px;width:16px;height:16px;transition:left .15s ease}
+  .je-sidebar-item:hover{background:var(--color-neutral-200)}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--color-neutral-300);padding:40px;font-family:var(--font-body);box-sizing:border-box">
+<x-import component-from-global-scope="ChromeWindow" from="./browser-window.jsx" url="app.jrnexpenses.com.br/dashboard" width="1360" height="860" hint-size="1360px,860px">
+
+<div style="height:100%;display:flex;background:var(--color-bg);color:var(--color-text);overflow:hidden">
+
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;display:flex;align-items:center;justify-content:center">
+  <div style="width:360px;display:flex;flex-direction:column;gap:20px">
+    <div>
+      <div style="font:800 32px var(--font-heading);letter-spacing:-.02em">jrn<span style="color:var(--color-accent)">.</span></div>
+      <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6">expenses · web</div>
+    </div>
+    <div class="seg" style="align-self:flex-start">
+      <label class="seg-opt"><input type="radio" name="authmode" checked="{{ isLoginMode }}" onChange="{{ setLoginMode }}" style="display:none"/>Entrar</label>
+      <label class="seg-opt"><input type="radio" name="authmode" checked="{{ isSignupMode }}" onChange="{{ setSignupMode }}" style="display:none"/>Criar conta</label>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <sc-if value="{{ isSignupMode }}" hint-placeholder-val="{{ false }}">
+        <label class="field"><span style="font-size:12px;opacity:.7">Nome</span><input class="input" type="text" placeholder="Seu nome" value="{{ authName }}" onChange="{{ setAuthName }}"/></label>
+      </sc-if>
+      <label class="field"><span style="font-size:12px;opacity:.7">E-mail</span><input class="input" type="email" placeholder="voce@email.com" value="{{ authEmail }}" onChange="{{ setAuthEmail }}"/></label>
+      <label class="field"><span style="font-size:12px;opacity:.7">Senha</span><input class="input" type="password" placeholder="••••••••" value="{{ authPassword }}" onChange="{{ setAuthPassword }}"/></label>
+    </div>
+    <button onClick="{{ submitAuth }}" class="btn btn-primary btn-block">{{ authButtonLabel }}</button>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+
+<div style="width:240px;flex:none;border-right:2px solid var(--color-divider);display:flex;flex-direction:column;padding:24px 0">
+  <div style="padding:0 24px 24px;font:800 22px var(--font-heading)">jrn<span style="color:var(--color-accent)">.</span></div>
+  <div style="display:flex;flex-direction:column;flex:1">
+    <sc-if value="{{ isDash }}" hint-placeholder-val="{{ true }}">
+      <div class="je-sidebar-item" style="display:flex;align-items:center;gap:10px;padding:11px 24px;background:var(--color-neutral-200);border-left:2px solid var(--color-accent)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 10.5 12 3l9 7.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 9.5V21h14V9.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:13.5px;font-weight:600">Resumo</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ !isDash }}" hint-placeholder-val="{{ false }}">
+      <div class="je-sidebar-item" onClick="{{ goToDashboard }}" style="display:flex;align-items:center;gap:10px;padding:11px 24px;border-left:2px solid transparent;cursor:pointer;color:var(--color-neutral-700)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 10.5 12 3l9 7.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 9.5V21h14V9.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:13.5px">Resumo</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isTx }}" hint-placeholder-val="{{ false }}">
+      <div class="je-sidebar-item" style="display:flex;align-items:center;gap:10px;padding:11px 24px;background:var(--color-neutral-200);border-left:2px solid var(--color-accent)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><line x1="8" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="6" x2="3.01" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="12" x2="3.01" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="18" x2="3.01" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span style="font-size:13.5px;font-weight:600">Transações</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ !isTx }}" hint-placeholder-val="{{ true }}">
+      <div class="je-sidebar-item" onClick="{{ goToTransactions }}" style="display:flex;align-items:center;gap:10px;padding:11px 24px;border-left:2px solid transparent;cursor:pointer;color:var(--color-neutral-700)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><line x1="8" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="6" x2="3.01" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="12" x2="3.01" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="18" x2="3.01" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span style="font-size:13.5px">Transações</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isRep }}" hint-placeholder-val="{{ false }}">
+      <div class="je-sidebar-item" style="display:flex;align-items:center;gap:10px;padding:11px 24px;background:var(--color-neutral-200);border-left:2px solid var(--color-accent)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><line x1="12" y1="20" x2="12" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="20" x2="18" y2="4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="20" x2="6" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span style="font-size:13.5px;font-weight:600">Relatórios</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ !isRep }}" hint-placeholder-val="{{ false }}">
+      <div class="je-sidebar-item" onClick="{{ goToReports }}" style="display:flex;align-items:center;gap:10px;padding:11px 24px;border-left:2px solid transparent;cursor:pointer;color:var(--color-neutral-700)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><line x1="12" y1="20" x2="12" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="20" x2="18" y2="4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="20" x2="6" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span style="font-size:13.5px">Relatórios</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isCat }}" hint-placeholder-val="{{ false }}">
+      <div class="je-sidebar-item" style="display:flex;align-items:center;gap:10px;padding:11px 24px;background:var(--color-neutral-200);border-left:2px solid var(--color-accent)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12.59 2.59A2 2 0 0011.17 2H4a2 2 0 00-2 2v7.17a2 2 0 00.59 1.41l9 9a2 2 0 002.82 0l7.17-7.17a2 2 0 000-2.82l-9-9z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/><circle cx="7.5" cy="7.5" r="1.5" stroke="currentColor" stroke-width="2"/></svg>
+        <span style="font-size:13.5px;font-weight:600">Categorias</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ !isCat }}" hint-placeholder-val="{{ false }}">
+      <div class="je-sidebar-item" onClick="{{ goToCategories }}" style="display:flex;align-items:center;gap:10px;padding:11px 24px;border-left:2px solid transparent;cursor:pointer;color:var(--color-neutral-700)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12.59 2.59A2 2 0 0011.17 2H4a2 2 0 00-2 2v7.17a2 2 0 00.59 1.41l9 9a2 2 0 002.82 0l7.17-7.17a2 2 0 000-2.82l-9-9z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/><circle cx="7.5" cy="7.5" r="1.5" stroke="currentColor" stroke-width="2"/></svg>
+        <span style="font-size:13.5px">Categorias</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isMem }}" hint-placeholder-val="{{ false }}">
+      <div class="je-sidebar-item" style="display:flex;align-items:center;gap:10px;padding:11px 24px;background:var(--color-neutral-200);border-left:2px solid var(--color-accent)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2"/><path d="M23 21v-2a4 4 0 00-3-3.87" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:13.5px;font-weight:600">Membros</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ !isMem }}" hint-placeholder-val="{{ true }}">
+      <div class="je-sidebar-item" onClick="{{ goToMembers }}" style="display:flex;align-items:center;gap:10px;padding:11px 24px;border-left:2px solid transparent;cursor:pointer;color:var(--color-neutral-700)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2"/><path d="M23 21v-2a4 4 0 00-3-3.87" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:13.5px">Membros</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isSet }}" hint-placeholder-val="{{ false }}">
+      <div class="je-sidebar-item" style="display:flex;align-items:center;gap:10px;padding:11px 24px;background:var(--color-neutral-200);border-left:2px solid var(--color-accent)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg>
+        <span style="font-size:13.5px;font-weight:600">Ajustes</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ !isSet }}" hint-placeholder-val="{{ false }}">
+      <div class="je-sidebar-item" onClick="{{ goToSettings }}" style="display:flex;align-items:center;gap:10px;padding:11px 24px;border-left:2px solid transparent;cursor:pointer;color:var(--color-neutral-700)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg>
+        <span style="font-size:13.5px">Ajustes</span>
+      </div>
+    </sc-if>
+  </div>
+  <div style="padding:16px 24px 0;border-top:2px solid var(--color-divider);margin-top:16px;display:flex;align-items:center;gap:10px">
+    <div style="width:30px;height:30px;border:2px solid var(--color-text);display:flex;align-items:center;justify-content:center;font:800 11px var(--font-heading);flex:none">VC</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sua conta</div>
+      <div onClick="{{ logout }}" style="font-size:11px;color:var(--color-accent-700);cursor:pointer">Sair</div>
+    </div>
+  </div>
+</div>
+
+<div style="flex:1;overflow:auto;min-width:0">
+<div style="max-width:920px;margin:0 auto;padding:40px 40px 60px;box-sizing:border-box">
+
+  <sc-if value="{{ isDash }}" hint-placeholder-val="{{ true }}">
+  <div style="display:flex;flex-direction:column;gap:28px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end">
+      <div>
+        <h1 style="font-size:30px;margin:0">Resumo</h1>
+        <div style="font-size:13px;opacity:.6">{{ currentMonthLabel }}</div>
+      </div>
+      <button onClick="{{ openAdd }}" class="btn btn-primary">+ Nova despesa</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+      <div class="card elev-sm">
+        <div class="card-kicker">Gasto no mês</div>
+        <div style="font-size:22px;font-weight:800;font-family:var(--font-heading);white-space:nowrap">{{ totalSpentFmt }}</div>
+      </div>
+      <div class="card elev-sm">
+        <div class="card-kicker">Orçamento total</div>
+        <div style="font-size:22px;font-weight:800;font-family:var(--font-heading);white-space:nowrap">{{ totalBudgetFmt }}</div>
+      </div>
+      <div class="card elev-sm">
+        <div class="card-kicker">Restante</div>
+        <div style="font-size:22px;font-weight:800;font-family:var(--font-heading);white-space:nowrap">{{ remainingFmt }}</div>
+        <div class="je-track"><div class="je-fill" style="width:{{ overallPctStr }};background:var(--color-text)"></div></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:40px">
+      <div>
+        <h2 style="font-size:15px;margin:0 0 14px">Por categoria</h2>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <sc-for list="{{ categoriesComputed }}" as="c" hint-placeholder-count="6">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:5px">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                  <div style="width:22px;height:22px;border:1px solid var(--color-divider);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;font-family:var(--font-heading);flex:none">{{ c.letter }}</div>
+                  <span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
+                </div>
+                <span style="font-size:12px;color:{{ c.textColor }};white-space:nowrap;flex:none">{{ c.spentFmt }} / {{ c.budgetFmt }}</span>
+              </div>
+              <div class="je-track"><div class="je-fill" style="width:{{ c.barWidth }};background:{{ c.barColor }}"></div></div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">
+          <h2 style="font-size:15px;margin:0">Últimas despesas</h2>
+          <button onClick="{{ goToTransactions }}" class="btn btn-ghost" style="padding-right:0;font-size:12px">Ver todas →</button>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ recentTx }}" as="t" hint-placeholder-count="5">
+            <div onClick="{{ t.open }}" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--color-divider);cursor:pointer">
+              <div style="width:26px;height:26px;border:1px solid var(--color-divider);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;font-family:var(--font-heading);flex:none">{{ t.catLetter }}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.note }}</div>
+                <div style="font-size:11px;opacity:.55">{{ t.catName }} · {{ t.dateFmt }}</div>
+              </div>
+              <div style="font-size:13px;font-weight:600;color:var(--color-accent-700)">{{ t.amountFmt }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isTx }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end">
+      <h1 style="font-size:30px;margin:0">Transações</h1>
+      <button onClick="{{ openAdd }}" class="btn btn-primary">+ Nova despesa</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <sc-for list="{{ txFilterChips }}" as="f" hint-placeholder-count="7">
+        <button onClick="{{ f.toggle }}" class="tag" style="cursor:pointer;border:1px solid var(--color-divider);background:{{ f.bg }};color:{{ f.color }}">{{ f.label }}</button>
+      </sc-for>
+    </div>
+    <sc-if value="{{ txEmpty }}" hint-placeholder-val="{{ false }}">
+      <p style="opacity:.55;font-size:13px">Nenhuma despesa nesta categoria.</p>
+    </sc-if>
+    <table class="table" style="width:100%;border-collapse:collapse">
+      <thead><tr><th>Categoria</th><th>Descrição</th><th>Data</th><th style="text-align:right">Valor</th></tr></thead>
+      <tbody>
+        <sc-for list="{{ txListView }}" as="t" hint-placeholder-count="8">
+          <tr onClick="{{ t.open }}" style="cursor:pointer">
+            <td><span class="tag tag-neutral">{{ t.catName }}</span></td>
+            <td>{{ t.note }}</td>
+            <td style="opacity:.65">{{ t.dateFmt }}</td>
+            <td style="text-align:right;font-weight:600;color:var(--color-accent-700)">{{ t.amountFmt }}</td>
+          </tr>
+        </sc-for>
+      </tbody>
+    </table>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isRep }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end">
+      <h1 style="font-size:30px;margin:0">Relatórios</h1>
+      <div class="seg">
+        <label class="seg-opt"><input type="radio" name="period" checked="{{ isPerWeek }}" onChange="{{ setPeriodWeek }}" style="display:none"/>Semana</label>
+        <label class="seg-opt"><input type="radio" name="period" checked="{{ isPerMonth }}" onChange="{{ setPeriodMonth }}" style="display:none"/>Mês</label>
+        <label class="seg-opt"><input type="radio" name="period" checked="{{ isPerYear }}" onChange="{{ setPeriodYear }}" style="display:none"/>Ano</label>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:40px">
+      <div>
+        <h2 style="font-size:15px;margin:0 0 14px">Gasto por categoria</h2>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <sc-for list="{{ reportsSorted }}" as="c" hint-placeholder-count="6">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:80px;font-size:12.5px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.name }}</div>
+              <div style="flex:1;height:18px;background:var(--color-neutral-300);position:relative">
+                <div style="height:100%;width:{{ c.reportBarWidth }};background:{{ c.barColor }}"></div>
+              </div>
+              <div style="width:90px;font-size:12.5px;text-align:right;flex:none">{{ c.spentFmt }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="card elev-sm">
+          <div class="card-kicker">Total no período</div>
+          <div style="font-size:24px;font-weight:800;font-family:var(--font-heading)">{{ totalSpentFmt }}</div>
+          <div style="font-size:12px;opacity:.6">{{ periodCompareLabel }}</div>
+        </div>
+        <div class="card elev-sm" style="border:1px solid var(--color-divider)">
+          <div class="card-kicker">Maior gasto</div>
+          <div class="card-title">{{ topCategory.name }}</div>
+          <div style="font-size:13px;opacity:.7">{{ topCategory.spentFmt }} · {{ topCategory.realPct }}% do orçamento</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isCat }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;flex-direction:column;gap:20px;max-width:640px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end">
+      <h1 style="font-size:30px;margin:0">Categorias e orçamentos</h1>
+      <sc-if value="{{ !showNewCategory }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ toggleNewCategory }}" class="btn btn-primary">+ Nova categoria</button>
+      </sc-if>
+    </div>
+    <sc-if value="{{ showNewCategory }}" hint-placeholder-val="{{ false }}">
+      <div style="border:1px solid var(--color-divider);padding:16px;display:flex;gap:12px;align-items:flex-end">
+        <label class="field" style="flex:1"><span style="font-size:12px;opacity:.7">Nome da categoria</span><input class="input" type="text" placeholder="Ex: Educação" value="{{ newCatName }}" onChange="{{ setNewCatName }}"/></label>
+        <label class="field" style="flex:1"><span style="font-size:12px;opacity:.7">Orçamento mensal (R$)</span><input class="input" type="number" placeholder="0,00" value="{{ newCatBudget }}" onChange="{{ setNewCatBudget }}"/></label>
+        <button onClick="{{ toggleNewCategory }}" class="btn btn-secondary">Cancelar</button>
+        <button onClick="{{ addCategory }}" class="btn btn-primary">Adicionar</button>
+      </div>
+    </sc-if>
+    <sc-for list="{{ categoriesOverlayView }}" as="c" hint-placeholder-count="6">
+      <div style="border-bottom:1px solid var(--color-divider);padding-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:7px">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <div style="width:24px;height:24px;border:1px solid var(--color-divider);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;font-family:var(--font-heading);flex:none">{{ c.letter }}</div>
+            <span style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
+          </div>
+          <span style="font-size:13px;color:{{ c.textColor }};white-space:nowrap;flex:none">{{ c.spentFmt }} / {{ c.budgetFmt }}</span>
+        </div>
+        <div class="je-track" style="margin-bottom:9px"><div class="je-fill" style="width:{{ c.barWidth }};background:{{ c.barColor }}"></div></div>
+        <sc-if value="{{ c.isEditing }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:8px;max-width:260px">
+            <input class="input" type="number" value="{{ c.editValue }}" onChange="{{ c.setEditValue }}" style="flex:1"/>
+            <button onClick="{{ c.saveEdit }}" class="btn btn-primary">Salvar</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{ !c.isEditing }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ c.startEdit }}" class="btn btn-ghost" style="padding-left:0;font-size:12px">Editar orçamento</button>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isMem }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;flex-direction:column;gap:20px;max-width:640px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap">
+      <h1 style="font-size:30px;margin:0">Membros da conta</h1>
+      <button onClick="{{ toggleInviteDialog }}" class="btn btn-primary" style="flex:none">+ Convidar pessoa</button>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:14px;border-bottom:1px solid var(--color-divider)">
+      <div>
+        <div style="font-size:14px;font-weight:600">Você (titular)</div>
+        <div style="font-size:12px;opacity:.55">Acesso total · gerencia membros</div>
+      </div>
+      <span class="tag tag-neutral">Titular</span>
+    </div>
+    <sc-for list="{{ membersView }}" as="m" hint-placeholder-count="2">
+      <div style="border-bottom:1px solid var(--color-divider);padding-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:16px">
+        <div style="min-width:0">
+          <div style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.email }}</div>
+          <div style="font-size:12px;opacity:.55">{{ m.statusLabel }}</div>
+        </div>
+        <div class="seg" style="flex:none">
+          <label class="seg-opt"><input type="radio" checked="{{ m.isLeitura }}" onChange="{{ m.setLeitura }}" style="display:none"/>Leitura</label>
+          <label class="seg-opt"><input type="radio" checked="{{ m.isLancamento }}" onChange="{{ m.setLancamento }}" style="display:none"/>Lançar</label>
+          <label class="seg-opt"><input type="radio" checked="{{ m.isTotal }}" onChange="{{ m.setTotal }}" style="display:none"/>Total</label>
+        </div>
+        <button onClick="{{ m.remove }}" class="btn btn-icon" style="color:var(--color-accent-700);flex:none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </sc-for>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isSet }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;flex-direction:column;gap:4px;max-width:520px">
+    <h1 style="font-size:30px;margin:0 0 20px">Ajustes</h1>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--color-divider)">
+      <span style="font-size:14px">Moeda</span>
+      <span style="font-size:13px;opacity:.6">BRL (R$)</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--color-divider)">
+      <span style="font-size:14px">Notificações push</span>
+      <div class="je-toggle" onClick="{{ toggleNotifPush }}" style="background:{{ notifPushBg }}"><div class="je-knob" style="left:{{ notifPushLeft }};background:var(--color-bg)"></div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--color-divider)">
+      <span style="font-size:14px">Notificações por e-mail</span>
+      <div class="je-toggle" onClick="{{ toggleNotifEmail }}" style="background:{{ notifEmailBg }}"><div class="je-knob" style="left:{{ notifEmailLeft }};background:var(--color-bg)"></div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--color-divider)">
+      <span style="font-size:14px">Exportar dados</span>
+      <button class="btn btn-secondary">Exportar CSV</button>
+    </div>
+  </div>
+  </sc-if>
+
+</div>
+</div>
+
+<sc-if value="{{ showAdd }}" hint-placeholder-val="{{ false }}">
+<div class="dialog-backdrop">
+  <div class="dialog" style="width:520px">
+    <div class="dialog-title">Nova despesa</div>
+    <input class="input" type="text" inputMode="decimal" placeholder="R$ 0,00" value="{{ newAmount }}" onChange="{{ setNewAmount }}" style="font-size:28px;font-weight:800;font-family:var(--font-heading);border:none;border-bottom:2px solid var(--color-divider);padding:6px 0;background:transparent"/>
+    <div>
+      <div style="font-size:12px;opacity:.7;margin-bottom:8px">Categoria</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <sc-for list="{{ addCategories }}" as="c" hint-placeholder-count="6">
+          <button onClick="{{ c.select }}" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px;border:2px solid {{ c.tileBorder }};background:{{ c.tileBg }};cursor:pointer">
+            <span style="font-weight:800;font-family:var(--font-heading);font-size:13px">{{ c.letter }}</span>
+            <span style="font-size:10px;text-align:center">{{ c.name }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px">
+      <label class="field" style="flex:1"><span style="font-size:12px;opacity:.7">Data</span><input class="input" type="date" value="{{ newDate }}" onChange="{{ setNewDate }}"/></label>
+      <label class="field" style="flex:1"><span style="font-size:12px;opacity:.7">Observação</span><input class="input" type="text" placeholder="Ex: Mercado, Uber…" value="{{ newNote }}" onChange="{{ setNewNote }}"/></label>
+    </div>
+    <div>
+      <div style="font-size:12px;opacity:.7;margin-bottom:8px">Comprovante (opcional)</div>
+      <image-slot id="receipt-new-web" shape="rect" placeholder="Anexar comprovante" style="width:100%;height:120px"></image-slot>
+    </div>
+    <div class="dialog-actions">
+      <button onClick="{{ closeAdd }}" class="btn btn-secondary">Cancelar</button>
+      <button onClick="{{ saveExpense }}" class="btn btn-primary">Salvar despesa</button>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isViewingTx }}" hint-placeholder-val="{{ false }}">
+<div class="dialog-backdrop">
+  <div class="dialog" style="width:480px">
+    <div class="dialog-title">Detalhe da despesa</div>
+    <div>
+      <div style="font-size:30px;font-weight:800;font-family:var(--font-heading);color:var(--color-accent-700)">{{ txDetailAmountFmt }}</div>
+      <div style="font-size:13px;opacity:.6">{{ txDetailDateFmt }}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:28px;height:28px;border:1px solid var(--color-divider);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;font-family:var(--font-heading)">{{ txDetailLetter }}</div>
+      <span style="font-size:14px">{{ txDetailCatName }}</span>
+    </div>
+    <div>
+      <div style="font-size:12px;opacity:.6;margin-bottom:4px">Lançado por</div>
+      <div style="font-size:14px">{{ txDetailCreatedBy }}</div>
+    </div>
+    <div class="hr" style="margin:0"></div>
+    <div>
+      <div style="font-size:12px;opacity:.6;margin-bottom:4px">Observação</div>
+      <div style="font-size:14px">{{ txDetailNote }}</div>
+    </div>
+    <div>
+      <div style="font-size:12px;opacity:.6;margin-bottom:8px">Comprovante</div>
+      <image-slot id="{{ txDetailReceiptId }}" shape="rect" placeholder="Sem comprovante" style="width:100%;height:140px"></image-slot>
+    </div>
+    <div class="dialog-actions">
+      <button onClick="{{ deleteTxFn }}" class="btn btn-ghost" style="color:var(--color-accent-700)">Excluir</button>
+      <button onClick="{{ closeTx }}" class="btn btn-secondary">Fechar</button>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ showInviteDialog }}" hint-placeholder-val="{{ false }}">
+<div class="dialog-backdrop">
+  <div class="dialog" style="width:440px">
+    <div class="dialog-title">Convidar pessoa</div>
+    <label class="field"><span style="font-size:12px;opacity:.7">E-mail</span><input class="input" type="email" placeholder="pessoa@email.com" value="{{ inviteEmail }}" onChange="{{ setInviteEmail }}"/></label>
+    <div>
+      <div style="font-size:12px;opacity:.7;margin-bottom:8px">Nível de acesso</div>
+      <div class="seg" style="width:100%;display:flex">
+        <label class="seg-opt" style="flex:1;text-align:center"><input type="radio" checked="{{ isInviteLeitura }}" onChange="{{ setInviteLeitura }}" style="display:none"/>Leitura</label>
+        <label class="seg-opt" style="flex:1;text-align:center"><input type="radio" checked="{{ isInviteLancamento }}" onChange="{{ setInviteLancamento }}" style="display:none"/>Lançar</label>
+        <label class="seg-opt" style="flex:1;text-align:center"><input type="radio" checked="{{ isInviteTotal }}" onChange="{{ setInviteTotal }}" style="display:none"/>Total</label>
+      </div>
+      <p style="font-size:12px;opacity:.6;margin:8px 0 0">{{ inviteRoleDesc }}</p>
+    </div>
+    <div class="dialog-actions">
+      <button onClick="{{ toggleInviteDialog }}" class="btn btn-secondary">Cancelar</button>
+      <button onClick="{{ sendInvite }}" class="btn btn-primary">Enviar convite</button>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+</sc-if>
+</div>
+</x-import>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    screen: 'login',
+    authMode: 'login',
+    authName: '', authEmail: '', authPassword: '',
+    tab: 'dashboard',
+    showAdd: false,
+    viewingTxId: null,
+    editingCatId: null,
+    editBudgetValue: '',
+    showNewCategory: false,
+    newCatName: '',
+    newCatBudget: '',
+    showInviteDialog: false,
+    inviteEmail: '',
+    inviteRole: 'lancamento',
+    members: [
+      { id: 'm1', email: 'maria@email.com', role: 'lancamento', status: 'active' },
+      { id: 'm2', email: 'joao@email.com', role: 'leitura', status: 'pending' },
+    ],
+    period: 'mes',
+    txFilter: null,
+    notifPush: true,
+    notifEmail: false,
+    newAmount: '', newCategoryId: 'alimentacao', newDate: '2026-08-21', newNote: '',
+    nextId: 13,
+    categories: [
+      { id: 'alimentacao', name: 'Alimentação', letter: 'A', budget: 800 },
+      { id: 'transporte', name: 'Transporte', letter: 'T', budget: 300 },
+      { id: 'moradia', name: 'Moradia', letter: 'M', budget: 1200 },
+      { id: 'lazer', name: 'Lazer', letter: 'L', budget: 90 },
+      { id: 'saude', name: 'Saúde', letter: 'S', budget: 200 },
+      { id: 'compras', name: 'Compras', letter: 'C', budget: 400 },
+    ],
+    transactions: [
+      { id: 't1', date: '2026-08-20', categoryId: 'alimentacao', note: 'Supermercado Pão de Açúcar', amount: 187.40, createdBy: 'owner' },
+      { id: 't2', date: '2026-08-19', categoryId: 'transporte', note: 'Uber', amount: 32.90, createdBy: 'owner' },
+      { id: 't3', date: '2026-08-18', categoryId: 'lazer', note: 'Cinema', amount: 58.00, createdBy: 'm1' },
+      { id: 't4', date: '2026-08-17', categoryId: 'alimentacao', note: 'Restaurante', amount: 96.50, createdBy: 'owner' },
+      { id: 't5', date: '2026-08-15', categoryId: 'moradia', note: 'Conta de luz', amount: 210.30, createdBy: 'owner' },
+      { id: 't6', date: '2026-08-14', categoryId: 'compras', note: 'Farmácia', amount: 45.20, createdBy: 'm1' },
+      { id: 't7', date: '2026-08-12', categoryId: 'saude', note: 'Consulta médica', amount: 150.00, createdBy: 'owner' },
+      { id: 't8', date: '2026-08-10', categoryId: 'transporte', note: 'Combustível', amount: 120.00, createdBy: 'owner' },
+      { id: 't9', date: '2026-08-08', categoryId: 'alimentacao', note: 'Padaria', amount: 22.80, createdBy: 'owner' },
+      { id: 't10', date: '2026-08-05', categoryId: 'compras', note: 'Loja de roupas', amount: 189.90, createdBy: 'owner' },
+      { id: 't11', date: '2026-08-03', categoryId: 'moradia', note: 'Internet', amount: 99.90, createdBy: 'owner' },
+      { id: 't12', date: '2026-08-01', categoryId: 'lazer', note: 'Streaming (assinatura)', amount: 39.90, createdBy: 'owner' },
+    ],
+  };
+
+  formatCurrency(v) {
+    return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  formatDateShort(d) {
+    const [, m, day] = d.split('-');
+    return day + '/' + m;
+  }
+  formatDateLong(d) {
+    const months = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    const [y, m, day] = d.split('-').map(Number);
+    return day + ' de ' + months[m - 1] + ' de ' + y;
+  }
+
+  computeCategories() {
+    const s = this.state;
+    return s.categories.map(c => {
+      const spent = s.transactions.filter(t => t.categoryId === c.id).reduce((sum, t) => sum + t.amount, 0);
+      const realPct = c.budget > 0 ? Math.round((spent / c.budget) * 100) : 0;
+      const over = spent > c.budget;
+      return {
+        ...c, spent,
+        spentFmt: this.formatCurrency(spent), budgetFmt: this.formatCurrency(c.budget),
+        realPct, barWidth: Math.min(100, realPct) + '%',
+        barColor: over ? 'var(--color-accent)' : 'var(--color-neutral-800)',
+        textColor: over ? 'var(--color-accent-700)' : 'var(--color-text)',
+        over,
+      };
+    });
+  }
+
+  getTxView(list) {
+    const byId = {};
+    this.state.categories.forEach(c => { byId[c.id] = c; });
+    return list.slice().sort((a, b) => b.date.localeCompare(a.date)).map(t => ({
+      ...t, catLetter: byId[t.categoryId].letter, catName: byId[t.categoryId].name,
+      amountFmt: '- ' + this.formatCurrency(t.amount), dateFmt: this.formatDateShort(t.date),
+      open: () => this.openTx(t.id),
+    }));
+  }
+
+  setLoginMode() { this.setState({ authMode: 'login' }); }
+  setSignupMode() { this.setState({ authMode: 'signup' }); }
+  submitAuth() { this.setState({ screen: 'app', tab: 'dashboard' }); }
+  setTab(t) { this.setState({ tab: t }); }
+  openAdd() { this.setState({ showAdd: true, newAmount: '', newCategoryId: this.state.categories[0].id, newDate: '2026-08-21', newNote: '' }); }
+  closeAdd() { this.setState({ showAdd: false }); }
+  saveExpense() {
+    const amt = parseFloat((this.state.newAmount || '0').replace(',', '.'));
+    if (!amt || amt <= 0) { this.setState({ showAdd: false }); return; }
+    const tx = { id: 't' + this.state.nextId, date: this.state.newDate, categoryId: this.state.newCategoryId, note: this.state.newNote || 'Despesa', amount: amt, createdBy: 'owner' };
+    this.setState(s => ({ transactions: [...s.transactions, tx], nextId: s.nextId + 1, showAdd: false }));
+  }
+  openTx(id) { this.setState({ viewingTxId: id }); }
+  closeTx() { this.setState({ viewingTxId: null }); }
+  deleteTxFn() { this.setState(s => ({ transactions: s.transactions.filter(t => t.id !== s.viewingTxId), viewingTxId: null })); }
+  setPeriod(p) { this.setState({ period: p }); }
+  toggleNewCategory() { this.setState(s => ({ showNewCategory: !s.showNewCategory, newCatName: '', newCatBudget: '' })); }
+  addCategory() {
+    const name = (this.state.newCatName || '').trim();
+    if (!name) return;
+    const letter = name.charAt(0).toUpperCase();
+    const budget = parseFloat((this.state.newCatBudget || '0').replace(',', '.')) || 0;
+    const id = 'cat_' + Date.now();
+    this.setState(s => ({ categories: [...s.categories, { id, name, letter, budget }], showNewCategory: false, newCatName: '', newCatBudget: '' }));
+  }
+  toggleInviteDialog() { this.setState(s => ({ showInviteDialog: !s.showInviteDialog, inviteEmail: '', inviteRole: 'lancamento' })); }
+  setInviteRole(r) { this.setState({ inviteRole: r }); }
+  sendInvite() {
+    const email = (this.state.inviteEmail || '').trim();
+    if (!email || !email.includes('@')) return;
+    const member = { id: 'm' + Date.now(), email, role: this.state.inviteRole, status: 'pending' };
+    this.setState(s => ({ members: [...s.members, member], showInviteDialog: false, inviteEmail: '' }));
+  }
+  removeMember(id) { this.setState(s => ({ members: s.members.filter(m => m.id !== id) })); }
+  setMemberRole(id, role) { this.setState(s => ({ members: s.members.map(m => m.id === id ? { ...m, role } : m) })); }
+  getMemberName(id) {
+    if (!id || id === 'owner') return 'Você';
+    const m = this.state.members.find(x => x.id === id);
+    if (!m) return 'Você';
+    const local = m.email.split('@')[0];
+    return local.charAt(0).toUpperCase() + local.slice(1);
+  }
+  toggleNotifPush() { this.setState(s => ({ notifPush: !s.notifPush })); }
+  toggleNotifEmail() { this.setState(s => ({ notifEmail: !s.notifEmail })); }
+  logout() { this.setState({ screen: 'login', tab: 'dashboard' }); }
+
+  renderVals() {
+    const s = this.state;
+    const catsComputed = this.computeCategories();
+    const allTxView = this.getTxView(s.transactions);
+    const totalSpent = catsComputed.reduce((sum, c) => sum + c.spent, 0);
+    const totalBudget = catsComputed.reduce((sum, c) => sum + c.budget, 0);
+    const overallPct = totalBudget > 0 ? Math.min(100, Math.round((totalSpent / totalBudget) * 100)) : 0;
+
+    const filteredList = s.txFilter ? allTxView.filter(t => t.categoryId === s.txFilter) : allTxView;
+    const maxSpent = Math.max(1, ...catsComputed.map(c => c.spent));
+    const reportsSorted = catsComputed.slice().sort((a, b) => b.spent - a.spent)
+      .map(c => ({ ...c, reportBarWidth: Math.round((c.spent / maxSpent) * 100) + '%' }));
+
+    const txFilterChips = [
+      { id: null, label: 'Todas', active: s.txFilter === null, toggle: () => this.setState({ txFilter: null }) },
+      ...s.categories.map(c => ({
+        id: c.id, label: c.name, active: s.txFilter === c.id,
+        toggle: () => this.setState(st => ({ txFilter: st.txFilter === c.id ? null : c.id })),
+      })),
+    ].map(f => ({ ...f, bg: f.active ? 'var(--color-text)' : 'transparent', color: f.active ? 'var(--color-bg)' : 'var(--color-text)' }));
+
+    const addCategories = catsComputed.map(c => ({
+      ...c, select: () => this.setState({ newCategoryId: c.id }),
+      tileBorder: s.newCategoryId === c.id ? 'var(--color-accent)' : 'var(--color-divider)',
+      tileBg: s.newCategoryId === c.id ? 'var(--color-accent-100)' : 'transparent',
+    }));
+
+    const categoriesOverlayView = catsComputed.map(c => ({
+      ...c,
+      isEditing: s.editingCatId === c.id,
+      editValue: s.editingCatId === c.id ? s.editBudgetValue : String(c.budget),
+      setEditValue: (e) => this.setState({ editBudgetValue: e.target.value }),
+      startEdit: () => this.setState({ editingCatId: c.id, editBudgetValue: String(c.budget) }),
+      saveEdit: () => {
+        const v = parseFloat((this.state.editBudgetValue || '0').replace(',', '.'));
+        this.setState(st => ({
+          categories: st.categories.map(cc => cc.id === c.id && v >= 0 ? { ...cc, budget: v } : cc),
+          editingCatId: null,
+        }));
+      },
+    }));
+
+    const viewingTx = s.viewingTxId ? s.transactions.find(t => t.id === s.viewingTxId) : null;
+    const viewingCat = viewingTx ? s.categories.find(c => c.id === viewingTx.categoryId) : null;
+    const topCategory = reportsSorted[0] || { name: '', spentFmt: '', realPct: 0 };
+
+    return {
+      isLogin: s.screen === 'login', isApp: s.screen === 'app',
+      authMode: s.authMode, isLoginMode: s.authMode === 'login', isSignupMode: s.authMode === 'signup',
+      setLoginMode: () => this.setLoginMode(), setSignupMode: () => this.setSignupMode(),
+      authName: s.authName, authEmail: s.authEmail, authPassword: s.authPassword,
+      setAuthName: (e) => this.setState({ authName: e.target.value }),
+      setAuthEmail: (e) => this.setState({ authEmail: e.target.value }),
+      setAuthPassword: (e) => this.setState({ authPassword: e.target.value }),
+      authButtonLabel: s.authMode === 'login' ? 'Entrar' : 'Criar conta',
+      submitAuth: () => this.submitAuth(),
+
+      tab: s.tab, isDash: s.tab === 'dashboard', isTx: s.tab === 'transactions', isRep: s.tab === 'reports', isCat: s.tab === 'categories', isMem: s.tab === 'members', isSet: s.tab === 'settings',
+      goToDashboard: () => this.setTab('dashboard'), goToTransactions: () => this.setTab('transactions'),
+      goToReports: () => this.setTab('reports'), goToCategories: () => this.setTab('categories'), goToMembers: () => this.setTab('members'), goToSettings: () => this.setTab('settings'),
+
+      currentMonthLabel: 'Agosto de 2026',
+      totalSpentFmt: this.formatCurrency(totalSpent), totalBudgetFmt: this.formatCurrency(totalBudget),
+      overallPctStr: overallPct + '%', remainingFmt: this.formatCurrency(Math.max(0, totalBudget - totalSpent)),
+      categoriesComputed: catsComputed, recentTx: allTxView.slice(0, 5),
+
+      txFilterChips, txEmpty: filteredList.length === 0, txListView: filteredList,
+
+      isPerWeek: s.period === 'semana', isPerMonth: s.period === 'mes', isPerYear: s.period === 'ano',
+      setPeriodWeek: () => this.setPeriod('semana'), setPeriodMonth: () => this.setPeriod('mes'), setPeriodYear: () => this.setPeriod('ano'),
+      periodCompareLabel: s.period === 'mes' ? '+12% vs mês passado' : s.period === 'semana' ? '-4% vs semana passada' : '+8% vs ano passado',
+      reportsSorted, topCategory,
+
+      notifPushBg: s.notifPush ? 'var(--color-accent)' : 'var(--color-neutral-300)',
+      notifPushLeft: s.notifPush ? '22px' : '2px',
+      notifEmailBg: s.notifEmail ? 'var(--color-accent)' : 'var(--color-neutral-300)',
+      notifEmailLeft: s.notifEmail ? '22px' : '2px',
+      toggleNotifPush: () => this.toggleNotifPush(), toggleNotifEmail: () => this.toggleNotifEmail(),
+      logout: () => this.logout(),
+
+      showAdd: s.showAdd, closeAdd: () => this.closeAdd(), openAdd: () => this.openAdd(),
+      addCategories, newAmount: s.newAmount, newDate: s.newDate, newNote: s.newNote,
+      setNewAmount: (e) => this.setState({ newAmount: e.target.value }),
+      setNewDate: (e) => this.setState({ newDate: e.target.value }),
+      setNewNote: (e) => this.setState({ newNote: e.target.value }),
+      saveExpense: () => this.saveExpense(),
+
+      isViewingTx: !!viewingTx, closeTx: () => this.closeTx(), deleteTxFn: () => this.deleteTxFn(),
+      txDetailAmountFmt: viewingTx ? '- ' + this.formatCurrency(viewingTx.amount) : '',
+      txDetailDateFmt: viewingTx ? this.formatDateLong(viewingTx.date) : '',
+      txDetailLetter: viewingCat ? viewingCat.letter : '',
+      txDetailCatName: viewingCat ? viewingCat.name : '',
+      txDetailNote: viewingTx ? (viewingTx.note || 'Sem observação') : '',
+      txDetailCreatedBy: viewingTx ? this.getMemberName(viewingTx.createdBy) : '',
+      txDetailReceiptId: viewingTx ? ('receipt-web-' + viewingTx.id) : 'receipt-web-none',
+
+      categoriesOverlayView,
+      showNewCategory: s.showNewCategory, toggleNewCategory: () => this.toggleNewCategory(),
+      newCatName: s.newCatName, newCatBudget: s.newCatBudget,
+      setNewCatName: (e) => this.setState({ newCatName: e.target.value }),
+      setNewCatBudget: (e) => this.setState({ newCatBudget: e.target.value }),
+      addCategory: () => this.addCategory(),
+
+      showInviteDialog: s.showInviteDialog, toggleInviteDialog: () => this.toggleInviteDialog(),
+      inviteEmail: s.inviteEmail, setInviteEmail: (e) => this.setState({ inviteEmail: e.target.value }),
+      isInviteLeitura: s.inviteRole === 'leitura', isInviteLancamento: s.inviteRole === 'lancamento', isInviteTotal: s.inviteRole === 'total',
+      setInviteLeitura: () => this.setInviteRole('leitura'), setInviteLancamento: () => this.setInviteRole('lancamento'), setInviteTotal: () => this.setInviteRole('total'),
+      inviteRoleDesc: s.inviteRole === 'leitura' ? 'Pode visualizar despesas e relatórios, sem editar nada.'
+        : s.inviteRole === 'total' ? 'Pode visualizar, lançar despesas e criar categorias e orçamentos. Não pode gerenciar outros membros.'
+        : 'Pode visualizar e lançar novas despesas.',
+      sendInvite: () => this.sendInvite(),
+      membersView: s.members.map(m => ({
+        ...m,
+        roleLabel: m.role === 'leitura' ? 'Somente leitura' : m.role === 'total' ? 'Acesso total' : 'Lançamento de despesas',
+        statusLabel: m.status === 'pending' ? 'Convite pendente' : 'Ativo',
+        isLeitura: m.role === 'leitura', isLancamento: m.role === 'lancamento', isTotal: m.role === 'total',
+        setLeitura: () => this.setMemberRole(m.id, 'leitura'),
+        setLancamento: () => this.setMemberRole(m.id, 'lancamento'),
+        setTotal: () => this.setMemberRole(m.id, 'total'),
+        remove: () => this.removeMember(m.id),
+      })),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

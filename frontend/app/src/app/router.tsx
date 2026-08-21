@@ -11,11 +11,16 @@ import { LoginPage } from '@/routes/LoginPage'
 import { NewCategoryPage } from '@/routes/NewCategoryPage'
 import { RegisterExpensePage } from '@/routes/RegisterExpensePage'
 import { SettingsPage } from '@/routes/SettingsPage'
+import { SignupComingSoonPage } from '@/routes/SignupComingSoonPage'
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/cadastro-em-breve',
+    element: <SignupComingSoonPage />,
   },
   {
     path: '/',

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LoginForm } from '@/features/auth/components/LoginForm'
 import { useAuthSession } from '@/features/auth/hooks/useAuthSession'
+import '@/styles/modernist/modernist.css'
 
 export function LoginPage() {
   const { isAuthenticated } = useAuthSession()
@@ -17,11 +18,29 @@ export function LoginPage() {
   }, [isAuthenticated, navigate])
 
   return (
-    <main className="flex min-h-svh items-center justify-center p-4">
-      <div className="flex w-full max-w-sm flex-col gap-6">
-        <h1 className="text-2xl font-semibold">Entrar</h1>
+    <div
+      className="ds-modernist"
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+    >
+      <div style={{ width: '100%', maxWidth: '360px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div>
+          <div style={{ font: '800 32px var(--font-heading)', letterSpacing: '-0.02em' }}>
+            jrn
+            <span style={{ color: 'var(--color-accent)' }}>.</span>
+          </div>
+          <div
+            style={{
+              fontSize: '11px',
+              letterSpacing: '.12em',
+              textTransform: 'uppercase',
+              opacity: 0.6,
+            }}
+          >
+            expenses
+          </div>
+        </div>
         <LoginForm />
       </div>
-    </main>
+    </div>
   )
 }
