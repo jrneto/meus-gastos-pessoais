@@ -3,22 +3,22 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { CategoryBadge } from '@/lib/categories/CategoryBadge'
+import { useCategories } from '@/lib/categories/useCategories'
 import { ExpenseDeleteDialog } from '@/features/expenses/components/ExpenseDeleteDialog'
 import { ExpenseNotFound } from '@/features/expenses/components/ExpenseNotFound'
-import { EXPENSE_CATEGORIES } from '@/features/expenses/constants/expenseCategories'
 import { NotFoundError } from '@/features/expenses/errors/expenseErrors'
 import { useExpense } from '@/features/expenses/hooks/useExpense'
 import { formatCentsToCurrency } from '@/features/expenses/utils/currency'
 
-function categoryLabel(value: string): string {
-  return EXPENSE_CATEGORIES.find((category) => category.value === value)?.label ?? value
-}
-
 export function ExpenseDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { data, isLoading, error } = useExpense(id ?? '')
+  const { items: categories } = useCategories()
   const navigate = useNavigate()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  const category = data ? categories.find((c) => c.id === data.categoryId) : undefined
 
   return (
     <div className="flex flex-col items-center gap-6 p-4">
@@ -50,7 +50,9 @@ export function ExpenseDetailPage() {
             </div>
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-muted-foreground">Categoria</dt>
-              <dd className="text-right font-medium">{categoryLabel(data.category)}</dd>
+              <dd className="text-right font-medium">
+                <CategoryBadge category={category} />
+              </dd>
             </div>
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-muted-foreground">Data da despesa</dt>

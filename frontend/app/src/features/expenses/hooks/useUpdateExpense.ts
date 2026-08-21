@@ -25,7 +25,7 @@ export function useUpdateExpense(id: string): UseUpdateExpenseResult {
       await expensesApi.updateExpense(token ?? '', id, {
         description: data.description,
         amountInCents: data.amount,
-        category: data.category,
+        categoryId: data.categoryId,
         expenseDate: data.expenseDate,
       })
       setSuccess(true)

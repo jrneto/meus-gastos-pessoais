@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { EXPENSE_CATEGORIES } from '../constants/expenseCategories'
+import { useCategories } from '@/lib/categories/useCategories'
 import {
   expenseFilterSchema,
   type ExpenseFilterInput,
@@ -22,6 +22,7 @@ interface ExpenseFiltersProps {
 }
 
 export function ExpenseFilters({ onApply }: ExpenseFiltersProps) {
+  const { items: categories } = useCategories()
   const {
     register,
     control,
@@ -31,7 +32,7 @@ export function ExpenseFilters({ onApply }: ExpenseFiltersProps) {
     resolver: zodResolver(expenseFilterSchema),
     defaultValues: {
       yearMonth: '',
-      category: '',
+      categoryId: '',
       dateFrom: '',
       dateTo: '',
       minAmount: '',
@@ -51,25 +52,24 @@ export function ExpenseFilters({ onApply }: ExpenseFiltersProps) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="category">Categoria</Label>
+        <Label htmlFor="categoryId">Categoria</Label>
         <Controller
           control={control}
-          name="category"
+          name="categoryId"
           render={({ field }) => (
             <Select value={field.value ?? ''} onValueChange={field.onChange}>
-              <SelectTrigger id="category" className="w-full">
+              <SelectTrigger id="categoryId" className="w-full">
                 <SelectValue placeholder="Todas">
                   {(value: string) =>
-                    EXPENSE_CATEGORIES.find((category) => category.value === value)?.label ??
-                    'Todas'
+                    categories.find((category) => category.id === value)?.nome ?? 'Todas'
                   }
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Todas</SelectItem>
-                {EXPENSE_CATEGORIES.map((category) => (
-                  <SelectItem key={category.value} value={category.value}>
-                    {category.label}
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.nome}
                   </SelectItem>
                 ))}
               </SelectContent>

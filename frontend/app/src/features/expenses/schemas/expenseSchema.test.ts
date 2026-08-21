@@ -4,7 +4,7 @@ import { expenseSchema } from './expenseSchema'
 const validInput = {
   description: 'Almoço no restaurante',
   amount: '45,90',
-  category: 'Alimentacao',
+  categoryId: 'cat-1',
   expenseDate: '2025-06-15',
 }
 
@@ -42,8 +42,8 @@ describe('expenseSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejeita categoria fora do enum', () => {
-    const result = expenseSchema.safeParse({ ...validInput, category: 'Viagem' })
+  it('rejeita categoryId vazio', () => {
+    const result = expenseSchema.safeParse({ ...validInput, categoryId: '' })
     expect(result.success).toBe(false)
   })
 

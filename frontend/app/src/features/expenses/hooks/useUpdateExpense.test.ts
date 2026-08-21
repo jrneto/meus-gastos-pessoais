@@ -12,7 +12,7 @@ const EXPENSE_URL = 'http://localhost:5049/expenses/exp-1'
 const validExpense: ExpenseFormOutput = {
   description: 'Almoço no restaurante',
   amount: 5290,
-  category: 'Alimentacao',
+  categoryId: 'cat-1',
   expenseDate: '2025-06-16',
 }
 
@@ -29,7 +29,7 @@ describe('useUpdateExpense', () => {
           id: 'exp-1',
           description: validExpense.description,
           amountInCents: validExpense.amount,
-          category: validExpense.category,
+          categoryId: validExpense.categoryId,
           expenseDate: validExpense.expenseDate,
           createdAt: '2025-06-15T12:00:00Z',
         }),
