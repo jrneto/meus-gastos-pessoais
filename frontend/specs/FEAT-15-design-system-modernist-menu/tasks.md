@@ -1,0 +1,23 @@
+# Tasks — FEAT-15: Migração para o design system Modernist (Menu)
+
+- [x] 1. Estender `frontend/app/src/styles/modernist/modernist.css` com as classes `.dialog-backdrop`/`.dialog` (+ `.dialog-title`/`.dialog-body`/`.dialog-actions` se necessário), escopadas sob `.ds-modernist`, para o painel "Mais"
+- [x] 2. Corrigir `.ds-modernist` em `modernist.css` para não forçar `min-height: 100vh` quando aplicado a um contêiner que não é a página inteira (ex.: `<nav>` da sidebar/bottom-nav) — adicionar um modificador (`.ds-modernist--inline` ou equivalente) ou mover `min-height`/`background` de página para uma classe própria usada só por `LoginPage`/`SignupComingSoonPage`
+- [x] 3. Atualizar `components/nav/navConfig.ts`: `NAV_TREE` com 5 itens de topo, todos folha (sem `children`) — "Despesas" único item (`to: '/expenses'`), "Relatórios" ativo com `to: '/reports'`, nenhum `status: 'disabled'`; simplificar `NavItemStatus` para `'active' | 'placeholder'`
+- [x] 4. Atualizar `components/nav/navConfig.test.ts` para a nova forma da árvore (5 itens folha, `mobilePrimary` = `['home', 'expenses', 'settings']`, nenhum item desabilitado, "Relatórios" ativo e navegável)
+- [x] 5. Reescrever `components/nav/NavItemRow.tsx` com classes/tokens do Modernist (linha de item ativa com `--color-neutral-200` + borda esquerda `--color-accent`; inativa em `--color-neutral-700`/`--color-neutral-500`), sem classes Tailwind/shadcn
+- [x] 6. Reescrever `components/nav/DesktopSidebar.tsx`: remover o ramo de renderização de grupo (código morto), aplicar `.ds-modernist` só no `<nav>` raiz do componente, recriar o botão colapsar/expandir com `.btn`/`.btn-ghost`
+- [x] 7. Reescrever `components/nav/MobileBottomNav.tsx`: 3 itens primários (Início, Despesas, Configurações) + botão "Mais", `.ds-modernist` só no `<nav>` raiz do componente
+- [x] 8. Reescrever `components/nav/NavMoreSheet.tsx`: painel próprio com `.dialog-backdrop`/`.dialog` (sem `Sheet` do shadcn/ui), fecha ao clicar no backdrop e ao pressionar Esc, `role="dialog"` `aria-modal="true"`
+- [x] 9. Revisar `components/nav/AppShell.tsx`: confirmar que nenhuma classe `.ds-modernist` chega ao wrapper de `<Outlet />`, ajustando layout se necessário — confirmado sem mudanças necessárias
+- [x] 10. Criar `routes/ReportsComingSoonPage.tsx`: placeholder "Relatórios em breve" no estilo simples já usado em `HomePage` (shadcn/Tailwind, sem Modernist)
+- [x] 11. Adicionar a rota protegida `reports` (dentro do `AppShell`) em `frontend/app/src/app/router.tsx`
+- [x] 12. Adicionar botão/link "+ Nova despesa" (shadcn/ui) em `routes/ExpensesListPage.tsx`, navegando para `/expenses/new`
+- [x] 13. Atualizar `components/nav/DesktopSidebar.test.tsx` para o novo markup, mantendo cobertura de item ativo por rota e do toggle colapsar/expandir
+- [x] 14. Atualizar `components/nav/MobileBottomNav.test.tsx` para 3 itens primários + botão "Mais", mantendo cobertura de item ativo
+- [x] 15. Criar `components/nav/NavMoreSheet.test.tsx`: abre/fecha via `open`/`onOpenChange`, fecha ao pressionar Esc, fecha ao clicar no backdrop, lista Relatórios e Categorias
+- [x] 16. Ajustar `components/nav/AppShell.test.tsx` (se necessário) garantindo que o conteúdo de `<Outlet />` não herda `.ds-modernist`
+- [x] 17. Criar `routes/ReportsComingSoonPage.test.tsx`: renderiza o texto de placeholder
+- [x] 18. Adicionar teste em `routes/ExpensesListPage.test.tsx` cobrindo o botão/link "+ Nova despesa" navegando para `/expenses/new`
+- [x] 19. Rodar a suíte completa (`npm test`), `tsc -b`, `oxlint` e `npm run build`; garantir 100% dos testes passando — 51 arquivos, 220 testes, todos passando (uma falha de timing em `ExpenseForm.test.tsx` na primeira execução foi confirmada como flake, não regressão, ao rodar de novo)
+- [x] 20. Revisão manual (checklist estático, já que não há navegador neste ambiente): conferir que nenhuma página de conteúdo fora do menu mudou de aparência — verificado via `tsc -b`, `oxlint`, testes e `npm run build`; revisão visual real pendente do usuário
+- [x] 21. Atualizar `spec.md` marcando todos os critérios de aceite concluídos (`- [x]`)

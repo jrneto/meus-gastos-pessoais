@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
-import { BarChart3, Home, ListFilter, PlusCircle, Settings, Tag } from 'lucide-react'
+import { BarChart3, Home, ListFilter, Settings, Tag } from 'lucide-react'
 
-export type NavItemStatus = 'active' | 'disabled' | 'placeholder'
+export type NavItemStatus = 'active' | 'placeholder'
 
 export interface NavItem {
   id: string
@@ -13,33 +13,23 @@ export interface NavItem {
   children?: NavItem[]
 }
 
+// FEAT-15: o menu recriado no Modernist não tem mais grupos com
+// subitens (o design de referência trata cada área de negócio como um
+// único item; "Nova despesa" virou um botão dentro da tela de
+// listagem) nem itens desabilitados/sem rota — "Relatórios" ainda não
+// existe de verdade, mas agora navega para uma página fake em vez de
+// ficar cinza e sem ação.
 export const NAV_TREE: NavItem[] = [
   { id: 'home', label: 'Início', icon: Home, to: '/', status: 'placeholder', mobilePrimary: true },
   {
     id: 'expenses',
     label: 'Despesas',
-    icon: PlusCircle,
+    icon: ListFilter,
+    to: '/expenses',
     status: 'active',
-    children: [
-      {
-        id: 'expenses-new',
-        label: 'Nova despesa',
-        icon: PlusCircle,
-        to: '/expenses/new',
-        status: 'active',
-        mobilePrimary: true,
-      },
-      {
-        id: 'expenses-list',
-        label: 'Listagem / Filtros',
-        icon: ListFilter,
-        to: '/expenses',
-        status: 'active',
-        mobilePrimary: true,
-      },
-    ],
+    mobilePrimary: true,
   },
-  { id: 'reports', label: 'Relatórios', icon: BarChart3, status: 'disabled' },
+  { id: 'reports', label: 'Relatórios', icon: BarChart3, to: '/reports', status: 'active' },
   { id: 'categories', label: 'Categorias', icon: Tag, to: '/categories', status: 'active' },
   {
     id: 'settings',

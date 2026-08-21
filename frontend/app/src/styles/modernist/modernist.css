@@ -3,17 +3,25 @@
  * partir de `frontend/design-system/_ds/modernist-a01587a5-394c-4dcb-a692-
  * c51267a2ceac/styles.css` (pasta de referência de design, não editada).
  *
- * Esta migração é isolada à tela de Login (FEAT-14): todo seletor que no
+ * Esta migração é escopada sob `.ds-modernist`: todo seletor que no
  * arquivo original era global (`:root`, `body`, `h1`..`h6`, `a`,
- * `:focus-visible`, `::selection`, `*`) foi reescrito sob o escopo
- * `.ds-modernist`, para não colidir com os tokens do shadcn/ui/Tailwind
- * (ex.: `--radius-sm/md/lg` existem nos dois sistemas) nem vazar para o
- * resto do app — a SPA não recarrega a página ao navegar entre rotas.
+ * `:focus-visible`, `::selection`, `*`) foi reescrito sob esse escopo,
+ * para não colidir com os tokens do shadcn/ui/Tailwind (ex.:
+ * `--radius-sm/md/lg` existem nos dois sistemas) nem vazar para o resto
+ * do app — a SPA não recarrega a página ao navegar entre rotas.
  *
- * Só as classes de componente realmente usadas pelo Login foram portadas
- * (`.btn`, `.field`/`.input`, `.seg`/`.seg-opt`). O restante do sistema
- * (`.card`, `.tag`, `.table`, `.dialog*`, `.nav`) entra quando a tela que
- * o usa for migrada.
+ * `.ds-modernist` sozinho só define tokens + reset tipográfico — não
+ * assume "página inteira". Onde o Modernist cobre a tela toda (Login,
+ * páginas fake), some `.ds-modernist-page` (min-height/background de
+ * página). Onde cobre só um pedaço da árvore (ex.: a navegação, que
+ * convive lado a lado com o conteúdo da página em `AppShell`), use só
+ * `.ds-modernist` — sem forçar altura/fundo de página inteira (FEAT-15).
+ *
+ * Só as classes de componente realmente usadas são portadas a cada
+ * migração (`.btn`, `.field`/`.input`, `.seg`/`.seg-opt` na FEAT-14;
+ * `.dialog-backdrop`/`.dialog` na FEAT-15). O restante do sistema
+ * (`.card`, `.tag`, `.table`, `.nav`) entra quando a tela que o usa for
+ * migrada.
  */
 @import '@fontsource-variable/archivo';
 
@@ -27,6 +35,10 @@
   --color-accent-100: #fff2ef;
   --color-accent-600: #dd2b0f;
   --color-accent-700: #ae1800;
+  --color-neutral-200: #eae7e7;
+  --color-neutral-500: #9b9797;
+  --color-neutral-700: #605d5d;
+  --color-neutral-900: #2d2b2b;
 
   --font-heading: 'Archivo Variable', system-ui, sans-serif;
   --font-heading-weight: 800;
@@ -40,14 +52,38 @@
   --space-8: 32px;
 
   --radius-md: 0px;
+  --radius-lg: 0px;
 
-  min-height: 100vh;
-  background: var(--color-bg);
+  --shadow-lg: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
+
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.55;
   font-weight: 400;
+}
+
+/* Modificador "página inteira": usado por LoginPage/SignupComingSoonPage,
+   nunca pela navegação (que só ocupa a faixa da sidebar/bottom-nav). */
+.ds-modernist-page {
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+/* — navegação (FEAT-15) — */
+.ds-modernist-sidebar {
+  display: none;
+}
+.ds-modernist-bottom-nav {
+  display: flex;
+}
+@media (min-width: 768px) {
+  .ds-modernist-sidebar {
+    display: flex;
+  }
+  .ds-modernist-bottom-nav {
+    display: none;
+  }
 }
 
 .ds-modernist,
@@ -196,4 +232,31 @@
 .ds-modernist .seg-opt:has(input:focus-visible) {
   outline: 2px solid var(--color-accent);
   outline-offset: -2px;
+}
+
+/* — dialog (painel "Mais" da navegação mobile, FEAT-15) — */
+.ds-modernist .dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent);
+}
+.ds-modernist .dialog {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: 0;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+}
+.ds-modernist .dialog-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 17px;
 }
