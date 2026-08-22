@@ -175,6 +175,16 @@
   justify-content: flex-start;
   text-align: left;
 }
+.ds-modernist .btn-ghost {
+  color: var(--color-accent);
+  padding-inline: var(--space-1);
+}
+.ds-modernist .btn-ghost:hover {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+.ds-modernist .btn-ghost:active {
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
 
 /* — forms — */
 .ds-modernist .field > span,

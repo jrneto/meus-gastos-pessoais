@@ -1,11 +1,8 @@
-import { Pencil, Trash2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useMemo } from 'react'
 import '@/styles/modernist/modernist.css'
 import { useCategories } from '@/lib/categories/useCategories'
 import type { ExpenseQueryItem } from '../api/expensesApi'
 import { formatCentsToCurrency } from '../utils/currency'
-import { ExpenseDeleteDialog } from './ExpenseDeleteDialog'
 
 interface ExpenseListProps {
   items: ExpenseQueryItem[]
@@ -14,8 +11,7 @@ interface ExpenseListProps {
   error: Error | null
   hasMore: boolean
   onLoadMore: () => void
-  onDeleted: (id: string) => void
-  onEdit: (item: ExpenseQueryItem) => void
+  onRowClick: (item: ExpenseQueryItem) => void
 }
 
 export function ExpenseList({
@@ -25,12 +21,9 @@ export function ExpenseList({
   error,
   hasMore,
   onLoadMore,
-  onDeleted,
-  onEdit,
+  onRowClick,
 }: ExpenseListProps) {
-  const [deleteTarget, setDeleteTarget] = useState<ExpenseQueryItem | null>(null)
   const { items: categories } = useCategories()
-  const navigate = useNavigate()
   const categoryById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
     [categories],
@@ -59,23 +52,16 @@ export function ExpenseList({
               <th>Descrição</th>
               <th>Data</th>
               <th style={{ textAlign: 'right' }}>Valor</th>
-              <th style={{ textAlign: 'right' }}>Ações</th>
             </tr>
           </thead>
           <tbody>
             {items.map((item) => {
               const category = categoryById.get(item.categoryId)
               return (
-                <tr
-                  key={item.id}
-                  onClick={() => navigate(`/expenses/${item.id}`)}
-                  style={{ cursor: 'pointer' }}
-                >
+                <tr key={item.id} onClick={() => onRowClick(item)} style={{ cursor: 'pointer' }}>
                   <td>
                     {category ? (
-                      <span className="tag tag-neutral" style={{ color: category.cor }}>
-                        {category.nome}
-                      </span>
+                      <span className="tag tag-neutral">{category.nome}</span>
                     ) : (
                       <span style={{ opacity: 0.6 }}>Categoria não encontrada</span>
                     )}
@@ -84,32 +70,6 @@ export function ExpenseList({
                   <td style={{ opacity: 0.65 }}>{item.expenseDate}</td>
                   <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-accent-700)' }}>
                     {formatCentsToCurrency(item.amountInCents)}
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
-                      <button
-                        type="button"
-                        className="btn"
-                        aria-label="Editar despesa"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          onEdit(item)
-                        }}
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        className="btn"
-                        aria-label="Excluir despesa"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          setDeleteTarget(item)
-                        }}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
                   </td>
                 </tr>
               )
@@ -123,16 +83,6 @@ export function ExpenseList({
           {isLoadingMore ? 'Carregando...' : 'Carregar mais'}
         </button>
       )}
-
-      <ExpenseDeleteDialog
-        key={deleteTarget?.id ?? 'closed'}
-        expense={deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-        onDeleted={(id) => {
-          onDeleted(id)
-          setDeleteTarget(null)
-        }}
-      />
     </div>
   )
 }
