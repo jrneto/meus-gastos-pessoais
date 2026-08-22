@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
 import { ExpenseForm } from './ExpenseForm'
@@ -22,10 +22,10 @@ function mockCategories(items: unknown[] = [category]) {
   server.use(http.get(CATEGORIES_URL, () => HttpResponse.json({ items })))
 }
 
-function renderForm() {
+function renderForm(props: Partial<React.ComponentProps<typeof ExpenseForm>> = {}) {
   return render(
     <MemoryRouter>
-      <ExpenseForm />
+      <ExpenseForm {...props} />
     </MemoryRouter>,
   )
 }
@@ -33,8 +33,7 @@ function renderForm() {
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Descrição'), 'Almoço no restaurante')
   await user.type(screen.getByLabelText('Valor'), '45,90')
-  await user.click(screen.getByRole('combobox', { name: 'Categoria' }))
-  await user.click(await screen.findByRole('option', { name: 'Alimentação' }))
+  await user.selectOptions(screen.getByLabelText('Categoria'), 'cat-1')
   // input[type=date] não aceita digitação simulada char-a-char do
   // userEvent (segmentos do date picker nativo) — fireEvent.change é a
   // forma confiável de setar o valor em testes com jsdom.
@@ -97,9 +96,10 @@ describe('ExpenseForm', () => {
     expect(screen.getByLabelText('Valor')).toHaveValue('45,90')
   })
 
-  it('submit com sucesso limpa o formulário e mostra confirmação', async () => {
+  it('submit com sucesso reseta o formulário e chama onSuccess', async () => {
     mockCategories()
     const user = userEvent.setup()
+    const onSuccess = vi.fn()
     server.use(
       http.post(EXPENSES_URL, () =>
         HttpResponse.json({
@@ -113,14 +113,26 @@ describe('ExpenseForm', () => {
       ),
     )
 
-    renderForm()
+    renderForm({ onSuccess })
     await screen.findByLabelText('Descrição')
     await fillValidForm(user)
 
     await user.click(screen.getByRole('button', { name: /registrar despesa/i }))
 
-    expect(await screen.findByText('Despesa registrada')).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByLabelText('Descrição')).toHaveValue(''))
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled())
+    expect(screen.getByLabelText('Descrição')).toHaveValue('')
     expect(screen.getByLabelText('Valor')).toHaveValue('')
+  })
+
+  it('exibe o botão "Cancelar" só quando onCancel é passado, e ele chama onCancel', async () => {
+    mockCategories()
+    const user = userEvent.setup()
+    const onCancel = vi.fn()
+
+    renderForm({ onCancel })
+    await screen.findByLabelText('Descrição')
+
+    await user.click(screen.getByRole('button', { name: /cancelar/i }))
+    expect(onCancel).toHaveBeenCalled()
   })
 })

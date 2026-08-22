@@ -34,7 +34,7 @@ export function NavMoreSheet({ open, onOpenChange }: NavMoreSheetProps) {
   }
 
   return (
-    <div className="ds-modernist dialog-backdrop" onClick={() => onOpenChange(false)}>
+    <div className="ds-modernist dialog-backdrop dialog-backdrop--sheet" onClick={() => onOpenChange(false)}>
       <div
         className="dialog"
         role="dialog"

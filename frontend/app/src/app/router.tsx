@@ -9,7 +9,6 @@ import { ExpensesListPage } from '@/routes/ExpensesListPage'
 import { HomePage } from '@/routes/HomePage'
 import { LoginPage } from '@/routes/LoginPage'
 import { NewCategoryPage } from '@/routes/NewCategoryPage'
-import { RegisterExpensePage } from '@/routes/RegisterExpensePage'
 import { ReportsComingSoonPage } from '@/routes/ReportsComingSoonPage'
 import { SettingsPage } from '@/routes/SettingsPage'
 import { SignupComingSoonPage } from '@/routes/SignupComingSoonPage'
@@ -31,7 +30,6 @@ export const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { index: true, element: <HomePage /> },
-          { path: 'expenses/new', element: <RegisterExpensePage /> },
           { path: 'expenses', element: <ExpensesListPage /> },
           { path: 'expenses/:id', element: <ExpenseDetailPage /> },
           { path: 'expenses/:id/edit', element: <EditExpensePage /> },

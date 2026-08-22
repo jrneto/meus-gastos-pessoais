@@ -126,6 +126,47 @@ describe('useExpensesQuery', () => {
     expect(result.current.error).toBeNull()
   })
 
+  it('refetch reexecuta a busca com os filtros atuais, voltando para a primeira página', async () => {
+    server.use(
+      http.get(EXPENSES_URL, () =>
+        HttpResponse.json({ items: [item('1')], nextCursor: 'cursor-1' }),
+      ),
+    )
+
+    const { result } = renderHook(() => useExpensesQuery())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    const filters: ExpenseFilterOutput = {
+      yearMonth: undefined,
+      categoryId: 'cat-2',
+      dateFrom: undefined,
+      dateTo: undefined,
+      minAmountInCents: undefined,
+      maxAmountInCents: undefined,
+    }
+    act(() => {
+      result.current.applyFilters(filters)
+    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    let requestedCategoryId: string | null = null
+    server.use(
+      http.get(EXPENSES_URL, ({ request }) => {
+        requestedCategoryId = new URL(request.url).searchParams.get('categoryId')
+        return HttpResponse.json({ items: [item('3')], nextCursor: null })
+      }),
+    )
+
+    act(() => {
+      result.current.refetch()
+    })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.items).toEqual([item('3')])
+    expect(result.current.hasMore).toBe(false)
+    expect(requestedCategoryId).toBe('cat-2')
+  })
+
   it('removeItem remove só o item do id informado, mantendo os demais', async () => {
     server.use(
       http.get(EXPENSES_URL, () =>
