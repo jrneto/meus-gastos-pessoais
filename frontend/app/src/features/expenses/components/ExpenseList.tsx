@@ -1,6 +1,6 @@
 import { Pencil, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import '@/styles/modernist/modernist.css'
 import { useCategories } from '@/lib/categories/useCategories'
 import type { ExpenseQueryItem } from '../api/expensesApi'
@@ -15,6 +15,7 @@ interface ExpenseListProps {
   hasMore: boolean
   onLoadMore: () => void
   onDeleted: (id: string) => void
+  onEdit: (item: ExpenseQueryItem) => void
 }
 
 export function ExpenseList({
@@ -25,6 +26,7 @@ export function ExpenseList({
   hasMore,
   onLoadMore,
   onDeleted,
+  onEdit,
 }: ExpenseListProps) {
   const [deleteTarget, setDeleteTarget] = useState<ExpenseQueryItem | null>(null)
   const { items: categories } = useCategories()
@@ -85,14 +87,17 @@ export function ExpenseList({
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
-                      <Link
-                        to={`/expenses/${item.id}/edit`}
-                        aria-label="Editar despesa"
+                      <button
+                        type="button"
                         className="btn"
-                        onClick={(event) => event.stopPropagation()}
+                        aria-label="Editar despesa"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          onEdit(item)
+                        }}
                       >
                         <Pencil size={16} />
-                      </Link>
+                      </button>
                       <button
                         type="button"
                         className="btn"

@@ -71,10 +71,7 @@ export function ExpenseDetailPage() {
           </dl>
 
           <div className="flex gap-2">
-            <Link
-              to={`/expenses/${data.id}/edit`}
-              className={cn(buttonVariants({}))}
-            >
+            <Link to="/expenses" className={cn(buttonVariants({}))}>
               Editar
             </Link>
             <Button variant="destructive" onClick={() => setConfirmingDelete(true)}>

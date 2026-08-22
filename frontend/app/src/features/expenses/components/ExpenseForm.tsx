@@ -4,7 +4,9 @@ import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
 import '@/styles/modernist/modernist.css'
 import { useCategories } from '@/lib/categories/useCategories'
+import { NotFoundError } from '../errors/expenseErrors'
 import { useRegisterExpense } from '../hooks/useRegisterExpense'
+import { useUpdateExpense } from '../hooks/useUpdateExpense'
 import {
   expenseSchema,
   type ExpenseFormInput,
@@ -12,15 +14,27 @@ import {
 } from '../schemas/expenseSchema'
 
 interface ExpenseFormProps {
+  mode?: 'create' | 'edit'
+  expenseId?: string
+  initialValues?: ExpenseFormInput
   onSuccess?: () => void
   onCancel?: () => void
 }
 
-// Campos próprios do Modernist, não compartilhados com
-// `ExpenseFormFields` (usado por `EditExpenseForm`, fora do escopo da
-// FEAT-17 — continua shadcn/ui até sua própria spec de migração).
-export function ExpenseForm({ onSuccess, onCancel }: ExpenseFormProps) {
-  const { registerExpense, isLoading, error, success } = useRegisterExpense()
+// Popup único de cadastro/edição de despesa (FEAT-17/FEAT-18), com
+// campos próprios do Modernist — `ExpenseFormFields`/`EditExpenseForm`
+// (shadcn/ui) foram removidos, sem mais consumidores.
+export function ExpenseForm({
+  mode = 'create',
+  expenseId,
+  initialValues,
+  onSuccess,
+  onCancel,
+}: ExpenseFormProps) {
+  const registerHook = useRegisterExpense()
+  const updateHook = useUpdateExpense(expenseId ?? '')
+  const { isLoading, error, success } = mode === 'edit' ? updateHook : registerHook
+  const submit = mode === 'edit' ? updateHook.updateExpense : registerHook.registerExpense
   const { items: categories, isLoading: categoriesLoading } = useCategories()
   const {
     register,
@@ -29,18 +43,44 @@ export function ExpenseForm({ onSuccess, onCancel }: ExpenseFormProps) {
     formState: { errors },
   } = useForm<ExpenseFormInput, unknown, ExpenseFormOutput>({
     resolver: zodResolver(expenseSchema),
-    defaultValues: { description: '', amount: '', categoryId: '', expenseDate: '' },
+    defaultValues: initialValues ?? { description: '', amount: '', categoryId: '', expenseDate: '' },
   })
 
   useEffect(() => {
     if (success) {
-      reset()
+      if (mode === 'create') {
+        reset()
+      }
       onSuccess?.()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [success, reset])
+  }, [success])
 
-  if (!categoriesLoading && categories.length === 0) {
+  useEffect(() => {
+    // A despesa já não existe mais (excluída por outra sessão entre
+    // abrir o popup e salvar) — trata como sucesso silencioso, sem
+    // exibir erro (mesmo espírito do tratamento já usado em
+    // ExpenseDeleteDialog para NotFoundError).
+    if (mode === 'edit' && error instanceof NotFoundError) {
+      onSuccess?.()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error, mode])
+
+  const visibleError = error && !(mode === 'edit' && error instanceof NotFoundError) ? error : null
+
+  if (categoriesLoading) {
+    // Só monta o <select> de categoria depois que as opções existem —
+    // um <select> nativo com register() do RHF não reaplica o value
+    // inicial se a opção correspondente ainda não estiver no DOM.
+    return (
+      <p className="ds-modernist" style={{ opacity: 0.7, fontSize: '14px' }}>
+        Carregando...
+      </p>
+    )
+  }
+
+  if (categories.length === 0) {
     return (
       <div
         className="ds-modernist"
@@ -67,13 +107,15 @@ export function ExpenseForm({ onSuccess, onCancel }: ExpenseFormProps) {
     <form
       className="ds-modernist"
       noValidate
-      onSubmit={handleSubmit((data) => registerExpense(data))}
+      onSubmit={handleSubmit((data) => submit(data))}
       style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
     >
-      {error && (
+      {visibleError && (
         <div style={{ color: 'var(--color-accent-700)' }}>
-          <div style={{ fontWeight: 700 }}>Não foi possível registrar</div>
-          <div style={{ fontSize: '13px' }}>{error.message}</div>
+          <div style={{ fontWeight: 700 }}>
+            {mode === 'edit' ? 'Não foi possível salvar' : 'Não foi possível registrar'}
+          </div>
+          <div style={{ fontSize: '13px' }}>{visibleError.message}</div>
         </div>
       )}
 
@@ -137,7 +179,7 @@ export function ExpenseForm({ onSuccess, onCancel }: ExpenseFormProps) {
           </button>
         )}
         <button type="submit" className="btn btn-primary" disabled={isLoading}>
-          {isLoading ? 'Salvando...' : 'Registrar despesa'}
+          {isLoading ? 'Salvando...' : mode === 'edit' ? 'Salvar alterações' : 'Registrar despesa'}
         </button>
       </div>
     </form>

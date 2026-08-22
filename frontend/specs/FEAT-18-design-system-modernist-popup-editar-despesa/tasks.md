@@ -1,0 +1,21 @@
+# Tasks — FEAT-18: Migração para o design system Modernist (Popup de Editar Despesa)
+
+- [x] 1. Ajustar `features/expenses/hooks/useExpense.ts`: pular a busca quando `id` for vazio (`isLoading: false`, sem chamar a API)
+- [x] 2. Adicionar teste em `features/expenses/hooks/useExpense.test.ts`: `id` vazio não chama a API e `isLoading` fica `false`
+- [x] 3. Generalizar `features/expenses/components/ExpenseForm.tsx`: props `mode?: 'create' | 'edit'`, `expenseId?: string`, `initialValues?: ExpenseFormInput`; usa `useRegisterExpense` (create) ou `useUpdateExpense` (edit); rótulo do botão conforme o modo; `NotFoundError` no modo edição chama `onSuccess` silenciosamente (sem exibir erro)
+- [x] 4. Adicionar testes de `mode="edit"` em `features/expenses/components/ExpenseForm.test.tsx`: renderiza com `initialValues`, rótulo "Salvar alterações", submit chama `PUT`, sucesso chama `onSuccess`, 404 ao salvar chama `onSuccess` sem exibir erro
+- [x] 5. Renomear `features/expenses/components/NewExpenseDialog.tsx` para `ExpenseFormDialog.tsx`: adiciona `expenseId?: string`; busca a despesa via `useExpense` quando presente; título/estado de carregamento variam por modo; 404 ao carregar fecha o popup e chama `onSaved`; renomeia prop `onCreated` para `onSaved`
+- [x] 6. Renomear `features/expenses/components/NewExpenseDialog.test.tsx` para `ExpenseFormDialog.test.tsx`; ajustar para `onSaved`; adicionar casos de `expenseId`: "Editar despesa"/"Carregando...", pré-preenchimento, 404 ao carregar fecha o popup
+- [x] 7. Atualizar `features/expenses/components/ExpenseList.tsx`: ícone de editar vira `<button onClick={() => onEdit(item)}>` (nova prop `onEdit`), no lugar do `<Link>` para `/expenses/:id/edit`
+- [x] 8. Atualizar `features/expenses/components/ExpenseList.test.tsx`: teste do link de editar substituído por um teste que clica no ícone e verifica a chamada de `onEdit` com o item certo
+- [x] 9. Atualizar `routes/ExpensesListPage.tsx`: estado unificado `dialogTarget` (`{mode:'create'} | {mode:'edit', id} | null`), passa `onEdit` para `ExpenseList`, usa `ExpenseFormDialog` com `key` por alvo e `expenseId` condicional
+- [x] 10. Atualizar `routes/ExpensesListPage.test.tsx`: novo caso — clicar no ícone de editar de uma linha abre o popup com os campos pré-preenchidos
+- [x] 11. Atualizar `routes/ExpenseDetailPage.tsx`: link "Editar" aponta para `/expenses` em vez de `/expenses/:id/edit`
+- [x] 12. Ajustar teste de `routes/ExpenseDetailPage.test.tsx` (se existir asserção do href de "Editar") para `/expenses`
+- [x] 13. Remover a rota `expenses/:id/edit` e o import de `EditExpensePage` em `app/router.tsx`
+- [x] 14. Deletar `routes/EditExpensePage.tsx` e `routes/EditExpensePage.test.tsx`
+- [x] 15. Deletar `features/expenses/components/EditExpenseForm.tsx` e `EditExpenseForm.test.tsx`
+- [x] 16. Deletar `features/expenses/components/ExpenseFormFields.tsx` (sem consumidores após a remoção de `EditExpenseForm`)
+- [x] 17. Rodar a suíte completa (`npm test`), `tsc -b`, `oxlint` e `npm run build`; garantir 100% dos testes passando
+- [x] 18. Revisão manual: conferir que nenhuma página fora do escopo (detalhe de despesa além do link "Editar", categorias, ajustes, início, menu) mudou de aparência — via checklist estático (já que não há navegador neste ambiente) e/ou revisão visual do usuário
+- [x] 19. Atualizar `spec.md` marcando todos os critérios de aceite concluídos (`- [x]`)

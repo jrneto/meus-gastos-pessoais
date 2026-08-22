@@ -135,4 +135,79 @@ describe('ExpenseForm', () => {
     await user.click(screen.getByRole('button', { name: /cancelar/i }))
     expect(onCancel).toHaveBeenCalled()
   })
+
+  describe('mode="edit" (FEAT-18)', () => {
+    const EXPENSE_URL = 'http://localhost:5049/expenses/exp-1'
+    const initialValues = {
+      description: 'Almoço no restaurante',
+      amount: '45,90',
+      categoryId: 'cat-1',
+      expenseDate: '2025-06-15',
+    }
+
+    it('renderiza pré-preenchido com o rótulo "Salvar alterações"', async () => {
+      mockCategories()
+
+      renderForm({ mode: 'edit', expenseId: 'exp-1', initialValues })
+
+      expect(await screen.findByLabelText('Descrição')).toHaveValue('Almoço no restaurante')
+      expect(screen.getByLabelText('Valor')).toHaveValue('45,90')
+      // Categorias chegam de forma assíncrona (MSW) — só depois que a
+      // opção existe no DOM o <select> reflete o value selecionado.
+      await screen.findByRole('option', { name: 'Alimentação' })
+      expect(screen.getByLabelText('Categoria')).toHaveValue('cat-1')
+      expect(screen.getByLabelText('Data')).toHaveValue('2025-06-15')
+      expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeInTheDocument()
+    })
+
+    it('submit chama PUT /expenses/{id} e onSuccess ao ter sucesso', async () => {
+      mockCategories()
+      const user = userEvent.setup()
+      const onSuccess = vi.fn()
+      let apiCalled = false
+      server.use(
+        http.put(EXPENSE_URL, () => {
+          apiCalled = true
+          return HttpResponse.json({ ...initialValues, id: 'exp-1', amountInCents: 4590 })
+        }),
+      )
+
+      renderForm({ mode: 'edit', expenseId: 'exp-1', initialValues, onSuccess })
+      await screen.findByLabelText('Descrição')
+
+      await user.click(screen.getByRole('button', { name: /salvar alterações/i }))
+
+      await waitFor(() => expect(onSuccess).toHaveBeenCalled())
+      expect(apiCalled).toBe(true)
+    })
+
+    it('404 ao salvar chama onSuccess silenciosamente, sem exibir erro', async () => {
+      mockCategories()
+      const user = userEvent.setup()
+      const onSuccess = vi.fn()
+      server.use(http.put(EXPENSE_URL, () => new HttpResponse(null, { status: 404 })))
+
+      renderForm({ mode: 'edit', expenseId: 'exp-1', initialValues, onSuccess })
+      await screen.findByLabelText('Descrição')
+
+      await user.click(screen.getByRole('button', { name: /salvar alterações/i }))
+
+      await waitFor(() => expect(onSuccess).toHaveBeenCalled())
+      expect(screen.queryByText('Não foi possível salvar')).not.toBeInTheDocument()
+    })
+
+    it('erro 400 exibe "Não foi possível salvar" e mantém os dados preenchidos', async () => {
+      mockCategories()
+      const user = userEvent.setup()
+      server.use(http.put(EXPENSE_URL, () => new HttpResponse(null, { status: 400 })))
+
+      renderForm({ mode: 'edit', expenseId: 'exp-1', initialValues })
+      await screen.findByLabelText('Descrição')
+
+      await user.click(screen.getByRole('button', { name: /salvar alterações/i }))
+
+      expect(await screen.findByText('Não foi possível salvar')).toBeInTheDocument()
+      expect(screen.getByLabelText('Descrição')).toHaveValue('Almoço no restaurante')
+    })
+  })
 })

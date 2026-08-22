@@ -33,7 +33,6 @@ function renderPage() {
       <Routes>
         <Route path="/expenses" element={<div>Expenses List Page</div>} />
         <Route path="/expenses/:id" element={<ExpenseDetailPage />} />
-        <Route path="/expenses/:id/edit" element={<div>Edit Page</div>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -66,7 +65,7 @@ describe('ExpenseDetailPage', () => {
 
     expect(await screen.findByRole('link', { name: /editar/i })).toHaveAttribute(
       'href',
-      '/expenses/exp-1/edit',
+      '/expenses',
     )
     expect(screen.getByRole('button', { name: /^excluir$/i })).toBeInTheDocument()
   })

@@ -40,4 +40,39 @@ describe('ExpensesListPage', () => {
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
+
+  it('clicar no ícone de editar de uma linha abre o popup pré-preenchido (FEAT-18)', async () => {
+    const user = userEvent.setup()
+    const category = {
+      id: 'cat-1',
+      nome: 'Alimentação',
+      cor: '#F97316',
+      icone: 'utensils',
+      createdAt: '2025-06-15T12:00:00Z',
+    }
+    const item = {
+      id: 'exp-1',
+      description: 'Almoço no restaurante',
+      amountInCents: 4590,
+      categoryId: 'cat-1',
+      expenseDate: '2025-06-15',
+      createdAt: '2025-06-15T12:00:00Z',
+    }
+    server.use(
+      http.get(EXPENSES_URL, () => HttpResponse.json({ items: [item], nextCursor: null })),
+      http.get('http://localhost:5049/categories', () => HttpResponse.json({ items: [category] })),
+      http.get('http://localhost:5049/expenses/exp-1', () => HttpResponse.json(item)),
+    )
+
+    render(
+      <MemoryRouter>
+        <ExpensesListPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: /editar despesa/i }))
+
+    expect(await screen.findByText('Editar despesa')).toBeInTheDocument()
+    expect(await screen.findByLabelText('Descrição')).toHaveValue('Almoço no restaurante')
+  })
 })

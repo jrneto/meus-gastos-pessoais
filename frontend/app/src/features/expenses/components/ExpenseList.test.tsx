@@ -38,6 +38,7 @@ function renderExpenseList(props: Partial<React.ComponentProps<typeof ExpenseLis
         hasMore={false}
         onLoadMore={vi.fn()}
         onDeleted={vi.fn()}
+        onEdit={vi.fn()}
         {...props}
       />
     </MemoryRouter>,
@@ -96,11 +97,14 @@ describe('ExpenseList', () => {
     expect(screen.getByText('Um ou mais filtros são inválidos.')).toBeInTheDocument()
   })
 
-  it('cada item tem um link de editar apontando para /expenses/{id}/edit', () => {
-    renderExpenseList({ items: [item] })
+  it('clicar em editar chama onEdit com o item da linha (FEAT-18)', async () => {
+    const user = userEvent.setup()
+    const onEdit = vi.fn()
+    renderExpenseList({ items: [item], onEdit })
 
-    const editLink = screen.getByRole('link', { name: /editar despesa/i })
-    expect(editLink).toHaveAttribute('href', '/expenses/exp-1/edit')
+    await user.click(screen.getByRole('button', { name: /editar despesa/i }))
+
+    expect(onEdit).toHaveBeenCalledWith(item)
   })
 
   it('clicar em excluir abre o dialog com a descrição da despesa', async () => {
