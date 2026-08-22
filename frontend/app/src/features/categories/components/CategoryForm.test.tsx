@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -19,20 +19,22 @@ function renderForm(props: Partial<React.ComponentProps<typeof CategoryForm>> = 
   return render(<CategoryForm onSaved={vi.fn()} onCancel={vi.fn()} {...props} />)
 }
 
-async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText('Nome'), 'Viagem')
-  fireEvent.change(screen.getByLabelText('Cor'), { target: { value: '#0ea5e9' } })
-  await user.click(screen.getByRole('button', { name: 'Viagem' }))
-}
-
 describe('CategoryForm', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
   })
 
+  it('não exibe campos de Cor nem Ícone', () => {
+    renderForm()
+
+    expect(screen.queryByLabelText('Cor')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Ícone')).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Ícone' })).not.toBeInTheDocument()
+  })
+
   describe('mode="create" (padrão)', () => {
-    it('exibe erro inline e não chama a API sem nome nem ícone', async () => {
+    it('exibe erro inline e não chama a API sem nome', async () => {
       const user = userEvent.setup()
       let apiCalled = false
       server.use(
@@ -46,28 +48,33 @@ describe('CategoryForm', () => {
       await user.click(screen.getByRole('button', { name: /criar categoria/i }))
 
       expect(await screen.findByText('Informe o nome.')).toBeInTheDocument()
-      expect(screen.getByText('Selecione um ícone.')).toBeInTheDocument()
       expect(apiCalled).toBe(false)
     })
 
-    it('submit com sucesso reseta o formulário e chama onSaved com a categoria criada', async () => {
+    it('submit com sucesso reseta o formulário e chama onSaved com a categoria criada, enviando cor/ícone padrão', async () => {
       const user = userEvent.setup()
       const onSaved = vi.fn()
-      const created = {
-        id: 'cat-1',
-        nome: 'Viagem',
-        cor: '#0ea5e9',
-        icone: 'plane',
-        createdAt: '2025-06-15T12:00:00Z',
-      }
-      server.use(http.post(CATEGORIES_URL, () => HttpResponse.json(created)))
+      let sentPayload: unknown = null
+      server.use(
+        http.post(CATEGORIES_URL, async ({ request }) => {
+          sentPayload = await request.json()
+          return HttpResponse.json({
+            id: 'cat-1',
+            nome: 'Viagem',
+            cor: '#3B82F6',
+            icone: 'wallet',
+            createdAt: '2025-06-15T12:00:00Z',
+          })
+        }),
+      )
 
       renderForm({ onSaved })
-      await fillValidForm(user)
+      await user.type(screen.getByLabelText('Nome'), 'Viagem')
       await user.click(screen.getByRole('button', { name: /criar categoria/i }))
 
-      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(created))
+      await waitFor(() => expect(onSaved).toHaveBeenCalled())
       expect(screen.getByLabelText('Nome')).toHaveValue('')
+      expect(sentPayload).toMatchObject({ nome: 'Viagem', cor: expect.any(String), icone: expect.any(String) })
     })
 
     it('nome duplicado (422 name-conflict) exibe erro inline no campo nome', async () => {
@@ -75,7 +82,7 @@ describe('CategoryForm', () => {
       server.use(http.post(CATEGORIES_URL, () => problem('name-conflict')))
 
       renderForm()
-      await fillValidForm(user)
+      await user.type(screen.getByLabelText('Nome'), 'Viagem')
       await user.click(screen.getByRole('button', { name: /criar categoria/i }))
 
       expect(await screen.findByText('Já existe uma categoria com esse nome.')).toBeInTheDocument()
@@ -86,7 +93,7 @@ describe('CategoryForm', () => {
       server.use(http.post(CATEGORIES_URL, () => new HttpResponse(null, { status: 400 })))
 
       renderForm()
-      await fillValidForm(user)
+      await user.type(screen.getByLabelText('Nome'), 'Viagem')
       await user.click(screen.getByRole('button', { name: /criar categoria/i }))
 
       expect(await screen.findByText('Não foi possível salvar')).toBeInTheDocument()
@@ -119,22 +126,27 @@ describe('CategoryForm', () => {
       renderForm({ mode: 'edit', categoryId: 'cat-1', initialValues })
 
       expect(screen.getByLabelText('Nome')).toHaveValue('Alimentação')
-      expect(screen.getByRole('button', { name: 'Alimentação' })).toHaveAttribute('aria-pressed', 'true')
       expect(screen.getByRole('button', { name: /^salvar$/i })).toBeInTheDocument()
     })
 
-    it('submit com sucesso chama onSaved com a categoria atualizada', async () => {
+    it('submit preserva a cor/ícone já salvos e chama onSaved', async () => {
       const user = userEvent.setup()
       const onSaved = vi.fn()
-      const updated = { ...initialValues, id: 'cat-1', nome: 'Alimentação e bebidas', createdAt: '2025-06-15T12:00:00Z' }
-      server.use(http.put(CATEGORY_URL, () => HttpResponse.json(updated)))
+      let sentPayload: unknown = null
+      server.use(
+        http.put(CATEGORY_URL, async ({ request }) => {
+          sentPayload = await request.json()
+          return HttpResponse.json({ ...initialValues, id: 'cat-1', nome: 'Alimentação e bebidas', createdAt: '2025-06-15T12:00:00Z' })
+        }),
+      )
 
       renderForm({ mode: 'edit', categoryId: 'cat-1', initialValues, onSaved })
       await user.clear(screen.getByLabelText('Nome'))
       await user.type(screen.getByLabelText('Nome'), 'Alimentação e bebidas')
       await user.click(screen.getByRole('button', { name: /^salvar$/i }))
 
-      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(updated))
+      await waitFor(() => expect(onSaved).toHaveBeenCalled())
+      expect(sentPayload).toMatchObject({ nome: 'Alimentação e bebidas', cor: '#f97316', icone: 'utensils' })
     })
 
     it('404 ao salvar chama onNotFound silenciosamente, sem exibir erro', async () => {

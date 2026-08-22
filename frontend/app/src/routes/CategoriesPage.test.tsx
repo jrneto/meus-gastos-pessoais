@@ -66,7 +66,6 @@ describe('CategoriesPage', () => {
     expect(screen.getByLabelText('Nome')).toBeInTheDocument()
 
     await user.type(screen.getByLabelText('Nome'), 'Viagem')
-    await user.click(screen.getByRole('button', { name: 'Viagem' }))
     await user.click(screen.getByRole('button', { name: /criar categoria/i }))
 
     await waitFor(() => expect(screen.getByText('Viagem')).toBeInTheDocument())

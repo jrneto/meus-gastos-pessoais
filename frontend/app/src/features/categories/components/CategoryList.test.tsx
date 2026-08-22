@@ -37,7 +37,7 @@ describe('CategoryList', () => {
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
   })
 
-  it('renderiza os itens com nome/cor/ícone', () => {
+  it('renderiza os itens só com o nome (sem cor/ícone)', () => {
     renderCategoryList({ items: [item] })
 
     expect(screen.getByText('Alimentação')).toBeInTheDocument()
@@ -66,7 +66,6 @@ describe('CategoryList', () => {
     renderCategoryList({ items: [item], editingId: 'cat-1' })
 
     expect(screen.getByLabelText('Nome')).toHaveValue('Alimentação')
-    expect(screen.getByRole('button', { name: 'Alimentação' })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('confirmar a exclusão chama a API e onDeleted com o id correto', async () => {
