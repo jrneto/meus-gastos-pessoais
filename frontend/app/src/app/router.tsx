@@ -2,7 +2,6 @@ import { createBrowserRouter } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { AppShell } from '@/components/nav/AppShell'
 import { CategoriesPage } from '@/routes/CategoriesPage'
-import { ExpenseDetailPage } from '@/routes/ExpenseDetailPage'
 import { ExpensesListPage } from '@/routes/ExpensesListPage'
 import { HomePage } from '@/routes/HomePage'
 import { LoginPage } from '@/routes/LoginPage'
@@ -28,7 +27,6 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <HomePage /> },
           { path: 'expenses', element: <ExpensesListPage /> },
-          { path: 'expenses/:id', element: <ExpenseDetailPage /> },
           { path: 'categories', element: <CategoriesPage /> },
           { path: 'reports', element: <ReportsComingSoonPage /> },
           { path: 'settings', element: <SettingsPage /> },

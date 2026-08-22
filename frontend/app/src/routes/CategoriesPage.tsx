@@ -30,7 +30,18 @@ export function CategoriesPage() {
   }
 
   return (
-    <div className="ds-modernist" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+    <div
+      className="ds-modernist"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--space-6)',
+        maxWidth: '920px',
+        margin: '0 auto',
+        padding: '40px 40px 60px',
+        boxSizing: 'border-box',
+      }}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <h1 style={{ fontSize: '30px', margin: 0 }}>Categorias</h1>
         <button

@@ -1,6 +1,7 @@
 import { Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import '@/styles/modernist/modernist.css'
+import { CategoryLetterTile } from '@/lib/categories/CategoryLetterTile'
 import type { CategoryItem } from '@/lib/categories/types'
 import { CategoryDeleteDialog } from './CategoryDeleteDialog'
 import { CategoryForm } from './CategoryForm'
@@ -67,23 +68,7 @@ export function CategoryList({
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      flex: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: '1px solid var(--color-divider)',
-                      fontSize: '12px',
-                      fontWeight: 800,
-                      fontFamily: 'var(--font-heading)',
-                    }}
-                  >
-                    {item.nome.charAt(0).toUpperCase()}
-                  </span>
+                  <CategoryLetterTile name={item.nome} />
                   <span>{item.nome}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
