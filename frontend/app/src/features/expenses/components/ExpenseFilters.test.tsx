@@ -143,4 +143,38 @@ describe('ExpenseFilters', () => {
     ).toBeInTheDocument()
     expect(onApply).not.toHaveBeenCalled()
   })
+
+  it('"Limpar filtros" zera os campos avançados e reaplica a busca, preservando a categoria selecionada', async () => {
+    const onApply = vi.fn()
+    const user = userEvent.setup()
+
+    render(<ExpenseFilters onApply={onApply} />)
+
+    const chip = await screen.findByRole('button', { name: 'Alimentação' })
+    await user.click(chip)
+
+    await openAdvancedPanel()
+    fireEvent.change(screen.getByLabelText('Mês'), { target: { value: '2025-06' } })
+    fireEvent.change(screen.getByLabelText('De'), { target: { value: '2025-06-01' } })
+    fireEvent.change(screen.getByLabelText('Até'), { target: { value: '2025-06-30' } })
+    await user.type(screen.getByLabelText('Valor mín.'), '10,00')
+    await user.type(screen.getByLabelText('Valor máx.'), '100,00')
+
+    await user.click(screen.getByRole('button', { name: /limpar filtros/i }))
+
+    expect(onApply).toHaveBeenLastCalledWith({
+      yearMonth: undefined,
+      categoryId: 'cat-1',
+      dateFrom: undefined,
+      dateTo: undefined,
+      minAmountInCents: undefined,
+      maxAmountInCents: undefined,
+    })
+    expect(screen.getByLabelText('Mês')).toHaveValue('')
+    expect(screen.getByLabelText('De')).toHaveValue('')
+    expect(screen.getByLabelText('Até')).toHaveValue('')
+    expect(screen.getByLabelText('Valor mín.')).toHaveValue('')
+    expect(screen.getByLabelText('Valor máx.')).toHaveValue('')
+    expect(chip).toHaveAttribute('aria-pressed', 'true')
+  })
 })

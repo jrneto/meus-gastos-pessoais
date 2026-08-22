@@ -22,6 +22,7 @@ export function ExpenseFilters({ onApply }: ExpenseFiltersProps) {
     register,
     handleSubmit,
     setValue,
+    reset,
     watch,
     formState: { errors },
   } = useForm<ExpenseFilterInput, unknown, ExpenseFilterOutput>({
@@ -44,6 +45,11 @@ export function ExpenseFilters({ onApply }: ExpenseFiltersProps) {
 
   function toggleCategory(id: string) {
     setValue('categoryId', categoryId === id ? '' : id)
+    void submit()
+  }
+
+  function clearAdvancedFilters() {
+    reset({ yearMonth: '', categoryId, dateFrom: '', dateTo: '', minAmount: '', maxAmount: '' })
     void submit()
   }
 
@@ -145,6 +151,9 @@ export function ExpenseFilters({ onApply }: ExpenseFiltersProps) {
 
           <button type="submit" className="btn btn-primary">
             Filtrar
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={clearAdvancedFilters}>
+            Limpar filtros
           </button>
         </div>
       )}
