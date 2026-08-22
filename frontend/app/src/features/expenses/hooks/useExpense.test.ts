@@ -58,4 +58,21 @@ describe('useExpense', () => {
 
     await waitFor(() => expect(result.current.error).toBeInstanceOf(NetworkError))
   })
+
+  it('id vazio não chama a API e não fica em carregamento (FEAT-18)', async () => {
+    let apiCalled = false
+    server.use(
+      http.get(EXPENSE_URL, () => {
+        apiCalled = true
+        return HttpResponse.json(expenseDetail)
+      }),
+    )
+
+    const { result } = renderHook(() => useExpense(''))
+
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.data).toBeNull()
+    expect(result.current.error).toBeNull()
+    expect(apiCalled).toBe(false)
+  })
 })

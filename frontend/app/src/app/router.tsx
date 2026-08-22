@@ -3,7 +3,6 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { AppShell } from '@/components/nav/AppShell'
 import { CategoriesPage } from '@/routes/CategoriesPage'
 import { EditCategoryPage } from '@/routes/EditCategoryPage'
-import { EditExpensePage } from '@/routes/EditExpensePage'
 import { ExpenseDetailPage } from '@/routes/ExpenseDetailPage'
 import { ExpensesListPage } from '@/routes/ExpensesListPage'
 import { HomePage } from '@/routes/HomePage'
@@ -32,7 +31,6 @@ export const router = createBrowserRouter([
           { index: true, element: <HomePage /> },
           { path: 'expenses', element: <ExpensesListPage /> },
           { path: 'expenses/:id', element: <ExpenseDetailPage /> },
-          { path: 'expenses/:id/edit', element: <EditExpensePage /> },
           { path: 'categories', element: <CategoriesPage /> },
           { path: 'categories/new', element: <NewCategoryPage /> },
           { path: 'categories/:id/edit', element: <EditCategoryPage /> },

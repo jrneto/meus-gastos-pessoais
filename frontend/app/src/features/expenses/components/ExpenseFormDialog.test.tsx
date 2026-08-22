@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { NewExpenseDialog } from './NewExpenseDialog'
+import { ExpenseFormDialog } from './ExpenseFormDialog'
 
 const EXPENSES_URL = 'http://localhost:5049/expenses'
 const CATEGORIES_URL = 'http://localhost:5049/categories'
@@ -18,20 +18,29 @@ const category = {
   createdAt: '2025-06-15T12:00:00Z',
 }
 
-function renderDialog(props: Partial<React.ComponentProps<typeof NewExpenseDialog>> = {}) {
+const expenseDetail = {
+  id: 'exp-1',
+  description: 'Almoço no restaurante',
+  amountInCents: 4590,
+  categoryId: 'cat-1',
+  expenseDate: '2025-06-15',
+  createdAt: '2025-06-15T12:00:00Z',
+}
+
+function renderDialog(props: Partial<React.ComponentProps<typeof ExpenseFormDialog>> = {}) {
   return render(
     <MemoryRouter>
-      <NewExpenseDialog
+      <ExpenseFormDialog
         open
         onOpenChange={vi.fn()}
-        onCreated={vi.fn()}
+        onSaved={vi.fn()}
         {...props}
       />
     </MemoryRouter>,
   )
 }
 
-describe('NewExpenseDialog', () => {
+describe('ExpenseFormDialog', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
@@ -90,24 +99,13 @@ describe('NewExpenseDialog', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  it('cadastro com sucesso chama onCreated e fecha o popup', async () => {
+  it('cadastro com sucesso chama onSaved e fecha o popup', async () => {
     const user = userEvent.setup()
-    server.use(
-      http.post(EXPENSES_URL, () =>
-        HttpResponse.json({
-          id: 'exp-1',
-          description: 'Almoço no restaurante',
-          amountInCents: 4590,
-          categoryId: 'cat-1',
-          expenseDate: '2025-06-15',
-          createdAt: '2025-06-15T12:00:00Z',
-        }),
-      ),
-    )
-    const onCreated = vi.fn()
+    server.use(http.post(EXPENSES_URL, () => HttpResponse.json(expenseDetail)))
+    const onSaved = vi.fn()
     const onOpenChange = vi.fn()
 
-    renderDialog({ onCreated, onOpenChange })
+    renderDialog({ onSaved, onOpenChange })
     await screen.findByLabelText('Descrição')
 
     await user.type(screen.getByLabelText('Descrição'), 'Almoço no restaurante')
@@ -120,7 +118,52 @@ describe('NewExpenseDialog', () => {
 
     await user.click(screen.getByRole('button', { name: /registrar despesa/i }))
 
-    await waitFor(() => expect(onCreated).toHaveBeenCalled())
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  describe('com expenseId (modo edição, FEAT-18)', () => {
+    const EXPENSE_URL = 'http://localhost:5049/expenses/exp-1'
+
+    it('mostra "Carregando..." e depois "Editar despesa" com os campos pré-preenchidos', async () => {
+      server.use(http.get(EXPENSE_URL, () => HttpResponse.json(expenseDetail)))
+
+      renderDialog({ expenseId: 'exp-1' })
+
+      expect(screen.getByText('Editar despesa')).toBeInTheDocument()
+      expect(screen.getByText('Carregando...')).toBeInTheDocument()
+
+      expect(await screen.findByLabelText('Descrição')).toHaveValue('Almoço no restaurante')
+      expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeInTheDocument()
+    })
+
+    it('404 ao carregar fecha o popup e chama onSaved, sem exibir erro', async () => {
+      server.use(http.get(EXPENSE_URL, () => new HttpResponse(null, { status: 404 })))
+      const onSaved = vi.fn()
+      const onOpenChange = vi.fn()
+
+      renderDialog({ expenseId: 'exp-1', onSaved, onOpenChange })
+
+      await waitFor(() => expect(onSaved).toHaveBeenCalled())
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
+
+    it('editar com sucesso chama onSaved e fecha o popup', async () => {
+      const user = userEvent.setup()
+      server.use(
+        http.get(EXPENSE_URL, () => HttpResponse.json(expenseDetail)),
+        http.put(EXPENSE_URL, () => HttpResponse.json({ ...expenseDetail, description: 'Atualizado' })),
+      )
+      const onSaved = vi.fn()
+      const onOpenChange = vi.fn()
+
+      renderDialog({ expenseId: 'exp-1', onSaved, onOpenChange })
+      await screen.findByLabelText('Descrição')
+
+      await user.click(screen.getByRole('button', { name: /salvar alterações/i }))
+
+      await waitFor(() => expect(onSaved).toHaveBeenCalled())
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
   })
 })
