@@ -54,7 +54,7 @@ describe('ExpenseForm', () => {
     expect(await screen.findByText('Você ainda não tem nenhuma categoria cadastrada.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /criar categoria/i })).toHaveAttribute(
       'href',
-      '/categories/new',
+      '/categories',
     )
   })
 

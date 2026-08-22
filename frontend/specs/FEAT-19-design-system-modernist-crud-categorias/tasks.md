@@ -1,0 +1,25 @@
+# Tasks — FEAT-19: Migração para o design system Modernist (CRUD de Categorias)
+
+- [x] 1. Adicionar `.icon-tile` a `frontend/app/src/styles/modernist/modernist.css` (grade de tiles quadrados, borda `--color-divider`, estado selecionado com borda/fundo de acento — mesmo padrão visual dos chips `.tag`)
+- [x] 2. Ajustar `features/categories/hooks/useRegisterCategory.ts`: expor `data: CategoryItem | null` com o retorno de `createCategory`
+- [x] 3. Adicionar teste em `useRegisterCategory.test.ts`: `data` reflete a categoria retornada pela API em caso de sucesso
+- [x] 4. Ajustar `features/categories/hooks/useUpdateCategory.ts`: expor `data: CategoryItem | null` com o retorno de `updateCategory`
+- [x] 5. Adicionar teste em `useUpdateCategory.test.ts`: `data` reflete a categoria retornada pela API em caso de sucesso
+- [x] 6. Reescrever `features/categories/components/IconPicker.tsx` com tiles Modernist (`.icon-tile`), mantendo a interface (`value`/`onChange`/`error`)
+- [x] 7. Atualizar `features/categories/components/IconPicker.test.tsx` para o novo markup, mantendo a mesma cobertura de seleção/erro
+- [x] 8. Criar `features/categories/components/CategoryForm.tsx` (une `NewCategoryForm`+`EditCategoryForm`+`CategoryFormFields`): `mode?: 'create' | 'edit'`, `categoryId?`, `initialValues?`, `onSaved`, `onNotFound?`, `onCancel`; campos Nome/Cor/Ícone com classes Modernist; `NameConflictError` inline no campo Nome; `NotFoundError` no modo edição chama `onNotFound` em vez de `onSaved`
+- [x] 9. Criar `features/categories/components/CategoryForm.test.tsx` cobrindo os casos de `create` (cria e chama `onSaved`, nome duplicado, cancelar) e `edit` (pré-preenchido, atualiza e chama `onSaved`, 404 chama `onNotFound` sem exibir erro, cancelar)
+- [x] 10. Reescrever `features/categories/components/CategoryDeleteDialog.tsx`: `.dialog-backdrop`/`.dialog` (`role="alertdialog"`) no lugar do `AlertDialog` do shadcn/ui, mesmo padrão de `ExpenseDeleteDialog`
+- [x] 11. Criar `features/categories/components/CategoryDeleteDialog.test.tsx` (não existe hoje): sucesso, `NotFoundError`, outro erro, cancelar, fechar por Esc/backdrop
+- [x] 12. Reescrever `features/categories/components/CategoryList.tsx`: Modernist, ícone/cor/nome renderizados localmente (sem `CategoryBadge`); prop `editingId`/`onEditToggle`; linha em edição renderiza `CategoryForm` inline no lugar do conteúdo normal; remove o link de "criar categoria" do estado vazio (a ação já vive no botão "+ Nova categoria" da página)
+- [x] 13. Atualizar `features/categories/components/CategoryList.test.tsx`: "Editar" expande a linha com `CategoryForm` pré-preenchido; exclusão cobre o novo `CategoryDeleteDialog`; estado vazio sem o link removido
+- [x] 14. Atualizar `routes/CategoriesPage.tsx`: estado único `formTarget` (`{mode:'create'} | {mode:'edit', id} | null`); "+ Nova categoria" alterna `formTarget`; formulário inline de cadastro condicional; `handleSaved`/`handleNotFound` atualizam `items` local
+- [x] 15. Atualizar `routes/CategoriesPage.test.tsx`: "+ Nova categoria" expande o formulário inline em vez de navegar; salvar insere na lista; editar uma linha atualiza a lista
+- [x] 16. Ajustar `features/expenses/components/ExpenseForm.tsx`: link "Criar categoria" (estado sem categorias) aponta para `/categories` em vez de `/categories/new`
+- [x] 17. Ajustar `features/expenses/components/ExpenseForm.test.tsx`: `href` esperado do link "Criar categoria" para `/categories`
+- [x] 18. Remover a rota `categories/new`/`categories/:id/edit` e os imports de `NewCategoryPage`/`EditCategoryPage` em `app/router.tsx`
+- [x] 19. Deletar `routes/NewCategoryPage.tsx`, `routes/EditCategoryPage.tsx` e seus testes (se existirem)
+- [x] 20. Deletar `features/categories/components/NewCategoryForm.tsx`, `EditCategoryForm.tsx`, `CategoryFormFields.tsx`, `CategoryNotFound.tsx` e seus testes
+- [x] 21. Rodar a suíte completa (`npm test`), `tsc -b`, `oxlint` e `npm run build`; garantir 100% dos testes passando
+- [x] 22. Revisão manual: conferir que nenhuma página fora do escopo (detalhe de despesa, ajustes, início, menu, listagem de transações) mudou de aparência — via checklist estático (já que não há navegador neste ambiente) e/ou revisão visual do usuário
+- [x] 23. Atualizar `spec.md` marcando todos os critérios de aceite concluídos (`- [x]`)
