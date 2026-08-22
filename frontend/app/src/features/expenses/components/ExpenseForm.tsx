@@ -96,7 +96,7 @@ export function ExpenseForm({
         <p style={{ opacity: 0.7, fontSize: '14px' }}>
           Você ainda não tem nenhuma categoria cadastrada.
         </p>
-        <Link to="/categories/new" className="btn btn-primary">
+        <Link to="/categories" className="btn btn-primary">
           Criar categoria
         </Link>
       </div>

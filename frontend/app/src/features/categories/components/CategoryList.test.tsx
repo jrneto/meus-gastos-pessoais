@@ -1,7 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
@@ -18,9 +17,17 @@ const item: CategoryItem = {
 
 function renderCategoryList(props: Partial<React.ComponentProps<typeof CategoryList>> = {}) {
   return render(
-    <MemoryRouter>
-      <CategoryList items={[]} isLoading={false} error={null} onDeleted={vi.fn()} {...props} />
-    </MemoryRouter>,
+    <CategoryList
+      items={[]}
+      isLoading={false}
+      error={null}
+      onDeleted={vi.fn()}
+      editingId={null}
+      onEditToggle={vi.fn()}
+      onSaved={vi.fn()}
+      onNotFound={vi.fn()}
+      {...props}
+    />,
   )
 }
 
@@ -36,23 +43,30 @@ describe('CategoryList', () => {
     expect(screen.getByText('Alimentação')).toBeInTheDocument()
   })
 
-  it('exibe estado vazio com CTA para criar categoria', () => {
+  it('exibe estado vazio sem CTA (a ação já vive no botão da página)', () => {
     renderCategoryList()
 
     expect(
       screen.getByText('Você ainda não tem nenhuma categoria cadastrada.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /criar categoria/i })).toHaveAttribute(
-      'href',
-      '/categories/new',
-    )
+    expect(screen.queryByRole('link', { name: /criar categoria/i })).not.toBeInTheDocument()
   })
 
-  it('cada item tem um link de editar apontando para /categories/{id}/edit', () => {
-    renderCategoryList({ items: [item] })
+  it('clicar em editar chama onEditToggle com o id do item', async () => {
+    const user = userEvent.setup()
+    const onEditToggle = vi.fn()
+    renderCategoryList({ items: [item], onEditToggle })
 
-    const editLink = screen.getByRole('link', { name: /editar categoria/i })
-    expect(editLink).toHaveAttribute('href', '/categories/cat-1/edit')
+    await user.click(screen.getByRole('button', { name: /editar categoria/i }))
+
+    expect(onEditToggle).toHaveBeenCalledWith('cat-1')
+  })
+
+  it('quando editingId corresponde ao item, mostra o CategoryForm pré-preenchido', () => {
+    renderCategoryList({ items: [item], editingId: 'cat-1' })
+
+    expect(screen.getByLabelText('Nome')).toHaveValue('Alimentação')
+    expect(screen.getByRole('button', { name: 'Alimentação' })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('confirmar a exclusão chama a API e onDeleted com o id correto', async () => {

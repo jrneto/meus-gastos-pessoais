@@ -22,7 +22,7 @@ describe('useRegisterCategory', () => {
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
   })
 
-  it('em caso de sucesso, seta success = true', async () => {
+  it('em caso de sucesso, seta success = true e expõe a categoria criada', async () => {
     server.use(http.post(CATEGORIES_URL, () => HttpResponse.json({ id: 'cat-1', ...payload })))
 
     const { result } = renderHook(() => useRegisterCategory())
@@ -33,6 +33,7 @@ describe('useRegisterCategory', () => {
 
     expect(result.current.success).toBe(true)
     expect(result.current.error).toBeNull()
+    expect(result.current.data).toEqual({ id: 'cat-1', ...payload })
   })
 
   it('em caso de 400, expõe ValidationError', async () => {
