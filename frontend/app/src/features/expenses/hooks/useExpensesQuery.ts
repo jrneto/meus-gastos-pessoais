@@ -13,6 +13,7 @@ interface UseExpensesQueryResult {
   applyFilters: (filters: ExpenseFilterOutput) => void
   loadMore: () => void
   removeItem: (id: string) => void
+  refetch: () => void
 }
 
 export function useExpensesQuery(): UseExpensesQueryResult {
@@ -77,6 +78,13 @@ export function useExpensesQuery(): UseExpensesQueryResult {
     setItems((prev) => prev.filter((item) => item.id !== id))
   }
 
+  // Reexecuta a busca com os filtros já aplicados (primeira página) —
+  // usado para atualizar a listagem depois de criar uma despesa
+  // (FEAT-17), sem alterar os filtros em uso.
+  function refetch(): void {
+    fetchPage(filters, null, false)
+  }
+
   return {
     items,
     isLoading,
@@ -86,5 +94,6 @@ export function useExpensesQuery(): UseExpensesQueryResult {
     applyFilters,
     loadMore,
     removeItem,
+    refetch,
   }
 }

@@ -293,15 +293,23 @@
   background: color-mix(in srgb, var(--color-text) 4%, transparent);
 }
 
-/* — dialog (painel "Mais" da navegação mobile, FEAT-15) — */
+/* — dialog — */
 .ds-modernist .dialog-backdrop {
   position: fixed;
   inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent);
+}
+/* Modificador "bottom sheet": só o painel "Mais" da navegação mobile
+   (FEAT-15) ancora embaixo da tela; diálogos normais (exclusão, nova
+   despesa) ficam centralizados, como no design de referência. */
+.ds-modernist .dialog-backdrop--sheet {
   display: flex;
   align-items: flex-end;
   justify-content: center;
   padding: 0;
-  background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent);
 }
 .ds-modernist .dialog {
   width: 100%;

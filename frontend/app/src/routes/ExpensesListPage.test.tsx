@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -25,14 +26,18 @@ describe('ExpensesListPage', () => {
     expect(screen.getByRole('heading', { name: 'Transações' })).toBeInTheDocument()
   })
 
-  it('exibe um link "+ Nova despesa" para /expenses/new (FEAT-15)', () => {
+  it('clicar em "+ Nova despesa" abre o popup de cadastro (FEAT-17)', async () => {
+    const user = userEvent.setup()
+    server.use(http.get('http://localhost:5049/categories', () => HttpResponse.json({ items: [] })))
+
     render(
       <MemoryRouter>
         <ExpensesListPage />
       </MemoryRouter>,
     )
 
-    const link = screen.getByRole('link', { name: /nova despesa/i })
-    expect(link).toHaveAttribute('href', '/expenses/new')
+    await user.click(screen.getByRole('button', { name: /nova despesa/i }))
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 })
