@@ -11,9 +11,14 @@ import {
   type CategoryFormInput,
   type CategoryFormOutput,
 } from '../schemas/categorySchema'
-import { IconPicker } from './IconPicker'
 
+// Cor/ícone continuam existindo no contrato da API (`categorySchema`,
+// backend) — o frontend só parou de pedir/exibir esses campos (mais
+// fiel ao design de referência, que não tem seletor de cor/ícone),
+// enviando um valor padrão por baixo dos panos ao criar. Ao editar, o
+// valor já salvo da categoria é preservado (não há campo para trocá-lo).
 const DEFAULT_COLOR = '#3B82F6'
+const DEFAULT_ICON = 'wallet'
 
 interface CategoryFormProps {
   mode?: 'create' | 'edit'
@@ -24,9 +29,6 @@ interface CategoryFormProps {
   onCancel: () => void
 }
 
-// Formulário único de categoria (cadastro/edição), montado inline —
-// sem popup, fiel ao design de referência (FEAT-19). Substitui
-// NewCategoryForm/EditCategoryForm/CategoryFormFields.
 export function CategoryForm({
   mode = 'create',
   categoryId,
@@ -43,22 +45,17 @@ export function CategoryForm({
     register,
     handleSubmit,
     reset,
-    setValue,
     setError,
-    watch,
     formState: { errors },
   } = useForm<CategoryFormInput, unknown, CategoryFormOutput>({
     resolver: zodResolver(categorySchema),
-    defaultValues: initialValues ?? { nome: '', cor: DEFAULT_COLOR, icone: undefined },
+    defaultValues: initialValues ?? { nome: '', cor: DEFAULT_COLOR, icone: DEFAULT_ICON },
   })
-
-  const cor = watch('cor')
-  const icone = watch('icone')
 
   useEffect(() => {
     if (success && data) {
       if (mode === 'create') {
-        reset({ nome: '', cor: DEFAULT_COLOR, icone: undefined })
+        reset({ nome: '', cor: DEFAULT_COLOR, icone: DEFAULT_ICON })
       }
       onSaved(data)
     }
@@ -106,35 +103,6 @@ export function CategoryForm({
           </p>
         )}
       </label>
-
-      <div className="field">
-        <label htmlFor="cor">Cor</label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-          <input
-            id="cor"
-            type="color"
-            aria-invalid={!!errors.cor}
-            style={{ width: '40px', height: '32px', padding: 0, border: '1px solid var(--color-divider)', cursor: 'pointer' }}
-            {...register('cor')}
-          />
-          <span style={{ fontSize: '13px', opacity: 0.7 }}>{cor}</span>
-        </div>
-        {errors.cor && (
-          <p role="alert" style={{ color: 'var(--color-accent-700)', fontSize: '12px', margin: '4px 0 0' }}>
-            {errors.cor.message}
-          </p>
-        )}
-      </div>
-
-      <div className="field">
-        <span>Ícone</span>
-        <IconPicker value={icone} onChange={(value) => setValue('icone', value)} error={!!errors.icone} />
-        {errors.icone && (
-          <p role="alert" style={{ color: 'var(--color-accent-700)', fontSize: '12px', margin: '4px 0 0' }}>
-            {errors.icone.message}
-          </p>
-        )}
-      </div>
 
       <div className="dialog-actions">
         <button type="button" className="btn btn-secondary" onClick={onCancel}>

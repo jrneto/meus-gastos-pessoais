@@ -1,7 +1,6 @@
 import { Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import '@/styles/modernist/modernist.css'
-import { findCategoryIcon } from '@/lib/categories/categoryIcons'
 import type { CategoryItem } from '@/lib/categories/types'
 import { CategoryDeleteDialog } from './CategoryDeleteDialog'
 import { CategoryForm } from './CategoryForm'
@@ -45,57 +44,70 @@ export function CategoryList({
       )}
 
       <ul style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', margin: 0, padding: 0, listStyle: 'none' }}>
-        {items.map((item) => {
-          const Icon = findCategoryIcon(item.icone)
-          return (
-            <li
-              key={item.id}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 'var(--space-3)',
-                borderBottom: '1px solid var(--color-divider)',
-                paddingBottom: 'var(--space-3)',
-              }}
-            >
-              {editingId === item.id ? (
-                <CategoryForm
-                  mode="edit"
-                  categoryId={item.id}
-                  initialValues={{ nome: item.nome, cor: item.cor, icone: item.icone }}
-                  onSaved={onSaved}
-                  onNotFound={() => onNotFound(item.id)}
-                  onCancel={() => onEditToggle(item.id)}
-                />
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', color: item.cor }}>
-                    {Icon && <Icon size={16} />}
-                    <span>{item.nome}</span>
+        {items.map((item) => (
+          <li
+            key={item.id}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-3)',
+              borderBottom: '1px solid var(--color-divider)',
+              paddingBottom: 'var(--space-3)',
+            }}
+          >
+            {editingId === item.id ? (
+              <CategoryForm
+                mode="edit"
+                categoryId={item.id}
+                initialValues={{ nome: item.nome, cor: item.cor, icone: item.icone }}
+                onSaved={onSaved}
+                onNotFound={() => onNotFound(item.id)}
+                onCancel={() => onEditToggle(item.id)}
+              />
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      flex: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px solid var(--color-divider)',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      fontFamily: 'var(--font-heading)',
+                    }}
+                  >
+                    {item.nome.charAt(0).toUpperCase()}
                   </span>
-                  <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                    <button
-                      type="button"
-                      className="btn"
-                      aria-label="Editar categoria"
-                      onClick={() => onEditToggle(item.id)}
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn"
-                      aria-label="Excluir categoria"
-                      onClick={() => setDeleteTarget(item)}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+                  <span>{item.nome}</span>
                 </div>
-              )}
-            </li>
-          )
-        })}
+                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                  <button
+                    type="button"
+                    className="btn"
+                    aria-label="Editar categoria"
+                    onClick={() => onEditToggle(item.id)}
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    aria-label="Excluir categoria"
+                    onClick={() => setDeleteTarget(item)}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
       </ul>
 
       <CategoryDeleteDialog

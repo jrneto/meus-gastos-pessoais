@@ -294,37 +294,6 @@
   background: color-mix(in srgb, var(--color-text) 4%, transparent);
 }
 
-/* — icon tile (seletor de ícone de categoria, FEAT-19 — sem
-   equivalente no design de referência, funcionalidade própria do
-   app introduzida na FEAT-13) — */
-.ds-modernist .icon-tile-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-2);
-}
-.ds-modernist .icon-tile {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-2);
-  border: 1px solid var(--color-divider);
-  background: var(--color-surface);
-  color: var(--color-text);
-  cursor: pointer;
-}
-.ds-modernist .icon-tile:hover {
-  background: color-mix(in srgb, var(--color-text) 7%, transparent);
-}
-.ds-modernist .icon-tile[aria-pressed='true'] {
-  border-color: var(--color-accent);
-  background: var(--color-accent-100);
-  color: var(--color-accent-700);
-}
-.ds-modernist .icon-tile-grid--error {
-  outline: 1px solid var(--color-accent);
-  outline-offset: 4px;
-}
-
 /* — dialog — */
 .ds-modernist .dialog-backdrop {
   position: fixed;
