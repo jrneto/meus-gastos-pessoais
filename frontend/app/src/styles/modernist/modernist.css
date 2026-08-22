@@ -1,0 +1,350 @@
+/*
+ * Modernist — design system tokens and component classes, vendorizados a
+ * partir de `frontend/design-system/_ds/modernist-a01587a5-394c-4dcb-a692-
+ * c51267a2ceac/styles.css` (pasta de referência de design, não editada).
+ *
+ * Esta migração é escopada sob `.ds-modernist`: todo seletor que no
+ * arquivo original era global (`:root`, `body`, `h1`..`h6`, `a`,
+ * `:focus-visible`, `::selection`, `*`) foi reescrito sob esse escopo,
+ * para não colidir com os tokens do shadcn/ui/Tailwind (ex.:
+ * `--radius-sm/md/lg` existem nos dois sistemas) nem vazar para o resto
+ * do app — a SPA não recarrega a página ao navegar entre rotas.
+ *
+ * `.ds-modernist` sozinho só define tokens + reset tipográfico — não
+ * assume "página inteira". Onde o Modernist cobre a tela toda (Login,
+ * páginas fake), some `.ds-modernist-page` (min-height/background de
+ * página). Onde cobre só um pedaço da árvore (ex.: a navegação, que
+ * convive lado a lado com o conteúdo da página em `AppShell`), use só
+ * `.ds-modernist` — sem forçar altura/fundo de página inteira (FEAT-15).
+ *
+ * Só as classes de componente realmente usadas são portadas a cada
+ * migração (`.btn`, `.field`/`.input`, `.seg`/`.seg-opt` na FEAT-14;
+ * `.dialog-backdrop`/`.dialog` na FEAT-15). O restante do sistema
+ * (`.card`, `.tag`, `.table`, `.nav`) entra quando a tela que o usa for
+ * migrada.
+ */
+@import '@fontsource-variable/archivo';
+
+.ds-modernist {
+  --color-bg: #f3f2f2;
+  --color-surface: #eae9e9;
+  --color-text: #201e1d;
+  --color-accent: #ec3013;
+  --color-divider: color-mix(in srgb, #201e1d 40%, transparent);
+
+  --color-accent-100: #fff2ef;
+  --color-accent-600: #dd2b0f;
+  --color-accent-700: #ae1800;
+  --color-accent-800: #7c1405;
+  --color-neutral-100: #f8f4f4;
+  --color-neutral-200: #eae7e7;
+  --color-neutral-300: #d7d3d3;
+  --color-neutral-400: #bab6b6;
+  --color-neutral-500: #9b9797;
+  --color-neutral-600: #7d7979;
+  --color-neutral-700: #605d5d;
+  --color-neutral-800: #444141;
+  --color-neutral-900: #2d2b2b;
+
+  --font-heading: 'Archivo Variable', system-ui, sans-serif;
+  --font-heading-weight: 800;
+  --font-body: 'Archivo Variable', system-ui, sans-serif;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --radius-md: 0px;
+  --radius-lg: 0px;
+
+  --shadow-lg: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
+
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 400;
+}
+
+/* Modificador "página inteira": usado por LoginPage/SignupComingSoonPage,
+   nunca pela navegação (que só ocupa a faixa da sidebar/bottom-nav). */
+.ds-modernist-page {
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+/* — navegação (FEAT-15) — */
+.ds-modernist-sidebar {
+  display: none;
+}
+.ds-modernist-bottom-nav {
+  display: flex;
+}
+@media (min-width: 768px) {
+  .ds-modernist-sidebar {
+    display: flex;
+  }
+  .ds-modernist-bottom-nav {
+    display: none;
+  }
+}
+
+.ds-modernist,
+.ds-modernist *,
+.ds-modernist *::before,
+.ds-modernist *::after {
+  box-sizing: border-box;
+}
+
+.ds-modernist h1,
+.ds-modernist h2,
+.ds-modernist h3,
+.ds-modernist h4,
+.ds-modernist h5,
+.ds-modernist h6 {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  margin: 0 0 var(--space-2);
+}
+
+.ds-modernist a {
+  color: var(--color-accent);
+  text-underline-offset: 3px;
+}
+
+.ds-modernist :focus {
+  outline: none;
+}
+.ds-modernist :focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.ds-modernist ::selection {
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+/* — buttons — */
+.ds-modernist .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 14px;
+  line-height: 1.2;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid transparent;
+  padding: var(--space-2) calc(var(--space-3) * 1.2);
+  border-radius: var(--radius-md);
+}
+.ds-modernist .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.ds-modernist .btn-primary {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+.ds-modernist .btn-primary:hover {
+  background: var(--color-accent-600);
+}
+.ds-modernist .btn-primary:active {
+  background: var(--color-accent-700);
+}
+.ds-modernist .btn-secondary {
+  border-color: var(--color-divider);
+}
+.ds-modernist .btn-secondary:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+.ds-modernist .btn-secondary:active {
+  background: color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+.ds-modernist .btn-block {
+  width: 100%;
+  margin-top: var(--space-2);
+  justify-content: flex-start;
+  text-align: left;
+}
+.ds-modernist .btn-ghost {
+  color: var(--color-accent);
+  padding-inline: var(--space-1);
+}
+.ds-modernist .btn-ghost:hover {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+.ds-modernist .btn-ghost:active {
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+/* — forms — */
+.ds-modernist .field > span,
+.ds-modernist .field > label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 5px;
+  color: color-mix(in srgb, var(--color-text) 70%, transparent);
+}
+.ds-modernist .input {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--color-text);
+  caret-color: var(--color-accent);
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+.ds-modernist .input:hover {
+  border-color: color-mix(in srgb, var(--color-text) 45%, transparent);
+}
+.ds-modernist .input:focus-visible {
+  border-color: var(--color-accent);
+  outline-offset: 0;
+}
+
+/* — segmented control — */
+.ds-modernist .seg {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+.ds-modernist .seg-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ds-modernist .seg-opt input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.ds-modernist .seg-opt + .seg-opt {
+  border-left: 1px solid var(--color-divider);
+}
+.ds-modernist .seg-opt:has(input:checked) {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+.ds-modernist .seg-opt:not(:has(input:checked)):hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+.ds-modernist .seg-opt:has(input:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* — tags (chips de filtro + coluna Categoria da tabela, FEAT-16) — */
+.ds-modernist .tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 3px 10px;
+  border-radius: calc(var(--radius-md) * 0.75);
+}
+.ds-modernist .tag-neutral {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-800);
+}
+.ds-modernist .tag-accent {
+  background: var(--color-accent-100);
+  color: var(--color-accent-800);
+}
+.ds-modernist button.tag {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--color-divider);
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-800);
+}
+.ds-modernist button.tag[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-100);
+  color: var(--color-accent-800);
+}
+
+/* — table (listagem de transações, FEAT-16) — */
+.ds-modernist .table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.ds-modernist .table th {
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 60%, transparent);
+  padding: var(--space-2);
+  border-bottom: 2px solid var(--color-divider);
+}
+.ds-modernist .table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-divider);
+}
+.ds-modernist .table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-text) 4%, transparent);
+}
+
+/* — dialog — */
+.ds-modernist .dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent);
+}
+/* Modificador "bottom sheet": só o painel "Mais" da navegação mobile
+   (FEAT-15) ancora embaixo da tela; diálogos normais (exclusão, nova
+   despesa) ficam centralizados, como no design de referência. */
+.ds-modernist .dialog-backdrop--sheet {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+.ds-modernist .dialog {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: 0;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+}
+.ds-modernist .dialog-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 17px;
+}
+.ds-modernist .dialog-body {
+  font-size: 14px;
+  opacity: 0.85;
+}
+.ds-modernist .dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}

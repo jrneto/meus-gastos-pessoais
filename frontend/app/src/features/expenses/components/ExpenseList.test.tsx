@@ -1,7 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
@@ -29,18 +28,16 @@ const item: ExpenseQueryItem = {
 
 function renderExpenseList(props: Partial<React.ComponentProps<typeof ExpenseList>> = {}) {
   return render(
-    <MemoryRouter>
-      <ExpenseList
-        items={[]}
-        isLoading={false}
-        isLoadingMore={false}
-        error={null}
-        hasMore={false}
-        onLoadMore={vi.fn()}
-        onDeleted={vi.fn()}
-        {...props}
-      />
-    </MemoryRouter>,
+    <ExpenseList
+      items={[]}
+      isLoading={false}
+      isLoadingMore={false}
+      error={null}
+      hasMore={false}
+      onLoadMore={vi.fn()}
+      onRowClick={vi.fn()}
+      {...props}
+    />,
   )
 }
 
@@ -59,10 +56,17 @@ describe('ExpenseList', () => {
     expect(await screen.findByText('Alimentação')).toBeInTheDocument()
   })
 
-  it('categoryId sem correspondência renderiza rótulo genérico, sem quebrar', () => {
+  it('categoria sem correspondência renderiza rótulo genérico, sem quebrar', () => {
     renderExpenseList({ items: [{ ...item, categoryId: 'inexistente' }] })
 
     expect(screen.getByText('Categoria não encontrada')).toBeInTheDocument()
+  })
+
+  it('não mostra cor customizada no texto da categoria (FEAT-20)', async () => {
+    renderExpenseList({ items: [item] })
+
+    const tag = await screen.findByText('Alimentação')
+    expect(tag.getAttribute('style') ?? '').not.toContain('color')
   })
 
   it('exibe estado vazio quando não há itens', () => {
@@ -96,35 +100,21 @@ describe('ExpenseList', () => {
     expect(screen.getByText('Um ou mais filtros são inválidos.')).toBeInTheDocument()
   })
 
-  it('cada item tem um link de editar apontando para /expenses/{id}/edit', () => {
+  it('não exibe mais coluna/ícones de ações por linha (FEAT-20)', () => {
     renderExpenseList({ items: [item] })
 
-    const editLink = screen.getByRole('link', { name: /editar despesa/i })
-    expect(editLink).toHaveAttribute('href', '/expenses/exp-1/edit')
+    expect(screen.queryByText('Ações')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /editar despesa/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /excluir despesa/i })).not.toBeInTheDocument()
   })
 
-  it('clicar em excluir abre o dialog com a descrição da despesa', async () => {
+  it('clicar numa linha chama onRowClick com o item correto', async () => {
     const user = userEvent.setup()
-    renderExpenseList({ items: [item] })
+    const onRowClick = vi.fn()
+    renderExpenseList({ items: [item], onRowClick })
 
-    await user.click(screen.getByRole('button', { name: /excluir despesa/i }))
+    await user.click(screen.getByText('Almoço no restaurante'))
 
-    expect(screen.getByText('Excluir despesa')).toBeInTheDocument()
-    expect(screen.getAllByText(/Almoço no restaurante/).length).toBeGreaterThan(0)
-  })
-
-  it('confirmar a exclusão chama a API e onDeleted com o id correto', async () => {
-    const user = userEvent.setup()
-    server.use(
-      http.delete('http://localhost:5049/expenses/exp-1', () => new HttpResponse(null, { status: 204 })),
-    )
-    const onDeleted = vi.fn()
-
-    renderExpenseList({ items: [item], onDeleted })
-
-    await user.click(screen.getByRole('button', { name: /excluir despesa/i }))
-    await user.click(screen.getByRole('button', { name: /^excluir$/i }))
-
-    await waitFor(() => expect(onDeleted).toHaveBeenCalledWith('exp-1'))
+    expect(onRowClick).toHaveBeenCalledWith(item)
   })
 })

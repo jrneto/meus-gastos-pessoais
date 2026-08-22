@@ -2,50 +2,43 @@ import { describe, expect, it } from 'vitest'
 import { flattenNavItems, NAV_TREE } from './navConfig'
 
 describe('flattenNavItems', () => {
-  it('achata a árvore incluindo os filhos de grupos', () => {
+  it('não há mais grupos com filhos — a árvore já é uma lista de itens folha', () => {
     const flat = flattenNavItems()
-    const ids = flat.map((item) => item.id)
 
-    expect(ids).toContain('expenses-new')
-    expect(ids).toContain('expenses-list')
+    expect(flat).toHaveLength(NAV_TREE.length)
+    expect(flat.map((item) => item.id)).toEqual(NAV_TREE.map((item) => item.id))
   })
 
-  it('não inclui o grupo "Despesas" em si, só seus filhos (grupo não tem `to`)', () => {
-    const flat = flattenNavItems()
-    const ids = flat.map((item) => item.id)
+  it('inclui os 5 itens folha esperados (Início, Despesas, Relatórios, Categorias, Configurações)', () => {
+    const ids = flattenNavItems().map((item) => item.id)
 
-    expect(ids).not.toContain('expenses')
+    expect(ids).toEqual(['home', 'expenses', 'reports', 'categories', 'settings'])
   })
 
-  it('inclui itens folha de topo sem filhos (Início, Relatórios, Categorias, Configurações)', () => {
-    const flat = flattenNavItems()
-    const ids = flat.map((item) => item.id)
-
-    expect(ids).toEqual(
-      expect.arrayContaining(['home', 'reports', 'categories', 'settings']),
-    )
+  it('retorna exatamente 5 itens no total', () => {
+    expect(flattenNavItems()).toHaveLength(5)
   })
 
-  it('retorna exatamente 6 itens folha no total', () => {
-    expect(flattenNavItems()).toHaveLength(6)
-  })
-
-  it('itens mobilePrimary são exatamente os 4 destinos navegáveis esperados', () => {
+  it('itens mobilePrimary são exatamente os 3 destinos esperados (Início, Despesas, Configurações)', () => {
     const mobilePrimaryIds = flattenNavItems()
       .filter((item) => item.mobilePrimary)
       .map((item) => item.id)
 
-    expect(mobilePrimaryIds).toEqual(['home', 'expenses-new', 'expenses-list', 'settings'])
+    expect(mobilePrimaryIds).toEqual(['home', 'expenses', 'settings'])
   })
 
-  it('itens desabilitados (Relatórios) não têm rota nem são mobilePrimary', () => {
-    const disabled = NAV_TREE.filter((item) => item.status === 'disabled')
-
-    expect(disabled).toHaveLength(1)
-    for (const item of disabled) {
-      expect(item.to).toBeUndefined()
-      expect(item.mobilePrimary).toBeFalsy()
+  it('nenhum item fica sem rota — toda funcionalidade "não existente" navega para uma página fake', () => {
+    for (const item of NAV_TREE) {
+      expect(item.to).toBeDefined()
     }
+  })
+
+  it('"Relatórios" está ativo, navegável e fora do mobilePrimary (FEAT-15)', () => {
+    const reports = flattenNavItems().find((item) => item.id === 'reports')
+
+    expect(reports?.status).toBe('active')
+    expect(reports?.to).toBe('/reports')
+    expect(reports?.mobilePrimary).toBeFalsy()
   })
 
   it('"Categorias" está ativa, navegável e fora do mobilePrimary (FEAT-13)', () => {
@@ -54,5 +47,13 @@ describe('flattenNavItems', () => {
     expect(categories?.status).toBe('active')
     expect(categories?.to).toBe('/categories')
     expect(categories?.mobilePrimary).toBeFalsy()
+  })
+
+  it('"Transações" é um único item apontando para a listagem de despesas (FEAT-16)', () => {
+    const expenses = flattenNavItems().find((item) => item.id === 'expenses')
+
+    expect(expenses?.label).toBe('Transações')
+    expect(expenses?.to).toBe('/expenses')
+    expect(expenses?.children).toBeUndefined()
   })
 })

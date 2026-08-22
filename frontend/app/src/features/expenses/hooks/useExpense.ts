@@ -16,6 +16,14 @@ export function useExpense(id: string): UseExpenseResult {
   const token = useAuthStore((state) => state.token)
 
   useEffect(() => {
+    // Sem id, não há o que buscar — usado pelo popup unificado de
+    // formulário (FEAT-18), que chama este hook incondicionalmente
+    // mesmo no modo cadastro, onde não existe despesa a carregar.
+    if (!id) {
+      setIsLoading(false)
+      return
+    }
+
     let cancelled = false
     setIsLoading(true)
     setError(null)

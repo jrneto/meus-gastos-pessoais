@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { categoriesWriteApi } from '../api/categoriesWriteApi'
 import { SessionExpiredError } from '../errors/categoryErrors'
+import type { CategoryItem } from '@/lib/categories/types'
 import type { CategoryFormOutput } from '../schemas/categorySchema'
 
 interface UseUpdateCategoryResult {
@@ -9,20 +10,23 @@ interface UseUpdateCategoryResult {
   isLoading: boolean
   error: Error | null
   success: boolean
+  data: CategoryItem | null
 }
 
 export function useUpdateCategory(id: string): UseUpdateCategoryResult {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const [success, setSuccess] = useState(false)
+  const [data, setData] = useState<CategoryItem | null>(null)
   const token = useAuthStore((state) => state.token)
 
-  async function updateCategory(data: CategoryFormOutput): Promise<void> {
+  async function updateCategory(formData: CategoryFormOutput): Promise<void> {
     setIsLoading(true)
     setError(null)
     setSuccess(false)
     try {
-      await categoriesWriteApi.updateCategory(token ?? '', id, data)
+      const updated = await categoriesWriteApi.updateCategory(token ?? '', id, formData)
+      setData(updated)
       setSuccess(true)
     } catch (err) {
       if (err instanceof SessionExpiredError) {
@@ -34,5 +38,5 @@ export function useUpdateCategory(id: string): UseUpdateCategoryResult {
     }
   }
 
-  return { updateCategory, isLoading, error, success }
+  return { updateCategory, isLoading, error, success, data }
 }

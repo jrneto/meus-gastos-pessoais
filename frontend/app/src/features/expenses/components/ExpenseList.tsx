@@ -1,14 +1,8 @@
-import { Pencil, Trash2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button, buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { CategoryBadge } from '@/lib/categories/CategoryBadge'
+import { useMemo } from 'react'
+import '@/styles/modernist/modernist.css'
 import { useCategories } from '@/lib/categories/useCategories'
 import type { ExpenseQueryItem } from '../api/expensesApi'
 import { formatCentsToCurrency } from '../utils/currency'
-import { ExpenseDeleteDialog } from './ExpenseDeleteDialog'
 
 interface ExpenseListProps {
   items: ExpenseQueryItem[]
@@ -17,7 +11,7 @@ interface ExpenseListProps {
   error: Error | null
   hasMore: boolean
   onLoadMore: () => void
-  onDeleted: (id: string) => void
+  onRowClick: (item: ExpenseQueryItem) => void
 }
 
 export function ExpenseList({
@@ -27,9 +21,8 @@ export function ExpenseList({
   error,
   hasMore,
   onLoadMore,
-  onDeleted,
+  onRowClick,
 }: ExpenseListProps) {
-  const [deleteTarget, setDeleteTarget] = useState<ExpenseQueryItem | null>(null)
   const { items: categories } = useCategories()
   const categoryById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
@@ -37,69 +30,59 @@ export function ExpenseList({
   )
 
   return (
-    <div className="flex w-full max-w-sm flex-col gap-4">
+    <div className="ds-modernist" style={{ display: 'flex', width: '100%', flexDirection: 'column', gap: 'var(--space-4)' }}>
       {error && (
-        <Alert variant="destructive">
-          <AlertTitle>Não foi possível buscar as despesas</AlertTitle>
-          <AlertDescription>{error.message}</AlertDescription>
-        </Alert>
+        <div style={{ color: 'var(--color-accent-700)' }}>
+          <div style={{ fontWeight: 700 }}>Não foi possível buscar as despesas</div>
+          <div style={{ fontSize: '13px' }}>{error.message}</div>
+        </div>
       )}
 
       {!isLoading && items.length === 0 && !error && (
-        <p className="text-sm text-muted-foreground">
+        <p style={{ opacity: 0.55, fontSize: '13px' }}>
           Nenhuma despesa encontrada para os filtros selecionados.
         </p>
       )}
 
-      <ul className="flex flex-col gap-2">
-        {items.map((item) => (
-          <li
-            key={item.id}
-            className="flex items-center justify-between rounded-lg border border-border px-2.5 py-2 text-sm"
-          >
-            <Link to={`/expenses/${item.id}`} className="flex flex-col">
-              <span className="font-medium hover:underline">{item.description}</span>
-              <span className="text-muted-foreground">
-                <CategoryBadge category={categoryById.get(item.categoryId)} /> · {item.expenseDate}
-              </span>
-            </Link>
-            <div className="flex items-center gap-2">
-              <span className="font-medium">{formatCentsToCurrency(item.amountInCents)}</span>
-              <Link
-                to={`/expenses/${item.id}/edit`}
-                aria-label="Editar despesa"
-                className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }))}
-              >
-                <Pencil className="size-4" />
-              </Link>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Excluir despesa"
-                onClick={() => setDeleteTarget(item)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {hasMore && (
-        <Button variant="outline" onClick={onLoadMore} disabled={isLoadingMore}>
-          {isLoadingMore ? 'Carregando...' : 'Carregar mais'}
-        </Button>
+      {items.length > 0 && (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Categoria</th>
+              <th>Descrição</th>
+              <th>Data</th>
+              <th style={{ textAlign: 'right' }}>Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => {
+              const category = categoryById.get(item.categoryId)
+              return (
+                <tr key={item.id} onClick={() => onRowClick(item)} style={{ cursor: 'pointer' }}>
+                  <td>
+                    {category ? (
+                      <span className="tag tag-neutral">{category.nome}</span>
+                    ) : (
+                      <span style={{ opacity: 0.6 }}>Categoria não encontrada</span>
+                    )}
+                  </td>
+                  <td>{item.description}</td>
+                  <td style={{ opacity: 0.65 }}>{item.expenseDate}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-accent-700)' }}>
+                    {formatCentsToCurrency(item.amountInCents)}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       )}
 
-      <ExpenseDeleteDialog
-        key={deleteTarget?.id ?? 'closed'}
-        expense={deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-        onDeleted={(id) => {
-          onDeleted(id)
-          setDeleteTarget(null)
-        }}
-      />
+      {hasMore && (
+        <button type="button" className="btn btn-secondary" onClick={onLoadMore} disabled={isLoadingMore}>
+          {isLoadingMore ? 'Carregando...' : 'Carregar mais'}
+        </button>
+      )}
     </div>
   )
 }

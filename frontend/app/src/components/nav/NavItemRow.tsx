@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { cn } from '@/lib/utils'
 import type { NavItem } from './navConfig'
 
 interface NavItemRowProps {
@@ -11,19 +10,11 @@ interface NavItemRowProps {
 export function NavItemRow({ item, isActive, collapsed = false }: NavItemRowProps) {
   const Icon = item.icon
 
-  if (item.status === 'disabled' || !item.to) {
-    return (
-      <div
-        role="button"
-        aria-disabled="true"
-        tabIndex={-1}
-        title={item.label}
-        className="flex cursor-not-allowed items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-muted-foreground/50"
-      >
-        <Icon className="size-4 shrink-0" />
-        {!collapsed && <span>{item.label}</span>}
-      </div>
-    )
+  // FEAT-15: todo item de NAV_TREE tem `to` (nenhum fica desabilitado
+  // mais) — o guard abaixo é só defensivo, caso um item futuro seja
+  // adicionado sem rota.
+  if (!item.to) {
+    return null
   }
 
   return (
@@ -31,12 +22,20 @@ export function NavItemRow({ item, isActive, collapsed = false }: NavItemRowProp
       to={item.to}
       title={item.label}
       aria-current={isActive ? 'page' : undefined}
-      className={cn(
-        'flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted',
-        isActive && 'bg-muted font-medium text-foreground',
-      )}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        padding: '11px 12px',
+        borderLeft: `2px solid ${isActive ? 'var(--color-accent)' : 'transparent'}`,
+        background: isActive ? 'var(--color-neutral-200)' : 'transparent',
+        color: isActive ? 'var(--color-text)' : 'var(--color-neutral-700)',
+        fontWeight: isActive ? 600 : 400,
+        fontSize: '13.5px',
+        textDecoration: 'none',
+      }}
     >
-      <Icon className="size-4 shrink-0" />
+      <Icon size={18} style={{ flexShrink: 0 }} />
       {!collapsed && <span>{item.label}</span>}
     </Link>
   )

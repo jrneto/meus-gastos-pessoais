@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
 import { ExpenseForm } from './ExpenseForm'
@@ -22,10 +22,10 @@ function mockCategories(items: unknown[] = [category]) {
   server.use(http.get(CATEGORIES_URL, () => HttpResponse.json({ items })))
 }
 
-function renderForm() {
+function renderForm(props: Partial<React.ComponentProps<typeof ExpenseForm>> = {}) {
   return render(
     <MemoryRouter>
-      <ExpenseForm />
+      <ExpenseForm {...props} />
     </MemoryRouter>,
   )
 }
@@ -33,8 +33,7 @@ function renderForm() {
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Descrição'), 'Almoço no restaurante')
   await user.type(screen.getByLabelText('Valor'), '45,90')
-  await user.click(screen.getByRole('combobox', { name: 'Categoria' }))
-  await user.click(await screen.findByRole('option', { name: 'Alimentação' }))
+  await user.selectOptions(screen.getByLabelText('Categoria'), 'cat-1')
   // input[type=date] não aceita digitação simulada char-a-char do
   // userEvent (segmentos do date picker nativo) — fireEvent.change é a
   // forma confiável de setar o valor em testes com jsdom.
@@ -55,7 +54,7 @@ describe('ExpenseForm', () => {
     expect(await screen.findByText('Você ainda não tem nenhuma categoria cadastrada.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /criar categoria/i })).toHaveAttribute(
       'href',
-      '/categories/new',
+      '/categories',
     )
   })
 
@@ -97,9 +96,10 @@ describe('ExpenseForm', () => {
     expect(screen.getByLabelText('Valor')).toHaveValue('45,90')
   })
 
-  it('submit com sucesso limpa o formulário e mostra confirmação', async () => {
+  it('submit com sucesso reseta o formulário e chama onSuccess', async () => {
     mockCategories()
     const user = userEvent.setup()
+    const onSuccess = vi.fn()
     server.use(
       http.post(EXPENSES_URL, () =>
         HttpResponse.json({
@@ -113,14 +113,101 @@ describe('ExpenseForm', () => {
       ),
     )
 
-    renderForm()
+    renderForm({ onSuccess })
     await screen.findByLabelText('Descrição')
     await fillValidForm(user)
 
     await user.click(screen.getByRole('button', { name: /registrar despesa/i }))
 
-    expect(await screen.findByText('Despesa registrada')).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByLabelText('Descrição')).toHaveValue(''))
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled())
+    expect(screen.getByLabelText('Descrição')).toHaveValue('')
     expect(screen.getByLabelText('Valor')).toHaveValue('')
+  })
+
+  it('exibe o botão "Cancelar" só quando onCancel é passado, e ele chama onCancel', async () => {
+    mockCategories()
+    const user = userEvent.setup()
+    const onCancel = vi.fn()
+
+    renderForm({ onCancel })
+    await screen.findByLabelText('Descrição')
+
+    await user.click(screen.getByRole('button', { name: /cancelar/i }))
+    expect(onCancel).toHaveBeenCalled()
+  })
+
+  describe('mode="edit" (FEAT-18)', () => {
+    const EXPENSE_URL = 'http://localhost:5049/expenses/exp-1'
+    const initialValues = {
+      description: 'Almoço no restaurante',
+      amount: '45,90',
+      categoryId: 'cat-1',
+      expenseDate: '2025-06-15',
+    }
+
+    it('renderiza pré-preenchido com o rótulo "Salvar alterações"', async () => {
+      mockCategories()
+
+      renderForm({ mode: 'edit', expenseId: 'exp-1', initialValues })
+
+      expect(await screen.findByLabelText('Descrição')).toHaveValue('Almoço no restaurante')
+      expect(screen.getByLabelText('Valor')).toHaveValue('45,90')
+      // Categorias chegam de forma assíncrona (MSW) — só depois que a
+      // opção existe no DOM o <select> reflete o value selecionado.
+      await screen.findByRole('option', { name: 'Alimentação' })
+      expect(screen.getByLabelText('Categoria')).toHaveValue('cat-1')
+      expect(screen.getByLabelText('Data')).toHaveValue('2025-06-15')
+      expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeInTheDocument()
+    })
+
+    it('submit chama PUT /expenses/{id} e onSuccess ao ter sucesso', async () => {
+      mockCategories()
+      const user = userEvent.setup()
+      const onSuccess = vi.fn()
+      let apiCalled = false
+      server.use(
+        http.put(EXPENSE_URL, () => {
+          apiCalled = true
+          return HttpResponse.json({ ...initialValues, id: 'exp-1', amountInCents: 4590 })
+        }),
+      )
+
+      renderForm({ mode: 'edit', expenseId: 'exp-1', initialValues, onSuccess })
+      await screen.findByLabelText('Descrição')
+
+      await user.click(screen.getByRole('button', { name: /salvar alterações/i }))
+
+      await waitFor(() => expect(onSuccess).toHaveBeenCalled())
+      expect(apiCalled).toBe(true)
+    })
+
+    it('404 ao salvar chama onSuccess silenciosamente, sem exibir erro', async () => {
+      mockCategories()
+      const user = userEvent.setup()
+      const onSuccess = vi.fn()
+      server.use(http.put(EXPENSE_URL, () => new HttpResponse(null, { status: 404 })))
+
+      renderForm({ mode: 'edit', expenseId: 'exp-1', initialValues, onSuccess })
+      await screen.findByLabelText('Descrição')
+
+      await user.click(screen.getByRole('button', { name: /salvar alterações/i }))
+
+      await waitFor(() => expect(onSuccess).toHaveBeenCalled())
+      expect(screen.queryByText('Não foi possível salvar')).not.toBeInTheDocument()
+    })
+
+    it('erro 400 exibe "Não foi possível salvar" e mantém os dados preenchidos', async () => {
+      mockCategories()
+      const user = userEvent.setup()
+      server.use(http.put(EXPENSE_URL, () => new HttpResponse(null, { status: 400 })))
+
+      renderForm({ mode: 'edit', expenseId: 'exp-1', initialValues })
+      await screen.findByLabelText('Descrição')
+
+      await user.click(screen.getByRole('button', { name: /salvar alterações/i }))
+
+      expect(await screen.findByText('Não foi possível salvar')).toBeInTheDocument()
+      expect(screen.getByLabelText('Descrição')).toHaveValue('Almoço no restaurante')
+    })
   })
 })

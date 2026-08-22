@@ -26,7 +26,7 @@ describe('useUpdateCategory', () => {
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
   })
 
-  it('em caso de sucesso, seta success = true', async () => {
+  it('em caso de sucesso, seta success = true e expõe a categoria atualizada', async () => {
     server.use(http.put(CATEGORY_URL, () => HttpResponse.json({ id: 'cat-1', ...payload })))
 
     const { result } = renderHook(() => useUpdateCategory('cat-1'))
@@ -36,6 +36,7 @@ describe('useUpdateCategory', () => {
     })
 
     expect(result.current.success).toBe(true)
+    expect(result.current.data).toEqual({ id: 'cat-1', ...payload })
   })
 
   it('em caso de 404, expõe NotFoundError', async () => {

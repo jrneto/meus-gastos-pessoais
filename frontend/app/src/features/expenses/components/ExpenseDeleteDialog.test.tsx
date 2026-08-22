@@ -59,7 +59,7 @@ describe('ExpenseDeleteDialog', () => {
     await user.click(screen.getByRole('button', { name: /cancelar/i }))
 
     expect(apiCalled).toBe(false)
-    expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything())
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
   it('confirmar com sucesso chama a API e onDeleted', async () => {
@@ -88,6 +88,32 @@ describe('ExpenseDeleteDialog', () => {
     await user.click(screen.getByRole('button', { name: /^excluir$/i }))
 
     await waitFor(() => expect(onDeleted).toHaveBeenCalledWith('exp-1'))
+  })
+
+  it('fecha ao pressionar Esc', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+
+    render(
+      <ExpenseDeleteDialog expense={expense} onOpenChange={onOpenChange} onDeleted={vi.fn()} />,
+    )
+
+    await user.keyboard('{Escape}')
+
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('fecha ao clicar no backdrop', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+
+    render(
+      <ExpenseDeleteDialog expense={expense} onOpenChange={onOpenChange} onDeleted={vi.fn()} />,
+    )
+
+    await user.click(screen.getByRole('alertdialog').parentElement as HTMLElement)
+
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
   it('confirmar com erro inesperado mantém o dialog aberto com alerta, sem chamar onDeleted', async () => {
