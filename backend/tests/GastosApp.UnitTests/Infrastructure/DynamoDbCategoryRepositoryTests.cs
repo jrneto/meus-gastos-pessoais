@@ -25,9 +25,9 @@ public class DynamoDbCategoryRepositoryTests
     }
 
     private static Dictionary<string, AttributeValue> BuildItem(
-        string userId, string sk, string id, string nome, string cor = "#0EA5E9", string icone = "plane") => new()
+        string accountId, string sk, string id, string nome, string cor = "#0EA5E9", string icone = "plane") => new()
     {
-        ["PK"] = new AttributeValue { S = $"USER#{userId}" },
+        ["PK"] = new AttributeValue { S = $"ACCOUNT#{accountId}" },
         ["SK"] = new AttributeValue { S = sk },
         ["GSI2PK"] = new AttributeValue { S = $"ID#{id}" },
         ["Nome"] = new AttributeValue { S = nome },
@@ -53,7 +53,7 @@ public class DynamoDbCategoryRepositoryTests
         result.Outcome.Should().Be(GastosApp.Application.Common.Interfaces.CategoryWriteOutcome.Success);
         await _dynamoDbClientMock.Received(1).PutItemAsync(
             Arg.Is<PutItemRequest>(r =>
-                r.Item["PK"].S == "USER#user-1"
+                r.Item["PK"].S == "ACCOUNT#user-1"
                 && r.Item["SK"].S == "CAT#viagem"
                 && r.Item["Nome"].S == "Viagem"
                 && r.ConditionExpression == "attribute_not_exists(PK)"),
@@ -97,7 +97,7 @@ public class DynamoDbCategoryRepositoryTests
         await _dynamoDbClientMock.Received(1).QueryAsync(
             Arg.Is<QueryRequest>(r =>
                 r.KeyConditionExpression == "PK = :pk AND begins_with(SK, :skPrefix)"
-                && r.ExpressionAttributeValues[":pk"].S == "USER#user-1"
+                && r.ExpressionAttributeValues[":pk"].S == "ACCOUNT#user-1"
                 && r.ExpressionAttributeValues[":skPrefix"].S == "CAT#"),
             Arg.Any<CancellationToken>());
     }
@@ -123,7 +123,7 @@ public class DynamoDbCategoryRepositoryTests
             {
                 Items = [new Dictionary<string, AttributeValue>
                 {
-                    ["PK"] = new AttributeValue { S = "USER#outro-user" },
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#outro-user" },
                     ["SK"] = new AttributeValue { S = "CAT#viagem" }
                 }]
             });
@@ -141,7 +141,7 @@ public class DynamoDbCategoryRepositoryTests
             {
                 Items = [new Dictionary<string, AttributeValue>
                 {
-                    ["PK"] = new AttributeValue { S = "USER#user-1" },
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#user-1" },
                     ["SK"] = new AttributeValue { S = "CAT#viagem" }
                 }]
             });
@@ -180,7 +180,7 @@ public class DynamoDbCategoryRepositoryTests
             {
                 Items = [new Dictionary<string, AttributeValue>
                 {
-                    ["PK"] = new AttributeValue { S = "USER#outro-user" },
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#outro-user" },
                     ["SK"] = new AttributeValue { S = "CAT#viagem" }
                 }]
             });
@@ -199,7 +199,7 @@ public class DynamoDbCategoryRepositoryTests
             {
                 Items = [new Dictionary<string, AttributeValue>
                 {
-                    ["PK"] = new AttributeValue { S = "USER#user-1" },
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#user-1" },
                     ["SK"] = new AttributeValue { S = "CAT#viagem" }
                 }]
             });
@@ -231,7 +231,7 @@ public class DynamoDbCategoryRepositoryTests
             {
                 Items = [new Dictionary<string, AttributeValue>
                 {
-                    ["PK"] = new AttributeValue { S = "USER#user-1" },
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#user-1" },
                     ["SK"] = new AttributeValue { S = "CAT#viagem" }
                 }]
             });
@@ -265,7 +265,7 @@ public class DynamoDbCategoryRepositoryTests
             {
                 Items = [new Dictionary<string, AttributeValue>
                 {
-                    ["PK"] = new AttributeValue { S = "USER#user-1" },
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#user-1" },
                     ["SK"] = new AttributeValue { S = "CAT#viagem" }
                 }]
             });
@@ -298,7 +298,7 @@ public class DynamoDbCategoryRepositoryTests
             {
                 Items = [new Dictionary<string, AttributeValue>
                 {
-                    ["PK"] = new AttributeValue { S = "USER#user-1" },
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#user-1" },
                     ["SK"] = new AttributeValue { S = "CAT#viagem" }
                 }]
             });
@@ -345,7 +345,7 @@ public class DynamoDbCategoryRepositoryTests
             {
                 Items = [new Dictionary<string, AttributeValue>
                 {
-                    ["PK"] = new AttributeValue { S = "USER#outro-user" },
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#outro-user" },
                     ["SK"] = new AttributeValue { S = "CAT#viagem" }
                 }]
             });
@@ -364,7 +364,7 @@ public class DynamoDbCategoryRepositoryTests
             {
                 Items = [new Dictionary<string, AttributeValue>
                 {
-                    ["PK"] = new AttributeValue { S = "USER#user-1" },
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#user-1" },
                     ["SK"] = new AttributeValue { S = "CAT#viagem" }
                 }]
             });
@@ -376,7 +376,7 @@ public class DynamoDbCategoryRepositoryTests
         result.Should().BeTrue();
         await _dynamoDbClientMock.Received(1).DeleteItemAsync(
             Arg.Is<DeleteItemRequest>(r =>
-                r.Key["PK"].S == "USER#user-1"
+                r.Key["PK"].S == "ACCOUNT#user-1"
                 && r.Key["SK"].S == "CAT#viagem"
                 && r.ConditionExpression == "attribute_exists(PK)"),
             Arg.Any<CancellationToken>());
@@ -390,7 +390,7 @@ public class DynamoDbCategoryRepositoryTests
             {
                 Items = [new Dictionary<string, AttributeValue>
                 {
-                    ["PK"] = new AttributeValue { S = "USER#user-1" },
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#user-1" },
                     ["SK"] = new AttributeValue { S = "CAT#viagem" }
                 }]
             });

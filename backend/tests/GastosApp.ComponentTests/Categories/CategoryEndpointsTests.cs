@@ -20,6 +20,7 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
         _factory = factory;
         _factory.ResetCategoryRepositoryMock();
         _factory.ResetExpenseRepositoryMock();
+        _factory.ResetAccountRepositoryMock();
         _client = factory.CreateClient();
     }
 
@@ -71,6 +72,25 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
         var response = await _client.GetAsync("/categories");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs().ListAsync(default!, default);
+    }
+
+    // FEAT-19: ResolveAccountEndpointFilter roda antes de qualquer handler —
+    // usuário autenticado sem Account resolvível (situação que só ocorreria
+    // por dado corrompido/manual) nunca chega no CategoryRepositoryMock.
+    [Fact]
+    public async Task GetCategories_ComUsuarioSemContaResolvivel_Retorna401ComAccountNotFound()
+    {
+        AuthenticateAs("user-sem-conta");
+        _factory.AccountRepositoryMock.FindAccountIdByUserIdAsync("user-sem-conta", Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+
+        var response = await _client.GetAsync("/categories");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/account-not-found");
+
         await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs().ListAsync(default!, default);
     }
 

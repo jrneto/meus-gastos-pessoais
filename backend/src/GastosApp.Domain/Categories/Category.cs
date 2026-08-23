@@ -3,7 +3,7 @@ namespace GastosApp.Domain.Categories;
 public sealed class Category
 {
     public string Id { get; }
-    public string UserId { get; }
+    public string AccountId { get; }
     public string Nome { get; }
     public string Cor { get; }
     public string Icone { get; }
@@ -11,25 +11,25 @@ public sealed class Category
 
     private Category(
         string id,
-        string userId,
+        string accountId,
         string nome,
         string cor,
         string icone,
         DateTimeOffset createdAt)
     {
         Id = id;
-        UserId = userId;
+        AccountId = accountId;
         Nome = nome;
         Cor = cor;
         Icone = icone;
         CreatedAt = createdAt;
     }
 
-    public static Category Create(string userId, string nome, string cor, string icone)
+    public static Category Create(string accountId, string nome, string cor, string icone)
     {
         return new Category(
             Guid.NewGuid().ToString(),
-            userId,
+            accountId,
             nome,
             cor,
             icone,
@@ -38,12 +38,12 @@ public sealed class Category
 
     public static Category Restore(
         string id,
-        string userId,
+        string accountId,
         string nome,
         string cor,
         string icone,
         DateTimeOffset createdAt)
     {
-        return new Category(id, userId, nome, cor, icone, createdAt);
+        return new Category(id, accountId, nome, cor, icone, createdAt);
     }
 }

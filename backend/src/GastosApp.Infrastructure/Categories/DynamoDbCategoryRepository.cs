@@ -43,7 +43,7 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
         }
     }
 
-    public async Task<IReadOnlyList<Category>> ListAsync(string userId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Category>> ListAsync(string accountId, CancellationToken cancellationToken = default)
     {
         var response = await _dynamoDbClient.QueryAsync(new QueryRequest
         {
@@ -51,7 +51,7 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
             KeyConditionExpression = "PK = :pk AND begins_with(SK, :skPrefix)",
             ExpressionAttributeValues = new Dictionary<string, AttributeValue>
             {
-                [":pk"] = new AttributeValue { S = $"USER#{userId}" },
+                [":pk"] = new AttributeValue { S = $"ACCOUNT#{accountId}" },
                 [":skPrefix"] = new AttributeValue { S = SkPrefix }
             }
         }, cancellationToken);
@@ -59,14 +59,14 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
         return response.Items.Select(MapToCategory).ToList();
     }
 
-    public async Task<Category?> GetByIdAsync(string userId, string categoryId, CancellationToken cancellationToken = default)
+    public async Task<Category?> GetByIdAsync(string accountId, string categoryId, CancellationToken cancellationToken = default)
     {
         var lookup = await LookupByIdAsync(categoryId, cancellationToken);
         if (lookup is null)
             return null;
 
         var (pk, sk) = lookup.Value;
-        if (pk != $"USER#{userId}")
+        if (pk != $"ACCOUNT#{accountId}")
             return null;
 
         var current = await _dynamoDbClient.GetItemAsync(new GetItemRequest
@@ -83,7 +83,7 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
     }
 
     public async Task<CategoryWriteResult> UpdateAsync(
-        string userId,
+        string accountId,
         string categoryId,
         string nome,
         string cor,
@@ -95,7 +95,7 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
             return CategoryWriteResult.NotFound();
 
         var (pk, oldSk) = lookup.Value;
-        if (pk != $"USER#{userId}")
+        if (pk != $"ACCOUNT#{accountId}")
             return CategoryWriteResult.NotFound();
 
         var current = await _dynamoDbClient.GetItemAsync(new GetItemRequest
@@ -114,7 +114,7 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
         var createdAt = DateTimeOffset.Parse(
             current.Item["CreatedAt"].S, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
         var newSk = BuildSk(nome);
-        var updated = Category.Restore(categoryId, userId, nome, cor, icone, createdAt);
+        var updated = Category.Restore(categoryId, accountId, nome, cor, icone, createdAt);
         var newItem = BuildItem(updated, newSk);
 
         if (newSk == oldSk)
@@ -175,14 +175,14 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
         }
     }
 
-    public async Task<bool> DeleteAsync(string userId, string categoryId, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(string accountId, string categoryId, CancellationToken cancellationToken = default)
     {
         var lookup = await LookupByIdAsync(categoryId, cancellationToken);
         if (lookup is null)
             return false;
 
         var (pk, sk) = lookup.Value;
-        if (pk != $"USER#{userId}")
+        if (pk != $"ACCOUNT#{accountId}")
             return false;
 
         try
@@ -232,7 +232,7 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
     {
         return new Dictionary<string, AttributeValue>
         {
-            ["PK"] = new AttributeValue { S = $"USER#{category.UserId}" },
+            ["PK"] = new AttributeValue { S = $"ACCOUNT#{category.AccountId}" },
             ["SK"] = new AttributeValue { S = sk },
             ["GSI2PK"] = new AttributeValue { S = $"ID#{category.Id}" },
             ["Nome"] = new AttributeValue { S = category.Nome },
@@ -245,12 +245,12 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
     private static Category MapToCategory(Dictionary<string, AttributeValue> item)
     {
         var pk = item["PK"].S;
-        var userId = pk[(pk.IndexOf('#') + 1)..];
+        var accountId = pk[(pk.IndexOf('#') + 1)..];
         var gsi2pk = item["GSI2PK"].S;
         var id = gsi2pk[(gsi2pk.IndexOf('#') + 1)..];
         var createdAt = DateTimeOffset.Parse(
             item["CreatedAt"].S, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
 
-        return Category.Restore(id, userId, item["Nome"].S, item["Cor"].S, item["Icone"].S, createdAt);
+        return Category.Restore(id, accountId, item["Nome"].S, item["Cor"].S, item["Icone"].S, createdAt);
     }
 }

@@ -1,7 +1,9 @@
 using System.Text.Json.Serialization;
+using GastosApp.Application.Accounts.Commands.EnsureAccount;
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.Application.Common.Results;
 using Mediator;
+using Microsoft.Extensions.Logging;
 
 namespace GastosApp.Application.Auth.Commands.Login;
 
@@ -10,10 +12,14 @@ public sealed record LoginUserCommand(string Email, string Password) : ICommand<
 public sealed class LoginUserCommandHandler : ICommandHandler<LoginUserCommand, Result<LoginUserResult>>
 {
     private readonly IAuthService _authService;
+    private readonly ISender _sender;
+    private readonly ILogger<LoginUserCommandHandler> _logger;
 
-    public LoginUserCommandHandler(IAuthService authService)
+    public LoginUserCommandHandler(IAuthService authService, ISender sender, ILogger<LoginUserCommandHandler> logger)
     {
         _authService = authService;
+        _sender = sender;
+        _logger = logger;
     }
 
     public async ValueTask<Result<LoginUserResult>> Handle(LoginUserCommand command, CancellationToken cancellationToken)
@@ -26,6 +32,21 @@ public sealed class LoginUserCommandHandler : ICommandHandler<LoginUserCommand, 
         var result = await _authService.LoginAsync(command.Email, command.Password, cancellationToken);
         if (result.IsFailure)
             return Result.Failure<LoginUserResult>(result.Error!);
+
+        // Fallback de criação de conta (FEAT-19): normalmente a Account já existe,
+        // criada pelo trigger PostConfirmation do Cognito. Se não existir ainda
+        // (trigger falhou, usuário criado fora do fluxo padrão, ambiente local sem
+        // o trigger), EnsureAccountCommand cria agora, de forma idempotente. Falha
+        // aqui nunca pode derrubar o login (efeito colateral, não fluxo de negócio
+        // — ver plan.md, decisão técnica 2) — só loga.
+        try
+        {
+            await _sender.Send(new EnsureAccountCommand(result.Value.UserId), cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao garantir Account para o usuário {UserId} no login.", result.Value.UserId);
+        }
 
         return Result.Success(LoginUserResult.FromLoginResult(result.Value));
     }

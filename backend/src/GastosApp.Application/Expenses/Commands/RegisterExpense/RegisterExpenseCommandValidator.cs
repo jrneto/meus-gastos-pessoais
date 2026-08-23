@@ -29,5 +29,5 @@ public sealed class RegisterExpenseCommandValidator : AbstractValidator<Register
 
     private async Task<bool> BeAnOwnedCategoryAsync(
         RegisterExpenseCommand command, string categoryId, CancellationToken cancellationToken) =>
-        await _categoryRepository.GetByIdAsync(command.UserId, categoryId, cancellationToken) is not null;
+        await _categoryRepository.GetByIdAsync(command.AccountId, categoryId, cancellationToken) is not null;
 }

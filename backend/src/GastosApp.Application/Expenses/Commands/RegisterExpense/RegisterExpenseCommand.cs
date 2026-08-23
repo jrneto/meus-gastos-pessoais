@@ -6,7 +6,7 @@ using Mediator;
 namespace GastosApp.Application.Expenses.Commands.RegisterExpense;
 
 public sealed record RegisterExpenseCommand(
-    string UserId,
+    string AccountId,
     string Description,
     long AmountInCents,
     string CategoryId,
@@ -24,7 +24,7 @@ public sealed class RegisterExpenseCommandHandler : ICommandHandler<RegisterExpe
     public async ValueTask<Result<RegisterExpenseResult>> Handle(RegisterExpenseCommand command, CancellationToken cancellationToken)
     {
         var expense = Expense.Create(
-            command.UserId,
+            command.AccountId,
             command.Description,
             command.AmountInCents,
             command.CategoryId,

@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GastosApp.IntegrationTests"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GastosApp.ComponentTests", "tests\GastosApp.ComponentTests\GastosApp.ComponentTests.csproj", "{7B0FB622-63DC-475F-8B74-967DAF734CAF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GastosApp.CognitoTriggers", "src\GastosApp.CognitoTriggers\GastosApp.CognitoTriggers.csproj", "{E035C125-258E-4CE4-8BB3-25D49E58421C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -115,6 +117,18 @@ Global
 		{7B0FB622-63DC-475F-8B74-967DAF734CAF}.Release|x64.Build.0 = Release|Any CPU
 		{7B0FB622-63DC-475F-8B74-967DAF734CAF}.Release|x86.ActiveCfg = Release|Any CPU
 		{7B0FB622-63DC-475F-8B74-967DAF734CAF}.Release|x86.Build.0 = Release|Any CPU
+		{E035C125-258E-4CE4-8BB3-25D49E58421C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E035C125-258E-4CE4-8BB3-25D49E58421C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E035C125-258E-4CE4-8BB3-25D49E58421C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E035C125-258E-4CE4-8BB3-25D49E58421C}.Debug|x64.Build.0 = Debug|Any CPU
+		{E035C125-258E-4CE4-8BB3-25D49E58421C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E035C125-258E-4CE4-8BB3-25D49E58421C}.Debug|x86.Build.0 = Debug|Any CPU
+		{E035C125-258E-4CE4-8BB3-25D49E58421C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E035C125-258E-4CE4-8BB3-25D49E58421C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E035C125-258E-4CE4-8BB3-25D49E58421C}.Release|x64.ActiveCfg = Release|Any CPU
+		{E035C125-258E-4CE4-8BB3-25D49E58421C}.Release|x64.Build.0 = Release|Any CPU
+		{E035C125-258E-4CE4-8BB3-25D49E58421C}.Release|x86.ActiveCfg = Release|Any CPU
+		{E035C125-258E-4CE4-8BB3-25D49E58421C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -127,5 +141,6 @@ Global
 		{59C05CF2-9971-46B6-8513-9361DED983BF} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{A141BD95-C63D-4E5F-861C-111379B833B6} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{7B0FB622-63DC-475F-8B74-967DAF734CAF} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{E035C125-258E-4CE4-8BB3-25D49E58421C} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

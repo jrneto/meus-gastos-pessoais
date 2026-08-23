@@ -27,3 +27,15 @@ variable "prod_function_name" {
   type        = string
   default     = "gastos-app-api"
 }
+
+variable "hom_account_trigger_function_name" {
+  description = "Nome da função Lambda do trigger PostConfirmation do Cognito, homologação (FEAT-19)."
+  type        = string
+  default     = "jrnexpenses-account-trigger-hom"
+}
+
+variable "prod_account_trigger_function_name" {
+  description = "Nome da função Lambda do trigger PostConfirmation do Cognito, produção (FEAT-19)."
+  type        = string
+  default     = "jrnexpenses-account-trigger"
+}

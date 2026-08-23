@@ -191,7 +191,7 @@ public class GetExpensesQueryValidatorTests
     public void Validate_ShouldBeValid_WhenCursorIsDecodable()
     {
         var cursor = ExpenseCursorCodec.Encode(new ExpenseCursorPayload(
-            "Base", new Dictionary<string, string> { ["PK"] = "USER#user-id-123", ["SK"] = "TXN#2025-06-15#abc" }));
+            "Base", new Dictionary<string, string> { ["PK"] = "ACCOUNT#user-id-123", ["SK"] = "TXN#2025-06-15#abc" }));
         var query = EmptyQuery with { Cursor = cursor };
 
         var result = _validator.Validate(query);

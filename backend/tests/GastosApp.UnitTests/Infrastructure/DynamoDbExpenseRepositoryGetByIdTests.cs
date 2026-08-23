@@ -23,18 +23,18 @@ public class DynamoDbExpenseRepositoryGetByIdTests
         _repository = new DynamoDbExpenseRepository(_dynamoDbClientMock, options);
     }
 
-    private static Dictionary<string, AttributeValue> BuildKeyItem(string userId, string sk) => new()
+    private static Dictionary<string, AttributeValue> BuildKeyItem(string accountId, string sk) => new()
     {
-        ["PK"] = new AttributeValue { S = $"USER#{userId}" },
+        ["PK"] = new AttributeValue { S = $"ACCOUNT#{accountId}" },
         ["SK"] = new AttributeValue { S = sk }
     };
 
-    private static GetItemResponse BuildGetItemResponse(string userId, string sk) => new()
+    private static GetItemResponse BuildGetItemResponse(string accountId, string sk) => new()
     {
         IsItemSet = true,
         Item = new Dictionary<string, AttributeValue>
         {
-            ["PK"] = new AttributeValue { S = $"USER#{userId}" },
+            ["PK"] = new AttributeValue { S = $"ACCOUNT#{accountId}" },
             ["SK"] = new AttributeValue { S = sk },
             ["Description"] = new AttributeValue { S = "Almoço no restaurante" },
             ["AmountInCents"] = new AttributeValue { N = "4590" },
@@ -45,12 +45,12 @@ public class DynamoDbExpenseRepositoryGetByIdTests
         }
     };
 
-    private static GetItemResponse BuildNonDespesaGetItemResponse(string userId, string sk) => new()
+    private static GetItemResponse BuildNonDespesaGetItemResponse(string accountId, string sk) => new()
     {
         IsItemSet = true,
         Item = new Dictionary<string, AttributeValue>
         {
-            ["PK"] = new AttributeValue { S = $"USER#{userId}" },
+            ["PK"] = new AttributeValue { S = $"ACCOUNT#{accountId}" },
             ["SK"] = new AttributeValue { S = sk },
             ["Nome"] = new AttributeValue { S = "Mercado" },
             ["CreatedAt"] = new AttributeValue { S = CreatedAt.ToString("O") }
@@ -137,7 +137,7 @@ public class DynamoDbExpenseRepositoryGetByIdTests
         // Assert
         result.Should().NotBeNull();
         result!.Id.Should().Be("expense-1");
-        result.UserId.Should().Be("user-1");
+        result.AccountId.Should().Be("user-1");
         result.Description.Should().Be("Almoço no restaurante");
         result.AmountInCents.Should().Be(4590);
         result.CategoryId.Should().Be("category-1");

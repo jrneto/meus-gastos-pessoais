@@ -6,7 +6,7 @@ using Mediator;
 
 namespace GastosApp.Application.Categories.Queries.GetCategoryById;
 
-public sealed record GetCategoryByIdQuery(string UserId, string CategoryId) : IQuery<Result<UpdateCategoryResult>>;
+public sealed record GetCategoryByIdQuery(string AccountId, string CategoryId) : IQuery<Result<UpdateCategoryResult>>;
 
 public sealed class GetCategoryByIdQueryHandler : IQueryHandler<GetCategoryByIdQuery, Result<UpdateCategoryResult>>
 {
@@ -19,7 +19,7 @@ public sealed class GetCategoryByIdQueryHandler : IQueryHandler<GetCategoryByIdQ
 
     public async ValueTask<Result<UpdateCategoryResult>> Handle(GetCategoryByIdQuery query, CancellationToken cancellationToken)
     {
-        var category = await _categoryRepository.GetByIdAsync(query.UserId, query.CategoryId, cancellationToken);
+        var category = await _categoryRepository.GetByIdAsync(query.AccountId, query.CategoryId, cancellationToken);
 
         return category is null
             ? Result.Failure<UpdateCategoryResult>(CategoryErrors.NotFound)

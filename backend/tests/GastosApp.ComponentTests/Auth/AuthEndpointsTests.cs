@@ -20,6 +20,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
     {
         _factory = factory;
         _factory.ResetAuthServiceMock();
+        _factory.ResetAccountRepositoryMock();
         _client = factory.CreateClient();
     }
 
@@ -111,6 +112,64 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
 
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/invalid-credentials");
+    }
+
+    // FEAT-19: login é o fallback de criação de conta — cobre o caso do
+    // trigger PostConfirmation do Cognito não ter rodado ainda (ou nunca
+    // rodar, ex.: ambiente local).
+    [Fact]
+    public async Task Login_ComUsuarioSemContaAinda_CriaAccountViaFallback()
+    {
+        _factory.AuthServiceMock
+            .LoginAsync("neto@email.com", "Senha123", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Success(new LoginResult("eyJ...", 3600, "uuid-sem-conta", "refresh-token-abc"))));
+        _factory.AccountRepositoryMock
+            .FindAccountIdByUserIdAsync("uuid-sem-conta", Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        _factory.AccountRepositoryMock
+            .CreateAsync("uuid-sem-conta", Arg.Any<CancellationToken>())
+            .Returns(new CreateAccountResult("account-novo", AlreadyExisted: false));
+
+        var response = await _client.PostAsJsonAsync("/auth/login", new { email = "neto@email.com", password = "Senha123" });
+
+        // Contrato de login não muda — resposta idêntica de sempre.
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("userId").GetString().Should().Be("uuid-sem-conta");
+
+        await _factory.AccountRepositoryMock.Received(1)
+            .CreateAsync("uuid-sem-conta", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Login_ComUsuarioComContaExistente_NaoCriaDuplicata()
+    {
+        _factory.AuthServiceMock
+            .LoginAsync("neto@email.com", "Senha123", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Success(new LoginResult("eyJ...", 3600, "uuid-123", "refresh-token-abc"))));
+        _factory.AccountRepositoryMock
+            .FindAccountIdByUserIdAsync("uuid-123", Arg.Any<CancellationToken>())
+            .Returns("account-ja-existente");
+
+        var response = await _client.PostAsJsonAsync("/auth/login", new { email = "neto@email.com", password = "Senha123" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await _factory.AccountRepositoryMock.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task Login_ComCredenciaisInvalidas_NaoCriaAccount()
+    {
+        _factory.AuthServiceMock
+            .LoginAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Failure<LoginResult>(AuthErrors.InvalidCredentials)));
+
+        var response = await _client.PostAsJsonAsync("/auth/login", new { email = "neto@email.com", password = "errada" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        await _factory.AccountRepositoryMock.DidNotReceiveWithAnyArgs()
+            .FindAccountIdByUserIdAsync(default!, default);
+        await _factory.AccountRepositoryMock.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
     }
 
     [Fact]

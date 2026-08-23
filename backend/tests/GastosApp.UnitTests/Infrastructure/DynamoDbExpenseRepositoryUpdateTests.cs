@@ -23,30 +23,30 @@ public class DynamoDbExpenseRepositoryUpdateTests
         _repository = new DynamoDbExpenseRepository(_dynamoDbClientMock, options);
     }
 
-    private static Dictionary<string, AttributeValue> BuildKeyItem(string userId, string sk) => new()
+    private static Dictionary<string, AttributeValue> BuildKeyItem(string accountId, string sk) => new()
     {
-        ["PK"] = new AttributeValue { S = $"USER#{userId}" },
+        ["PK"] = new AttributeValue { S = $"ACCOUNT#{accountId}" },
         ["SK"] = new AttributeValue { S = sk }
     };
 
-    private static GetItemResponse BuildGetItemResponse(string userId, string sk) => new()
+    private static GetItemResponse BuildGetItemResponse(string accountId, string sk) => new()
     {
         IsItemSet = true,
         Item = new Dictionary<string, AttributeValue>
         {
-            ["PK"] = new AttributeValue { S = $"USER#{userId}" },
+            ["PK"] = new AttributeValue { S = $"ACCOUNT#{accountId}" },
             ["SK"] = new AttributeValue { S = sk },
             ["CreatedAt"] = new AttributeValue { S = OriginalCreatedAt.ToString("O") },
             ["Tipo"] = new AttributeValue { S = "despesa" }
         }
     };
 
-    private static GetItemResponse BuildNonDespesaGetItemResponse(string userId, string sk) => new()
+    private static GetItemResponse BuildNonDespesaGetItemResponse(string accountId, string sk) => new()
     {
         IsItemSet = true,
         Item = new Dictionary<string, AttributeValue>
         {
-            ["PK"] = new AttributeValue { S = $"USER#{userId}" },
+            ["PK"] = new AttributeValue { S = $"ACCOUNT#{accountId}" },
             ["SK"] = new AttributeValue { S = sk },
             ["CreatedAt"] = new AttributeValue { S = OriginalCreatedAt.ToString("O") }
             // sem "Tipo" = "despesa" — simula colisão de GSI2PK com item de outro tipo.
@@ -148,7 +148,7 @@ public class DynamoDbExpenseRepositoryUpdateTests
 
         await _dynamoDbClientMock.Received(1).PutItemAsync(
             Arg.Is<PutItemRequest>(r =>
-                r.Item["PK"].S == "USER#user-1"
+                r.Item["PK"].S == "ACCOUNT#user-1"
                 && r.Item["SK"].S == "TXN#2025-06-15#expense-1"
                 && r.Item["Description"].S == "Almoço atualizado"
                 && r.Item["CategoryId"].S == "category-1"),

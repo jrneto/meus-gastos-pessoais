@@ -5,7 +5,7 @@ using Mediator;
 
 namespace GastosApp.Application.Expenses.Queries.GetExpenseById;
 
-public sealed record GetExpenseByIdQuery(string UserId, string ExpenseId) : IQuery<Result<UpdateExpenseResult>>;
+public sealed record GetExpenseByIdQuery(string AccountId, string ExpenseId) : IQuery<Result<UpdateExpenseResult>>;
 
 public sealed class GetExpenseByIdQueryHandler : IQueryHandler<GetExpenseByIdQuery, Result<UpdateExpenseResult>>
 {
@@ -18,7 +18,7 @@ public sealed class GetExpenseByIdQueryHandler : IQueryHandler<GetExpenseByIdQue
 
     public async ValueTask<Result<UpdateExpenseResult>> Handle(GetExpenseByIdQuery query, CancellationToken cancellationToken)
     {
-        var expense = await _expenseRepository.GetByIdAsync(query.UserId, query.ExpenseId, cancellationToken);
+        var expense = await _expenseRepository.GetByIdAsync(query.AccountId, query.ExpenseId, cancellationToken);
 
         return expense is null
             ? Result.Failure<UpdateExpenseResult>(ExpenseErrors.NotFound)
