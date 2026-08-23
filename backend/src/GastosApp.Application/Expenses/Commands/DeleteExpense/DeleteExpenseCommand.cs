@@ -4,7 +4,7 @@ using Mediator;
 
 namespace GastosApp.Application.Expenses.Commands.DeleteExpense;
 
-public sealed record DeleteExpenseCommand(string UserId, string ExpenseId) : ICommand<Result>;
+public sealed record DeleteExpenseCommand(string AccountId, string ExpenseId) : ICommand<Result>;
 
 public sealed class DeleteExpenseCommandHandler : ICommandHandler<DeleteExpenseCommand, Result>
 {
@@ -17,7 +17,7 @@ public sealed class DeleteExpenseCommandHandler : ICommandHandler<DeleteExpenseC
 
     public async ValueTask<Result> Handle(DeleteExpenseCommand command, CancellationToken cancellationToken)
     {
-        var deleted = await _expenseRepository.DeleteAsync(command.UserId, command.ExpenseId, cancellationToken);
+        var deleted = await _expenseRepository.DeleteAsync(command.AccountId, command.ExpenseId, cancellationToken);
 
         return deleted ? Result.Success() : Result.Failure(ExpenseErrors.NotFound);
     }

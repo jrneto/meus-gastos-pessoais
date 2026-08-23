@@ -29,5 +29,6 @@
     <ProjectReference Include="..\..\src\GastosApp.Application\GastosApp.Application.csproj" />
     <ProjectReference Include="..\..\src\GastosApp.Api\GastosApp.Api.csproj" />
     <ProjectReference Include="..\..\src\GastosApp.Infrastructure\GastosApp.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\GastosApp.CognitoTriggers\GastosApp.CognitoTriggers.csproj" />
   </ItemGroup>
 </Project>

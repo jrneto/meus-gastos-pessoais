@@ -6,7 +6,7 @@ using Mediator;
 namespace GastosApp.Application.Expenses.Commands.UpdateExpense;
 
 public sealed record UpdateExpenseCommand(
-    string UserId,
+    string AccountId,
     string ExpenseId,
     string Description,
     long AmountInCents,
@@ -25,7 +25,7 @@ public sealed class UpdateExpenseCommandHandler : ICommandHandler<UpdateExpenseC
     public async ValueTask<Result<UpdateExpenseResult>> Handle(UpdateExpenseCommand command, CancellationToken cancellationToken)
     {
         var updated = await _expenseRepository.UpdateAsync(
-            command.UserId,
+            command.AccountId,
             command.ExpenseId,
             command.Description,
             command.AmountInCents,

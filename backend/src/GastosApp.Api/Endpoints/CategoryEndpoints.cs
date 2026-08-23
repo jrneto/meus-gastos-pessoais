@@ -5,7 +5,6 @@ using GastosApp.Application.Categories.Commands.UpdateCategory;
 using GastosApp.Application.Categories.Queries.GetCategories;
 using GastosApp.Application.Categories.Queries.GetCategoryById;
 using Mediator;
-using System.Security.Claims;
 
 namespace GastosApp.Api.Endpoints;
 
@@ -16,6 +15,7 @@ public static class CategoryEndpoints
         var group = app.MapGroup("/categories")
             .WithTags("Categories")
             .RequireAuthorization()
+            .AddEndpointFilter<ResolveAccountEndpointFilter>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
 
@@ -46,13 +46,11 @@ public static class CategoryEndpoints
     }
 
     private static async Task<IResult> GetCategories(
-        ClaimsPrincipal user,
+        CurrentAccountContext currentAccount,
         ISender sender,
         CancellationToken cancellationToken)
     {
-        var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        var query = new GetCategoriesQuery(userId!);
+        var query = new GetCategoriesQuery(currentAccount.AccountId!);
 
         var result = await sender.Send(query, cancellationToken);
         return result.ToHttpResult(value => Results.Ok(value));
@@ -60,13 +58,11 @@ public static class CategoryEndpoints
 
     private static async Task<IResult> GetCategoryById(
         string id,
-        ClaimsPrincipal user,
+        CurrentAccountContext currentAccount,
         ISender sender,
         CancellationToken cancellationToken)
     {
-        var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        var query = new GetCategoryByIdQuery(userId!, id);
+        var query = new GetCategoryByIdQuery(currentAccount.AccountId!, id);
 
         var result = await sender.Send(query, cancellationToken);
         return result.ToHttpResult(value => Results.Ok(value));
@@ -74,13 +70,11 @@ public static class CategoryEndpoints
 
     private static async Task<IResult> CreateCategory(
         CreateCategoryRequest request,
-        ClaimsPrincipal user,
+        CurrentAccountContext currentAccount,
         ISender sender,
         CancellationToken cancellationToken)
     {
-        var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        var command = new CreateCategoryCommand(userId!, request.Nome, request.Cor, request.Icone);
+        var command = new CreateCategoryCommand(currentAccount.AccountId!, request.Nome, request.Cor, request.Icone);
 
         var result = await sender.Send(command, cancellationToken);
         return result.ToHttpResult(value => Results.Created($"/categories/{value.Id}", value));
@@ -89,13 +83,11 @@ public static class CategoryEndpoints
     private static async Task<IResult> UpdateCategory(
         string id,
         UpdateCategoryRequest request,
-        ClaimsPrincipal user,
+        CurrentAccountContext currentAccount,
         ISender sender,
         CancellationToken cancellationToken)
     {
-        var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        var command = new UpdateCategoryCommand(userId!, id, request.Nome, request.Cor, request.Icone);
+        var command = new UpdateCategoryCommand(currentAccount.AccountId!, id, request.Nome, request.Cor, request.Icone);
 
         var result = await sender.Send(command, cancellationToken);
         return result.ToHttpResult(value => Results.Ok(value));
@@ -103,13 +95,11 @@ public static class CategoryEndpoints
 
     private static async Task<IResult> DeleteCategory(
         string id,
-        ClaimsPrincipal user,
+        CurrentAccountContext currentAccount,
         ISender sender,
         CancellationToken cancellationToken)
     {
-        var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        var command = new DeleteCategoryCommand(userId!, id);
+        var command = new DeleteCategoryCommand(currentAccount.AccountId!, id);
 
         var result = await sender.Send(command, cancellationToken);
         return result.ToHttpResult(() => Results.NoContent());

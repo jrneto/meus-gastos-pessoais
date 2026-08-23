@@ -18,12 +18,21 @@
   .je-toggle{width:44px;height:24px;border:2px solid var(--color-divider);position:relative;flex:none;cursor:pointer}
   .je-knob{position:absolute;top:1px;width:16px;height:16px;transition:left .15s ease}
   .je-sidebar-item:hover{background:var(--color-neutral-200)}
+  @keyframes je-spin{to{transform:rotate(360deg)}}
+  .je-spin{width:34px;height:34px;border:3px solid var(--color-neutral-300);border-top-color:var(--color-accent);animation:je-spin .7s linear infinite}
+  .je-spin-sm{width:14px;height:14px;flex:none;border:2px solid color-mix(in oklch, var(--color-bg) 40%, transparent);border-top-color:var(--color-bg);animation:je-spin .7s linear infinite}
+  @keyframes je-indet{0%{transform:translateX(-110%)}100%{transform:translateX(320%)}}
+  .je-indet{width:30%;height:100%;background:var(--color-accent);animation:je-indet 1.1s cubic-bezier(.4,0,.2,1) infinite}
+  @keyframes je-toast-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .je-toast{animation:je-toast-in .18s ease-out}
+  @keyframes je-pulse{0%,100%{opacity:1}50%{opacity:.45}}
+  .je-skel{background:var(--color-neutral-300);animation:je-pulse 1.2s ease-in-out infinite}
 </style>
 </helmet>
 <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--color-neutral-300);padding:40px;font-family:var(--font-body);box-sizing:border-box">
 <x-import component-from-global-scope="ChromeWindow" from="./browser-window.jsx" url="app.jrnexpenses.com.br/dashboard" width="1360" height="860" hint-size="1360px,860px">
 
-<div style="height:100%;display:flex;background:var(--color-bg);color:var(--color-text);overflow:hidden">
+<div style="height:100%;display:flex;background:var(--color-bg);color:var(--color-text);overflow:hidden;position:relative">
 
 <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
 <div style="flex:1;display:flex;align-items:center;justify-content:center">
@@ -43,7 +52,7 @@
       <label class="field"><span style="font-size:12px;opacity:.7">E-mail</span><input class="input" type="email" placeholder="voce@email.com" value="{{ authEmail }}" onChange="{{ setAuthEmail }}"/></label>
       <label class="field"><span style="font-size:12px;opacity:.7">Senha</span><input class="input" type="password" placeholder="••••••••" value="{{ authPassword }}" onChange="{{ setAuthPassword }}"/></label>
     </div>
-    <button onClick="{{ submitAuth }}" class="btn btn-primary btn-block">{{ authButtonLabel }}</button>
+    <button onClick="{{ submitAuth }}" disabled="{{ isAuthing }}" class="btn btn-primary btn-block" style="display:flex;align-items:center;gap:10px"><sc-if value="{{ isAuthing }}" hint-placeholder-val="{{ false }}"><span class="je-spin-sm"></span></sc-if>{{ authButtonLabel }}</button>
   </div>
 </div>
 </sc-if>
@@ -145,9 +154,20 @@
         <h1 style="font-size:30px;margin:0">Resumo</h1>
         <div style="font-size:13px;opacity:.6">{{ currentMonthLabel }}</div>
       </div>
-      <button onClick="{{ openAdd }}" class="btn btn-primary">+ Nova despesa</button>
+      <div style="display:flex;gap:8px">
+        <button onClick="{{ openAddIncome }}" class="btn btn-secondary">+ Nova receita</button>
+        <button onClick="{{ openAddExpense }}" class="btn btn-primary">+ Nova despesa</button>
+      </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+      <div class="card elev-sm">
+        <div class="card-kicker">Saldo do mês</div>
+        <div style="font-size:22px;font-weight:800;font-family:var(--font-heading);white-space:nowrap;color:{{ saldoColor }}">{{ saldoFmt }}</div>
+      </div>
+      <div class="card elev-sm">
+        <div class="card-kicker">Receitas no mês</div>
+        <div style="font-size:22px;font-weight:800;font-family:var(--font-heading);white-space:nowrap">{{ totalIncomeFmt }}</div>
+      </div>
       <div class="card elev-sm">
         <div class="card-kicker">Gasto no mês</div>
         <div style="font-size:22px;font-weight:800;font-family:var(--font-heading);white-space:nowrap">{{ totalSpentFmt }}</div>
@@ -182,7 +202,7 @@
       </div>
       <div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">
-          <h2 style="font-size:15px;margin:0">Últimas despesas</h2>
+          <h2 style="font-size:15px;margin:0">Últimos lançamentos</h2>
           <button onClick="{{ goToTransactions }}" class="btn btn-ghost" style="padding-right:0;font-size:12px">Ver todas →</button>
         </div>
         <div style="display:flex;flex-direction:column">
@@ -193,7 +213,7 @@
                 <div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.note }}</div>
                 <div style="font-size:11px;opacity:.55">{{ t.catName }} · {{ t.dateFmt }}</div>
               </div>
-              <div style="font-size:13px;font-weight:600;color:var(--color-accent-700)">{{ t.amountFmt }}</div>
+              <div style="font-size:13px;font-weight:600;color:{{ t.amountColor }}">{{ t.amountFmt }}</div>
             </div>
           </sc-for>
         </div>
@@ -206,13 +226,31 @@
   <div style="display:flex;flex-direction:column;gap:20px">
     <div style="display:flex;justify-content:space-between;align-items:flex-end">
       <h1 style="font-size:30px;margin:0">Transações</h1>
-      <button onClick="{{ openAdd }}" class="btn btn-primary">+ Nova despesa</button>
+      <div style="display:flex;gap:8px">
+        <button onClick="{{ openAddIncome }}" class="btn btn-secondary">+ Nova receita</button>
+        <button onClick="{{ openAddExpense }}" class="btn btn-primary">+ Nova despesa</button>
+      </div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <sc-for list="{{ txFilterChips }}" as="f" hint-placeholder-count="7">
         <button onClick="{{ f.toggle }}" class="tag" style="cursor:pointer;border:1px solid var(--color-divider);background:{{ f.bg }};color:{{ f.color }}">{{ f.label }}</button>
       </sc-for>
+      <button onClick="{{ toggleFilterPanel }}" class="btn btn-secondary" style="position:relative">
+        Filtros avançados
+        <sc-if value="{{ hasActiveAdvancedFilters }}" hint-placeholder-val="{{ false }}">
+          <span style="position:absolute;top:6px;right:8px;width:7px;height:7px;background:var(--color-accent)"></span>
+        </sc-if>
+      </button>
     </div>
+    <sc-if value="{{ filterPanelOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="border:2px solid var(--color-divider);padding:16px;display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+        <label class="field" style="min-width:160px"><span style="font-size:11px;opacity:.7">De</span><input class="input" type="date" value="{{ dateFrom }}" onChange="{{ setDateFrom }}"/></label>
+        <label class="field" style="min-width:160px"><span style="font-size:11px;opacity:.7">Até</span><input class="input" type="date" value="{{ dateTo }}" onChange="{{ setDateTo }}"/></label>
+        <label class="field" style="min-width:140px"><span style="font-size:11px;opacity:.7">Valor mín.</span><input class="input" type="text" inputMode="decimal" placeholder="0,00" value="{{ valueMin }}" onChange="{{ setValueMin }}"/></label>
+        <label class="field" style="min-width:140px"><span style="font-size:11px;opacity:.7">Valor máx.</span><input class="input" type="text" inputMode="decimal" placeholder="0,00" value="{{ valueMax }}" onChange="{{ setValueMax }}"/></label>
+        <button onClick="{{ clearAdvancedFilters }}" class="btn btn-ghost">Limpar filtros</button>
+      </div>
+    </sc-if>
     <sc-if value="{{ txEmpty }}" hint-placeholder-val="{{ false }}">
       <p style="opacity:.55;font-size:13px">Nenhuma despesa nesta categoria.</p>
     </sc-if>
@@ -224,7 +262,7 @@
             <td><span class="tag tag-neutral">{{ t.catName }}</span></td>
             <td>{{ t.note }}</td>
             <td style="opacity:.65">{{ t.dateFmt }}</td>
-            <td style="text-align:right;font-weight:600;color:var(--color-accent-700)">{{ t.amountFmt }}</td>
+            <td style="text-align:right;font-weight:600;color:{{ t.amountColor }}">{{ t.amountFmt }}</td>
           </tr>
         </sc-for>
       </tbody>
@@ -371,43 +409,60 @@
 </div>
 
 <sc-if value="{{ showAdd }}" hint-placeholder-val="{{ false }}">
-<div class="dialog-backdrop">
-  <div class="dialog" style="width:520px">
-    <div class="dialog-title">Nova despesa</div>
+<div class="dialog-backdrop" style="overflow-y:auto;align-items:flex-start;padding:24px 0">
+  <div class="dialog" style="width:520px;margin:auto;position:relative">
+    <sc-if value="{{ isSavingTx }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;z-index:5;background:color-mix(in oklch, var(--color-bg) 86%, transparent);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+        <div class="je-spin"></div>
+        <div style="font-family:var(--font-heading);font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase">{{ savingTxLabel }}</div>
+        <div style="width:200px;height:4px;background:var(--color-neutral-300);overflow:hidden"><div class="je-indet"></div></div>
+      </div>
+    </sc-if>
+    <div class="dialog-title">{{ addFormTitle }}</div>
     <input class="input" type="text" inputMode="decimal" placeholder="R$ 0,00" value="{{ newAmount }}" onChange="{{ setNewAmount }}" style="font-size:28px;font-weight:800;font-family:var(--font-heading);border:none;border-bottom:2px solid var(--color-divider);padding:6px 0;background:transparent"/>
     <div>
-      <div style="font-size:12px;opacity:.7;margin-bottom:8px">Categoria</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+        <span style="font-size:12px;opacity:.7">Categoria</span>
+        <span style="font-size:12px;font-weight:700;color:var(--color-accent-700)">{{ selectedCategoryName }}</span>
+      </div>
+      <input class="input" type="text" placeholder="Buscar categoria" value="{{ categorySearch }}" onChange="{{ setCategorySearch }}" style="margin-bottom:8px"/>
+      <div style="border:2px solid var(--color-divider);max-height:200px;overflow-y:auto">
         <sc-for list="{{ addCategories }}" as="c" hint-placeholder-count="6">
-          <button onClick="{{ c.select }}" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px;border:2px solid {{ c.tileBorder }};background:{{ c.tileBg }};cursor:pointer">
-            <span style="font-weight:800;font-family:var(--font-heading);font-size:13px">{{ c.letter }}</span>
-            <span style="font-size:10px;text-align:center">{{ c.name }}</span>
+          <button onClick="{{ c.select }}" style="display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:9px 12px;border:none;border-bottom:1px solid var(--color-divider);background:{{ c.rowBg }};cursor:pointer;text-align:left">
+            <span style="width:22px;height:22px;flex:none;display:flex;align-items:center;justify-content:center;border:2px solid {{ c.tileBorder }};background:{{ c.tileBg }};font-weight:800;font-family:var(--font-heading);font-size:11px">{{ c.letter }}</span>
+            <span style="flex:1;font-size:13px">{{ c.name }}</span>
+            <sc-if value="{{ c.isSelected }}" hint-placeholder-val="{{ false }}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="var(--color-accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </sc-if>
           </button>
         </sc-for>
       </div>
+      <sc-if value="{{ noCategoryMatch }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12px;opacity:.6;padding:8px 0">Nenhuma categoria encontrada.</div>
+      </sc-if>
     </div>
     <div style="display:flex;gap:12px">
       <label class="field" style="flex:1"><span style="font-size:12px;opacity:.7">Data</span><input class="input" type="date" value="{{ newDate }}" onChange="{{ setNewDate }}"/></label>
       <label class="field" style="flex:1"><span style="font-size:12px;opacity:.7">Observação</span><input class="input" type="text" placeholder="Ex: Mercado, Uber…" value="{{ newNote }}" onChange="{{ setNewNote }}"/></label>
     </div>
     <div>
-      <div style="font-size:12px;opacity:.7;margin-bottom:8px">Comprovante (opcional)</div>
+      <div style="font-size:12px;opacity:.7;margin-bottom:8px">{{ receiptFieldLabel }}</div>
       <image-slot id="receipt-new-web" shape="rect" placeholder="Anexar comprovante" style="width:100%;height:120px"></image-slot>
     </div>
     <div class="dialog-actions">
-      <button onClick="{{ closeAdd }}" class="btn btn-secondary">Cancelar</button>
-      <button onClick="{{ saveExpense }}" class="btn btn-primary">Salvar despesa</button>
+      <button onClick="{{ closeAdd }}" disabled="{{ isSavingTx }}" class="btn btn-secondary">Cancelar</button>
+      <button onClick="{{ saveExpense }}" disabled="{{ isSavingTx }}" class="btn btn-primary">{{ addFormSaveLabel }}</button>
     </div>
   </div>
 </div>
 </sc-if>
 
 <sc-if value="{{ isViewingTx }}" hint-placeholder-val="{{ false }}">
-<div class="dialog-backdrop">
-  <div class="dialog" style="width:480px">
-    <div class="dialog-title">Detalhe da despesa</div>
+<div class="dialog-backdrop" style="overflow-y:auto;align-items:flex-start;padding:24px 0">
+  <div class="dialog" style="width:480px;margin:auto">
+    <div class="dialog-title">{{ txDetailTitle }}</div>
     <div>
-      <div style="font-size:30px;font-weight:800;font-family:var(--font-heading);color:var(--color-accent-700)">{{ txDetailAmountFmt }}</div>
+      <div style="font-size:30px;font-weight:800;font-family:var(--font-heading);color:{{ txDetailAmountColor }}">{{ txDetailAmountFmt }}</div>
       <div style="font-size:13px;opacity:.6">{{ txDetailDateFmt }}</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
@@ -429,15 +484,23 @@
     </div>
     <div class="dialog-actions">
       <button onClick="{{ deleteTxFn }}" class="btn btn-ghost" style="color:var(--color-accent-700)">Excluir</button>
-      <button onClick="{{ closeTx }}" class="btn btn-secondary">Fechar</button>
+      <button onClick="{{ editTxFn }}" class="btn btn-secondary">Editar</button>
+      <button onClick="{{ closeTx }}" class="btn btn-primary">Fechar</button>
     </div>
   </div>
 </div>
 </sc-if>
 
 <sc-if value="{{ showInviteDialog }}" hint-placeholder-val="{{ false }}">
-<div class="dialog-backdrop">
-  <div class="dialog" style="width:440px">
+<div class="dialog-backdrop" style="overflow-y:auto;align-items:flex-start;padding:24px 0">
+  <div class="dialog" style="width:440px;margin:auto;position:relative">
+    <sc-if value="{{ isSendingInvite }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;z-index:5;background:color-mix(in oklch, var(--color-bg) 86%, transparent);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+        <div class="je-spin"></div>
+        <div style="font-family:var(--font-heading);font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase">Enviando convite</div>
+        <div style="width:200px;height:4px;background:var(--color-neutral-300);overflow:hidden"><div class="je-indet"></div></div>
+      </div>
+    </sc-if>
     <div class="dialog-title">Convidar pessoa</div>
     <label class="field"><span style="font-size:12px;opacity:.7">E-mail</span><input class="input" type="email" placeholder="pessoa@email.com" value="{{ inviteEmail }}" onChange="{{ setInviteEmail }}"/></label>
     <div>
@@ -450,10 +513,17 @@
       <p style="font-size:12px;opacity:.6;margin:8px 0 0">{{ inviteRoleDesc }}</p>
     </div>
     <div class="dialog-actions">
-      <button onClick="{{ toggleInviteDialog }}" class="btn btn-secondary">Cancelar</button>
-      <button onClick="{{ sendInvite }}" class="btn btn-primary">Enviar convite</button>
+      <button onClick="{{ toggleInviteDialog }}" disabled="{{ isSendingInvite }}" class="btn btn-secondary">Cancelar</button>
+      <button onClick="{{ sendInvite }}" disabled="{{ isSendingInvite }}" class="btn btn-primary">Enviar convite</button>
     </div>
   </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+<div class="je-toast" style="position:absolute;bottom:20px;right:20px;z-index:60;display:flex;align-items:center;gap:12px;background:var(--color-text);color:var(--color-bg);padding:14px 18px;box-shadow:var(--shadow-lg);max-width:340px">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex:none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span style="font-size:13px;font-weight:600">{{ toast }}</span>
 </div>
 </sc-if>
 
@@ -488,29 +558,35 @@ class Component extends DCLogic {
     txFilter: null,
     notifPush: true,
     notifEmail: false,
-    newAmount: '', newCategoryId: 'alimentacao', newDate: '2026-08-21', newNote: '',
-    nextId: 13,
+    newAmount: '', newCategoryId: 'alimentacao', newDate: '2026-08-21', newNote: '', newTxType: 'expense',
+    nextId: 14,
     categories: [
-      { id: 'alimentacao', name: 'Alimentação', letter: 'A', budget: 800 },
-      { id: 'transporte', name: 'Transporte', letter: 'T', budget: 300 },
-      { id: 'moradia', name: 'Moradia', letter: 'M', budget: 1200 },
-      { id: 'lazer', name: 'Lazer', letter: 'L', budget: 90 },
-      { id: 'saude', name: 'Saúde', letter: 'S', budget: 200 },
-      { id: 'compras', name: 'Compras', letter: 'C', budget: 400 },
+      { id: 'alimentacao', name: 'Alimentação', letter: 'A', budget: 800, type: 'expense' },
+      { id: 'transporte', name: 'Transporte', letter: 'T', budget: 300, type: 'expense' },
+      { id: 'moradia', name: 'Moradia', letter: 'M', budget: 1200, type: 'expense' },
+      { id: 'lazer', name: 'Lazer', letter: 'L', budget: 90, type: 'expense' },
+      { id: 'saude', name: 'Saúde', letter: 'S', budget: 200, type: 'expense' },
+      { id: 'compras', name: 'Compras', letter: 'C', budget: 400, type: 'expense' },
+      { id: 'salario', name: 'Salário', letter: 'SL', budget: 0, type: 'income' },
+      { id: 'restituicao-ir', name: 'Restituição de IR', letter: 'IR', budget: 0, type: 'income' },
+      { id: 'resgate-investimento', name: 'Resgate de investimento', letter: 'RI', budget: 0, type: 'income' },
+      { id: 'receita-extra', name: 'Receita extra', letter: 'RE', budget: 0, type: 'income' },
+      { id: 'outras-receitas', name: 'Outros', letter: 'OT', budget: 0, type: 'income' },
     ],
     transactions: [
-      { id: 't1', date: '2026-08-20', categoryId: 'alimentacao', note: 'Supermercado Pão de Açúcar', amount: 187.40, createdBy: 'owner' },
-      { id: 't2', date: '2026-08-19', categoryId: 'transporte', note: 'Uber', amount: 32.90, createdBy: 'owner' },
-      { id: 't3', date: '2026-08-18', categoryId: 'lazer', note: 'Cinema', amount: 58.00, createdBy: 'm1' },
-      { id: 't4', date: '2026-08-17', categoryId: 'alimentacao', note: 'Restaurante', amount: 96.50, createdBy: 'owner' },
-      { id: 't5', date: '2026-08-15', categoryId: 'moradia', note: 'Conta de luz', amount: 210.30, createdBy: 'owner' },
-      { id: 't6', date: '2026-08-14', categoryId: 'compras', note: 'Farmácia', amount: 45.20, createdBy: 'm1' },
-      { id: 't7', date: '2026-08-12', categoryId: 'saude', note: 'Consulta médica', amount: 150.00, createdBy: 'owner' },
-      { id: 't8', date: '2026-08-10', categoryId: 'transporte', note: 'Combustível', amount: 120.00, createdBy: 'owner' },
-      { id: 't9', date: '2026-08-08', categoryId: 'alimentacao', note: 'Padaria', amount: 22.80, createdBy: 'owner' },
-      { id: 't10', date: '2026-08-05', categoryId: 'compras', note: 'Loja de roupas', amount: 189.90, createdBy: 'owner' },
-      { id: 't11', date: '2026-08-03', categoryId: 'moradia', note: 'Internet', amount: 99.90, createdBy: 'owner' },
-      { id: 't12', date: '2026-08-01', categoryId: 'lazer', note: 'Streaming (assinatura)', amount: 39.90, createdBy: 'owner' },
+      { id: 't1', date: '2026-08-20', categoryId: 'alimentacao', note: 'Supermercado Pão de Açúcar', amount: 187.40, createdBy: 'owner', type: 'expense' },
+      { id: 't2', date: '2026-08-19', categoryId: 'transporte', note: 'Uber', amount: 32.90, createdBy: 'owner', type: 'expense' },
+      { id: 't3', date: '2026-08-18', categoryId: 'lazer', note: 'Cinema', amount: 58.00, createdBy: 'm1', type: 'expense' },
+      { id: 't4', date: '2026-08-17', categoryId: 'alimentacao', note: 'Restaurante', amount: 96.50, createdBy: 'owner', type: 'expense' },
+      { id: 't5', date: '2026-08-15', categoryId: 'moradia', note: 'Conta de luz', amount: 210.30, createdBy: 'owner', type: 'expense' },
+      { id: 't6', date: '2026-08-14', categoryId: 'compras', note: 'Farmácia', amount: 45.20, createdBy: 'm1', type: 'expense' },
+      { id: 't7', date: '2026-08-12', categoryId: 'saude', note: 'Consulta médica', amount: 150.00, createdBy: 'owner', type: 'expense' },
+      { id: 't8', date: '2026-08-10', categoryId: 'transporte', note: 'Combustível', amount: 120.00, createdBy: 'owner', type: 'expense' },
+      { id: 't9', date: '2026-08-08', categoryId: 'alimentacao', note: 'Padaria', amount: 22.80, createdBy: 'owner', type: 'expense' },
+      { id: 't10', date: '2026-08-05', categoryId: 'compras', note: 'Loja de roupas', amount: 189.90, createdBy: 'owner', type: 'expense' },
+      { id: 't11', date: '2026-08-03', categoryId: 'moradia', note: 'Internet', amount: 99.90, createdBy: 'owner', type: 'expense' },
+      { id: 't12', date: '2026-08-01', categoryId: 'lazer', note: 'Streaming (assinatura)', amount: 39.90, createdBy: 'owner', type: 'expense' },
+      { id: 't13', date: '2026-08-05', categoryId: 'salario', note: 'Salário', amount: 5200.00, createdBy: 'owner', type: 'income' },
     ],
   };
 
@@ -549,22 +625,61 @@ class Component extends DCLogic {
     this.state.categories.forEach(c => { byId[c.id] = c; });
     return list.slice().sort((a, b) => b.date.localeCompare(a.date)).map(t => ({
       ...t, catLetter: byId[t.categoryId].letter, catName: byId[t.categoryId].name,
-      amountFmt: '- ' + this.formatCurrency(t.amount), dateFmt: this.formatDateShort(t.date),
+      amountFmt: (t.type === 'income' ? '+ ' : '- ') + this.formatCurrency(t.amount),
+      amountColor: t.type === 'income' ? 'oklch(45% 0.13 150)' : 'var(--color-accent-700)',
+      dateFmt: this.formatDateShort(t.date),
       open: () => this.openTx(t.id),
     }));
   }
 
   setLoginMode() { this.setState({ authMode: 'login' }); }
   setSignupMode() { this.setState({ authMode: 'signup' }); }
-  submitAuth() { this.setState({ screen: 'app', tab: 'dashboard' }); }
+  submitAuth() {
+    if (this.state.authing) return;
+    this.setState({ authing: true });
+    this._authT = setTimeout(() => this.setState({ authing: false, screen: 'app', tab: 'dashboard' }), 1700);
+  }
+  showToast(text) {
+    clearTimeout(this._toastT);
+    this.setState({ toast: text });
+    this._toastT = setTimeout(() => this.setState({ toast: null }), 3200);
+  }
+  componentWillUnmount() { clearTimeout(this._authT); clearTimeout(this._toastT); clearTimeout(this._saveT); clearTimeout(this._inviteT); }
   setTab(t) { this.setState({ tab: t }); }
-  openAdd() { this.setState({ showAdd: true, newAmount: '', newCategoryId: this.state.categories[0].id, newDate: '2026-08-21', newNote: '' }); }
-  closeAdd() { this.setState({ showAdd: false }); }
+  openAdd(type) {
+    const t = type || 'expense';
+    const cats = this.state.categories.filter(c => c.type === t);
+    this.setState({ showAdd: true, editingTxId: null, newTxType: t, newAmount: '', newCategoryId: cats[0] ? cats[0].id : '', newDate: '2026-08-21', newNote: '', categorySearch: '' });
+  }
+  editTx(id) {
+    const tx = this.state.transactions.find(t => t.id === id);
+    if (!tx) return;
+    this.setState({ showAdd: true, editingTxId: id, viewingTxId: null, newTxType: tx.type, newAmount: String(tx.amount).replace('.', ','), newCategoryId: tx.categoryId, newDate: tx.date, newNote: tx.note, categorySearch: '' });
+  }
+  closeAdd() { this.setState({ showAdd: false, editingTxId: null }); }
   saveExpense() {
+    if (this.state.savingTx) return;
     const amt = parseFloat((this.state.newAmount || '0').replace(',', '.'));
-    if (!amt || amt <= 0) { this.setState({ showAdd: false }); return; }
-    const tx = { id: 't' + this.state.nextId, date: this.state.newDate, categoryId: this.state.newCategoryId, note: this.state.newNote || 'Despesa', amount: amt, createdBy: 'owner' };
-    this.setState(s => ({ transactions: [...s.transactions, tx], nextId: s.nextId + 1, showAdd: false }));
+    if (!amt || amt <= 0) { this.setState({ showAdd: false, editingTxId: null }); return; }
+    const isEdit = !!this.state.editingTxId;
+    const isIncome = this.state.newTxType === 'income';
+    this.setState({ savingTx: isEdit ? 'Salvando alterações' : (isIncome ? 'Registrando receita' : 'Registrando despesa') });
+    this._saveT = setTimeout(() => this.commitTx(amt, isEdit, isIncome), 1800);
+  }
+  commitTx(amt, isEdit, isIncome) {
+    if (isEdit) {
+      const id = this.state.editingTxId;
+      this.setState(s => ({
+        transactions: s.transactions.map(t => t.id === id ? { ...t, date: s.newDate, categoryId: s.newCategoryId, note: s.newNote || (t.type === 'income' ? 'Receita' : 'Despesa'), amount: amt } : t),
+        showAdd: false, editingTxId: null, savingTx: null,
+      }));
+      this.showToast('Alterações salvas e sincronizadas.');
+      return;
+    }
+    const type = this.state.newTxType || 'expense';
+    const tx = { id: 't' + this.state.nextId, date: this.state.newDate, categoryId: this.state.newCategoryId, note: this.state.newNote || (type === 'income' ? 'Receita' : 'Despesa'), amount: amt, createdBy: 'owner', type };
+    this.setState(s => ({ transactions: [...s.transactions, tx], nextId: s.nextId + 1, showAdd: false, savingTx: null }));
+    this.showToast(isIncome ? 'Receita lançada e saldo atualizado.' : 'Despesa lançada e orçamento atualizado.');
   }
   openTx(id) { this.setState({ viewingTxId: id }); }
   closeTx() { this.setState({ viewingTxId: null }); }
@@ -577,15 +692,20 @@ class Component extends DCLogic {
     const letter = name.charAt(0).toUpperCase();
     const budget = parseFloat((this.state.newCatBudget || '0').replace(',', '.')) || 0;
     const id = 'cat_' + Date.now();
-    this.setState(s => ({ categories: [...s.categories, { id, name, letter, budget }], showNewCategory: false, newCatName: '', newCatBudget: '' }));
+    this.setState(s => ({ categories: [...s.categories, { id, name, letter, budget, type: 'expense' }], showNewCategory: false, newCatName: '', newCatBudget: '' }));
   }
   toggleInviteDialog() { this.setState(s => ({ showInviteDialog: !s.showInviteDialog, inviteEmail: '', inviteRole: 'lancamento' })); }
   setInviteRole(r) { this.setState({ inviteRole: r }); }
   sendInvite() {
+    if (this.state.sendingInvite) return;
     const email = (this.state.inviteEmail || '').trim();
     if (!email || !email.includes('@')) return;
-    const member = { id: 'm' + Date.now(), email, role: this.state.inviteRole, status: 'pending' };
-    this.setState(s => ({ members: [...s.members, member], showInviteDialog: false, inviteEmail: '' }));
+    this.setState({ sendingInvite: true });
+    this._inviteT = setTimeout(() => {
+      const member = { id: 'm' + Date.now(), email, role: this.state.inviteRole, status: 'pending' };
+      this.setState(s => ({ members: [...s.members, member], showInviteDialog: false, inviteEmail: '', sendingInvite: false }));
+      this.showToast('Convite enviado para ' + email + '.');
+    }, 1800);
   }
   removeMember(id) { this.setState(s => ({ members: s.members.filter(m => m.id !== id) })); }
   setMemberRole(id, role) { this.setState(s => ({ members: s.members.map(m => m.id === id ? { ...m, role } : m) })); }
@@ -603,14 +723,24 @@ class Component extends DCLogic {
   renderVals() {
     const s = this.state;
     const catsComputed = this.computeCategories();
+    const expenseCats = catsComputed.filter(c => c.type === 'expense');
     const allTxView = this.getTxView(s.transactions);
-    const totalSpent = catsComputed.reduce((sum, c) => sum + c.spent, 0);
-    const totalBudget = catsComputed.reduce((sum, c) => sum + c.budget, 0);
+    const totalSpent = expenseCats.reduce((sum, c) => sum + c.spent, 0);
+    const totalBudget = expenseCats.reduce((sum, c) => sum + c.budget, 0);
     const overallPct = totalBudget > 0 ? Math.min(100, Math.round((totalSpent / totalBudget) * 100)) : 0;
+    const totalIncome = s.transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const saldo = totalIncome - totalSpent;
 
-    const filteredList = s.txFilter ? allTxView.filter(t => t.categoryId === s.txFilter) : allTxView;
-    const maxSpent = Math.max(1, ...catsComputed.map(c => c.spent));
-    const reportsSorted = catsComputed.slice().sort((a, b) => b.spent - a.spent)
+    const hasActiveAdvancedFilters = !!(s.dateFrom || s.dateTo || s.valueMin || s.valueMax);
+    let filteredList = s.txFilter ? allTxView.filter(t => t.categoryId === s.txFilter) : allTxView;
+    if (s.dateFrom) filteredList = filteredList.filter(t => t.date >= s.dateFrom);
+    if (s.dateTo) filteredList = filteredList.filter(t => t.date <= s.dateTo);
+    const minV = parseFloat((s.valueMin || '').replace(',', '.'));
+    const maxV = parseFloat((s.valueMax || '').replace(',', '.'));
+    if (!isNaN(minV)) filteredList = filteredList.filter(t => t.amount >= minV);
+    if (!isNaN(maxV)) filteredList = filteredList.filter(t => t.amount <= maxV);
+    const maxSpent = Math.max(1, ...expenseCats.map(c => c.spent));
+    const reportsSorted = expenseCats.slice().sort((a, b) => b.spent - a.spent)
       .map(c => ({ ...c, reportBarWidth: Math.round((c.spent / maxSpent) * 100) + '%' }));
 
     const txFilterChips = [
@@ -621,13 +751,21 @@ class Component extends DCLogic {
       })),
     ].map(f => ({ ...f, bg: f.active ? 'var(--color-text)' : 'transparent', color: f.active ? 'var(--color-bg)' : 'var(--color-text)' }));
 
-    const addCategories = catsComputed.map(c => ({
-      ...c, select: () => this.setState({ newCategoryId: c.id }),
-      tileBorder: s.newCategoryId === c.id ? 'var(--color-accent)' : 'var(--color-divider)',
-      tileBg: s.newCategoryId === c.id ? 'var(--color-accent-100)' : 'transparent',
-    }));
+    const search = (s.categorySearch || '').trim().toLowerCase();
+    const addCategories = catsComputed
+      .filter(c => c.type === (s.newTxType || 'expense'))
+      .filter(c => !search || c.name.toLowerCase().includes(search))
+      .map(c => ({
+        ...c, select: () => this.setState({ newCategoryId: c.id }),
+        isSelected: s.newCategoryId === c.id,
+        tileBorder: s.newCategoryId === c.id ? 'var(--color-accent)' : 'var(--color-divider)',
+        tileBg: s.newCategoryId === c.id ? 'var(--color-accent-100)' : 'transparent',
+        rowBg: s.newCategoryId === c.id ? 'var(--color-accent-100)' : 'transparent',
+      }));
+    const noCategoryMatch = addCategories.length === 0;
+    const selectedCategoryName = (catsComputed.find(c => c.id === s.newCategoryId) || {}).name || '';
 
-    const categoriesOverlayView = catsComputed.map(c => ({
+    const categoriesOverlayView = expenseCats.map(c => ({
       ...c,
       isEditing: s.editingCatId === c.id,
       editValue: s.editingCatId === c.id ? s.editBudgetValue : String(c.budget),
@@ -654,8 +792,12 @@ class Component extends DCLogic {
       setAuthName: (e) => this.setState({ authName: e.target.value }),
       setAuthEmail: (e) => this.setState({ authEmail: e.target.value }),
       setAuthPassword: (e) => this.setState({ authPassword: e.target.value }),
-      authButtonLabel: s.authMode === 'login' ? 'Entrar' : 'Criar conta',
+      authButtonLabel: s.authing ? (s.authMode === 'login' ? 'Entrando…' : 'Criando conta…') : (s.authMode === 'login' ? 'Entrar' : 'Criar conta'),
       submitAuth: () => this.submitAuth(),
+      isAuthing: !!s.authing,
+      isSavingTx: !!s.savingTx, savingTxLabel: s.savingTx || '',
+      isSendingInvite: !!s.sendingInvite,
+      hasToast: !!s.toast, toast: s.toast || '',
 
       tab: s.tab, isDash: s.tab === 'dashboard', isTx: s.tab === 'transactions', isRep: s.tab === 'reports', isCat: s.tab === 'categories', isMem: s.tab === 'members', isSet: s.tab === 'settings',
       goToDashboard: () => this.setTab('dashboard'), goToTransactions: () => this.setTab('transactions'),
@@ -664,9 +806,20 @@ class Component extends DCLogic {
       currentMonthLabel: 'Agosto de 2026',
       totalSpentFmt: this.formatCurrency(totalSpent), totalBudgetFmt: this.formatCurrency(totalBudget),
       overallPctStr: overallPct + '%', remainingFmt: this.formatCurrency(Math.max(0, totalBudget - totalSpent)),
-      categoriesComputed: catsComputed, recentTx: allTxView.slice(0, 5),
+      categoriesComputed: expenseCats, recentTx: allTxView.slice(0, 5),
+      totalIncomeFmt: this.formatCurrency(totalIncome),
+      saldoFmt: (saldo < 0 ? '- ' : '') + this.formatCurrency(Math.abs(saldo)),
+      saldoColor: saldo >= 0 ? 'oklch(45% 0.13 150)' : 'var(--color-accent-700)',
 
       txFilterChips, txEmpty: filteredList.length === 0, txListView: filteredList,
+      filterPanelOpen: !!s.filterPanelOpen, toggleFilterPanel: () => this.setState(st => ({ filterPanelOpen: !st.filterPanelOpen })),
+      hasActiveAdvancedFilters,
+      dateFrom: s.dateFrom || '', dateTo: s.dateTo || '', valueMin: s.valueMin || '', valueMax: s.valueMax || '',
+      setDateFrom: (e) => this.setState({ dateFrom: e.target.value }),
+      setDateTo: (e) => this.setState({ dateTo: e.target.value }),
+      setValueMin: (e) => this.setState({ valueMin: e.target.value }),
+      setValueMax: (e) => this.setState({ valueMax: e.target.value }),
+      clearAdvancedFilters: () => this.setState({ dateFrom: '', dateTo: '', valueMin: '', valueMax: '' }),
 
       isPerWeek: s.period === 'semana', isPerMonth: s.period === 'mes', isPerYear: s.period === 'ano',
       setPeriodWeek: () => this.setPeriod('semana'), setPeriodMonth: () => this.setPeriod('mes'), setPeriodYear: () => this.setPeriod('ano'),
@@ -680,15 +833,24 @@ class Component extends DCLogic {
       toggleNotifPush: () => this.toggleNotifPush(), toggleNotifEmail: () => this.toggleNotifEmail(),
       logout: () => this.logout(),
 
-      showAdd: s.showAdd, closeAdd: () => this.closeAdd(), openAdd: () => this.openAdd(),
-      addCategories, newAmount: s.newAmount, newDate: s.newDate, newNote: s.newNote,
+      showAdd: s.showAdd, closeAdd: () => this.closeAdd(), openAdd: () => this.openAdd(s.newTxType),
+      openAddExpense: () => this.openAdd('expense'), openAddIncome: () => this.openAdd('income'),
+      receiptFieldLabel: s.newTxType === 'income' ? 'Comprovante de recebimento (opcional)' : 'Comprovante (opcional)',
+      addFormTitle: s.editingTxId ? (s.newTxType === 'income' ? 'Editar receita' : 'Editar despesa') : (s.newTxType === 'income' ? 'Nova receita' : 'Nova despesa'),
+      addFormSaveLabel: s.savingTx ? 'Salvando…' : (s.editingTxId ? 'Salvar alterações' : (s.newTxType === 'income' ? 'Salvar receita' : 'Salvar despesa')),
+      editTxFn: () => this.editTx(s.viewingTxId),
+      addCategories, noCategoryMatch, selectedCategoryName, categorySearch: s.categorySearch || '',
+      setCategorySearch: (e) => this.setState({ categorySearch: e.target.value }),
+      newAmount: s.newAmount, newDate: s.newDate, newNote: s.newNote,
       setNewAmount: (e) => this.setState({ newAmount: e.target.value }),
       setNewDate: (e) => this.setState({ newDate: e.target.value }),
       setNewNote: (e) => this.setState({ newNote: e.target.value }),
       saveExpense: () => this.saveExpense(),
 
       isViewingTx: !!viewingTx, closeTx: () => this.closeTx(), deleteTxFn: () => this.deleteTxFn(),
-      txDetailAmountFmt: viewingTx ? '- ' + this.formatCurrency(viewingTx.amount) : '',
+      txDetailAmountFmt: viewingTx ? (viewingTx.type === 'income' ? '+ ' : '- ') + this.formatCurrency(viewingTx.amount) : '',
+      txDetailAmountColor: viewingTx && viewingTx.type === 'income' ? 'oklch(45% 0.13 150)' : 'var(--color-accent-700)',
+      txDetailTitle: viewingTx && viewingTx.type === 'income' ? 'Detalhe da receita' : 'Detalhe da despesa',
       txDetailDateFmt: viewingTx ? this.formatDateLong(viewingTx.date) : '',
       txDetailLetter: viewingCat ? viewingCat.letter : '',
       txDetailCatName: viewingCat ? viewingCat.name : '',

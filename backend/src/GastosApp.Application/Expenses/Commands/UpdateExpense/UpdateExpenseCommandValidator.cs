@@ -29,5 +29,5 @@ public sealed class UpdateExpenseCommandValidator : AbstractValidator<UpdateExpe
 
     private async Task<bool> BeAnOwnedCategoryAsync(
         UpdateExpenseCommand command, string categoryId, CancellationToken cancellationToken) =>
-        await _categoryRepository.GetByIdAsync(command.UserId, categoryId, cancellationToken) is not null;
+        await _categoryRepository.GetByIdAsync(command.AccountId, categoryId, cancellationToken) is not null;
 }

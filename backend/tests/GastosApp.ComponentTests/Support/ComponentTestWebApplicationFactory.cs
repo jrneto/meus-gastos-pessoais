@@ -15,10 +15,28 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
     public IAuthService AuthServiceMock { get; private set; } = Substitute.For<IAuthService>();
     public IExpenseRepository ExpenseRepositoryMock { get; private set; } = Substitute.For<IExpenseRepository>();
     public ICategoryRepository CategoryRepositoryMock { get; private set; } = Substitute.For<ICategoryRepository>();
+    public IAccountRepository AccountRepositoryMock { get; private set; } = BuildDefaultAccountRepositoryMock();
 
     public void ResetAuthServiceMock() => AuthServiceMock = Substitute.For<IAuthService>();
     public void ResetExpenseRepositoryMock() => ExpenseRepositoryMock = Substitute.For<IExpenseRepository>();
     public void ResetCategoryRepositoryMock() => CategoryRepositoryMock = Substitute.For<ICategoryRepository>();
+    public void ResetAccountRepositoryMock() => AccountRepositoryMock = BuildDefaultAccountRepositoryMock();
+
+    // Default "esperto": resolve accountId = userId (mesmo valor) pra todo
+    // usuário — ResolveAccountEndpointFilter passa a exigir essa resolução
+    // em toda rota de /categories e /expenses (FEAT-19), e a maioria dos
+    // testes já existentes usa o próprio userId autenticado como o valor
+    // esperado de tenant nos mocks de Category/ExpenseRepository. Manter os
+    // dois iguais por padrão evita reescrever esses testes um por um; testes
+    // que precisam simular ausência de conta (401 account-not-found) ou
+    // accountId diferente do userId sobrescrevem isso explicitamente.
+    private static IAccountRepository BuildDefaultAccountRepositoryMock()
+    {
+        var mock = Substitute.For<IAccountRepository>();
+        mock.FindAccountIdByUserIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<string>());
+        return mock;
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -46,6 +64,9 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
 
             services.RemoveAll<ICategoryRepository>();
             services.AddScoped(_ => CategoryRepositoryMock);
+
+            services.RemoveAll<IAccountRepository>();
+            services.AddScoped(_ => AccountRepositoryMock);
 
             services.AddAuthentication()
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });

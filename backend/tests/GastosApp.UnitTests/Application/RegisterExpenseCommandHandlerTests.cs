@@ -37,7 +37,7 @@ public class RegisterExpenseCommandHandlerTests
         result.Value.Id.Should().NotBeNullOrWhiteSpace();
 
         await _expenseRepositoryMock.Received(1).SaveAsync(
-            Arg.Is<Expense>(e => e.UserId == command.UserId && e.Description == command.Description),
+            Arg.Is<Expense>(e => e.AccountId == command.AccountId && e.Description == command.Description),
             Arg.Any<CancellationToken>());
     }
 

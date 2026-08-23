@@ -4,7 +4,7 @@ using Mediator;
 
 namespace GastosApp.Application.Categories.Commands.DeleteCategory;
 
-public sealed record DeleteCategoryCommand(string UserId, string CategoryId) : ICommand<Result>;
+public sealed record DeleteCategoryCommand(string AccountId, string CategoryId) : ICommand<Result>;
 
 public sealed class DeleteCategoryCommandHandler : ICommandHandler<DeleteCategoryCommand, Result>
 {
@@ -19,15 +19,15 @@ public sealed class DeleteCategoryCommandHandler : ICommandHandler<DeleteCategor
 
     public async ValueTask<Result> Handle(DeleteCategoryCommand command, CancellationToken cancellationToken)
     {
-        var category = await _categoryRepository.GetByIdAsync(command.UserId, command.CategoryId, cancellationToken);
+        var category = await _categoryRepository.GetByIdAsync(command.AccountId, command.CategoryId, cancellationToken);
         if (category is null)
             return Result.Failure(CategoryErrors.NotFound);
 
-        var inUse = await _expenseRepository.ExistsByCategoryAsync(command.UserId, command.CategoryId, cancellationToken);
+        var inUse = await _expenseRepository.ExistsByCategoryAsync(command.AccountId, command.CategoryId, cancellationToken);
         if (inUse)
             return Result.Failure(CategoryErrors.CategoryInUse);
 
-        var deleted = await _categoryRepository.DeleteAsync(command.UserId, command.CategoryId, cancellationToken);
+        var deleted = await _categoryRepository.DeleteAsync(command.AccountId, command.CategoryId, cancellationToken);
         return deleted ? Result.Success() : Result.Failure(CategoryErrors.NotFound);
     }
 }

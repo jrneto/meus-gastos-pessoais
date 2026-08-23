@@ -74,6 +74,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
+builder.Services.AddScoped<CurrentAccountContext>();
 builder.Services.AddAWSLambdaHosting(
     LambdaEventSource.HttpApi,
     new SourceGeneratorLambdaJsonSerializer<LambdaEventJsonSerializerContext>());

@@ -5,7 +5,7 @@ using Mediator;
 
 namespace GastosApp.Application.Categories.Queries.GetCategories;
 
-public sealed record GetCategoriesQuery(string UserId) : IQuery<Result<GetCategoriesResult>>;
+public sealed record GetCategoriesQuery(string AccountId) : IQuery<Result<GetCategoriesResult>>;
 
 public sealed class GetCategoriesQueryHandler : IQueryHandler<GetCategoriesQuery, Result<GetCategoriesResult>>
 {
@@ -18,7 +18,7 @@ public sealed class GetCategoriesQueryHandler : IQueryHandler<GetCategoriesQuery
 
     public async ValueTask<Result<GetCategoriesResult>> Handle(GetCategoriesQuery query, CancellationToken cancellationToken)
     {
-        var categories = await _categoryRepository.ListAsync(query.UserId, cancellationToken);
+        var categories = await _categoryRepository.ListAsync(query.AccountId, cancellationToken);
         return Result.Success(GetCategoriesResult.FromEntities(categories));
     }
 }

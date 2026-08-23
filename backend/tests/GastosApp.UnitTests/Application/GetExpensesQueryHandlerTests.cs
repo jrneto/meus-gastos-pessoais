@@ -46,7 +46,7 @@ public class GetExpensesQueryHandlerTests
 
         await _expenseRepositoryMock.Received(1).QueryAsync(
             Arg.Is<ExpenseQueryFilter>(f =>
-                f.UserId == "user-id-123"
+                f.AccountId == "user-id-123"
                 && f.YearMonth == "2025-06"
                 && f.CategoryId == "category-1"
                 && f.DateFrom == new DateOnly(2025, 6, 1)

@@ -18,7 +18,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
     private const int MaxPaginationIterations = 25;
 
     // GSI2 (GSI2PK = "ID#{id}") é compartilhado com outros tipos de item de
-    // usuário (ex.: categorias, mesmo formato de chave) — sem esse
+    // conta (ex.: categorias, mesmo formato de chave) — sem esse
     // discriminador, um id de categoria passado a um endpoint de despesa
     // encontraria o item errado (crash ao ler atributos que só despesa tem,
     // ou pior: update/delete operando sobre o item errado). "Tipo" já era
@@ -43,9 +43,9 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
 
         var item = new Dictionary<string, AttributeValue>
         {
-            ["PK"] = new AttributeValue { S = $"USER#{expense.UserId}" },
+            ["PK"] = new AttributeValue { S = $"ACCOUNT#{expense.AccountId}" },
             ["SK"] = new AttributeValue { S = $"TXN#{day}#{expense.Id}" },
-            ["GSI1PK"] = new AttributeValue { S = $"USER#{expense.UserId}#{expense.CategoryId}" },
+            ["GSI1PK"] = new AttributeValue { S = $"ACCOUNT#{expense.AccountId}#{expense.CategoryId}" },
             ["GSI1SK"] = new AttributeValue { S = $"{day}#{expense.Id}" },
             ["GSI2PK"] = new AttributeValue { S = $"ID#{expense.Id}" },
             ["Description"] = new AttributeValue { S = expense.Description },
@@ -63,7 +63,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         }, cancellationToken);
     }
 
-    public async Task<bool> DeleteAsync(string userId, string expenseId, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(string accountId, string expenseId, CancellationToken cancellationToken = default)
     {
         var lookup = await _dynamoDbClient.QueryAsync(new QueryRequest
         {
@@ -83,7 +83,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         var pk = lookup.Items[0]["PK"].S;
         var sk = lookup.Items[0]["SK"].S;
 
-        if (pk != $"USER#{userId}")
+        if (pk != $"ACCOUNT#{accountId}")
             return false;
 
         try
@@ -114,7 +114,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         }
     }
 
-    public async Task<Expense?> GetByIdAsync(string userId, string expenseId, CancellationToken cancellationToken = default)
+    public async Task<Expense?> GetByIdAsync(string accountId, string expenseId, CancellationToken cancellationToken = default)
     {
         var lookup = await _dynamoDbClient.QueryAsync(new QueryRequest
         {
@@ -134,7 +134,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         var pk = lookup.Items[0]["PK"].S;
         var sk = lookup.Items[0]["SK"].S;
 
-        if (pk != $"USER#{userId}")
+        if (pk != $"ACCOUNT#{accountId}")
             return null;
 
         var current = await _dynamoDbClient.GetItemAsync(new GetItemRequest
@@ -157,11 +157,11 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         var amountInCents = long.Parse(current.Item["AmountInCents"].N, CultureInfo.InvariantCulture);
         var description = current.Item["Description"].S;
 
-        return Expense.Restore(expenseId, userId, description, amountInCents, categoryId, expenseDate, createdAt);
+        return Expense.Restore(expenseId, accountId, description, amountInCents, categoryId, expenseDate, createdAt);
     }
 
     public async Task<Expense?> UpdateAsync(
-        string userId,
+        string accountId,
         string expenseId,
         string description,
         long amountInCents,
@@ -187,7 +187,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         var pk = lookup.Items[0]["PK"].S;
         var oldSk = lookup.Items[0]["SK"].S;
 
-        if (pk != $"USER#{userId}")
+        if (pk != $"ACCOUNT#{accountId}")
             return null;
 
         var current = await _dynamoDbClient.GetItemAsync(new GetItemRequest
@@ -258,13 +258,13 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
             }, cancellationToken);
         }
 
-        return Expense.Restore(expenseId, userId, description, amountInCents, categoryId, expenseDate, createdAt);
+        return Expense.Restore(expenseId, accountId, description, amountInCents, categoryId, expenseDate, createdAt);
     }
 
     private static bool IsDespesaItem(Dictionary<string, AttributeValue> item) =>
         item.TryGetValue(TipoAttribute, out var tipo) && tipo.S == TipoDespesa;
 
-    public async Task<bool> ExistsByCategoryAsync(string userId, string categoryId, CancellationToken cancellationToken = default)
+    public async Task<bool> ExistsByCategoryAsync(string accountId, string categoryId, CancellationToken cancellationToken = default)
     {
         var response = await _dynamoDbClient.QueryAsync(new QueryRequest
         {
@@ -273,7 +273,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
             KeyConditionExpression = "GSI1PK = :gsi1pk",
             ExpressionAttributeValues = new Dictionary<string, AttributeValue>
             {
-                [":gsi1pk"] = new AttributeValue { S = $"USER#{userId}#{categoryId}" }
+                [":gsi1pk"] = new AttributeValue { S = $"ACCOUNT#{accountId}#{categoryId}" }
             },
             Limit = 1
         }, cancellationToken);
@@ -351,7 +351,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         if (index == Gsi1Index)
         {
             names["#pk"] = "GSI1PK";
-            values[":pk"] = new AttributeValue { S = $"USER#{filter.UserId}#{filter.CategoryId}" };
+            values[":pk"] = new AttributeValue { S = $"ACCOUNT#{filter.AccountId}#{filter.CategoryId}" };
             keyConditionExpression = "#pk = :pk";
 
             var skCondition = BuildSkCondition(filter, names, values, skAttributeName: "GSI1SK", skPrefix: string.Empty);
@@ -361,7 +361,7 @@ public sealed class DynamoDbExpenseRepository : IExpenseRepository
         else
         {
             names["#pk"] = "PK";
-            values[":pk"] = new AttributeValue { S = $"USER#{filter.UserId}" };
+            values[":pk"] = new AttributeValue { S = $"ACCOUNT#{filter.AccountId}" };
             keyConditionExpression = "#pk = :pk";
 
             var skCondition = BuildSkCondition(filter, names, values, skAttributeName: "SK", skPrefix: "TXN#");

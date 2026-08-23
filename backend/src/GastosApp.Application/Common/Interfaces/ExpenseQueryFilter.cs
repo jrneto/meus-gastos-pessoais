@@ -1,7 +1,7 @@
 namespace GastosApp.Application.Common.Interfaces;
 
 public sealed record ExpenseQueryFilter(
-    string UserId,
+    string AccountId,
     string? YearMonth,
     string? CategoryId,
     DateOnly? DateFrom,

@@ -1,0 +1,45 @@
+# Build efêmero do artefato Native AOT do Lambda trigger PostConfirmation
+# do Cognito (FEAT-19). Mesmo padrão de infra/lambda/Dockerfile.build
+# (Amazon Linux 2023 na base do build, mesma glibc do runtime
+# "provided.al2023" — ver aquele arquivo para o achado completo), só
+# publicando um projeto diferente (GastosApp.CognitoTriggers em vez de
+# GastosApp.Api) e sem appsettings.json (este Lambda não lê configuração
+# de arquivo, só variável de ambiente — ver plan.md da FEAT-19).
+#
+# Contexto de build esperado: backend/ (para enxergar src/*)
+# Exemplo: docker build -f infra/lambda/Dockerfile.build-account-trigger
+#          --target export --output type=local,dest=infra/lambda/out .
+# (rodar a partir de backend/)
+
+FROM amazonlinux:2023 AS build
+
+RUN dnf install -y -q clang zlib-devel tar gzip \
+    && dnf clean all
+
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+
+RUN curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh \
+    && chmod +x /tmp/dotnet-install.sh \
+    && /tmp/dotnet-install.sh --channel 10.0 --quality preview --install-dir /usr/share/dotnet
+ENV PATH="/usr/share/dotnet:${PATH}"
+
+WORKDIR /src
+COPY . .
+
+RUN dotnet publish src/GastosApp.CognitoTriggers/GastosApp.CognitoTriggers.csproj \
+    -c Release \
+    -r linux-x64 \
+    --self-contained \
+    -p:PublishAot=true \
+    -p:NuGetPackageFolders=/root/.nuget/packages \
+    -o /app/publish
+
+FROM amazonlinux:2023 AS package
+RUN dnf install -y -q zip && dnf clean all
+WORKDIR /pkg
+COPY --from=build /app/publish/GastosApp.CognitoTriggers ./bootstrap
+RUN chmod +x ./bootstrap \
+    && zip -j /account-trigger-function.zip bootstrap
+
+FROM scratch AS export
+COPY --from=package /account-trigger-function.zip /account-trigger-function.zip
