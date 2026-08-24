@@ -15,6 +15,21 @@ name: Backend — Deploy Trigger de Conta (Produção)
 on:
   release:
     types: [published]
+  # Escape hatch pra recuperar um deploy que ficou pra trás sem esperar
+  # outra release: a comparação de check-changes usa a última release
+  # PUBLICADA como baseline, então se essa release foi publicada mas o
+  # deploy dela não rodou de verdade (ex.: bug corrigido depois), uma
+  # release seguinte sem mudança de código nenhuma acha "nada mudou" e
+  # pula de novo — mesmo o Lambda nunca tendo recebido o código real.
+  # Achado real: aconteceu exatamente isso com backend-v0.0.7 (deploy
+  # pulado por bug) seguida de backend-v0.0.9 (sem mudança de código
+  # desde 0.0.7, então também pulou). workflow_dispatch pula o
+  # check-changes e força o deploy da tag informada.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag da release a deployar (ex.: backend-v0.0.9) — força o deploy, ignorando o check-changes"
+        required: true
 
 permissions:
   id-token: write # necessário para autenticação AWS via OIDC (sem access key fixa)
@@ -24,9 +39,12 @@ defaults:
   run:
     working-directory: backend
 
+env:
+  RELEASE_TAG: ${{ github.event.inputs.tag || github.event.release.tag_name }}
+
 jobs:
   check-changes:
-    if: startsWith(github.event.release.tag_name, 'backend-v')
+    if: startsWith(github.event.inputs.tag || github.event.release.tag_name, 'backend-v')
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.check.outputs.changed }}
@@ -41,6 +59,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Disparado manualmente via workflow_dispatch — pula a verificação de mudanças e força o deploy de $RELEASE_TAG."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           previous_tag=$(gh release list --exclude-drafts --json tagName,publishedAt \
             --jq '[.[] | select(.tagName | startswith("backend-v")) | select(.tagName != "${{ github.event.release.tag_name }}")] | sort_by(.publishedAt) | last | .tagName // ""')
@@ -82,7 +106,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ env.RELEASE_TAG }}
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -98,7 +122,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Build do artefato (Native AOT)
         run: bash infra/lambda/build-account-trigger.sh
