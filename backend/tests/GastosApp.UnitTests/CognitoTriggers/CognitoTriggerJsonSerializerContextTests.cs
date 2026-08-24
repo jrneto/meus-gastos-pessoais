@@ -10,7 +10,7 @@ namespace GastosApp.UnitTests.CognitoTriggers;
 // testes de AccountTriggerHandlerTests não pegam esse tipo de bug
 // porque trabalham com o objeto C#, nunca com o JSON final.
 //
-// Existe porque três bugs reais escaparam pros logs do Cognito em
+// Existe porque quatro bugs reais escaparam pros logs do Cognito em
 // homologação (FEAT-19) sem nenhum teste unitário/componente acusar:
 // 1) resposta saindo em PascalCase (Cognito exige camelCase de volta)
 // 2) campo "callerContext" do evento de entrada sendo descartado
@@ -21,7 +21,11 @@ namespace GastosApp.UnitTests.CognitoTriggers;
 //    pelo console AWS, sem app cliente envolvido) virando "null"
 //    explícito na saída — Cognito manda o campo ausente, não null, e
 //    não reconhece o shape com null de volta.
-// Os três geraram o mesmo InvalidLambdaResponseException
+// 4) "callerContext.clientId" null de verdade na entrada (mesmo cenário
+//    de confirmação manual pelo console, sem app cliente — confirmado
+//    via log real do CloudWatch, não só inferido da doc) virando "null"
+//    explícito na saída pelo mesmo motivo do item 3.
+// Os quatro geraram o mesmo InvalidLambdaResponseException
 // ("Unrecognizable lambda output"), mesmo com o Lambda executando com
 // sucesso (registros criados no banco, sem exceção nos logs).
 public class CognitoTriggerJsonSerializerContextTests
@@ -94,5 +98,48 @@ public class CognitoTriggerJsonSerializerContextTests
             "o Cognito manda o campo ausente quando não há client metadata, e rejeita \"clientMetadata\": null de volta");
 
         root.TryGetProperty("response", out _).Should().BeTrue();
+    }
+
+    // JSON real capturado do log de diagnóstico em homologação (FEAT-19,
+    // usuário confirmado manualmente pelo console AWS) — não um exemplo
+    // construído a partir da doc. callerContext.clientId vem null de
+    // verdade nesse cenário (sem app cliente envolvido).
+    private const string CognitoConsoleConfirmRequestJson = """
+        {
+          "version": "1",
+          "region": "us-east-1",
+          "userPoolId": "us-east-1_GFfn9AMAN",
+          "userName": "44688458-a001-70b5-53f3-26ea2bd67f8b",
+          "callerContext": {
+            "awsSdkVersion": "aws-sdk-js-2.1639.0",
+            "clientId": null
+          },
+          "triggerSource": "PostConfirmation_ConfirmSignUp",
+          "request": {
+            "userAttributes": {
+              "sub": "44688458-a001-70b5-53f3-26ea2bd67f8b",
+              "email_verified": "false",
+              "cognito:user_status": "CONFIRMED",
+              "email": "user@example.com"
+            }
+          },
+          "response": {}
+        }
+        """;
+
+    [Fact]
+    public void RoundTrip_ShouldOmitClientId_WhenConsoleConfirmSendsItNull()
+    {
+        // Act
+        var evt = JsonSerializer.Deserialize<CognitoPostConfirmationEvent>(CognitoConsoleConfirmRequestJson, Options);
+        var responseJson = JsonSerializer.Serialize(evt, Options);
+
+        using var doc = JsonDocument.Parse(responseJson);
+        var callerContext = doc.RootElement.GetProperty("callerContext");
+
+        // Assert
+        callerContext.GetProperty("awsSdkVersion").GetString().Should().Be("aws-sdk-js-2.1639.0");
+        callerContext.TryGetProperty("clientId", out _).Should().BeFalse(
+            "o Cognito manda clientId null quando não há app cliente envolvido, e rejeita \"clientId\": null de volta");
     }
 }

@@ -40,7 +40,17 @@ public sealed class CognitoPostConfirmationEvent
 public sealed class CognitoPostConfirmationCallerContext
 {
     public string AwsSdkVersion { get; set; } = "";
-    public string ClientId { get; set; } = "";
+
+    // Confirmado via log real do CloudWatch em homologação (FEAT-19):
+    // confirmação manual pelo console AWS (awsSdkVersion "aws-sdk-js-*",
+    // sem app cliente envolvido) manda clientId null de verdade — e
+    // "string" não-anulável não impede null em runtime (só é dica de
+    // compilação). Sem WhenWritingNull, era o único null que sobrava em
+    // todo o payload devolvido, e o Cognito rejeitava com
+    // InvalidLambdaResponseException mesmo com clientMetadata já
+    // corrigido pelo mesmo padrão.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ClientId { get; set; }
 }
 
 public sealed class CognitoPostConfirmationRequest
