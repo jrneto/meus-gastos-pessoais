@@ -56,14 +56,18 @@ jobs:
 
           echo "Comparando $previous_tag..${{ github.event.release.tag_name }}"
 
+          # Paths relativos a backend/ (não repo-root) — o `defaults.run.working-directory`
+          # deste workflow já executa dentro de backend/, então um prefixo "backend/"
+          # aqui apontaria para backend/backend/... (inexistente) e o diff daria sempre
+          # vazio. Achado real: foi exatamente isso que aconteceu na release backend-v0.0.7.
           changed_paths=$(git diff --name-only "$previous_tag" "${{ github.event.release.tag_name }}" -- \
-            backend/src/GastosApp.Api \
-            backend/src/GastosApp.Application \
-            backend/src/GastosApp.Domain \
-            backend/src/GastosApp.Infrastructure \
-            backend/infra/lambda/Dockerfile.build \
-            backend/infra/lambda/build.sh \
-            backend/GastosApp.sln || true)
+            src/GastosApp.Api \
+            src/GastosApp.Application \
+            src/GastosApp.Domain \
+            src/GastosApp.Infrastructure \
+            infra/lambda/Dockerfile.build \
+            infra/lambda/build.sh \
+            GastosApp.sln || true)
 
           if [ -n "$changed_paths" ]; then
             echo "Mudanças relevantes encontradas:"
