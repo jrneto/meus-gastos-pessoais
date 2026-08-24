@@ -7,7 +7,11 @@ name: Backend — Deploy Trigger de Conta (Homologação)
 # embarca as camadas Application/Domain/Infrastructure (compartilhadas
 # com a API), mudança nelas dispara os dois workflows — só mudança
 # isolada em GastosApp.Api OU GastosApp.CognitoTriggers dispara um só
-# (ver plan.md da FEAT-19).
+# (ver plan.md da FEAT-19). Corrigido após achado real: até então
+# backend-deploy-hom.yml usava o filtro largo 'backend/src/**', que
+# casava também com GastosApp.CognitoTriggers e redeployava os dois
+# Lambdas numa mudança isolada neste projeto — ver
+# backend-deploy-hom.yml para o filtro explícito por camada.
 #
 # Limitação conhecida: o rascunho de release backend-v* só é
 # criado/atualizado pelo job draft-release de backend-deploy-hom.yml

@@ -13,9 +13,22 @@ on:
       # vivo da FEAT-14: 'backend/**' redeployava hom a cada commit só
       # de documentação, gastando minutos e criando rascunho de release
       # à toa).
-      - 'backend/src/**'
+      #
+      # Camadas explícitas, não 'backend/src/**': este Lambda embarca
+      # só GastosApp.Api + Application/Domain/Infrastructure (ver
+      # GastosApp.Api.csproj). Uma mudança isolada em
+      # GastosApp.CognitoTriggers (Lambda separado, próprio workflow
+      # backend-deploy-account-trigger-hom.yml) não deve redeployar
+      # este — achado real ao validar a FEAT-19: 'backend/src/**' casava
+      # com os dois e redeployava ambos numa mudança que só tocava o
+      # trigger de conta.
+      - 'backend/src/GastosApp.Api/**'
+      - 'backend/src/GastosApp.Application/**'
+      - 'backend/src/GastosApp.Domain/**'
+      - 'backend/src/GastosApp.Infrastructure/**'
       - 'backend/tests/**'
-      - 'backend/infra/lambda/**'
+      - 'backend/infra/lambda/Dockerfile.build'
+      - 'backend/infra/lambda/build.sh'
       - 'backend/GastosApp.sln'
   # Permite re-disparar manualmente (ex.: depois de corrigir um
   # workflow em .github/workflows/**, que não casa com o filtro de

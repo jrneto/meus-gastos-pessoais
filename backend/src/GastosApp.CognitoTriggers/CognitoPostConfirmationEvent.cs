@@ -14,6 +14,17 @@ public sealed class CognitoPostConfirmationEvent
     public string Region { get; set; } = "";
     public string UserPoolId { get; set; } = "";
     public string UserName { get; set; } = "";
+
+    // Precisa existir no POCO mesmo sem o handler usar seu conteúdo: o
+    // Cognito exige o evento de volta *completo* (documentado junto com
+    // version/region/userPoolId etc.), e o System.Text.Json ignora
+    // silenciosamente campos desconhecidos na deserialização — sem esta
+    // propriedade, callerContext simplesmente desaparecia na resposta.
+    // Causou InvalidLambdaResponseException ("Unrecognizable lambda
+    // output") mesmo após corrigir o casing (camelCase) do restante do
+    // evento — achado real ao validar a FEAT-19 em homologação.
+    public CognitoPostConfirmationCallerContext CallerContext { get; set; } = new();
+
     public string TriggerSource { get; set; } = "";
     public CognitoPostConfirmationRequest Request { get; set; } = new();
 
@@ -22,6 +33,12 @@ public sealed class CognitoPostConfirmationEvent
     // objeto (dict de string evita problema de tipo polimórfico (object) no
     // JsonSerializerContext source-generated, obrigatório sob Native AOT).
     public Dictionary<string, string> Response { get; set; } = new();
+}
+
+public sealed class CognitoPostConfirmationCallerContext
+{
+    public string AwsSdkVersion { get; set; } = "";
+    public string ClientId { get; set; } = "";
 }
 
 public sealed class CognitoPostConfirmationRequest
