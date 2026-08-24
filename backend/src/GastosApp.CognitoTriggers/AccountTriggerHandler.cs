@@ -1,3 +1,4 @@
+using System.Text.Json;
 using GastosApp.Application.Accounts.Commands.EnsureAccount;
 using Mediator;
 using Microsoft.Extensions.Logging;
@@ -34,6 +35,20 @@ public static class AccountTriggerHandler
                     ex, "Falha ao garantir Account para o usuário {UserId} no trigger PostConfirmation.", userId);
             }
         }
+
+        // Temporário (remover depois de confirmar em homologação, ver
+        // spec.md/plan.md da FEAT-19): loga o JSON exato que sai pro
+        // Cognito, serializado com o mesmo contexto/opções que a
+        // LambdaBootstrapBuilder usa de verdade — depois de 3 rodadas de
+        // InvalidLambdaResponseException corrigindo campo por campo por
+        // inferência da doc, próximo passo é comparar o byte a byte real
+        // em vez de continuar adivinhando.
+        // JsonTypeInfo gerado (não o overload com JsonSerializerOptions) —
+        // este projeto é Native AOT, e o overload genérico usa reflection
+        // (quebra silenciosamente ou no trimming; ver GastosApp.CognitoTriggers.csproj).
+        logger.LogInformation(
+            "Resposta que será devolvida ao Cognito: {ResponseJson}",
+            JsonSerializer.Serialize(evt, CognitoTriggerJsonSerializerContext.Default.CognitoPostConfirmationEvent));
 
         return evt; // Cognito exige o evento de volta, alterado ou não
     }
