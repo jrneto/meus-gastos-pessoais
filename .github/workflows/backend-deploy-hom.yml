@@ -27,6 +27,11 @@ on:
       - 'backend/src/GastosApp.Domain/**'
       - 'backend/src/GastosApp.Infrastructure/**'
       - 'backend/tests/**'
+      # Mesmo raciocínio acima, agora do lado dos testes — achado real:
+      # um teste novo em backend/tests/**/CognitoTriggers/** (sem
+      # nenhuma mudança em Api/Application/Domain/Infrastructure)
+      # redeployava esta Lambda só por casar com 'backend/tests/**'.
+      - '!backend/tests/**/CognitoTriggers/**'
       - 'backend/infra/lambda/Dockerfile.build'
       - 'backend/infra/lambda/build.sh'
       - 'backend/GastosApp.sln'
