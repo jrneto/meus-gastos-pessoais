@@ -1,0 +1,141 @@
+name: Backend — Deploy Trigger de Conta (Produção)
+
+# Espelha backend-deploy-prod.yml, mas só para o Lambda do trigger
+# PostConfirmation do Cognito (FEAT-19). Diferença importante: eventos
+# `release` não suportam filtro `paths:` nativo do GitHub Actions (esse
+# filtro só existe para push/pull_request) — então o job check-changes
+# calcula manualmente se algo relevante a este Lambda mudou desde a
+# última release backend-v* PUBLICADA (não rascunho), via `git diff`
+# entre as duas tags. Decisão registrada em conversa: ao contrário do
+# deploy de hom (path-filtro nativo simples), prod também é
+# path-filtrado — evita redeployar/republicar a função quando a release
+# não trouxe nenhuma mudança que afete este Lambda. backend-deploy-
+# prod.yml (Api) usa o mesmo padrão de check-changes, filtrando pelas
+# camadas que ela embarca (Api/Application/Domain/Infrastructure).
+on:
+  release:
+    types: [published]
+  # Escape hatch pra recuperar um deploy que ficou pra trás sem esperar
+  # outra release: a comparação de check-changes usa a última release
+  # PUBLICADA como baseline, então se essa release foi publicada mas o
+  # deploy dela não rodou de verdade (ex.: bug corrigido depois), uma
+  # release seguinte sem mudança de código nenhuma acha "nada mudou" e
+  # pula de novo — mesmo o Lambda nunca tendo recebido o código real.
+  # Achado real: aconteceu exatamente isso com backend-v0.0.7 (deploy
+  # pulado por bug) seguida de backend-v0.0.9 (sem mudança de código
+  # desde 0.0.7, então também pulou). workflow_dispatch pula o
+  # check-changes e força o deploy da tag informada.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag da release a deployar (ex.: backend-v0.0.9) — força o deploy, ignorando o check-changes"
+        required: true
+
+permissions:
+  id-token: write # necessário para autenticação AWS via OIDC (sem access key fixa)
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+env:
+  RELEASE_TAG: ${{ github.event.inputs.tag || github.event.release.tag_name }}
+
+jobs:
+  check-changes:
+    if: startsWith(github.event.inputs.tag || github.event.release.tag_name, 'backend-v')
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # histórico completo — necessário pro git diff entre tags
+
+      - name: Verificar se algo relevante ao trigger de conta mudou desde a última release
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Disparado manualmente via workflow_dispatch — pula a verificação de mudanças e força o deploy de $RELEASE_TAG."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          previous_tag=$(gh release list --exclude-drafts --json tagName,publishedAt \
+            --jq '[.[] | select(.tagName | startswith("backend-v")) | select(.tagName != "${{ github.event.release.tag_name }}")] | sort_by(.publishedAt) | last | .tagName // ""')
+
+          if [ -z "$previous_tag" ]; then
+            echo "Nenhuma release anterior do backend publicada — primeiro deploy deste Lambda, considera mudou."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Comparando $previous_tag..${{ github.event.release.tag_name }}"
+
+          # Paths relativos a backend/ (não repo-root) — o `defaults.run.working-directory`
+          # deste workflow já executa dentro de backend/, então um prefixo "backend/"
+          # aqui apontaria para backend/backend/... (inexistente) e o diff daria sempre
+          # vazio. Achado real: foi exatamente isso que aconteceu na release backend-v0.0.7.
+          changed_paths=$(git diff --name-only "$previous_tag" "${{ github.event.release.tag_name }}" -- \
+            src/GastosApp.CognitoTriggers \
+            src/GastosApp.Application \
+            src/GastosApp.Domain \
+            src/GastosApp.Infrastructure \
+            infra/lambda/Dockerfile.build-account-trigger \
+            infra/lambda/build-account-trigger.sh \
+            GastosApp.sln || true)
+
+          if [ -n "$changed_paths" ]; then
+            echo "Mudanças relevantes encontradas:"
+            echo "$changed_paths"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Nenhuma mudança relevante a este Lambda desde $previous_tag."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  quality:
+    needs: check-changes
+    if: needs.check-changes.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - run: dotnet build GastosApp.sln -c Release
+      - run: dotnet test GastosApp.sln -c Release
+
+  deploy:
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: backend-prod
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Build do artefato (Native AOT)
+        run: bash infra/lambda/build-account-trigger.sh
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CICD_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Publicar código na Lambda (trigger de conta, prod)
+        run: |
+          aws lambda update-function-code \
+            --function-name "${{ vars.ACCOUNT_TRIGGER_FUNCTION_NAME }}" \
+            --zip-file fileb://infra/lambda/account-trigger-function.zip \
+            --publish
+          aws lambda wait function-updated --function-name "${{ vars.ACCOUNT_TRIGGER_FUNCTION_NAME }}"

@@ -44,6 +44,12 @@ resource "aws_cognito_user_pool" "main" {
       max_length = "2048"
     }
   }
+
+  # Cria Account+Membership (Titular) assim que o usuário confirma o
+  # cadastro (FEAT-19) — ver lambda-account-trigger.tf.
+  lambda_config {
+    post_confirmation = aws_lambda_function.account_trigger.arn
+  }
 }
 
 resource "aws_cognito_user_pool_client" "spa" {

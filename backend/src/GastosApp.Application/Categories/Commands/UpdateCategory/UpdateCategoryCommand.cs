@@ -6,7 +6,7 @@ using Mediator;
 namespace GastosApp.Application.Categories.Commands.UpdateCategory;
 
 public sealed record UpdateCategoryCommand(
-    string UserId,
+    string AccountId,
     string CategoryId,
     string Nome,
     string Cor,
@@ -24,7 +24,7 @@ public sealed class UpdateCategoryCommandHandler : ICommandHandler<UpdateCategor
     public async ValueTask<Result<UpdateCategoryResult>> Handle(UpdateCategoryCommand command, CancellationToken cancellationToken)
     {
         var result = await _categoryRepository.UpdateAsync(
-            command.UserId, command.CategoryId, command.Nome, command.Cor, command.Icone, cancellationToken);
+            command.AccountId, command.CategoryId, command.Nome, command.Cor, command.Icone, cancellationToken);
 
         return result.Outcome switch
         {

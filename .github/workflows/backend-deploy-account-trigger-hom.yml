@@ -1,0 +1,83 @@
+name: Backend — Deploy Trigger de Conta (Homologação)
+
+# Espelha backend-deploy-hom.yml, mas só para o Lambda do trigger
+# PostConfirmation do Cognito (FEAT-19) — artefato e deploy
+# independentes do Lambda da API, dois workflows separados pra não
+# redeployar os dois a cada push que só toca um deles. Como este Lambda
+# embarca as camadas Application/Domain/Infrastructure (compartilhadas
+# com a API), mudança nelas dispara os dois workflows — só mudança
+# isolada em GastosApp.Api OU GastosApp.CognitoTriggers dispara um só
+# (ver plan.md da FEAT-19). Corrigido após achado real: até então
+# backend-deploy-hom.yml usava o filtro largo 'backend/src/**', que
+# casava também com GastosApp.CognitoTriggers e redeployava os dois
+# Lambdas numa mudança isolada neste projeto — ver
+# backend-deploy-hom.yml para o filtro explícito por camada.
+#
+# Limitação conhecida: o rascunho de release backend-v* só é
+# criado/atualizado pelo job draft-release de backend-deploy-hom.yml
+# (API) — se algum dia uma mudança tocar só GastosApp.CognitoTriggers
+# (sem tocar nenhuma camada compartilhada), o deploy de hom deste
+# Lambda roda normalmente, mas nenhum rascunho de release é
+# criado/atualizado sozinho por este workflow. Aceito por ora: na
+# prática toda mudança de negócio real também toca Application/Domain
+# (que a API também embarca), então esse cenário é raro.
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'backend/src/GastosApp.CognitoTriggers/**'
+      - 'backend/src/GastosApp.Application/**'
+      - 'backend/src/GastosApp.Domain/**'
+      - 'backend/src/GastosApp.Infrastructure/**'
+      - 'backend/infra/lambda/Dockerfile.build-account-trigger'
+      - 'backend/infra/lambda/build-account-trigger.sh'
+      - 'backend/GastosApp.sln'
+  workflow_dispatch:
+
+permissions:
+  id-token: write # necessário para autenticação AWS via OIDC (sem access key fixa)
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - run: dotnet build GastosApp.sln -c Release
+      - run: dotnet test GastosApp.sln -c Release
+
+  deploy:
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: backend-hom
+    steps:
+      - uses: actions/checkout@v4
+
+      # Build Native AOT em container Amazon Linux 2023 (mesma base do
+      # runtime da Lambda) — gera infra/lambda/account-trigger-function.zip.
+      - name: Build do artefato (Native AOT)
+        run: bash infra/lambda/build-account-trigger.sh
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CICD_ROLE_ARN }}
+          aws-region: us-east-1
+
+      # ACCOUNT_TRIGGER_FUNCTION_NAME: variável própria do GitHub
+      # Environment backend-hom, distinta de FUNCTION_NAME (Lambda da API).
+      - name: Publicar código na Lambda (trigger de conta, hom)
+        run: |
+          aws lambda update-function-code \
+            --function-name "${{ vars.ACCOUNT_TRIGGER_FUNCTION_NAME }}" \
+            --zip-file fileb://infra/lambda/account-trigger-function.zip \
+            --publish
+          aws lambda wait function-updated --function-name "${{ vars.ACCOUNT_TRIGGER_FUNCTION_NAME }}"

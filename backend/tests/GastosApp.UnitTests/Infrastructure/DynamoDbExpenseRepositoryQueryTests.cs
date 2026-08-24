@@ -24,12 +24,12 @@ public class DynamoDbExpenseRepositoryQueryTests
     }
 
     private static Dictionary<string, AttributeValue> BuildItem(
-        string userId, string category, string day, string id,
+        string accountId, string category, string day, string id,
         long amountInCents = 1000, string description = "Despesa") => new()
     {
-        ["PK"] = new AttributeValue { S = $"USER#{userId}" },
+        ["PK"] = new AttributeValue { S = $"ACCOUNT#{accountId}" },
         ["SK"] = new AttributeValue { S = $"TXN#{day}#{id}" },
-        ["GSI1PK"] = new AttributeValue { S = $"USER#{userId}#{category}" },
+        ["GSI1PK"] = new AttributeValue { S = $"ACCOUNT#{accountId}#{category}" },
         ["GSI1SK"] = new AttributeValue { S = $"{day}#{id}" },
         ["Description"] = new AttributeValue { S = description },
         ["AmountInCents"] = new AttributeValue { N = amountInCents.ToString() },
@@ -58,7 +58,7 @@ public class DynamoDbExpenseRepositoryQueryTests
                 && r.KeyConditionExpression == "#pk = :pk AND begins_with(#sk, :skPrefix)"
                 && r.ExpressionAttributeNames["#pk"] == "PK"
                 && r.ExpressionAttributeNames["#sk"] == "SK"
-                && r.ExpressionAttributeValues[":pk"].S == "USER#user-1"
+                && r.ExpressionAttributeValues[":pk"].S == "ACCOUNT#user-1"
                 && r.ExpressionAttributeValues[":skPrefix"].S == "TXN#"),
             Arg.Any<CancellationToken>());
     }
@@ -77,7 +77,7 @@ public class DynamoDbExpenseRepositoryQueryTests
                 r.IndexName == "GSI1"
                 && r.KeyConditionExpression == "#pk = :pk"
                 && r.ExpressionAttributeNames["#pk"] == "GSI1PK"
-                && r.ExpressionAttributeValues[":pk"].S == "USER#user-1#category-1"),
+                && r.ExpressionAttributeValues[":pk"].S == "ACCOUNT#user-1#category-1"),
             Arg.Any<CancellationToken>());
     }
 
@@ -234,7 +234,7 @@ public class DynamoDbExpenseRepositoryQueryTests
     {
         var cursor = ExpenseCursorCodec.Encode(new ExpenseCursorPayload(
             "Base",
-            new Dictionary<string, string> { ["PK"] = "USER#user-1", ["SK"] = "TXN#2025-06-10#id-9" }));
+            new Dictionary<string, string> { ["PK"] = "ACCOUNT#user-1", ["SK"] = "TXN#2025-06-10#id-9" }));
 
         var filter = new ExpenseQueryFilter("user-1", null, null, null, null, null, null, cursor, 20);
         SetupSingleResponse(new QueryResponse { Items = [], LastEvaluatedKey = null });
@@ -244,7 +244,7 @@ public class DynamoDbExpenseRepositoryQueryTests
         await _dynamoDbClientMock.Received(1).QueryAsync(
             Arg.Is<QueryRequest>(r =>
                 r.ExclusiveStartKey != null
-                && r.ExclusiveStartKey["PK"].S == "USER#user-1"
+                && r.ExclusiveStartKey["PK"].S == "ACCOUNT#user-1"
                 && r.ExclusiveStartKey["SK"].S == "TXN#2025-06-10#id-9"),
             Arg.Any<CancellationToken>());
     }

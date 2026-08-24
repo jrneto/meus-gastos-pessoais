@@ -17,7 +17,7 @@ public class ExpenseTests
 
         // Assert
         expense.Id.Should().NotBeNullOrWhiteSpace();
-        expense.UserId.Should().Be("user-id-123");
+        expense.AccountId.Should().Be("user-id-123");
         expense.Description.Should().Be("Almoço no restaurante");
         expense.AmountInCents.Should().Be(4590);
         expense.CategoryId.Should().Be("category-1");

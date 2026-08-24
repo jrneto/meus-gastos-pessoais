@@ -13,9 +13,27 @@ on:
       # vivo da FEAT-14: 'backend/**' redeployava hom a cada commit só
       # de documentação, gastando minutos e criando rascunho de release
       # à toa).
-      - 'backend/src/**'
+      #
+      # Camadas explícitas, não 'backend/src/**': este Lambda embarca
+      # só GastosApp.Api + Application/Domain/Infrastructure (ver
+      # GastosApp.Api.csproj). Uma mudança isolada em
+      # GastosApp.CognitoTriggers (Lambda separado, próprio workflow
+      # backend-deploy-account-trigger-hom.yml) não deve redeployar
+      # este — achado real ao validar a FEAT-19: 'backend/src/**' casava
+      # com os dois e redeployava ambos numa mudança que só tocava o
+      # trigger de conta.
+      - 'backend/src/GastosApp.Api/**'
+      - 'backend/src/GastosApp.Application/**'
+      - 'backend/src/GastosApp.Domain/**'
+      - 'backend/src/GastosApp.Infrastructure/**'
       - 'backend/tests/**'
-      - 'backend/infra/lambda/**'
+      # Mesmo raciocínio acima, agora do lado dos testes — achado real:
+      # um teste novo em backend/tests/**/CognitoTriggers/** (sem
+      # nenhuma mudança em Api/Application/Domain/Infrastructure)
+      # redeployava esta Lambda só por casar com 'backend/tests/**'.
+      - '!backend/tests/**/CognitoTriggers/**'
+      - 'backend/infra/lambda/Dockerfile.build'
+      - 'backend/infra/lambda/build.sh'
       - 'backend/GastosApp.sln'
   # Permite re-disparar manualmente (ex.: depois de corrigir um
   # workflow em .github/workflows/**, que não casa com o filtro de
@@ -126,9 +144,17 @@ jobs:
 
           # 1) Versão sugerida = patch bump da última release PUBLICADA
           #    com prefixo backend-v (exclui rascunhos e releases do
-          #    frontend)
-          last_tag=$(gh release list --exclude-drafts --json tagName \
-            --jq '[.[] | select(.tagName | startswith("backend-v"))] | .[0].tagName // ""')
+          #    frontend). sort_by(.publishedAt) explícito é essencial —
+          #    a ordem default de `gh release list` reflete a data de
+          #    CRIAÇÃO do objeto release (created_at), não a de
+          #    publicação; uma release publicada bem depois de criada
+          #    (ex.: rascunho editado manualmente na UI) pode aparecer
+          #    "mais antiga" que releases criadas e publicadas depois
+          #    dela. Achado real: isso fez este cálculo reusar um
+          #    número de versão já existente e falhar com "tag name has
+          #    already been taken".
+          last_tag=$(gh release list --exclude-drafts --json tagName,publishedAt \
+            --jq '[.[] | select(.tagName | startswith("backend-v"))] | sort_by(.publishedAt) | last | .tagName // ""')
 
           if [ -z "$last_tag" ]; then
             new_tag="backend-v0.0.1"

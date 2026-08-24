@@ -11,6 +11,11 @@ backend/**/obj/
 backend/infra/lambda/function.zip
 backend/infra/lambda/out/
 
+# Artefato de build do Lambda trigger de conta (FEAT-19, gerado por
+# infra/lambda/build-account-trigger.sh, regenerável)
+backend/infra/lambda/account-trigger-function.zip
+backend/infra/lambda/out-account-trigger/
+
 # User-specific files
 *.rsuser
 *.suo

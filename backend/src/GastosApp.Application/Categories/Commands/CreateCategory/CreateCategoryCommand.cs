@@ -6,7 +6,7 @@ using Mediator;
 namespace GastosApp.Application.Categories.Commands.CreateCategory;
 
 public sealed record CreateCategoryCommand(
-    string UserId,
+    string AccountId,
     string Nome,
     string Cor,
     string Icone) : ICommand<Result<CreateCategoryResult>>;
@@ -22,7 +22,7 @@ public sealed class CreateCategoryCommandHandler : ICommandHandler<CreateCategor
 
     public async ValueTask<Result<CreateCategoryResult>> Handle(CreateCategoryCommand command, CancellationToken cancellationToken)
     {
-        var category = Category.Create(command.UserId, command.Nome, command.Cor, command.Icone);
+        var category = Category.Create(command.AccountId, command.Nome, command.Cor, command.Icone);
         var result = await _categoryRepository.CreateAsync(category, cancellationToken);
 
         return result.Outcome switch

@@ -6,7 +6,7 @@ using Mediator;
 namespace GastosApp.Application.Expenses.Queries.GetExpenses;
 
 public sealed record GetExpensesQuery(
-    string UserId,
+    string AccountId,
     string? YearMonth,
     string? CategoryId,
     string? DateFrom,
@@ -31,7 +31,7 @@ public sealed class GetExpensesQueryHandler : IQueryHandler<GetExpensesQuery, Re
     public async ValueTask<Result<GetExpensesResult>> Handle(GetExpensesQuery query, CancellationToken cancellationToken)
     {
         var filter = new ExpenseQueryFilter(
-            UserId: query.UserId,
+            AccountId: query.AccountId,
             YearMonth: query.YearMonth,
             CategoryId: query.CategoryId,
             DateFrom: query.DateFrom is null ? null : DateOnly.ParseExact(query.DateFrom, DateFormat, CultureInfo.InvariantCulture),

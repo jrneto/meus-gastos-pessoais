@@ -39,7 +39,7 @@ public class CreateCategoryCommandHandlerTests
         result.Value.Id.Should().NotBeNullOrWhiteSpace();
 
         await _categoryRepositoryMock.Received(1).CreateAsync(
-            Arg.Is<Category>(c => c.UserId == command.UserId && c.Nome == command.Nome),
+            Arg.Is<Category>(c => c.AccountId == command.AccountId && c.Nome == command.Nome),
             Arg.Any<CancellationToken>());
     }
 

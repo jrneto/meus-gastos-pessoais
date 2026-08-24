@@ -24,6 +24,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         _factory = factory;
         _factory.ResetExpenseRepositoryMock();
         _factory.ResetCategoryRepositoryMock();
+        _factory.ResetAccountRepositoryMock();
         _client = factory.CreateClient();
     }
 
@@ -61,7 +62,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         body.GetProperty("expenseDate").GetString().Should().Be("2025-06-15");
 
         await _factory.ExpenseRepositoryMock.Received(1).SaveAsync(
-            Arg.Is<Expense>(e => e.UserId == "user-id-123"),
+            Arg.Is<Expense>(e => e.AccountId == "user-id-123"),
             Arg.Any<CancellationToken>());
     }
 
@@ -218,10 +219,10 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         });
 
         await _factory.ExpenseRepositoryMock.Received(1).SaveAsync(
-            Arg.Is<Expense>(e => e.UserId == "user-id-A" && e.Description == "Despesa do usuário A"),
+            Arg.Is<Expense>(e => e.AccountId == "user-id-A" && e.Description == "Despesa do usuário A"),
             Arg.Any<CancellationToken>());
         await _factory.ExpenseRepositoryMock.Received(1).SaveAsync(
-            Arg.Is<Expense>(e => e.UserId == "user-id-B" && e.Description == "Despesa do usuário B"),
+            Arg.Is<Expense>(e => e.AccountId == "user-id-B" && e.Description == "Despesa do usuário B"),
             Arg.Any<CancellationToken>());
     }
 
@@ -273,7 +274,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
 
         await _factory.ExpenseRepositoryMock.Received(1).QueryAsync(
             Arg.Is<ExpenseQueryFilter>(f =>
-                f.UserId == "user-id-123"
+                f.AccountId == "user-id-123"
                 && f.YearMonth == null
                 && f.CategoryId == null
                 && f.DateFrom == null
@@ -414,7 +415,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
             .Returns(EmptyPage());
 
         var cursor = ExpenseCursorCodec.Encode(new ExpenseCursorPayload(
-            "Base", new Dictionary<string, string> { ["PK"] = "USER#user-id-123", ["SK"] = "TXN#2025-06-15#abc" }));
+            "Base", new Dictionary<string, string> { ["PK"] = "ACCOUNT#user-id-123", ["SK"] = "TXN#2025-06-15#abc" }));
 
         var response = await _client.GetAsync($"/expenses?cursor={cursor}");
 
@@ -438,9 +439,9 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         await _client.GetAsync("/expenses");
 
         await _factory.ExpenseRepositoryMock.Received(1).QueryAsync(
-            Arg.Is<ExpenseQueryFilter>(f => f.UserId == "user-id-A"), Arg.Any<CancellationToken>());
+            Arg.Is<ExpenseQueryFilter>(f => f.AccountId == "user-id-A"), Arg.Any<CancellationToken>());
         await _factory.ExpenseRepositoryMock.Received(1).QueryAsync(
-            Arg.Is<ExpenseQueryFilter>(f => f.UserId == "user-id-B"), Arg.Any<CancellationToken>());
+            Arg.Is<ExpenseQueryFilter>(f => f.AccountId == "user-id-B"), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -455,6 +456,25 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
 
         await _factory.ExpenseRepositoryMock.DidNotReceiveWithAnyArgs()
             .QueryAsync(default!, default);
+    }
+
+    // FEAT-19: ResolveAccountEndpointFilter roda antes de qualquer handler —
+    // usuário autenticado sem Account resolvível (situação que só ocorreria
+    // por dado corrompido/manual) nunca chega no ExpenseRepositoryMock.
+    [Fact]
+    public async Task GetExpenses_ComUsuarioSemContaResolvivel_Retorna401ComAccountNotFound()
+    {
+        AuthenticateAs("user-sem-conta");
+        _factory.AccountRepositoryMock.FindAccountIdByUserIdAsync("user-sem-conta", Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+
+        var response = await _client.GetAsync("/expenses");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/account-not-found");
+
+        await _factory.ExpenseRepositoryMock.DidNotReceiveWithAnyArgs().QueryAsync(default!, default);
     }
 
     [Theory]

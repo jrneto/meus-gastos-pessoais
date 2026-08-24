@@ -27,7 +27,7 @@ public class UpdateCategoryCommandHandlerTests
         var updated = Category.Restore("category-1", "user-id-123", "Viagens", "#0EA5E9", "plane", DateTimeOffset.UtcNow);
 
         _categoryRepositoryMock.UpdateAsync(
-                command.UserId, command.CategoryId, command.Nome, command.Cor, command.Icone, Arg.Any<CancellationToken>())
+                command.AccountId, command.CategoryId, command.Nome, command.Cor, command.Icone, Arg.Any<CancellationToken>())
             .Returns(CategoryWriteResult.Success(updated));
 
         // Act
@@ -45,7 +45,7 @@ public class UpdateCategoryCommandHandlerTests
         var command = new UpdateCategoryCommand("user-id-123", "category-inexistente", "Viagens", "#0EA5E9", "plane");
 
         _categoryRepositoryMock.UpdateAsync(
-                command.UserId, command.CategoryId, command.Nome, command.Cor, command.Icone, Arg.Any<CancellationToken>())
+                command.AccountId, command.CategoryId, command.Nome, command.Cor, command.Icone, Arg.Any<CancellationToken>())
             .Returns(CategoryWriteResult.NotFound());
 
         // Act
@@ -64,7 +64,7 @@ public class UpdateCategoryCommandHandlerTests
         var command = new UpdateCategoryCommand("user-id-123", "category-1", "Lazer", "#0EA5E9", "plane");
 
         _categoryRepositoryMock.UpdateAsync(
-                command.UserId, command.CategoryId, command.Nome, command.Cor, command.Icone, Arg.Any<CancellationToken>())
+                command.AccountId, command.CategoryId, command.Nome, command.Cor, command.Icone, Arg.Any<CancellationToken>())
             .Returns(CategoryWriteResult.NameConflict());
 
         // Act

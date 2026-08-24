@@ -5,7 +5,7 @@ variable "aws_region" {
 }
 
 variable "aws_account_id" {
-  description = "Conta AWS do projeto — usada para montar ARNs das funções Lambda."
+  description = "Conta AWS do projeto — usada para montar ARNs das funções Lambda e do OIDC Provider do GitHub Actions (ver oidc.tf)."
   type        = string
   default     = "648443184523"
 }
@@ -26,4 +26,16 @@ variable "prod_function_name" {
   description = "Nome da função Lambda da API de produção (backend/infra/terraform/environments/prod/)."
   type        = string
   default     = "gastos-app-api"
+}
+
+variable "hom_account_trigger_function_name" {
+  description = "Nome da função Lambda do trigger PostConfirmation do Cognito, homologação (FEAT-19)."
+  type        = string
+  default     = "jrnexpenses-account-trigger-hom"
+}
+
+variable "prod_account_trigger_function_name" {
+  description = "Nome da função Lambda do trigger PostConfirmation do Cognito, produção (FEAT-19)."
+  type        = string
+  default     = "jrnexpenses-account-trigger"
 }

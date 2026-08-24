@@ -21,9 +21,9 @@ public class DynamoDbExpenseRepositoryDeleteTests
         _repository = new DynamoDbExpenseRepository(_dynamoDbClientMock, options);
     }
 
-    private static Dictionary<string, AttributeValue> BuildKeyItem(string userId, string sk) => new()
+    private static Dictionary<string, AttributeValue> BuildKeyItem(string accountId, string sk) => new()
     {
-        ["PK"] = new AttributeValue { S = $"USER#{userId}" },
+        ["PK"] = new AttributeValue { S = $"ACCOUNT#{accountId}" },
         ["SK"] = new AttributeValue { S = sk }
     };
 
@@ -94,7 +94,7 @@ public class DynamoDbExpenseRepositoryDeleteTests
         await _dynamoDbClientMock.Received(1).DeleteItemAsync(
             Arg.Is<DeleteItemRequest>(r =>
                 r.TableName == "GastosApp-unitTests"
-                && r.Key["PK"].S == "USER#user-1"
+                && r.Key["PK"].S == "ACCOUNT#user-1"
                 && r.Key["SK"].S == "TXN#2025-06-15#expense-1"
                 && r.ConditionExpression == "attribute_exists(PK) AND #tipo = :tipo"
                 && r.ExpressionAttributeNames!["#tipo"] == "Tipo"

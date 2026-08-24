@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net10.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<PublishAot>true</PublishAot>
+		<InvariantGlobalization>true</InvariantGlobalization>
+		<AWSProjectType>Lambda</AWSProjectType>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Amazon.Lambda.Core" Version="2.6.0" />
+		<PackageReference Include="Amazon.Lambda.RuntimeSupport" Version="1.13.1" />
+		<PackageReference Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.4" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.9" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\GastosApp.Application\GastosApp.Application.csproj" />
+		<ProjectReference Include="..\GastosApp.Infrastructure\GastosApp.Infrastructure.csproj" />
+	</ItemGroup>
+
+</Project>

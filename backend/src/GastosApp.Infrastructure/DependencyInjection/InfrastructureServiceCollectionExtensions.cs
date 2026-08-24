@@ -3,6 +3,7 @@ using Amazon.CognitoIdentityProvider;
 using Amazon.DynamoDBv2;
 using Amazon.Runtime;
 using GastosApp.Application.Common.Interfaces;
+using GastosApp.Infrastructure.Accounts;
 using GastosApp.Infrastructure.Categories;
 using GastosApp.Infrastructure.Configuration;
 using GastosApp.Infrastructure.Expenses;
@@ -23,6 +24,7 @@ namespace GastosApp.Infrastructure.DependencyInjection
 
             services.AddScoped<IExpenseRepository, DynamoDbExpenseRepository>();
             services.AddScoped<ICategoryRepository, DynamoDbCategoryRepository>();
+            services.AddScoped<IAccountRepository, DynamoDbAccountRepository>();
 
             return services;
         }

@@ -5,7 +5,6 @@ using GastosApp.Application.Expenses.Commands.UpdateExpense;
 using GastosApp.Application.Expenses.Queries.GetExpenseById;
 using GastosApp.Application.Expenses.Queries.GetExpenses;
 using Mediator;
-using System.Security.Claims;
 
 namespace GastosApp.Api.Endpoints;
 
@@ -16,6 +15,7 @@ public static class ExpenseEndpoints
         var group = app.MapGroup("/expenses")
             .WithTags("Expenses")
             .RequireAuthorization()
+            .AddEndpointFilter<ResolveAccountEndpointFilter>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
 
@@ -45,14 +45,12 @@ public static class ExpenseEndpoints
 
     private static async Task<IResult> RegisterExpense(
         RegisterExpenseRequest request,
-        ClaimsPrincipal user,
+        CurrentAccountContext currentAccount,
         ISender sender,
         CancellationToken cancellationToken)
     {
-        var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
         var command = new RegisterExpenseCommand(
-            userId!,
+            currentAccount.AccountId!,
             request.Description,
             request.AmountInCents,
             request.CategoryId,
@@ -64,14 +62,12 @@ public static class ExpenseEndpoints
 
     private static async Task<IResult> GetExpenses(
         [AsParameters] GetExpensesRequest request,
-        ClaimsPrincipal user,
+        CurrentAccountContext currentAccount,
         ISender sender,
         CancellationToken cancellationToken)
     {
-        var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
         var query = new GetExpensesQuery(
-            userId!,
+            currentAccount.AccountId!,
             NullIfEmpty(request.YearMonth),
             NullIfEmpty(request.CategoryId),
             NullIfEmpty(request.DateFrom),
@@ -87,13 +83,11 @@ public static class ExpenseEndpoints
 
     private static async Task<IResult> GetExpenseById(
         string id,
-        ClaimsPrincipal user,
+        CurrentAccountContext currentAccount,
         ISender sender,
         CancellationToken cancellationToken)
     {
-        var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        var query = new GetExpenseByIdQuery(userId!, id);
+        var query = new GetExpenseByIdQuery(currentAccount.AccountId!, id);
 
         var result = await sender.Send(query, cancellationToken);
         return result.ToHttpResult(value => Results.Ok(value));
@@ -102,14 +96,12 @@ public static class ExpenseEndpoints
     private static async Task<IResult> UpdateExpense(
         string id,
         UpdateExpenseRequest request,
-        ClaimsPrincipal user,
+        CurrentAccountContext currentAccount,
         ISender sender,
         CancellationToken cancellationToken)
     {
-        var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
         var command = new UpdateExpenseCommand(
-            userId!,
+            currentAccount.AccountId!,
             id,
             request.Description,
             request.AmountInCents,
@@ -122,13 +114,11 @@ public static class ExpenseEndpoints
 
     private static async Task<IResult> DeleteExpense(
         string id,
-        ClaimsPrincipal user,
+        CurrentAccountContext currentAccount,
         ISender sender,
         CancellationToken cancellationToken)
     {
-        var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        var command = new DeleteExpenseCommand(userId!, id);
+        var command = new DeleteExpenseCommand(currentAccount.AccountId!, id);
 
         var result = await sender.Send(command, cancellationToken);
         return result.ToHttpResult(() => Results.NoContent());

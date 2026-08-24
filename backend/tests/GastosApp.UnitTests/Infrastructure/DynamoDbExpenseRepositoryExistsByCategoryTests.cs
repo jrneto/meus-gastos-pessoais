@@ -36,7 +36,7 @@ public class DynamoDbExpenseRepositoryExistsByCategoryTests
             Arg.Is<QueryRequest>(r =>
                 r.IndexName == "GSI1"
                 && r.KeyConditionExpression == "GSI1PK = :gsi1pk"
-                && r.ExpressionAttributeValues[":gsi1pk"].S == "USER#user-1#Alimentacao"
+                && r.ExpressionAttributeValues[":gsi1pk"].S == "ACCOUNT#user-1#Alimentacao"
                 && r.Limit == 1),
             Arg.Any<CancellationToken>());
     }
@@ -60,7 +60,7 @@ public class DynamoDbExpenseRepositoryExistsByCategoryTests
             {
                 Items = [new Dictionary<string, AttributeValue>
                 {
-                    ["PK"] = new AttributeValue { S = "USER#user-1" },
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#user-1" },
                     ["SK"] = new AttributeValue { S = "TXN#2025-06-15#expense-1" }
                 }]
             });

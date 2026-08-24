@@ -7,6 +7,14 @@ name: Backend — Deploy Produção
 # também dispararia (e falharia, publicando código errado) este
 # pipeline, e vice-versa (ver
 # backend/specs/FEAT-14-cicd-github-actions/plan.md, decisão 5).
+#
+# Path-filtrado via job check-changes (mesmo padrão de
+# backend-deploy-account-trigger-prod.yml, ver comentário lá pro porquê
+# de não dar pra usar `paths:` nativo com o evento `release`) — evita
+# redeployar a Api quando a release só trouxe mudança isolada em
+# GastosApp.CognitoTriggers (Lambda separado, seu próprio workflow).
+# Achado real: até esta correção, toda release backend-v* redeployava a
+# Api incondicionalmente, mesmo sem nenhuma mudança relevante a ela.
 on:
   release:
     types: [published]
@@ -20,8 +28,59 @@ defaults:
     working-directory: backend
 
 jobs:
-  quality:
+  check-changes:
     if: startsWith(github.event.release.tag_name, 'backend-v')
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # histórico completo — necessário pro git diff entre tags
+
+      - name: Verificar se algo relevante à Api mudou desde a última release
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          previous_tag=$(gh release list --exclude-drafts --json tagName,publishedAt \
+            --jq '[.[] | select(.tagName | startswith("backend-v")) | select(.tagName != "${{ github.event.release.tag_name }}")] | sort_by(.publishedAt) | last | .tagName // ""')
+
+          if [ -z "$previous_tag" ]; then
+            echo "Nenhuma release anterior do backend publicada — primeiro deploy deste Lambda, considera mudou."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Comparando $previous_tag..${{ github.event.release.tag_name }}"
+
+          # Paths relativos a backend/ (não repo-root) — o `defaults.run.working-directory`
+          # deste workflow já executa dentro de backend/, então um prefixo "backend/"
+          # aqui apontaria para backend/backend/... (inexistente) e o diff daria sempre
+          # vazio. Achado real: foi exatamente isso que aconteceu na release backend-v0.0.7.
+          changed_paths=$(git diff --name-only "$previous_tag" "${{ github.event.release.tag_name }}" -- \
+            src/GastosApp.Api \
+            src/GastosApp.Application \
+            src/GastosApp.Domain \
+            src/GastosApp.Infrastructure \
+            infra/lambda/Dockerfile.build \
+            infra/lambda/build.sh \
+            GastosApp.sln || true)
+
+          if [ -n "$changed_paths" ]; then
+            echo "Mudanças relevantes encontradas:"
+            echo "$changed_paths"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Nenhuma mudança relevante à Api desde $previous_tag."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  quality:
+    needs: check-changes
+    if: needs.check-changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -83,13 +142,23 @@ jobs:
           aws lambda wait function-updated --function-name "${{ vars.FUNCTION_NAME }}"
 
   # Mantém main sempre refletindo o que está de fato em produção (mesmo
-  # princípio da FEAT-10 do frontend) — só roda se o deploy acima
-  # terminou com sucesso. Idempotente e convive com o job equivalente
-  # do frontend: como o par de branches é o mesmo (develop → main), o
-  # `existing` checado abaixo já reflete um PR aberto por qualquer um
-  # dos dois lados, nunca duplica.
+  # princípio da FEAT-10 do frontend). Idempotente e convive com o job
+  # equivalente do frontend: como o par de branches é o mesmo
+  # (develop → main), o `existing` checado abaixo já reflete um PR
+  # aberto por qualquer um dos dois lados, nunca duplica.
+  #
+  # Roda em dois cenários — nunca quando quality/deploy falharam de
+  # verdade:
+  # - changed=true: só depois que deploy terminou com sucesso (mesmo
+  #   comportamento de antes do job check-changes existir).
+  # - changed=false: quality/deploy são pulados de propósito (nenhuma
+  #   mudança relevante à Api nesta release), mas a release em si foi
+  #   publicada — main ainda deve avançar pra refletir isso, senão o PR
+  #   develop → main nunca abriria numa release que só tocou
+  #   GastosApp.CognitoTriggers.
   open-pr-main:
-    needs: deploy
+    needs: [check-changes, deploy]
+    if: always() && needs.check-changes.result == 'success' && (needs.check-changes.outputs.changed != 'true' || needs.deploy.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write

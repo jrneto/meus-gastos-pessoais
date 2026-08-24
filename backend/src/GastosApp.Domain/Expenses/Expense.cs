@@ -3,7 +3,7 @@ namespace GastosApp.Domain.Expenses;
 public sealed class Expense
 {
     public string Id { get; }
-    public string UserId { get; }
+    public string AccountId { get; }
     public string Description { get; }
     public long AmountInCents { get; }
     public string CategoryId { get; }
@@ -12,7 +12,7 @@ public sealed class Expense
 
     private Expense(
         string id,
-        string userId,
+        string accountId,
         string description,
         long amountInCents,
         string categoryId,
@@ -20,7 +20,7 @@ public sealed class Expense
         DateTimeOffset createdAt)
     {
         Id = id;
-        UserId = userId;
+        AccountId = accountId;
         Description = description;
         AmountInCents = amountInCents;
         CategoryId = categoryId;
@@ -29,7 +29,7 @@ public sealed class Expense
     }
 
     public static Expense Create(
-        string userId,
+        string accountId,
         string description,
         long amountInCents,
         string categoryId,
@@ -37,7 +37,7 @@ public sealed class Expense
     {
         return new Expense(
             Guid.NewGuid().ToString(),
-            userId,
+            accountId,
             description,
             amountInCents,
             categoryId,
@@ -47,13 +47,13 @@ public sealed class Expense
 
     public static Expense Restore(
         string id,
-        string userId,
+        string accountId,
         string description,
         long amountInCents,
         string categoryId,
         DateOnly expenseDate,
         DateTimeOffset createdAt)
     {
-        return new Expense(id, userId, description, amountInCents, categoryId, expenseDate, createdAt);
+        return new Expense(id, accountId, description, amountInCents, categoryId, expenseDate, createdAt);
     }
 }

@@ -1,8 +1,11 @@
 using FluentAssertions;
+using GastosApp.Application.Accounts.Commands.EnsureAccount;
 using GastosApp.Application.Auth;
 using GastosApp.Application.Auth.Commands.Login;
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.Application.Common.Results;
+using Mediator;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
 
@@ -11,12 +14,15 @@ namespace GastosApp.UnitTests.Application;
 public class LoginUserCommandHandlerTests
 {
     private readonly IAuthService _authServiceMock;
+    private readonly ISender _senderMock;
     private readonly LoginUserCommandHandler _handler;
 
     public LoginUserCommandHandlerTests()
     {
         _authServiceMock = Substitute.For<IAuthService>();
-        _handler = new LoginUserCommandHandler(_authServiceMock);
+        _senderMock = Substitute.For<ISender>();
+        _handler = new LoginUserCommandHandler(
+            _authServiceMock, _senderMock, Substitute.For<ILogger<LoginUserCommandHandler>>());
     }
 
     [Fact]
@@ -81,5 +87,60 @@ public class LoginUserCommandHandlerTests
         result.Error.Code.Should().Be("invalid-credentials");
 
         await _authServiceMock.Received(1).LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldDispatchEnsureAccountCommand_WhenLoginSucceeds()
+    {
+        // Arrange (FEAT-19: fallback de criação de conta no login)
+        var command = new LoginUserCommand("neto@email.com", "Senha123");
+        var expectedResult = new LoginResult("token-jwt-123", 3600, "user-id-123", "refresh-token-abc");
+
+        _authServiceMock.LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
+            .Returns(Result.Success(expectedResult));
+
+        // Act
+        await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await _senderMock.Received(1).Send(
+            Arg.Is<EnsureAccountCommand>(c => c.UserId == "user-id-123"), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotDispatchEnsureAccountCommand_WhenCredentialsAreInvalid()
+    {
+        // Arrange
+        var command = new LoginUserCommand("neto@email.com", "SenhaIncorreta");
+
+        _authServiceMock.LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
+            .Returns(Result.Failure<LoginResult>(AuthErrors.InvalidCredentials));
+
+        // Act
+        await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await _senderMock.DidNotReceiveWithAnyArgs().Send(Arg.Any<EnsureAccountCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldStillReturnSuccess_WhenEnsureAccountCommandThrows()
+    {
+        // Arrange — falha ao garantir a conta é efeito colateral, nunca pode
+        // derrubar um login com credenciais válidas (ver plan.md, decisão técnica 2).
+        var command = new LoginUserCommand("neto@email.com", "Senha123");
+        var expectedResult = new LoginResult("token-jwt-123", 3600, "user-id-123", "refresh-token-abc");
+
+        _authServiceMock.LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
+            .Returns(Result.Success(expectedResult));
+        _senderMock.Send(Arg.Any<EnsureAccountCommand>(), Arg.Any<CancellationToken>())
+            .Returns<object>(_ => throw new InvalidOperationException("Falha simulada no DynamoDB"));
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.AccessToken.Should().Be("token-jwt-123");
     }
 }
