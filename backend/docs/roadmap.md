@@ -35,7 +35,7 @@ coluna "Depende de".
 
 ## Sequência
 
-- [ ] **FEAT-19 — Conta (fundação multi-tenant)**
+- [x] **FEAT-19 — Conta (fundação multi-tenant)**
   Cria `Account` + `Membership` (titular) via trigger `Post
   Confirmation` do Cognito (novo Lambda), assim que o usuário confirma o
   cadastro — com resolução idempotente também no primeiro login como
