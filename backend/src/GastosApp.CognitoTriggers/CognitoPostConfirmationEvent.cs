@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace GastosApp.CognitoTriggers;
 
 // Não existe pacote oficial da AWS com tipos para User Pool Lambda
@@ -44,5 +46,14 @@ public sealed class CognitoPostConfirmationCallerContext
 public sealed class CognitoPostConfirmationRequest
 {
     public Dictionary<string, string> UserAttributes { get; set; } = new();
+
+    // O Cognito manda este campo ausente (não presente como null) quando
+    // a confirmação não carrega client metadata — ex.: confirmação
+    // manual pelo console AWS, sem app cliente envolvido. Sem
+    // WhenWritingNull, o round-trip devolvia "clientMetadata":null
+    // explícito, e o Cognito rejeitava com InvalidLambdaResponseException
+    // ("Unrecognizable lambda output") mesmo com callerContext já
+    // corrigido — achado real ao validar a FEAT-19 em homologação.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, string>? ClientMetadata { get; set; }
 }

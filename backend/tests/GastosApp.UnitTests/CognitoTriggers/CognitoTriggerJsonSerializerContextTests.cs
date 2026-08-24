@@ -10,14 +10,18 @@ namespace GastosApp.UnitTests.CognitoTriggers;
 // testes de AccountTriggerHandlerTests não pegam esse tipo de bug
 // porque trabalham com o objeto C#, nunca com o JSON final.
 //
-// Existe porque dois bugs reais escaparam pros logs do Cognito em
+// Existe porque três bugs reais escaparam pros logs do Cognito em
 // homologação (FEAT-19) sem nenhum teste unitário/componente acusar:
 // 1) resposta saindo em PascalCase (Cognito exige camelCase de volta)
 // 2) campo "callerContext" do evento de entrada sendo descartado
 //    silenciosamente na deserialização (POCO não o modelava) e por
 //    isso ausente na resposta — Cognito exige o evento completo de
 //    volta, não um subconjunto.
-// Ambos geraram o mesmo InvalidLambdaResponseException
+// 3) "clientMetadata" ausente na entrada (comum em confirmação manual
+//    pelo console AWS, sem app cliente envolvido) virando "null"
+//    explícito na saída — Cognito manda o campo ausente, não null, e
+//    não reconhece o shape com null de volta.
+// Os três geraram o mesmo InvalidLambdaResponseException
 // ("Unrecognizable lambda output"), mesmo com o Lambda executando com
 // sucesso (registros criados no banco, sem exceção nos logs).
 public class CognitoTriggerJsonSerializerContextTests
@@ -82,6 +86,12 @@ public class CognitoTriggerJsonSerializerContextTests
         root.TryGetProperty("request", out var request).Should().BeTrue();
         request.GetProperty("userAttributes").GetProperty("sub").GetString()
             .Should().Be("c4c84448-a051-7075-f0f2-792080068ea7");
+
+        // clientMetadata: CognitoRequestJson acima não manda esse campo
+        // (cenário real de confirmação manual pelo console) — precisa
+        // continuar ausente na resposta, nunca virar "null" explícito.
+        request.TryGetProperty("clientMetadata", out _).Should().BeFalse(
+            "o Cognito manda o campo ausente quando não há client metadata, e rejeita \"clientMetadata\": null de volta");
 
         root.TryGetProperty("response", out _).Should().BeTrue();
     }
