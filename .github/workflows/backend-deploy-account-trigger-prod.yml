@@ -9,7 +9,9 @@ name: Backend — Deploy Trigger de Conta (Produção)
 # entre as duas tags. Decisão registrada em conversa: ao contrário do
 # deploy de hom (path-filtro nativo simples), prod também é
 # path-filtrado — evita redeployar/republicar a função quando a release
-# não trouxe nenhuma mudança que afete este Lambda.
+# não trouxe nenhuma mudança que afete este Lambda. backend-deploy-
+# prod.yml (Api) usa o mesmo padrão de check-changes, filtrando pelas
+# camadas que ela embarca (Api/Application/Domain/Infrastructure).
 on:
   release:
     types: [published]
