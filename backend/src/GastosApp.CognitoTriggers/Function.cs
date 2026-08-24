@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Amazon.Lambda.Core;
 using Amazon.Lambda.RuntimeSupport;
 using Amazon.Lambda.Serialization.SystemTextJson;
@@ -38,8 +39,22 @@ var handler = async (CognitoPostConfirmationEvent evt, ILambdaContext context) =
     return await AccountTriggerHandler.HandleAsync(evt, sender, logger, CancellationToken.None);
 };
 
+// O construtor sem parâmetros de SourceGeneratorLambdaJsonSerializer<T>
+// NÃO usa o CognitoTriggerJsonSerializerContext.Default (a instância que
+// respeita o [JsonSourceGenerationOptions(PropertyNamingPolicy =
+// CamelCase)] da classe) — ele constrói uma instância NOVA do contexto
+// com a AwsNamingPolicy interna do pacote da AWS, que ignora esse
+// atributo. Resultado: a resposta real devolvida ao Cognito sempre saiu
+// em PascalCase, mesmo com o contexto corretamente configurado — bug só
+// visível comparando a invocação real da Lambda com serialização feita
+// à parte no mesmo processo (achado real ao investigar
+// InvalidLambdaResponseException/"Unrecognizable lambda output" em
+// homologação, FEAT-19). Confirmado via reflection: o overload com
+// Action<JsonSerializerOptions> é o único que aplica a policy que
+// passamos.
 await LambdaBootstrapBuilder.Create(
         handler,
-        new SourceGeneratorLambdaJsonSerializer<CognitoTriggerJsonSerializerContext>())
+        new SourceGeneratorLambdaJsonSerializer<CognitoTriggerJsonSerializerContext>(
+            options => options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase))
     .Build()
     .RunAsync();
