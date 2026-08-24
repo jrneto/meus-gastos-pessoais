@@ -144,9 +144,17 @@ jobs:
 
           # 1) Versão sugerida = patch bump da última release PUBLICADA
           #    com prefixo backend-v (exclui rascunhos e releases do
-          #    frontend)
-          last_tag=$(gh release list --exclude-drafts --json tagName \
-            --jq '[.[] | select(.tagName | startswith("backend-v"))] | .[0].tagName // ""')
+          #    frontend). sort_by(.publishedAt) explícito é essencial —
+          #    a ordem default de `gh release list` reflete a data de
+          #    CRIAÇÃO do objeto release (created_at), não a de
+          #    publicação; uma release publicada bem depois de criada
+          #    (ex.: rascunho editado manualmente na UI) pode aparecer
+          #    "mais antiga" que releases criadas e publicadas depois
+          #    dela. Achado real: isso fez este cálculo reusar um
+          #    número de versão já existente e falhar com "tag name has
+          #    already been taken".
+          last_tag=$(gh release list --exclude-drafts --json tagName,publishedAt \
+            --jq '[.[] | select(.tagName | startswith("backend-v"))] | sort_by(.publishedAt) | last | .tagName // ""')
 
           if [ -z "$last_tag" ]; then
             new_tag="backend-v0.0.1"
