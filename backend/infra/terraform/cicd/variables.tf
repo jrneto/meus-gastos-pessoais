@@ -5,7 +5,7 @@ variable "aws_region" {
 }
 
 variable "aws_account_id" {
-  description = "Conta AWS do projeto — usada para montar ARNs das funções Lambda."
+  description = "Conta AWS do projeto — usada para montar ARNs das funções Lambda e do OIDC Provider do GitHub Actions (ver oidc.tf)."
   type        = string
   default     = "648443184523"
 }
