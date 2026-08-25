@@ -47,7 +47,7 @@ coluna "Depende de".
   usuário único de hoje.
   Depende de: FEAT-01 (auth), FEAT-16/17 (categorias/despesas) — já prontas.
 
-- [ ] **FEAT-20 — Membros da conta, convites e permissões**
+- [x] **FEAT-20 — Membros da conta, convites e permissões**
   `GET/POST/DELETE /members`, convite por e-mail (`Status=ConvitePendente`
   → aceite no login), níveis de acesso `Leitura`/`Lançar`/`Total`.
   Aplica autorização por role em todos os endpoints já existentes
