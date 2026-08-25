@@ -21,6 +21,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
         _factory = factory;
         _factory.ResetAuthServiceMock();
         _factory.ResetAccountRepositoryMock();
+        _factory.ResetMembershipRepositoryMock();
         _client = factory.CreateClient();
     }
 
@@ -114,6 +115,21 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/invalid-credentials");
     }
 
+    [Fact]
+    public async Task Login_ComUsuarioNaoConfirmado_Retorna401ComUserNotConfirmed()
+    {
+        _factory.AuthServiceMock
+            .LoginAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Failure<LoginResult>(AuthErrors.UserNotConfirmed)));
+
+        var response = await _client.PostAsJsonAsync("/auth/login", new { email = "neto@email.com", password = "Senha123" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/user-not-confirmed");
+    }
+
     // FEAT-19: login é o fallback de criação de conta — cobre o caso do
     // trigger PostConfirmation do Cognito não ter rodado ainda (ou nunca
     // rodar, ex.: ambiente local).
@@ -127,7 +143,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
             .FindAccountIdByUserIdAsync("uuid-sem-conta", Arg.Any<CancellationToken>())
             .Returns((string?)null);
         _factory.AccountRepositoryMock
-            .CreateAsync("uuid-sem-conta", Arg.Any<CancellationToken>())
+            .CreateAsync("uuid-sem-conta", "neto@email.com", Arg.Any<CancellationToken>())
             .Returns(new CreateAccountResult("account-novo", AlreadyExisted: false));
 
         var response = await _client.PostAsJsonAsync("/auth/login", new { email = "neto@email.com", password = "Senha123" });
@@ -138,7 +154,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
         body.GetProperty("userId").GetString().Should().Be("uuid-sem-conta");
 
         await _factory.AccountRepositoryMock.Received(1)
-            .CreateAsync("uuid-sem-conta", Arg.Any<CancellationToken>());
+            .CreateAsync("uuid-sem-conta", "neto@email.com", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -154,7 +170,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
         var response = await _client.PostAsJsonAsync("/auth/login", new { email = "neto@email.com", password = "Senha123" });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        await _factory.AccountRepositoryMock.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+        await _factory.AccountRepositoryMock.DidNotReceiveWithAnyArgs().CreateAsync(default!, default!, default);
     }
 
     [Fact]
@@ -169,7 +185,49 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         await _factory.AccountRepositoryMock.DidNotReceiveWithAnyArgs()
             .FindAccountIdByUserIdAsync(default!, default);
-        await _factory.AccountRepositoryMock.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+        await _factory.AccountRepositoryMock.DidNotReceiveWithAnyArgs().CreateAsync(default!, default!, default);
+    }
+
+    // FEAT-20: login é também o momento em que convites pendentes pro e-mail
+    // do usuário são aceitos, trocando a conta ativa dele.
+    [Fact]
+    public async Task Login_ComConvitePendenteParaOEmail_AceitaETrocaContaAtiva()
+    {
+        _factory.AuthServiceMock
+            .LoginAsync("convidado@email.com", "Senha123", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Success(new LoginResult("eyJ...", 3600, "uuid-convidado", "refresh-token-abc"))));
+        _factory.AccountRepositoryMock
+            .FindAccountIdByUserIdAsync("uuid-convidado", Arg.Any<CancellationToken>())
+            .Returns("account-propria");
+        _factory.MembershipRepositoryMock
+            .AcceptPendingInvitesByEmailAsync("convidado@email.com", "uuid-convidado", Arg.Any<CancellationToken>())
+            .Returns(new List<AcceptedInvite> { new("account-convite", DateTimeOffset.UtcNow) });
+
+        var response = await _client.PostAsJsonAsync("/auth/login", new { email = "convidado@email.com", password = "Senha123" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await _factory.AccountRepositoryMock.Received(1)
+            .SetActiveAccountAsync("uuid-convidado", "account-convite", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Login_SemConvitePendente_NaoTrocaContaAtiva()
+    {
+        _factory.AuthServiceMock
+            .LoginAsync("neto@email.com", "Senha123", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Success(new LoginResult("eyJ...", 3600, "uuid-123", "refresh-token-abc"))));
+        _factory.AccountRepositoryMock
+            .FindAccountIdByUserIdAsync("uuid-123", Arg.Any<CancellationToken>())
+            .Returns("account-ja-existente");
+        _factory.MembershipRepositoryMock
+            .AcceptPendingInvitesByEmailAsync("neto@email.com", "uuid-123", Arg.Any<CancellationToken>())
+            .Returns(new List<AcceptedInvite>());
+
+        var response = await _client.PostAsJsonAsync("/auth/login", new { email = "neto@email.com", password = "Senha123" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await _factory.AccountRepositoryMock.DidNotReceiveWithAnyArgs()
+            .SetActiveAccountAsync(default!, default!, default);
     }
 
     [Fact]

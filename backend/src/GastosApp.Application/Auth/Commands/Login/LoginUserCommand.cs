@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using GastosApp.Application.Accounts.Commands.EnsureAccount;
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.Application.Common.Results;
+using GastosApp.Application.Members.Commands.AcceptPendingInvites;
 using Mediator;
 using Microsoft.Extensions.Logging;
 
@@ -41,11 +42,23 @@ public sealed class LoginUserCommandHandler : ICommandHandler<LoginUserCommand, 
         // — ver plan.md, decisão técnica 2) — só loga.
         try
         {
-            await _sender.Send(new EnsureAccountCommand(result.Value.UserId), cancellationToken);
+            await _sender.Send(new EnsureAccountCommand(result.Value.UserId, command.Email), cancellationToken);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Falha ao garantir Account para o usuário {UserId} no login.", result.Value.UserId);
+        }
+
+        // Aceitação de convites pendentes (FEAT-20): melhor esforço, sempre depois
+        // de garantir a conta própria — nunca derruba o login (mesmo espírito do
+        // bloco acima). Pode trocar a conta ativa do usuário.
+        try
+        {
+            await _sender.Send(new AcceptPendingInvitesCommand(result.Value.UserId, command.Email), cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao aceitar convites pendentes para o usuário {UserId} no login.", result.Value.UserId);
         }
 
         return Result.Success(LoginUserResult.FromLoginResult(result.Value));

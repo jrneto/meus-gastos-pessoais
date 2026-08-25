@@ -25,6 +25,7 @@ public class ResultHttpExtensionsTests
     [InlineData(ErrorType.Conflict, StatusCodes.Status409Conflict, "Conflito")]
     [InlineData(ErrorType.NotFound, StatusCodes.Status404NotFound, "Recurso não encontrado")]
     [InlineData(ErrorType.UnprocessableEntity, StatusCodes.Status422UnprocessableEntity, "Regra de negócio violada")]
+    [InlineData(ErrorType.Forbidden, StatusCodes.Status403Forbidden, "Acesso negado")]
     [InlineData(ErrorType.Failure, StatusCodes.Status500InternalServerError, "Erro interno do servidor")]
     public void ToHttpResult_ShouldMapErrorTypeToExpectedStatusAndFixedGenericTitle(ErrorType errorType, int expectedStatus, string expectedTitle)
     {

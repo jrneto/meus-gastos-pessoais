@@ -12,5 +12,7 @@ public static class AuthErrors
 
     public static Error InvalidRefreshToken => Error.Unauthorized("invalid-refresh-token", "Refresh token inválido ou expirado.");
 
+    public static Error UserNotConfirmed => Error.Unauthorized("user-not-confirmed", "Usuário não confirmado. Por favor, confirme seu email antes de fazer login.");
+
     public static Error Validation(string message) => Error.Validation("bad-request", message);
 }

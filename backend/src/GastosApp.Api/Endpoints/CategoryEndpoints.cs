@@ -4,6 +4,7 @@ using GastosApp.Application.Categories.Commands.DeleteCategory;
 using GastosApp.Application.Categories.Commands.UpdateCategory;
 using GastosApp.Application.Categories.Queries.GetCategories;
 using GastosApp.Application.Categories.Queries.GetCategoryById;
+using GastosApp.Domain.Accounts;
 using Mediator;
 
 namespace GastosApp.Api.Endpoints;
@@ -27,18 +28,24 @@ public static class CategoryEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPost("/", CreateCategory)
+            .AddEndpointFilter(RoleEndpointFilters.Require(MembershipRole.Total, MembershipRole.Titular))
             .Produces<CreateCategoryResult>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         group.MapPut("/{id}", UpdateCategory)
+            .AddEndpointFilter(RoleEndpointFilters.Require(MembershipRole.Total, MembershipRole.Titular))
             .Produces<UpdateCategoryResult>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         group.MapDelete("/{id}", DeleteCategory)
+            .AddEndpointFilter(RoleEndpointFilters.Require(MembershipRole.Total, MembershipRole.Titular))
             .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
