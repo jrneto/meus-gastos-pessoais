@@ -434,15 +434,24 @@ expiração).
 
 ## 4. Recursos AWS usados ou afetados
 
-**Nenhum recurso novo.** Reaproveita a tabela `GastosApp` e o índice
-`GSI1` já provisionados (mesmo índice, uso dual-purpose descrito na
-seção 2) — sem novo GSI, sem nova tabela, sem novo App Client do
-Cognito, sem novo parâmetro de Parameter Store. `GastosApp.CognitoTriggers`
-já tinha permissão de `dynamodb:PutItem`/`GetItem`/`TransactWriteItems`
-na tabela (FEAT-19); os novos acessos (`Query`/`UpdateItem` em
-`Membership`, `PutItem` em `AccountPointer` fora da transação original)
-usam as mesmas ações já concedidas na IAM Role de execução da Api e do
-trigger — nenhuma política Terraform precisa mudar.
+**Nenhum recurso novo** (tabela, GSI, App Client do Cognito ou
+parâmetro de Parameter Store) — reaproveita a tabela `GastosApp` e o
+índice `GSI1` já provisionados (mesmo índice, uso dual-purpose descrito
+na seção 2). **Correção pós-implementação:** esta seção originalmente
+afirmava que nenhuma política Terraform precisaria mudar — **errado**,
+só verificado de fato ao depurar um erro real em homologação (convite
+ficava sempre `ConvitePendente` mesmo após o login do convidado). A
+FEAT-20 é a primeira feature do projeto a chamar `UpdateItemAsync`
+(`DynamoDbMembershipRepository.UpdateRoleAsync` e
+`AcceptPendingInvitesByEmailAsync`) — a IAM Role de execução do Lambda
+da Api (`gastos-app-api-lambda-exec{-hom}`, `lambda.tf` de cada
+ambiente) só tinha `PutItem`/`GetItem`/`Query`/`DeleteItem`/
+`TransactWriteItems`, sem `dynamodb:UpdateItem`. Corrigido adicionando
+essa ação em `environments/{hom,prod}/lambda.tf` — exige
+`terraform apply` (aprovação explícita do usuário, ainda não aplicado
+no momento desta correção). `GastosApp.CognitoTriggers` não é afetado
+por essa lacuna (nunca chama `UpdateItemAsync` — só
+`EnsureAccountCommand`/`CreateAsync`).
 
 ## 5. Erros de negócio → `ErrorType`/HTTP
 
