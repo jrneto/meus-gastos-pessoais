@@ -4,6 +4,7 @@ using GastosApp.Application.Auth;
 using GastosApp.Application.Auth.Commands.Login;
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.Application.Common.Results;
+using GastosApp.Application.Members.Commands.AcceptPendingInvites;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -134,6 +135,62 @@ public class LoginUserCommandHandlerTests
         _authServiceMock.LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
             .Returns(Result.Success(expectedResult));
         _senderMock.Send(Arg.Any<EnsureAccountCommand>(), Arg.Any<CancellationToken>())
+            .Returns<object>(_ => throw new InvalidOperationException("Falha simulada no DynamoDB"));
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.AccessToken.Should().Be("token-jwt-123");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldDispatchAcceptPendingInvitesCommand_WhenLoginSucceeds()
+    {
+        // Arrange (FEAT-20: aceitação de convites pendentes no login)
+        var command = new LoginUserCommand("neto@email.com", "Senha123");
+        var expectedResult = new LoginResult("token-jwt-123", 3600, "user-id-123", "refresh-token-abc");
+
+        _authServiceMock.LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
+            .Returns(Result.Success(expectedResult));
+
+        // Act
+        await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await _senderMock.Received(1).Send(
+            Arg.Is<AcceptPendingInvitesCommand>(c => c.UserId == "user-id-123" && c.Email == "neto@email.com"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotDispatchAcceptPendingInvitesCommand_WhenCredentialsAreInvalid()
+    {
+        // Arrange
+        var command = new LoginUserCommand("neto@email.com", "SenhaIncorreta");
+
+        _authServiceMock.LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
+            .Returns(Result.Failure<LoginResult>(AuthErrors.InvalidCredentials));
+
+        // Act
+        await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await _senderMock.DidNotReceiveWithAnyArgs().Send(Arg.Any<AcceptPendingInvitesCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldStillReturnSuccess_WhenAcceptPendingInvitesCommandThrows()
+    {
+        // Arrange — mesmo espírito do EnsureAccountCommand: efeito colateral
+        // nunca pode derrubar um login com credenciais válidas.
+        var command = new LoginUserCommand("neto@email.com", "Senha123");
+        var expectedResult = new LoginResult("token-jwt-123", 3600, "user-id-123", "refresh-token-abc");
+
+        _authServiceMock.LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
+            .Returns(Result.Success(expectedResult));
+        _senderMock.Send(Arg.Any<AcceptPendingInvitesCommand>(), Arg.Any<CancellationToken>())
             .Returns<object>(_ => throw new InvalidOperationException("Falha simulada no DynamoDB"));
 
         // Act

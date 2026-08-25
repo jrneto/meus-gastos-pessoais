@@ -4,6 +4,7 @@ using GastosApp.Application.Expenses.Commands.RegisterExpense;
 using GastosApp.Application.Expenses.Commands.UpdateExpense;
 using GastosApp.Application.Expenses.Queries.GetExpenseById;
 using GastosApp.Application.Expenses.Queries.GetExpenses;
+using GastosApp.Domain.Accounts;
 using Mediator;
 
 namespace GastosApp.Api.Endpoints;
@@ -20,8 +21,10 @@ public static class ExpenseEndpoints
             .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapPost("/", RegisterExpense)
+            .AddEndpointFilter(RoleEndpointFilters.Require(MembershipRole.Lancar, MembershipRole.Total, MembershipRole.Titular))
             .Produces<RegisterExpenseResult>(StatusCodes.Status201Created)
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         group.MapGet("/", GetExpenses)
             .Produces<GetExpensesResult>(StatusCodes.Status200OK)
@@ -32,12 +35,16 @@ public static class ExpenseEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPut("/{id}", UpdateExpense)
+            .AddEndpointFilter(RoleEndpointFilters.Require(MembershipRole.Total, MembershipRole.Titular))
             .Produces<UpdateExpenseResult>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/{id}", DeleteExpense)
+            .AddEndpointFilter(RoleEndpointFilters.Require(MembershipRole.Total, MembershipRole.Titular))
             .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         return app;

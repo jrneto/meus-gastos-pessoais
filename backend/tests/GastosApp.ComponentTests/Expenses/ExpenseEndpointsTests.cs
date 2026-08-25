@@ -6,6 +6,7 @@ using FluentAssertions;
 using GastosApp.Application.Common.Cursors;
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.ComponentTests.Support;
+using GastosApp.Domain.Accounts;
 using GastosApp.Domain.Categories;
 using GastosApp.Domain.Expenses;
 using NSubstitute;
@@ -25,6 +26,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
         _factory.ResetExpenseRepositoryMock();
         _factory.ResetCategoryRepositoryMock();
         _factory.ResetAccountRepositoryMock();
+        _factory.ResetMembershipRepositoryMock();
         _client = factory.CreateClient();
     }
 
@@ -32,6 +34,15 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
     {
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(TestAuthHandler.SchemeName, $"{userId}|{email}|{name}");
+    }
+
+    private void AuthenticateWithRole(string userId, MembershipRole role)
+    {
+        AuthenticateAs(userId);
+        _factory.MembershipRepositoryMock
+            .FindByAccountAndUserIdAsync(userId, userId, Arg.Any<CancellationToken>())
+            .Returns(Membership.Restore(
+                "membership-1", userId, userId, "membro@email.com", role, MembershipStatus.Ativo, DateTimeOffset.UtcNow));
     }
 
     private void MockOwnedCategory(string userId, string categoryId) =>
@@ -857,5 +868,91 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
 
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/internal-server-error");
+    }
+
+    // ----- Autorização por papel (FEAT-20) -----
+
+    [Fact]
+    public async Task RegisterExpense_ComPapelLeitura_Retorna403SemChamarRepositorio()
+    {
+        AuthenticateWithRole("user-id-123", MembershipRole.Leitura);
+
+        var response = await _client.PostAsJsonAsync("/expenses", new
+        {
+            description = "Almoço",
+            amountInCents = 4590,
+            categoryId = CategoryId,
+            expenseDate = "2025-06-15"
+        });
+
+        response.StatusCode.Should().Be((HttpStatusCode)403);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/insufficient-permission");
+
+        await _factory.ExpenseRepositoryMock.DidNotReceiveWithAnyArgs().SaveAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task RegisterExpense_ComPapelLancar_Retorna201()
+    {
+        AuthenticateWithRole("user-id-123", MembershipRole.Lancar);
+        MockOwnedCategory("user-id-123", CategoryId);
+
+        var response = await _client.PostAsJsonAsync("/expenses", new
+        {
+            description = "Almoço",
+            amountInCents = 4590,
+            categoryId = CategoryId,
+            expenseDate = "2025-06-15"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Theory]
+    [InlineData("Leitura")]
+    [InlineData("Lancar")]
+    public async Task UpdateExpense_ComPapelSemPermissao_Retorna403SemChamarRepositorio(string role)
+    {
+        AuthenticateWithRole("user-id-123", Enum.Parse<MembershipRole>(role));
+
+        var response = await _client.PutAsJsonAsync("/expenses/expense-1", new
+        {
+            description = "Almoço",
+            amountInCents = 4590,
+            categoryId = CategoryId,
+            expenseDate = "2025-06-15"
+        });
+
+        response.StatusCode.Should().Be((HttpStatusCode)403);
+        await _factory.ExpenseRepositoryMock.DidNotReceiveWithAnyArgs().UpdateAsync(
+            default!, default!, default!, default, default!, default, default);
+    }
+
+    [Theory]
+    [InlineData("Leitura")]
+    [InlineData("Lancar")]
+    public async Task DeleteExpense_ComPapelSemPermissao_Retorna403SemChamarRepositorio(string role)
+    {
+        AuthenticateWithRole("user-id-123", Enum.Parse<MembershipRole>(role));
+
+        var response = await _client.DeleteAsync("/expenses/expense-1");
+
+        response.StatusCode.Should().Be((HttpStatusCode)403);
+        await _factory.ExpenseRepositoryMock.DidNotReceiveWithAnyArgs()
+            .DeleteAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task GetExpenses_ComPapelLeitura_Retorna200()
+    {
+        AuthenticateWithRole("user-id-123", MembershipRole.Leitura);
+        _factory.ExpenseRepositoryMock
+            .QueryAsync(Arg.Any<ExpenseQueryFilter>(), Arg.Any<CancellationToken>())
+            .Returns(EmptyPage());
+
+        var response = await _client.GetAsync("/expenses");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }

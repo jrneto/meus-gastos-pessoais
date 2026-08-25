@@ -1,4 +1,5 @@
 using GastosApp.Application.Common.Interfaces;
+using GastosApp.Domain.Accounts;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -16,11 +17,13 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
     public IExpenseRepository ExpenseRepositoryMock { get; private set; } = Substitute.For<IExpenseRepository>();
     public ICategoryRepository CategoryRepositoryMock { get; private set; } = Substitute.For<ICategoryRepository>();
     public IAccountRepository AccountRepositoryMock { get; private set; } = BuildDefaultAccountRepositoryMock();
+    public IMembershipRepository MembershipRepositoryMock { get; private set; } = BuildDefaultMembershipRepositoryMock();
 
     public void ResetAuthServiceMock() => AuthServiceMock = Substitute.For<IAuthService>();
     public void ResetExpenseRepositoryMock() => ExpenseRepositoryMock = Substitute.For<IExpenseRepository>();
     public void ResetCategoryRepositoryMock() => CategoryRepositoryMock = Substitute.For<ICategoryRepository>();
     public void ResetAccountRepositoryMock() => AccountRepositoryMock = BuildDefaultAccountRepositoryMock();
+    public void ResetMembershipRepositoryMock() => MembershipRepositoryMock = BuildDefaultMembershipRepositoryMock();
 
     // Default "esperto": resolve accountId = userId (mesmo valor) pra todo
     // usuário — ResolveAccountEndpointFilter passa a exigir essa resolução
@@ -35,6 +38,20 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
         var mock = Substitute.For<IAccountRepository>();
         mock.FindAccountIdByUserIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<string>());
+        return mock;
+    }
+
+    // Default "esperto" (mesmo espírito do AccountRepositoryMock acima, FEAT-19):
+    // resolve o Membership do chamador como Titular na conta default, pra
+    // ResolveMembershipQuery (e os filtros de papel, FEAT-20) não quebrarem os
+    // testes de Category/Expense já existentes, que não conhecem papel algum.
+    // Testes que precisam simular Leitura/Lancar/Total sobrescrevem isso
+    // explicitamente.
+    private static IMembershipRepository BuildDefaultMembershipRepositoryMock()
+    {
+        var mock = Substitute.For<IMembershipRepository>();
+        mock.FindByAccountAndUserIdAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => Membership.CreateTitular(call.ArgAt<string>(0), call.ArgAt<string>(1), "titular@email.com"));
         return mock;
     }
 
@@ -67,6 +84,9 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
 
             services.RemoveAll<IAccountRepository>();
             services.AddScoped(_ => AccountRepositoryMock);
+
+            services.RemoveAll<IMembershipRepository>();
+            services.AddScoped(_ => MembershipRepositoryMock);
 
             services.AddAuthentication()
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });

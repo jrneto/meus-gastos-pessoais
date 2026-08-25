@@ -75,6 +75,10 @@ public sealed class CognitoAuthService : IAuthService
 
             return Result.Success(new LoginResult(result.IdToken, result.ExpiresIn ?? 3600, userId, result.RefreshToken));
         }
+        catch (UserNotConfirmedException)
+        {
+            return Result.Failure<LoginResult>(AuthErrors.UserNotConfirmed);
+        }
         catch (NotAuthorizedException)
         {
             return Result.Failure<LoginResult>(AuthErrors.InvalidCredentials);

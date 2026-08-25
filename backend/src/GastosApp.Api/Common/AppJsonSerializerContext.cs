@@ -10,6 +10,7 @@ using GastosApp.Application.Expenses.Commands.RegisterExpense;
 using GastosApp.Application.Expenses.Commands.UpdateExpense;
 using GastosApp.Application.Expenses.Queries.GetExpenses;
 using GastosApp.Application.Health;
+using GastosApp.Application.Members;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GastosApp.Api.Common;
@@ -40,6 +41,10 @@ namespace GastosApp.Api.Common;
 [JsonSerializable(typeof(UpdateCategoryResult))]
 [JsonSerializable(typeof(GetCategoriesResult))]
 [JsonSerializable(typeof(CategorySummary))]
+[JsonSerializable(typeof(InviteMemberRequest))]
+[JsonSerializable(typeof(UpdateMemberRoleRequest))]
+[JsonSerializable(typeof(MemberResult))]
+[JsonSerializable(typeof(GetMembersResult))]
 public partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }

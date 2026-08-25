@@ -64,7 +64,7 @@ public class DynamoDbAccountRepositoryTests
         _dynamoDbClientMock.TransactWriteItemsAsync(Arg.Any<TransactWriteItemsRequest>(), Arg.Any<CancellationToken>())
             .Returns(new TransactWriteItemsResponse());
 
-        var result = await _repository.CreateAsync("user-1");
+        var result = await _repository.CreateAsync("user-1", "user1@email.com");
 
         result.AlreadyExisted.Should().BeFalse();
         result.AccountId.Should().NotBeNullOrWhiteSpace();
@@ -80,12 +80,15 @@ public class DynamoDbAccountRepositoryTests
                 // Item 1: Account
                 && r.TransactItems[1].Put!.Item["PK"].S == $"ACCOUNT#{result.AccountId}"
                 && r.TransactItems[1].Put!.Item["SK"].S == "ACCOUNT#"
-                // Item 2: Membership (Titular)
+                // Item 2: Membership (Titular) — SK usa um Id próprio (FEAT-20), não mais o userId
                 && r.TransactItems[2].Put!.Item["PK"].S == $"ACCOUNT#{result.AccountId}"
-                && r.TransactItems[2].Put!.Item["SK"].S == "MEMBER#user-1"
+                && r.TransactItems[2].Put!.Item["SK"].S.StartsWith("MEMBER#")
                 && r.TransactItems[2].Put!.Item["GSI1PK"].S == "USER#user-1"
                 && r.TransactItems[2].Put!.Item["GSI1SK"].S == $"ACCOUNT#{result.AccountId}"
-                && r.TransactItems[2].Put!.Item["Role"].S == "Titular"),
+                && r.TransactItems[2].Put!.Item["Email"].S == "user1@email.com"
+                && r.TransactItems[2].Put!.Item["Role"].S == "Titular"
+                && r.TransactItems[2].Put!.Item["Status"].S == "Ativo"
+                && r.TransactItems[2].Put!.Item["UserId"].S == "user-1"),
             Arg.Any<CancellationToken>());
     }
 
@@ -95,8 +98,8 @@ public class DynamoDbAccountRepositoryTests
         _dynamoDbClientMock.TransactWriteItemsAsync(Arg.Any<TransactWriteItemsRequest>(), Arg.Any<CancellationToken>())
             .Returns(new TransactWriteItemsResponse());
 
-        var first = await _repository.CreateAsync("user-1");
-        var second = await _repository.CreateAsync("user-2");
+        var first = await _repository.CreateAsync("user-1", "user1@email.com");
+        var second = await _repository.CreateAsync("user-2", "user2@email.com");
 
         first.AccountId.Should().NotBe(second.AccountId);
     }
@@ -134,7 +137,7 @@ public class DynamoDbAccountRepositoryTests
             });
 
         // Act
-        var result = await _repository.CreateAsync("user-1");
+        var result = await _repository.CreateAsync("user-1", "user1@email.com");
 
         // Assert
         result.AlreadyExisted.Should().BeTrue();
@@ -157,8 +160,27 @@ public class DynamoDbAccountRepositoryTests
                 }
             });
 
-        var act = async () => await _repository.CreateAsync("user-1");
+        var act = async () => await _repository.CreateAsync("user-1", "user1@email.com");
 
         await act.Should().ThrowAsync<TransactionCanceledException>();
+    }
+
+    // ----- SetActiveAccountAsync -----
+
+    [Fact]
+    public async Task SetActiveAccountAsync_ShouldOverwriteAccountPointer_Unconditionally()
+    {
+        _dynamoDbClientMock.PutItemAsync(Arg.Any<PutItemRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new PutItemResponse());
+
+        await _repository.SetActiveAccountAsync("user-1", "account-convite");
+
+        await _dynamoDbClientMock.Received(1).PutItemAsync(
+            Arg.Is<PutItemRequest>(r =>
+                r.Item["PK"].S == "USER#user-1"
+                && r.Item["SK"].S == "ACCOUNT#"
+                && r.Item["AccountId"].S == "account-convite"
+                && r.ConditionExpression == null),
+            Arg.Any<CancellationToken>());
     }
 }

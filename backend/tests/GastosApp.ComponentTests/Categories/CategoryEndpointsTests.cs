@@ -5,6 +5,7 @@ using System.Text.Json;
 using FluentAssertions;
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.ComponentTests.Support;
+using GastosApp.Domain.Accounts;
 using GastosApp.Domain.Categories;
 using NSubstitute;
 
@@ -21,6 +22,7 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
         _factory.ResetCategoryRepositoryMock();
         _factory.ResetExpenseRepositoryMock();
         _factory.ResetAccountRepositoryMock();
+        _factory.ResetMembershipRepositoryMock();
         _client = factory.CreateClient();
     }
 
@@ -28,6 +30,15 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
     {
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(TestAuthHandler.SchemeName, $"{userId}|{email}|{name}");
+    }
+
+    private void AuthenticateWithRole(string userId, MembershipRole role)
+    {
+        AuthenticateAs(userId);
+        _factory.MembershipRepositoryMock
+            .FindByAccountAndUserIdAsync(userId, userId, Arg.Any<CancellationToken>())
+            .Returns(Membership.Restore(
+                "membership-1", userId, userId, "membro@email.com", role, MembershipStatus.Ativo, DateTimeOffset.UtcNow));
     }
 
     private static Category SampleCategory(
@@ -358,5 +369,64 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs().GetByIdAsync(default!, default!, default);
+    }
+
+    // ----- Autorização por papel (FEAT-20) -----
+
+    [Theory]
+    [InlineData("Leitura")]
+    [InlineData("Lancar")]
+    public async Task CreateCategory_ComPapelSemPermissao_Retorna403SemChamarRepositorio(string role)
+    {
+        AuthenticateWithRole("user-id-123", Enum.Parse<MembershipRole>(role));
+
+        var response = await _client.PostAsJsonAsync(
+            "/categories", new { nome = "Viagem", cor = "#0EA5E9", icone = "plane" });
+
+        response.StatusCode.Should().Be((HttpStatusCode)403);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/insufficient-permission");
+
+        await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+    }
+
+    [Theory]
+    [InlineData("Leitura")]
+    [InlineData("Lancar")]
+    public async Task UpdateCategory_ComPapelSemPermissao_Retorna403SemChamarRepositorio(string role)
+    {
+        AuthenticateWithRole("user-id-123", Enum.Parse<MembershipRole>(role));
+
+        var response = await _client.PutAsJsonAsync(
+            "/categories/category-1", new { nome = "Viagens", cor = "#0EA5E9", icone = "plane" });
+
+        response.StatusCode.Should().Be((HttpStatusCode)403);
+        await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs()
+            .UpdateAsync(default!, default!, default!, default!, default!, default);
+    }
+
+    [Theory]
+    [InlineData("Leitura")]
+    [InlineData("Lancar")]
+    public async Task DeleteCategory_ComPapelSemPermissao_Retorna403SemChamarRepositorio(string role)
+    {
+        AuthenticateWithRole("user-id-123", Enum.Parse<MembershipRole>(role));
+
+        var response = await _client.DeleteAsync("/categories/category-1");
+
+        response.StatusCode.Should().Be((HttpStatusCode)403);
+        await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs().GetByIdAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task GetCategories_ComPapelLeitura_Retorna200()
+    {
+        AuthenticateWithRole("user-id-123", MembershipRole.Leitura);
+        _factory.CategoryRepositoryMock.ListAsync("user-id-123", Arg.Any<CancellationToken>())
+            .Returns(new List<Category>());
+
+        var response = await _client.GetAsync("/categories");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }

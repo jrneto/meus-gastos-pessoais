@@ -27,6 +27,7 @@ public static class ResultHttpExtensions
             ErrorType.Unauthorized => (StatusCodes.Status401Unauthorized, "Não autorizado", error.Message),
             ErrorType.NotFound => (StatusCodes.Status404NotFound, "Recurso não encontrado", error.Message),
             ErrorType.UnprocessableEntity => (StatusCodes.Status422UnprocessableEntity, "Regra de negócio violada", error.Message),
+            ErrorType.Forbidden => (StatusCodes.Status403Forbidden, "Acesso negado", error.Message),
             _ => (StatusCodes.Status500InternalServerError, "Erro interno do servidor", (string?)null)
         };
 

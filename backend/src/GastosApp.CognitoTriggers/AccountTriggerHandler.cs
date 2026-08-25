@@ -16,11 +16,14 @@ public static class AccountTriggerHandler
         ILogger logger,
         CancellationToken cancellationToken)
     {
-        if (evt.Request.UserAttributes.TryGetValue("sub", out var userId) && !string.IsNullOrEmpty(userId))
+        var hasSub = evt.Request.UserAttributes.TryGetValue("sub", out var userId) && !string.IsNullOrEmpty(userId);
+        var hasEmail = evt.Request.UserAttributes.TryGetValue("email", out var email) && !string.IsNullOrEmpty(email);
+
+        if (hasSub && hasEmail)
         {
             try
             {
-                await sender.Send(new EnsureAccountCommand(userId), cancellationToken);
+                await sender.Send(new EnsureAccountCommand(userId!, email!), cancellationToken);
             }
             catch (Exception ex)
             {
@@ -33,6 +36,18 @@ public static class AccountTriggerHandler
                 logger.LogError(
                     ex, "Falha ao garantir Account para o usuário {UserId} no trigger PostConfirmation.", userId);
             }
+        }
+        else if (!hasSub)
+        {
+            logger.LogError("Evento PostConfirmation sem \"sub\" em UserAttributes — nada a fazer.");
+        }
+        else
+        {
+            // Defensivo — Cognito sempre envia "email" neste projeto (obrigatório
+            // pro login, ver FEAT-01), mas nunca deve derrubar a confirmação se
+            // por algum motivo não vier. EnsureAccountCommand agora exige e-mail
+            // (FEAT-20, grava no Membership do Titular) — sem ele, não despacha.
+            logger.LogError("Evento PostConfirmation sem \"email\" em UserAttributes para o usuário {UserId} — nada a fazer.", userId);
         }
 
         return evt; // Cognito exige o evento de volta, alterado ou não
