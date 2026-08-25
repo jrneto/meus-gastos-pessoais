@@ -56,6 +56,7 @@ public class DynamoDbCategoryRepositoryTests
                 r.Item["PK"].S == "ACCOUNT#user-1"
                 && r.Item["SK"].S == "CAT#viagem"
                 && r.Item["Nome"].S == "Viagem"
+                && r.Item["Tipo"].S == "categoria"
                 && r.ConditionExpression == "attribute_not_exists(PK)"),
             Arg.Any<CancellationToken>());
     }
@@ -158,6 +159,64 @@ public class DynamoDbCategoryRepositoryTests
         result!.Nome.Should().Be("Viagem");
     }
 
+    [Fact]
+    public async Task GetByIdAsync_ShouldReturnCategory_WhenItemHasNoTipoAttribute()
+    {
+        // Categorias gravadas antes desta correção nunca tiveram "Tipo" —
+        // BuildItem() (helper deste teste) já não inclui, representando esse
+        // dado legado; precisa continuar funcionando sem migração.
+        _dynamoDbClientMock.QueryAsync(Arg.Any<QueryRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryResponse
+            {
+                Items = [new Dictionary<string, AttributeValue>
+                {
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#user-1" },
+                    ["SK"] = new AttributeValue { S = "CAT#viagem" }
+                }]
+            });
+        var legacyItem = BuildItem("user-1", "CAT#viagem", "category-1", "Viagem");
+        legacyItem.Remove("Tipo");
+        _dynamoDbClientMock.GetItemAsync(Arg.Any<GetItemRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new GetItemResponse { IsItemSet = true, Item = legacyItem });
+
+        var result = await _repository.GetByIdAsync("user-1", "category-1");
+
+        result.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_ShouldReturnNull_WhenGsi2IdBelongsToAnotherItemType()
+    {
+        // Mesmo GSI2PK=ID#<id> é compartilhado com Expense — um id de despesa
+        // não pode ser confundido com categoria (achado ao revisar
+        // backend/docs/data-model.md, mesmo bug já corrigido do lado de Expense).
+        _dynamoDbClientMock.QueryAsync(Arg.Any<QueryRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryResponse
+            {
+                Items = [new Dictionary<string, AttributeValue>
+                {
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#user-1" },
+                    ["SK"] = new AttributeValue { S = "TXN#2025-06-15#expense-1" }
+                }]
+            });
+        _dynamoDbClientMock.GetItemAsync(Arg.Any<GetItemRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new GetItemResponse
+            {
+                IsItemSet = true,
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#user-1" },
+                    ["SK"] = new AttributeValue { S = "TXN#2025-06-15#expense-1" },
+                    ["Tipo"] = new AttributeValue { S = "despesa" },
+                    ["Description"] = new AttributeValue { S = "Almoço" }
+                }
+            });
+
+        var result = await _repository.GetByIdAsync("user-1", "expense-1");
+
+        result.Should().BeNull();
+    }
+
     // ----- UpdateAsync -----
 
     [Fact]
@@ -188,6 +247,40 @@ public class DynamoDbCategoryRepositoryTests
         var result = await _repository.UpdateAsync("user-1", "category-1", "Viagens", "#0EA5E9", "plane");
 
         result.Outcome.Should().Be(GastosApp.Application.Common.Interfaces.CategoryWriteOutcome.NotFound);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ShouldReturnNotFound_WhenGsi2IdBelongsToAnotherItemType()
+    {
+        // Mesmo cenário de GetByIdAsync — sem essa checagem, isto apagaria o
+        // item de despesa de verdade (Delete+Put do TransactWriteItems).
+        _dynamoDbClientMock.QueryAsync(Arg.Any<QueryRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryResponse
+            {
+                Items = [new Dictionary<string, AttributeValue>
+                {
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#user-1" },
+                    ["SK"] = new AttributeValue { S = "TXN#2025-06-15#expense-1" }
+                }]
+            });
+        _dynamoDbClientMock.GetItemAsync(Arg.Any<GetItemRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new GetItemResponse
+            {
+                IsItemSet = true,
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    ["PK"] = new AttributeValue { S = "ACCOUNT#user-1" },
+                    ["SK"] = new AttributeValue { S = "TXN#2025-06-15#expense-1" },
+                    ["Tipo"] = new AttributeValue { S = "despesa" },
+                    ["CreatedAt"] = new AttributeValue { S = OriginalCreatedAt.ToString("O") }
+                }
+            });
+
+        var result = await _repository.UpdateAsync("user-1", "expense-1", "Viagens", "#0EA5E9", "plane");
+
+        result.Outcome.Should().Be(GastosApp.Application.Common.Interfaces.CategoryWriteOutcome.NotFound);
+        await _dynamoDbClientMock.DidNotReceiveWithAnyArgs().TransactWriteItemsAsync(default!, default);
+        await _dynamoDbClientMock.DidNotReceiveWithAnyArgs().PutItemAsync(default!, default);
     }
 
     [Fact]
@@ -378,7 +471,9 @@ public class DynamoDbCategoryRepositoryTests
             Arg.Is<DeleteItemRequest>(r =>
                 r.Key["PK"].S == "ACCOUNT#user-1"
                 && r.Key["SK"].S == "CAT#viagem"
-                && r.ConditionExpression == "attribute_exists(PK)"),
+                && r.ConditionExpression == "attribute_exists(PK) AND (attribute_not_exists(#tipo) OR #tipo = :tipo)"
+                && r.ExpressionAttributeNames!["#tipo"] == "Tipo"
+                && r.ExpressionAttributeValues![":tipo"].S == "categoria"),
             Arg.Any<CancellationToken>());
     }
 
