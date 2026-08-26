@@ -247,16 +247,16 @@
         }
       }
     },
-    "/expenses": {
+    "/transactions": {
       "post": {
         "tags": [
-          "Expenses"
+          "Transactions"
         ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RegisterExpenseRequest"
+                "$ref": "#/components/schemas/RegisterTransactionRequest"
               }
             }
           },
@@ -288,7 +288,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegisterExpenseResult"
+                  "$ref": "#/components/schemas/RegisterTransactionResult"
                 }
               }
             }
@@ -317,9 +317,17 @@
       },
       "get": {
         "tags": [
-          "Expenses"
+          "Transactions"
         ],
         "parameters": [
+          {
+            "name": "Tipo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
           {
             "name": "YearMonth",
             "in": "query",
@@ -423,7 +431,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GetExpensesResult"
+                  "$ref": "#/components/schemas/GetTransactionsResult"
                 }
               }
             }
@@ -441,10 +449,10 @@
         }
       }
     },
-    "/expenses/{id}": {
+    "/transactions/{id}": {
       "get": {
         "tags": [
-          "Expenses"
+          "Transactions"
         ],
         "parameters": [
           {
@@ -482,7 +490,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UpdateExpenseResult"
+                  "$ref": "#/components/schemas/UpdateTransactionResult"
                 }
               }
             }
@@ -501,7 +509,7 @@
       },
       "put": {
         "tags": [
-          "Expenses"
+          "Transactions"
         ],
         "parameters": [
           {
@@ -517,7 +525,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateExpenseRequest"
+                "$ref": "#/components/schemas/UpdateTransactionRequest"
               }
             }
           },
@@ -549,7 +557,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UpdateExpenseResult"
+                  "$ref": "#/components/schemas/UpdateTransactionResult"
                 }
               }
             }
@@ -588,7 +596,7 @@
       },
       "delete": {
         "tags": [
-          "Expenses"
+          "Transactions"
         ],
         "parameters": [
           {
@@ -1390,44 +1398,6 @@
           }
         }
       },
-      "ExpenseSummary": {
-        "required": [
-          "id",
-          "description",
-          "amountInCents",
-          "categoryId",
-          "expenseDate",
-          "createdAt"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "amountInCents": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
-          },
-          "categoryId": {
-            "type": "string"
-          },
-          "expenseDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
       "GetCategoriesResult": {
         "required": [
           "items"
@@ -1442,27 +1412,6 @@
           }
         }
       },
-      "GetExpensesResult": {
-        "required": [
-          "items",
-          "nextCursor"
-        ],
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ExpenseSummary"
-            }
-          },
-          "nextCursor": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
       "GetMembersResult": {
         "required": [
           "items"
@@ -1474,6 +1423,27 @@
             "items": {
               "$ref": "#/components/schemas/MemberResult"
             }
+          }
+        }
+      },
+      "GetTransactionsResult": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionSummary"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -1644,12 +1614,28 @@
           }
         }
       },
-      "RegisterExpenseRequest": {
+      "RegisterRequest": {
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "RegisterTransactionRequest": {
         "required": [
           "description",
           "amountInCents",
           "categoryId",
-          "expenseDate"
+          "tipo",
+          "date"
         ],
         "type": "object",
         "properties": {
@@ -1667,19 +1653,25 @@
           "categoryId": {
             "type": "string"
           },
-          "expenseDate": {
+          "tipo": {
+            "type": "string"
+          },
+          "date": {
             "type": "string",
             "format": "date"
           }
         }
       },
-      "RegisterExpenseResult": {
+      "RegisterTransactionResult": {
         "required": [
           "id",
           "description",
           "amountInCents",
           "categoryId",
-          "expenseDate",
+          "tipo",
+          "date",
+          "createdByUserId",
+          "createdByLabel",
           "createdAt"
         ],
         "type": "object",
@@ -1701,28 +1693,22 @@
           "categoryId": {
             "type": "string"
           },
-          "expenseDate": {
+          "tipo": {
+            "type": "string"
+          },
+          "date": {
             "type": "string",
             "format": "date"
+          },
+          "createdByUserId": {
+            "type": "string"
+          },
+          "createdByLabel": {
+            "type": "string"
           },
           "createdAt": {
             "type": "string",
             "format": "date-time"
-          }
-        }
-      },
-      "RegisterRequest": {
-        "required": [
-          "email",
-          "password"
-        ],
-        "type": "object",
-        "properties": {
-          "email": {
-            "type": "string"
-          },
-          "password": {
-            "type": "string"
           }
         }
       },
@@ -1738,6 +1724,56 @@
           },
           "email": {
             "type": "string"
+          }
+        }
+      },
+      "TransactionSummary": {
+        "required": [
+          "id",
+          "description",
+          "amountInCents",
+          "categoryId",
+          "tipo",
+          "date",
+          "createdByUserId",
+          "createdByLabel",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "amountInCents": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "createdByUserId": {
+            "type": "string"
+          },
+          "createdByLabel": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -1800,12 +1836,24 @@
           }
         }
       },
-      "UpdateExpenseRequest": {
+      "UpdateMemberRoleRequest": {
+        "required": [
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateTransactionRequest": {
         "required": [
           "description",
           "amountInCents",
           "categoryId",
-          "expenseDate"
+          "tipo",
+          "date"
         ],
         "type": "object",
         "properties": {
@@ -1823,19 +1871,25 @@
           "categoryId": {
             "type": "string"
           },
-          "expenseDate": {
+          "tipo": {
+            "type": "string"
+          },
+          "date": {
             "type": "string",
             "format": "date"
           }
         }
       },
-      "UpdateExpenseResult": {
+      "UpdateTransactionResult": {
         "required": [
           "id",
           "description",
           "amountInCents",
           "categoryId",
-          "expenseDate",
+          "tipo",
+          "date",
+          "createdByUserId",
+          "createdByLabel",
           "createdAt"
         ],
         "type": "object",
@@ -1857,24 +1911,22 @@
           "categoryId": {
             "type": "string"
           },
-          "expenseDate": {
+          "tipo": {
+            "type": "string"
+          },
+          "date": {
             "type": "string",
             "format": "date"
+          },
+          "createdByUserId": {
+            "type": "string"
+          },
+          "createdByLabel": {
+            "type": "string"
           },
           "createdAt": {
             "type": "string",
             "format": "date-time"
-          }
-        }
-      },
-      "UpdateMemberRoleRequest": {
-        "required": [
-          "role"
-        ],
-        "type": "object",
-        "properties": {
-          "role": {
-            "type": "string"
           }
         }
       },
@@ -1913,7 +1965,7 @@
       "name": "Auth"
     },
     {
-      "name": "Expenses"
+      "name": "Transactions"
     },
     {
       "name": "Categories"

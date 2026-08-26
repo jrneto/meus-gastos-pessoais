@@ -46,6 +46,7 @@ public sealed class ResolveAccountEndpointFilter : IEndpointFilter
         _currentAccount.AccountId = result.Value.AccountId;
         _currentAccount.MembershipId = result.Value.MembershipId;
         _currentAccount.Role = result.Value.Role;
+        _currentAccount.UserId = userId;
         return await next(context);
     }
 }
