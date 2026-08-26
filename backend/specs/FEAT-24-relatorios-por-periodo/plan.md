@@ -508,19 +508,10 @@ esperados — mesma manutenção já feita na FEAT-23 ao adicionar
    padrão de `GET /summary`/`GET /transactions`/`GET /categories`
    (`spec.md`, decisão de escopo 8 / US14).
 
-## Pontos que precisam de confirmação do usuário antes do `/tasks`
+## Decisões confirmadas com o usuário (revisão pós-plan)
 
-1. **Arredondamento de `variacaoPercentual`/`percentualOrcamento` a 1
-   casa decimal, usando `decimal` (não `double`).** O `spec.md` já
-   fecha "1 casa decimal" — a escolha de `decimal` em vez de `double`
-   é só deste plano (evita imprecisão de ponto flutuante em cálculo
-   financeiro, mesmo em valor percentual derivado de centavos), coerente
-   com o resto do projeto (`AmountInCents` sempre `long`, nunca
-   `float`/`double`). Sinalizando por não ter precedente explícito de
-   `decimal` em outro Handler do projeto até aqui.
+1. **`decimal` (não `double`) para `variacaoPercentual`/
+   `percentualOrcamento`, arredondado a 1 casa decimal** — confirmado.
 2. **Duas chamadas a `ITransactionRepository.QueryAsync` por request**
-   (período atual + período anterior) em vez de uma única — dobra o
-   número de `Query`s no DynamoDB por chamada de `/reports` comparado a
-   `/summary` (que faz uma só). Aceitável dado o volume pessoal
-   previsto pelo projeto (mesma leitura de custo já aceita na FEAT-23),
-   mas sinalizando por ser uma característica nova neste endpoint.
+   (período atual + período anterior) em vez de uma única — confirmado,
+   aceitável no volume pessoal previsto pelo projeto.
