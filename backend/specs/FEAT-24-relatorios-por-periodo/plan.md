@@ -281,8 +281,7 @@ public sealed partial class GetReportsQueryValidator : AbstractValidator<GetRepo
 
         RuleFor(q => q.Date)
             .NotEmpty().WithMessage("O parâmetro date é obrigatório.")
-            .Must(BeAValidDate).WithMessage("date deve estar no formato YYYY-MM-DD.")
-            .When(q => !string.IsNullOrEmpty(q.Date));
+            .Must(BeAValidDate).WithMessage("date deve estar no formato YYYY-MM-DD.");
     }
 
     private static bool BeAValidDate(string date) =>
@@ -292,11 +291,11 @@ public sealed partial class GetReportsQueryValidator : AbstractValidator<GetRepo
 `Period` sem `.NotEmpty()` separado — `Must(p => p is "week" or "month"
 or "year")` já rejeita `null`/vazio/qualquer outro valor numa regra só
 (mais simples que a validação de `Month` da FEAT-23, que precisava de
-regex). **Atenção ao bug já corrigido na FEAT-23**
-(`GetSummaryQueryValidator`): `.When()` encadeado depois de outra regra
-aplica a condição a **toda a cadeia anterior**, inclusive `NotEmpty()`
-— por isso `Date` usa a mesma estrutura já corrigida lá (`.When()` só
-guarda `Must`, não `NotEmpty()`).
+regex). `Date` não usa `.When()` — mesmo bug já corrigido na FEAT-23
+(`GetSummaryQueryValidator`): `.When()` encadeado no fim da regra
+aplica a condição a **toda a cadeia anterior**, inclusive `NotEmpty()`,
+fazendo string vazia passar. `Must(BeAValidDate)` já rejeita vazio
+sozinho, então nenhum `.When()` é necessário.
 
 ### `ApplicationServiceCollectionExtensions` — registro
 

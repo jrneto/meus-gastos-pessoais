@@ -1360,6 +1360,73 @@
           }
         }
       }
+    },
+    "/reports": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "parameters": [
+          {
+            "name": "Period",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "Date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetReportsResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1515,6 +1582,64 @@
             "items": {
               "$ref": "#/components/schemas/MemberResult"
             }
+          }
+        }
+      },
+      "GetReportsResult": {
+        "required": [
+          "period",
+          "startDate",
+          "endDate",
+          "totalCents",
+          "variacaoPercentual",
+          "porCategoria",
+          "maiorGasto"
+        ],
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "totalCents": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "variacaoPercentual": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "porCategoria": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportCategoryItem"
+            }
+          },
+          "maiorGasto": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReportTopCategory"
+              }
+            ]
           }
         }
       },
@@ -1889,6 +2014,64 @@
           }
         }
       },
+      "ReportCategoryItem": {
+        "required": [
+          "categoryId",
+          "nome",
+          "gastoCents"
+        ],
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "gastoCents": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "ReportTopCategory": {
+        "required": [
+          "categoryId",
+          "nome",
+          "gastoCents",
+          "percentualOrcamento"
+        ],
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "gastoCents": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "percentualOrcamento": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
       "TransactionSummary": {
         "required": [
           "id",
@@ -2137,6 +2320,9 @@
     },
     {
       "name": "Summary"
+    },
+    {
+      "name": "Reports"
     }
   ]
 }

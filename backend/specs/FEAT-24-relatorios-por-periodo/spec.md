@@ -296,38 +296,81 @@ Response 401 (unauthorized):
 
 ## Critérios de aceite
 
-- [ ] `GET /reports?period=week&date=YYYY-MM-DD` retorna 200 com
+- [x] `GET /reports?period=week&date=YYYY-MM-DD` retorna 200 com
       `totalCents`/`porCategoria`/`maiorGasto`/`variacaoPercentual`
       calculados a partir da semana ISO (segunda a domingo) que contém
       `date`
-- [ ] `GET /reports?period=month&date=YYYY-MM-DD` calcula o período
+- [x] `GET /reports?period=month&date=YYYY-MM-DD` calcula o período
       pelo mês calendário que contém `date`
-- [ ] `GET /reports?period=year&date=YYYY-MM-DD` calcula o período pelo
+- [x] `GET /reports?period=year&date=YYYY-MM-DD` calcula o período pelo
       ano calendário que contém `date`
-- [ ] `GET /reports` sem `period`, ou com `period` fora de
+- [x] `GET /reports` sem `period`, ou com `period` fora de
       `week`/`month`/`year`, retorna 400
-- [ ] `GET /reports` sem `date`, ou com `date` fora do formato
+- [x] `GET /reports` sem `date`, ou com `date` fora do formato
       `YYYY-MM-DD` (incluindo data de calendário inválida), retorna 400
-- [ ] `porCategoria` inclui somente categorias `tipo="despesa"` com
+- [x] `porCategoria` inclui somente categorias `tipo="despesa"` com
       `gastoCents > 0` no período, ordenadas por `gastoCents`
       decrescente, sem categorias zeradas
-- [ ] `maiorGasto` reflete a categoria do topo de `porCategoria`, com
+- [x] `maiorGasto` reflete a categoria do topo de `porCategoria`, com
       `percentualOrcamento` calculado sobre o orçamento da própria
       categoria, ou `null` quando ela não tem orçamento definido
-- [ ] `maiorGasto` retorna `null` quando não há nenhuma despesa no
+- [x] `maiorGasto` retorna `null` quando não há nenhuma despesa no
       período
-- [ ] `variacaoPercentual` reflete corretamente aumento e redução em
+- [x] `variacaoPercentual` reflete corretamente aumento e redução em
       relação ao período anterior de mesma duração
-- [ ] `variacaoPercentual` retorna `null` quando o período anterior tem
+- [x] `variacaoPercentual` retorna `null` quando o período anterior tem
       total zero e o período atual tem gasto; retorna `0` quando os
       dois têm total zero
-- [ ] Dados de uma conta nunca aparecem no relatório de outra conta
-- [ ] Qualquer papel autenticado (`Leitura`, `Lancar`, `Total`,
+- [x] Dados de uma conta nunca aparecem no relatório de outra conta
+- [x] Qualquer papel autenticado (`Leitura`, `Lancar`, `Total`,
       `Titular`) recebe 200 em `GET /reports`
-- [ ] Requisição sem token JWT válido retorna 401
-- [ ] `backend/docs/openapi.json` regenerado refletindo o novo endpoint
+- [x] Requisição sem token JWT válido retorna 401
+- [x] `backend/docs/openapi.json` regenerado refletindo o novo endpoint
       `GET /reports` (parâmetros `period`/`date`, schema de response,
       `400`/`401`)
+
+## Status
+
+Implementado conforme `plan.md`/`tasks.md`. Novo módulo
+`Reports/` (Application) — sem mudança em Domain nem Infrastructure,
+reaproveitando `ITransactionRepository.QueryAsync` (com `DateFrom`/
+`DateTo`, já suportado pelo repositório) e
+`ICategoryRepository.ListAsync(accountId, "despesa")`.
+`PeriodCalculator` (função pura, sem clock) calcula início/fim do
+período atual e do anterior a partir de `date`, usando
+`System.Globalization.ISOWeek` para a semana ISO. O Handler faz duas
+chamadas a `QueryAsync` por request — período atual (com agrupamento
+por categoria) e período anterior (só para o total, pra
+`variacaoPercentual`) — cada uma já filtrando `Tipo="despesa"` na
+própria query, sem precisar descartar receitas em memória.
+
+Novo `GET /reports` (`ReportEndpoints`) sem `RoleEndpointFilters.Require`
+— qualquer papel autenticado da conta ativa passa, mesmo padrão de
+`GET /summary`/`GET /transactions`/`GET /categories`. Nenhum recurso AWS
+novo.
+
+Durante os testes de componente, um bug foi encontrado e corrigido no
+próprio `GetReportsQueryValidator`: o `.When()` originalmente encadeado
+depois de `Must(BeAValidDate)` aplicava a condição a toda a regra
+(inclusive `NotEmpty()`), fazendo `date` vazio passar a validação sem
+erro — mesma classe de bug já corrigida na FEAT-23
+(`GetSummaryQueryValidator`). Corrigido removendo o `.When()`
+(`Must(BeAValidDate)` já rejeita string vazia sozinho, já que
+`DateOnly.TryParseExact("", ...)` retorna `false`). O teste de
+regressão
+`ApplicationExtensionsTests.AddApplicationServices_ShouldNotRegisterAnyOtherValidator_BeyondTheKnownNine`
+(FEAT-03) foi atualizado para `...BeyondTheKnownTen`, incluindo
+`GetReportsQueryValidator` na lista fechada de validators esperados.
+
+`backend/docs/openapi.json` regenerado localmente (API rodando contra
+LocalStack/cognito-local, `backend/infra/`) — `git diff` confirma só a
+adição de `/reports` (`GET`, parâmetros `period`/`date`, schemas
+`GetReportsResult`/`ReportCategoryItem`/`ReportTopCategory`,
+`400`/`401`), sem tocar `/transactions`, `/categories`, `/members` ou
+`/summary` (0 linhas removidas no diff).
+
+Suíte completa (`dotnet test` na solução) passa: 558/558 (1
+IntegrationTests placeholder + 379 UnitTests + 178 ComponentTests).
 
 ## Fora do escopo
 
