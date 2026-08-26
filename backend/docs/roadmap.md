@@ -87,14 +87,25 @@ coluna "Depende de".
   transações do período — cobre o botão "Exportar CSV" de Ajustes.
   Depende de: FEAT-22.
 
-- [ ] **FEAT-26 — E-mail de boas-vindas**
+- [ ] **FEAT-26 — Perfil do usuário no cadastro (nome, telefone, CPF)**
+  *(inserida fora da ordem original desta lista, a pedido do usuário,
+  empurrando as duas linhas seguintes uma posição adiante)*
+  `POST /auth/register` passa a exigir também `name`, `phoneNumber` e
+  `cpf`, armazenados num novo item de perfil no DynamoDB (não em
+  atributos do Cognito — CPF não é atributo padrão e um atributo
+  customizado só pode ser definido na criação do User Pool). CPF único
+  e validado por dígito verificador. `GET /auth/me` passa a expor os
+  três campos.
+  Depende de: FEAT-01 (auth).
+
+- [ ] **FEAT-27 — E-mail de boas-vindas**
   Envia e-mail de boas-vindas quando a conta é criada (mesmo trigger
   `Post Confirmation` da FEAT-19). Exige decidir/provisionar
   infraestrutura de e-mail (SES ou similar) — inexistente no projeto
   hoje. Escopo deixado de fora da FEAT-19 de propósito.
   Depende de: FEAT-19.
 
-- [ ] **FEAT-27 — Seed de categorias padrão**
+- [ ] **FEAT-28 — Seed de categorias padrão**
   Cria automaticamente um conjunto de categorias padrão (nome, cor,
   ícone) para toda conta nova. Já tinha sido adiado na FEAT-16;
   retomado aqui porque a criação de conta (FEAT-19) é o gatilho natural.
