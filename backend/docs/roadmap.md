@@ -75,7 +75,7 @@ coluna "Depende de".
   via `Query` + agregação em memória, sem tabela agregada.
   Depende de: FEAT-22, FEAT-21.
 
-- [ ] **FEAT-24 — Relatórios por período**
+- [x] **FEAT-24 — Relatórios por período**
   `GET /reports?period=week|month|year`: gasto por categoria, total do
   período, variação vs período anterior, maior gasto. Mesma estratégia
   de cálculo do FEAT-23.
