@@ -69,7 +69,7 @@ coluna "Depende de".
   já existente (`TXN#`, GSI1 por categoria, GSI2 por id).
   Depende de: FEAT-19, FEAT-21.
 
-- [ ] **FEAT-23 — Resumo mensal (dashboard)**
+- [x] **FEAT-23 — Resumo mensal (dashboard)**
   `GET /summary?month=YYYY-MM`: saldo, receitas, gastos, orçamento
   total, restante, gasto por categoria, últimos lançamentos — calculado
   via `Query` + agregação em memória, sem tabela agregada.
