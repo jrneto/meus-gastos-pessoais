@@ -8,8 +8,8 @@ namespace GastosApp.Application.Categories.Commands.CreateCategory;
 public sealed record CreateCategoryCommand(
     string AccountId,
     string Nome,
-    string Cor,
-    string Icone) : ICommand<Result<CreateCategoryResult>>;
+    string Tipo,
+    long? OrcamentoMensalCents) : ICommand<Result<CreateCategoryResult>>;
 
 public sealed class CreateCategoryCommandHandler : ICommandHandler<CreateCategoryCommand, Result<CreateCategoryResult>>
 {
@@ -22,7 +22,7 @@ public sealed class CreateCategoryCommandHandler : ICommandHandler<CreateCategor
 
     public async ValueTask<Result<CreateCategoryResult>> Handle(CreateCategoryCommand command, CancellationToken cancellationToken)
     {
-        var category = Category.Create(command.AccountId, command.Nome, command.Cor, command.Icone);
+        var category = Category.Create(command.AccountId, command.Nome, command.Tipo, command.OrcamentoMensalCents);
         var result = await _categoryRepository.CreateAsync(category, cancellationToken);
 
         return result.Outcome switch
@@ -36,14 +36,14 @@ public sealed class CreateCategoryCommandHandler : ICommandHandler<CreateCategor
 public record CreateCategoryResult(
     string Id,
     string Nome,
-    string Cor,
-    string Icone,
+    string Tipo,
+    long? OrcamentoMensalCents,
     DateTimeOffset CreatedAt)
 {
     public static CreateCategoryResult FromEntity(Category category) => new(
         category.Id,
         category.Nome,
-        category.Cor,
-        category.Icone,
+        category.Tipo,
+        category.OrcamentoMensalCents,
         category.CreatedAt);
 }

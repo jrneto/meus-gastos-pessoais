@@ -9,8 +9,8 @@ public sealed record UpdateCategoryCommand(
     string AccountId,
     string CategoryId,
     string Nome,
-    string Cor,
-    string Icone) : ICommand<Result<UpdateCategoryResult>>;
+    string Tipo,
+    long? OrcamentoMensalCents) : ICommand<Result<UpdateCategoryResult>>;
 
 public sealed class UpdateCategoryCommandHandler : ICommandHandler<UpdateCategoryCommand, Result<UpdateCategoryResult>>
 {
@@ -24,7 +24,7 @@ public sealed class UpdateCategoryCommandHandler : ICommandHandler<UpdateCategor
     public async ValueTask<Result<UpdateCategoryResult>> Handle(UpdateCategoryCommand command, CancellationToken cancellationToken)
     {
         var result = await _categoryRepository.UpdateAsync(
-            command.AccountId, command.CategoryId, command.Nome, command.Cor, command.Icone, cancellationToken);
+            command.AccountId, command.CategoryId, command.Nome, command.Tipo, command.OrcamentoMensalCents, cancellationToken);
 
         return result.Outcome switch
         {
@@ -38,14 +38,14 @@ public sealed class UpdateCategoryCommandHandler : ICommandHandler<UpdateCategor
 public record UpdateCategoryResult(
     string Id,
     string Nome,
-    string Cor,
-    string Icone,
+    string Tipo,
+    long? OrcamentoMensalCents,
     DateTimeOffset CreatedAt)
 {
     public static UpdateCategoryResult FromEntity(Category category) => new(
         category.Id,
         category.Nome,
-        category.Cor,
-        category.Icone,
+        category.Tipo,
+        category.OrcamentoMensalCents,
         category.CreatedAt);
 }

@@ -22,8 +22,8 @@ public class GetCategoriesQueryHandlerTests
     public async Task Handle_ShouldReturnEmptyItems_WhenUserHasNoCategories()
     {
         // Arrange
-        var query = new GetCategoriesQuery("user-id-123");
-        _categoryRepositoryMock.ListAsync("user-id-123", Arg.Any<CancellationToken>())
+        var query = new GetCategoriesQuery("user-id-123", null);
+        _categoryRepositoryMock.ListAsync("user-id-123", null, Arg.Any<CancellationToken>())
             .Returns(new List<Category>());
 
         // Act
@@ -38,10 +38,10 @@ public class GetCategoriesQueryHandlerTests
     public async Task Handle_ShouldMapCategories_WhenUserHasCategories()
     {
         // Arrange
-        var query = new GetCategoriesQuery("user-id-123");
-        var category = Category.Restore("category-1", "user-id-123", "Viagem", "#0EA5E9", "plane", DateTimeOffset.UtcNow);
+        var query = new GetCategoriesQuery("user-id-123", null);
+        var category = Category.Restore("category-1", "user-id-123", "Viagem", "despesa", 50000, DateTimeOffset.UtcNow);
 
-        _categoryRepositoryMock.ListAsync("user-id-123", Arg.Any<CancellationToken>())
+        _categoryRepositoryMock.ListAsync("user-id-123", null, Arg.Any<CancellationToken>())
             .Returns(new List<Category> { category });
 
         // Act
@@ -52,7 +52,22 @@ public class GetCategoriesQueryHandlerTests
         result.Value.Items.Should().ContainSingle();
         result.Value.Items[0].Id.Should().Be("category-1");
         result.Value.Items[0].Nome.Should().Be("Viagem");
-        result.Value.Items[0].Cor.Should().Be("#0EA5E9");
-        result.Value.Items[0].Icone.Should().Be("plane");
+        result.Value.Items[0].Tipo.Should().Be("despesa");
+        result.Value.Items[0].OrcamentoMensalCents.Should().Be(50000);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPassTipoFilter_ToRepository()
+    {
+        // Arrange
+        var query = new GetCategoriesQuery("user-id-123", "receita");
+        _categoryRepositoryMock.ListAsync("user-id-123", "receita", Arg.Any<CancellationToken>())
+            .Returns(new List<Category>());
+
+        // Act
+        await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        await _categoryRepositoryMock.Received(1).ListAsync("user-id-123", "receita", Arg.Any<CancellationToken>());
     }
 }

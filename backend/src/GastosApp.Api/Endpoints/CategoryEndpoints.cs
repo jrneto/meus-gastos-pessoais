@@ -21,7 +21,8 @@ public static class CategoryEndpoints
             .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapGet("/", GetCategories)
-            .Produces<GetCategoriesResult>(StatusCodes.Status200OK);
+            .Produces<GetCategoriesResult>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
 
         group.MapGet("/{id}", GetCategoryById)
             .Produces<UpdateCategoryResult>(StatusCodes.Status200OK)
@@ -53,11 +54,12 @@ public static class CategoryEndpoints
     }
 
     private static async Task<IResult> GetCategories(
+        [AsParameters] GetCategoriesRequest request,
         CurrentAccountContext currentAccount,
         ISender sender,
         CancellationToken cancellationToken)
     {
-        var query = new GetCategoriesQuery(currentAccount.AccountId!);
+        var query = new GetCategoriesQuery(currentAccount.AccountId!, NullIfEmpty(request.Tipo));
 
         var result = await sender.Send(query, cancellationToken);
         return result.ToHttpResult(value => Results.Ok(value));
@@ -81,7 +83,8 @@ public static class CategoryEndpoints
         ISender sender,
         CancellationToken cancellationToken)
     {
-        var command = new CreateCategoryCommand(currentAccount.AccountId!, request.Nome, request.Cor, request.Icone);
+        var command = new CreateCategoryCommand(
+            currentAccount.AccountId!, request.Nome, request.Tipo, request.OrcamentoMensalCents);
 
         var result = await sender.Send(command, cancellationToken);
         return result.ToHttpResult(value => Results.Created($"/categories/{value.Id}", value));
@@ -94,7 +97,8 @@ public static class CategoryEndpoints
         ISender sender,
         CancellationToken cancellationToken)
     {
-        var command = new UpdateCategoryCommand(currentAccount.AccountId!, id, request.Nome, request.Cor, request.Icone);
+        var command = new UpdateCategoryCommand(
+            currentAccount.AccountId!, id, request.Nome, request.Tipo, request.OrcamentoMensalCents);
 
         var result = await sender.Send(command, cancellationToken);
         return result.ToHttpResult(value => Results.Ok(value));
@@ -111,8 +115,12 @@ public static class CategoryEndpoints
         var result = await sender.Send(command, cancellationToken);
         return result.ToHttpResult(() => Results.NoContent());
     }
+
+    private static string? NullIfEmpty(string value) => string.IsNullOrEmpty(value) ? null : value;
 }
 
-public record CreateCategoryRequest(string Nome, string Cor, string Icone);
+public record CreateCategoryRequest(string Nome, string Tipo, long? OrcamentoMensalCents);
 
-public record UpdateCategoryRequest(string Nome, string Cor, string Icone);
+public record UpdateCategoryRequest(string Nome, string Tipo, long? OrcamentoMensalCents);
+
+public record GetCategoriesRequest(string Tipo = "");

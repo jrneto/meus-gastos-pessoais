@@ -26,7 +26,7 @@ public class GetCategoryByIdQueryHandlerTests
         var query = new GetCategoryByIdQuery("user-id-123", "category-1");
 
         var category = Category.Restore(
-            "category-1", "user-id-123", "Alimentacao", "#F97316", "utensils", DateTimeOffset.UtcNow);
+            "category-1", "user-id-123", "Alimentacao", "despesa", 80000, DateTimeOffset.UtcNow);
 
         _categoryRepositoryMock.GetByIdAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(category);
@@ -38,8 +38,8 @@ public class GetCategoryByIdQueryHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Id.Should().Be("category-1");
         result.Value.Nome.Should().Be("Alimentacao");
-        result.Value.Cor.Should().Be("#F97316");
-        result.Value.Icone.Should().Be("utensils");
+        result.Value.Tipo.Should().Be("despesa");
+        result.Value.OrcamentoMensalCents.Should().Be(80000);
     }
 
     [Fact]

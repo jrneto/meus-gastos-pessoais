@@ -23,11 +23,11 @@ public class UpdateCategoryCommandHandlerTests
     public async Task Handle_ShouldReturnSuccess_WhenRepositoryUpdatesCategory()
     {
         // Arrange
-        var command = new UpdateCategoryCommand("user-id-123", "category-1", "Viagens", "#0EA5E9", "plane");
-        var updated = Category.Restore("category-1", "user-id-123", "Viagens", "#0EA5E9", "plane", DateTimeOffset.UtcNow);
+        var command = new UpdateCategoryCommand("user-id-123", "category-1", "Viagens", "receita", 70000);
+        var updated = Category.Restore("category-1", "user-id-123", "Viagens", "receita", 70000, DateTimeOffset.UtcNow);
 
         _categoryRepositoryMock.UpdateAsync(
-                command.AccountId, command.CategoryId, command.Nome, command.Cor, command.Icone, Arg.Any<CancellationToken>())
+                command.AccountId, command.CategoryId, command.Nome, command.Tipo, command.OrcamentoMensalCents, Arg.Any<CancellationToken>())
             .Returns(CategoryWriteResult.Success(updated));
 
         // Act
@@ -36,16 +36,18 @@ public class UpdateCategoryCommandHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Nome.Should().Be("Viagens");
+        result.Value.Tipo.Should().Be("receita");
+        result.Value.OrcamentoMensalCents.Should().Be(70000);
     }
 
     [Fact]
     public async Task Handle_ShouldReturnNotFound_WhenCategoryDoesNotExist()
     {
         // Arrange
-        var command = new UpdateCategoryCommand("user-id-123", "category-inexistente", "Viagens", "#0EA5E9", "plane");
+        var command = new UpdateCategoryCommand("user-id-123", "category-inexistente", "Viagens", "despesa", null);
 
         _categoryRepositoryMock.UpdateAsync(
-                command.AccountId, command.CategoryId, command.Nome, command.Cor, command.Icone, Arg.Any<CancellationToken>())
+                command.AccountId, command.CategoryId, command.Nome, command.Tipo, command.OrcamentoMensalCents, Arg.Any<CancellationToken>())
             .Returns(CategoryWriteResult.NotFound());
 
         // Act
@@ -61,10 +63,10 @@ public class UpdateCategoryCommandHandlerTests
     public async Task Handle_ShouldReturnNameConflict_WhenRenamingToExistingName()
     {
         // Arrange
-        var command = new UpdateCategoryCommand("user-id-123", "category-1", "Lazer", "#0EA5E9", "plane");
+        var command = new UpdateCategoryCommand("user-id-123", "category-1", "Lazer", "despesa", null);
 
         _categoryRepositoryMock.UpdateAsync(
-                command.AccountId, command.CategoryId, command.Nome, command.Cor, command.Icone, Arg.Any<CancellationToken>())
+                command.AccountId, command.CategoryId, command.Nome, command.Tipo, command.OrcamentoMensalCents, Arg.Any<CancellationToken>())
             .Returns(CategoryWriteResult.NameConflict());
 
         // Act

@@ -42,8 +42,9 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
     }
 
     private static Category SampleCategory(
-        string id = "category-1", string userId = "user-id-123", string nome = "Viagem") =>
-        Category.Restore(id, userId, nome, "#0EA5E9", "plane", DateTimeOffset.UtcNow);
+        string id = "category-1", string userId = "user-id-123", string nome = "Viagem",
+        string tipo = "despesa", long? orcamentoMensalCents = null) =>
+        Category.Restore(id, userId, nome, tipo, orcamentoMensalCents, DateTimeOffset.UtcNow);
 
     // ----- GET /categories -----
 
@@ -51,7 +52,7 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
     public async Task GetCategories_SemCategorias_Retorna200ComListaVazia()
     {
         AuthenticateAs("user-id-123");
-        _factory.CategoryRepositoryMock.ListAsync("user-id-123", Arg.Any<CancellationToken>())
+        _factory.CategoryRepositoryMock.ListAsync("user-id-123", null, Arg.Any<CancellationToken>())
             .Returns(new List<Category>());
 
         var response = await _client.GetAsync("/categories");
@@ -65,8 +66,8 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
     public async Task GetCategories_ComCategoriasCadastradas_Retorna200ComItens()
     {
         AuthenticateAs("user-id-123");
-        _factory.CategoryRepositoryMock.ListAsync("user-id-123", Arg.Any<CancellationToken>())
-            .Returns(new List<Category> { SampleCategory() });
+        _factory.CategoryRepositoryMock.ListAsync("user-id-123", null, Arg.Any<CancellationToken>())
+            .Returns(new List<Category> { SampleCategory(tipo: "despesa", orcamentoMensalCents: 80000) });
 
         var response = await _client.GetAsync("/categories");
 
@@ -75,6 +76,53 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
         var items = body.GetProperty("items");
         items.GetArrayLength().Should().Be(1);
         items[0].GetProperty("nome").GetString().Should().Be("Viagem");
+        items[0].GetProperty("tipo").GetString().Should().Be("despesa");
+        items[0].GetProperty("orcamentoMensalCents").GetInt64().Should().Be(80000);
+        items[0].TryGetProperty("cor", out _).Should().BeFalse();
+        items[0].TryGetProperty("icone", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetCategories_ComFiltroDeTipoDespesa_RetornaSoDespesas()
+    {
+        AuthenticateAs("user-id-123");
+        _factory.CategoryRepositoryMock.ListAsync("user-id-123", "despesa", Arg.Any<CancellationToken>())
+            .Returns(new List<Category> { SampleCategory(nome: "Alimentacao", tipo: "despesa") });
+
+        var response = await _client.GetAsync("/categories?tipo=despesa");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var items = body.GetProperty("items");
+        items.GetArrayLength().Should().Be(1);
+        items[0].GetProperty("tipo").GetString().Should().Be("despesa");
+    }
+
+    [Fact]
+    public async Task GetCategories_ComFiltroDeTipoReceita_RetornaSoReceitas()
+    {
+        AuthenticateAs("user-id-123");
+        _factory.CategoryRepositoryMock.ListAsync("user-id-123", "receita", Arg.Any<CancellationToken>())
+            .Returns(new List<Category> { SampleCategory(nome: "Salario", tipo: "receita") });
+
+        var response = await _client.GetAsync("/categories?tipo=receita");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var items = body.GetProperty("items");
+        items.GetArrayLength().Should().Be(1);
+        items[0].GetProperty("tipo").GetString().Should().Be("receita");
+    }
+
+    [Fact]
+    public async Task GetCategories_ComTipoInvalido_Retorna400SemChamarRepositorio()
+    {
+        AuthenticateAs("user-id-123");
+
+        var response = await _client.GetAsync("/categories?tipo=invalido");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs().ListAsync(default!, default, default);
     }
 
     [Fact]
@@ -83,7 +131,7 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
         var response = await _client.GetAsync("/categories");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs().ListAsync(default!, default);
+        await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs().ListAsync(default!, default, default);
     }
 
     // FEAT-19: ResolveAccountEndpointFilter roda antes de qualquer handler —
@@ -102,7 +150,7 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/account-not-found");
 
-        await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs().ListAsync(default!, default);
+        await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs().ListAsync(default!, default, default);
     }
 
     // ----- GET /categories/{id} -----
@@ -149,7 +197,7 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
     // ----- POST /categories -----
 
     [Fact]
-    public async Task CreateCategory_ComDadosValidos_Retorna201ComLocationEBody()
+    public async Task CreateCategory_ComDadosValidosSemOrcamento_Retorna201ComLocationEBody()
     {
         AuthenticateAs("user-id-123");
         _factory.CategoryRepositoryMock.CreateAsync(Arg.Any<Category>(), Arg.Any<CancellationToken>())
@@ -158,8 +206,7 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
         var response = await _client.PostAsJsonAsync("/categories", new
         {
             nome = "Viagem",
-            cor = "#0EA5E9",
-            icone = "plane"
+            tipo = "despesa"
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -167,8 +214,49 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
 
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("nome").GetString().Should().Be("Viagem");
-        body.GetProperty("cor").GetString().Should().Be("#0EA5E9");
-        body.GetProperty("icone").GetString().Should().Be("plane");
+        body.GetProperty("tipo").GetString().Should().Be("despesa");
+        body.GetProperty("orcamentoMensalCents").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task CreateCategory_ComOrcamentoInformado_Retorna201ComOrcamento()
+    {
+        AuthenticateAs("user-id-123");
+        _factory.CategoryRepositoryMock.CreateAsync(Arg.Any<Category>(), Arg.Any<CancellationToken>())
+            .Returns(call => CategoryWriteResult.Success(call.Arg<Category>()));
+
+        var response = await _client.PostAsJsonAsync("/categories", new
+        {
+            nome = "Salario",
+            tipo = "receita",
+            orcamentoMensalCents = 500000
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("tipo").GetString().Should().Be("receita");
+        body.GetProperty("orcamentoMensalCents").GetInt64().Should().Be(500000);
+    }
+
+    [Fact]
+    public async Task CreateCategory_ComCorEIconeNoCorpo_Retorna201IgnorandoEssesCampos()
+    {
+        AuthenticateAs("user-id-123");
+        _factory.CategoryRepositoryMock.CreateAsync(Arg.Any<Category>(), Arg.Any<CancellationToken>())
+            .Returns(call => CategoryWriteResult.Success(call.Arg<Category>()));
+
+        var response = await _client.PostAsJsonAsync("/categories", new
+        {
+            nome = "Viagem",
+            tipo = "despesa",
+            cor = "#0EA5E9",
+            icone = "plane"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.TryGetProperty("cor", out _).Should().BeFalse();
+        body.TryGetProperty("icone", out _).Should().BeFalse();
     }
 
     [Fact]
@@ -178,12 +266,7 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
         _factory.CategoryRepositoryMock.CreateAsync(Arg.Any<Category>(), Arg.Any<CancellationToken>())
             .Returns(CategoryWriteResult.NameConflict());
 
-        var response = await _client.PostAsJsonAsync("/categories", new
-        {
-            nome = "Lazer",
-            cor = "#0EA5E9",
-            icone = "plane"
-        });
+        var response = await _client.PostAsJsonAsync("/categories", new { nome = "Lazer", tipo = "despesa" });
 
         response.StatusCode.Should().Be((HttpStatusCode)422);
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -195,31 +278,34 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
     {
         AuthenticateAs("user-id-123");
 
-        var response = await _client.PostAsJsonAsync("/categories", new { nome = "", cor = "#0EA5E9", icone = "plane" });
+        var response = await _client.PostAsJsonAsync("/categories", new { nome = "", tipo = "despesa" });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
     }
 
-    [Fact]
-    public async Task CreateCategory_ComCorForaDoFormatoHex_Retorna400SemChamarRepositorio()
+    [Theory]
+    [InlineData("")]
+    [InlineData("invalido")]
+    public async Task CreateCategory_ComTipoInvalido_Retorna400SemChamarRepositorio(string tipo)
     {
         AuthenticateAs("user-id-123");
 
-        var response = await _client.PostAsJsonAsync(
-            "/categories", new { nome = "Viagem", cor = "azul", icone = "plane" });
+        var response = await _client.PostAsJsonAsync("/categories", new { nome = "Viagem", tipo });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
     }
 
-    [Fact]
-    public async Task CreateCategory_ComIconeVazio_Retorna400SemChamarRepositorio()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1000)]
+    public async Task CreateCategory_ComOrcamentoZeroOuNegativo_Retorna400SemChamarRepositorio(long orcamentoMensalCents)
     {
         AuthenticateAs("user-id-123");
 
         var response = await _client.PostAsJsonAsync(
-            "/categories", new { nome = "Viagem", cor = "#0EA5E9", icone = "" });
+            "/categories", new { nome = "Viagem", tipo = "despesa", orcamentoMensalCents });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
@@ -228,8 +314,7 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
     [Fact]
     public async Task CreateCategory_SemHeaderDeAutenticacao_Retorna401SemChamarRepositorio()
     {
-        var response = await _client.PostAsJsonAsync(
-            "/categories", new { nome = "Viagem", cor = "#0EA5E9", icone = "plane" });
+        var response = await _client.PostAsJsonAsync("/categories", new { nome = "Viagem", tipo = "despesa" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
@@ -243,11 +328,11 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
         AuthenticateAs("user-id-123");
         var updated = SampleCategory(nome: "Viagens");
         _factory.CategoryRepositoryMock.UpdateAsync(
-                "user-id-123", "category-1", "Viagens", "#0EA5E9", "plane", Arg.Any<CancellationToken>())
+                "user-id-123", "category-1", "Viagens", "despesa", null, Arg.Any<CancellationToken>())
             .Returns(CategoryWriteResult.Success(updated));
 
         var response = await _client.PutAsJsonAsync(
-            "/categories/category-1", new { nome = "Viagens", cor = "#0EA5E9", icone = "plane" });
+            "/categories/category-1", new { nome = "Viagens", tipo = "despesa" });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -255,15 +340,68 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
     }
 
     [Fact]
+    public async Task UpdateCategory_DefinindoOrcamento_Retorna200ComOrcamentoNovo()
+    {
+        AuthenticateAs("user-id-123");
+        var updated = SampleCategory(nome: "Viagem", tipo: "despesa", orcamentoMensalCents: 60000);
+        _factory.CategoryRepositoryMock.UpdateAsync(
+                "user-id-123", "category-1", "Viagem", "despesa", 60000, Arg.Any<CancellationToken>())
+            .Returns(CategoryWriteResult.Success(updated));
+
+        var response = await _client.PutAsJsonAsync(
+            "/categories/category-1", new { nome = "Viagem", tipo = "despesa", orcamentoMensalCents = 60000 });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("orcamentoMensalCents").GetInt64().Should().Be(60000);
+    }
+
+    [Fact]
+    public async Task UpdateCategory_RemovendoOrcamentoExistente_Retorna200ComOrcamentoNulo()
+    {
+        AuthenticateAs("user-id-123");
+        var updated = SampleCategory(nome: "Viagem", tipo: "despesa", orcamentoMensalCents: null);
+        _factory.CategoryRepositoryMock.UpdateAsync(
+                "user-id-123", "category-1", "Viagem", "despesa", null, Arg.Any<CancellationToken>())
+            .Returns(CategoryWriteResult.Success(updated));
+
+        var response = await _client.PutAsJsonAsync(
+            "/categories/category-1", new { nome = "Viagem", tipo = "despesa", orcamentoMensalCents = (long?)null });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("orcamentoMensalCents").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task UpdateCategory_ComCorEIconeNoCorpo_Retorna200IgnorandoEssesCampos()
+    {
+        AuthenticateAs("user-id-123");
+        var updated = SampleCategory(nome: "Viagens");
+        _factory.CategoryRepositoryMock.UpdateAsync(
+                "user-id-123", "category-1", "Viagens", "despesa", null, Arg.Any<CancellationToken>())
+            .Returns(CategoryWriteResult.Success(updated));
+
+        var response = await _client.PutAsJsonAsync(
+            "/categories/category-1",
+            new { nome = "Viagens", tipo = "despesa", cor = "#0EA5E9", icone = "plane" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.TryGetProperty("cor", out _).Should().BeFalse();
+        body.TryGetProperty("icone", out _).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task UpdateCategory_ComNomeDuplicado_Retorna422()
     {
         AuthenticateAs("user-id-123");
         _factory.CategoryRepositoryMock.UpdateAsync(
-                "user-id-123", "category-1", "Lazer", "#0EA5E9", "plane", Arg.Any<CancellationToken>())
+                "user-id-123", "category-1", "Lazer", "despesa", null, Arg.Any<CancellationToken>())
             .Returns(CategoryWriteResult.NameConflict());
 
         var response = await _client.PutAsJsonAsync(
-            "/categories/category-1", new { nome = "Lazer", cor = "#0EA5E9", icone = "plane" });
+            "/categories/category-1", new { nome = "Lazer", tipo = "despesa" });
 
         response.StatusCode.Should().Be((HttpStatusCode)422);
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -275,12 +413,12 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
     {
         AuthenticateAs("user-id-123");
         _factory.CategoryRepositoryMock.UpdateAsync(
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long?>(),
                 Arg.Any<CancellationToken>())
             .Returns(CategoryWriteResult.NotFound());
 
         var response = await _client.PutAsJsonAsync(
-            "/categories/category-1", new { nome = "Viagens", cor = "#0EA5E9", icone = "plane" });
+            "/categories/category-1", new { nome = "Viagens", tipo = "despesa" });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -293,22 +431,52 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
         AuthenticateAs("user-id-123");
 
         var response = await _client.PutAsJsonAsync(
-            "/categories/category-1", new { nome = "", cor = "#0EA5E9", icone = "plane" });
+            "/categories/category-1", new { nome = "", tipo = "despesa" });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs()
-            .UpdateAsync(default!, default!, default!, default!, default!, default);
+            .UpdateAsync(default!, default!, default!, default!, default, default);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("invalido")]
+    public async Task UpdateCategory_ComTipoInvalido_Retorna400SemChamarRepositorio(string tipo)
+    {
+        AuthenticateAs("user-id-123");
+
+        var response = await _client.PutAsJsonAsync(
+            "/categories/category-1", new { nome = "Viagens", tipo });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs()
+            .UpdateAsync(default!, default!, default!, default!, default, default);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1000)]
+    public async Task UpdateCategory_ComOrcamentoZeroOuNegativo_Retorna400SemChamarRepositorio(long orcamentoMensalCents)
+    {
+        AuthenticateAs("user-id-123");
+
+        var response = await _client.PutAsJsonAsync(
+            "/categories/category-1", new { nome = "Viagens", tipo = "despesa", orcamentoMensalCents });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs()
+            .UpdateAsync(default!, default!, default!, default!, default, default);
     }
 
     [Fact]
     public async Task UpdateCategory_SemHeaderDeAutenticacao_Retorna401SemChamarRepositorio()
     {
         var response = await _client.PutAsJsonAsync(
-            "/categories/category-1", new { nome = "Viagens", cor = "#0EA5E9", icone = "plane" });
+            "/categories/category-1", new { nome = "Viagens", tipo = "despesa" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs()
-            .UpdateAsync(default!, default!, default!, default!, default!, default);
+            .UpdateAsync(default!, default!, default!, default!, default, default);
     }
 
     // ----- DELETE /categories/{id} -----
@@ -380,8 +548,7 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
     {
         AuthenticateWithRole("user-id-123", Enum.Parse<MembershipRole>(role));
 
-        var response = await _client.PostAsJsonAsync(
-            "/categories", new { nome = "Viagem", cor = "#0EA5E9", icone = "plane" });
+        var response = await _client.PostAsJsonAsync("/categories", new { nome = "Viagem", tipo = "despesa" });
 
         response.StatusCode.Should().Be((HttpStatusCode)403);
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -398,11 +565,11 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
         AuthenticateWithRole("user-id-123", Enum.Parse<MembershipRole>(role));
 
         var response = await _client.PutAsJsonAsync(
-            "/categories/category-1", new { nome = "Viagens", cor = "#0EA5E9", icone = "plane" });
+            "/categories/category-1", new { nome = "Viagens", tipo = "despesa" });
 
         response.StatusCode.Should().Be((HttpStatusCode)403);
         await _factory.CategoryRepositoryMock.DidNotReceiveWithAnyArgs()
-            .UpdateAsync(default!, default!, default!, default!, default!, default);
+            .UpdateAsync(default!, default!, default!, default!, default, default);
     }
 
     [Theory]
@@ -422,7 +589,7 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
     public async Task GetCategories_ComPapelLeitura_Retorna200()
     {
         AuthenticateWithRole("user-id-123", MembershipRole.Leitura);
-        _factory.CategoryRepositoryMock.ListAsync("user-id-123", Arg.Any<CancellationToken>())
+        _factory.CategoryRepositoryMock.ListAsync("user-id-123", null, Arg.Any<CancellationToken>())
             .Returns(new List<Category>());
 
         var response = await _client.GetAsync("/categories");
