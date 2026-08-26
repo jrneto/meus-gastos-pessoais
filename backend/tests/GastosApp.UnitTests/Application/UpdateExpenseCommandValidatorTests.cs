@@ -16,7 +16,7 @@ public class UpdateExpenseCommandValidatorTests
     {
         _categoryRepositoryMock = Substitute.For<ICategoryRepository>();
         _categoryRepositoryMock.GetByIdAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
-            .Returns(Category.Restore("category-1", "user-id-123", "Alimentacao", "#F97316", "utensils", DateTimeOffset.UtcNow));
+            .Returns(Category.Restore("category-1", "user-id-123", "Alimentacao", "despesa", null, DateTimeOffset.UtcNow));
 
         _validator = new UpdateExpenseCommandValidator(_categoryRepositoryMock);
     }

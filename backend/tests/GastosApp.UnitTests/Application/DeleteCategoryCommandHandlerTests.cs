@@ -22,7 +22,7 @@ public class DeleteCategoryCommandHandlerTests
     }
 
     private static Category SampleCategory(string nome = "Viagem") =>
-        Category.Restore("category-1", "user-id-123", nome, "#0EA5E9", "plane", DateTimeOffset.UtcNow);
+        Category.Restore("category-1", "user-id-123", nome, "despesa", null, DateTimeOffset.UtcNow);
 
     [Fact]
     public async Task Handle_ShouldReturnNotFound_WhenCategoryDoesNotExist()

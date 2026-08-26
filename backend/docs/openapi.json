@@ -652,6 +652,16 @@
         "tags": [
           "Categories"
         ],
+        "parameters": [
+          {
+            "name": "Tipo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          }
+        ],
         "responses": {
           "401": {
             "description": "Unauthorized",
@@ -679,6 +689,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GetCategoriesResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -1281,8 +1301,8 @@
         "required": [
           "id",
           "nome",
-          "cor",
-          "icone",
+          "tipo",
+          "orcamentoMensalCents",
           "createdAt"
         ],
         "type": "object",
@@ -1293,11 +1313,17 @@
           "nome": {
             "type": "string"
           },
-          "cor": {
+          "tipo": {
             "type": "string"
           },
-          "icone": {
-            "type": "string"
+          "orcamentoMensalCents": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           },
           "createdAt": {
             "type": "string",
@@ -1308,19 +1334,25 @@
       "CreateCategoryRequest": {
         "required": [
           "nome",
-          "cor",
-          "icone"
+          "tipo",
+          "orcamentoMensalCents"
         ],
         "type": "object",
         "properties": {
           "nome": {
             "type": "string"
           },
-          "cor": {
+          "tipo": {
             "type": "string"
           },
-          "icone": {
-            "type": "string"
+          "orcamentoMensalCents": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -1328,8 +1360,8 @@
         "required": [
           "id",
           "nome",
-          "cor",
-          "icone",
+          "tipo",
+          "orcamentoMensalCents",
           "createdAt"
         ],
         "type": "object",
@@ -1340,11 +1372,17 @@
           "nome": {
             "type": "string"
           },
-          "cor": {
+          "tipo": {
             "type": "string"
           },
-          "icone": {
-            "type": "string"
+          "orcamentoMensalCents": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           },
           "createdAt": {
             "type": "string",
@@ -1706,19 +1744,25 @@
       "UpdateCategoryRequest": {
         "required": [
           "nome",
-          "cor",
-          "icone"
+          "tipo",
+          "orcamentoMensalCents"
         ],
         "type": "object",
         "properties": {
           "nome": {
             "type": "string"
           },
-          "cor": {
+          "tipo": {
             "type": "string"
           },
-          "icone": {
-            "type": "string"
+          "orcamentoMensalCents": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -1726,8 +1770,8 @@
         "required": [
           "id",
           "nome",
-          "cor",
-          "icone",
+          "tipo",
+          "orcamentoMensalCents",
           "createdAt"
         ],
         "type": "object",
@@ -1738,11 +1782,17 @@
           "nome": {
             "type": "string"
           },
-          "cor": {
+          "tipo": {
             "type": "string"
           },
-          "icone": {
-            "type": "string"
+          "orcamentoMensalCents": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           },
           "createdAt": {
             "type": "string",

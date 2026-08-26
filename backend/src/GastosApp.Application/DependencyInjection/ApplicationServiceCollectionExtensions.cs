@@ -1,6 +1,7 @@
 using FluentValidation;
 using GastosApp.Application.Categories.Commands.CreateCategory;
 using GastosApp.Application.Categories.Commands.UpdateCategory;
+using GastosApp.Application.Categories.Queries.GetCategories;
 using GastosApp.Application.Common.Behaviors;
 using GastosApp.Application.Expenses.Commands.RegisterExpense;
 using GastosApp.Application.Expenses.Commands.UpdateExpense;
@@ -31,6 +32,7 @@ namespace GastosApp.Application.DependencyInjection
             // também (nada mais descobre isso sozinho).
             services.AddScoped<IValidator<CreateCategoryCommand>, CreateCategoryCommandValidator>();
             services.AddScoped<IValidator<UpdateCategoryCommand>, UpdateCategoryCommandValidator>();
+            services.AddScoped<IValidator<GetCategoriesQuery>, GetCategoriesQueryValidator>();
             services.AddScoped<IValidator<RegisterExpenseCommand>, RegisterExpenseCommandValidator>();
             services.AddScoped<IValidator<UpdateExpenseCommand>, UpdateExpenseCommandValidator>();
             services.AddScoped<IValidator<GetExpensesQuery>, GetExpensesQueryValidator>();

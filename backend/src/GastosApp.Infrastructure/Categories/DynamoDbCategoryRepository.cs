@@ -56,7 +56,7 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
         }
     }
 
-    public async Task<IReadOnlyList<Category>> ListAsync(string accountId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Category>> ListAsync(string accountId, string? tipo, CancellationToken cancellationToken = default)
     {
         var response = await _dynamoDbClient.QueryAsync(new QueryRequest
         {
@@ -69,7 +69,11 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
             }
         }, cancellationToken);
 
-        return response.Items.Select(MapToCategory).ToList();
+        var categories = response.Items.Select(MapToCategory);
+        if (tipo is not null)
+            categories = categories.Where(c => c.Tipo == tipo);
+
+        return categories.ToList();
     }
 
     public async Task<Category?> GetByIdAsync(string accountId, string categoryId, CancellationToken cancellationToken = default)
@@ -99,8 +103,8 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
         string accountId,
         string categoryId,
         string nome,
-        string cor,
-        string icone,
+        string tipo,
+        long? orcamentoMensalCents,
         CancellationToken cancellationToken = default)
     {
         var lookup = await LookupByIdAsync(categoryId, cancellationToken);
@@ -130,7 +134,7 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
         var createdAt = DateTimeOffset.Parse(
             current.Item["CreatedAt"].S, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
         var newSk = BuildSk(nome);
-        var updated = Category.Restore(categoryId, accountId, nome, cor, icone, createdAt);
+        var updated = Category.Restore(categoryId, accountId, nome, tipo, orcamentoMensalCents, createdAt);
         var newItem = BuildItem(updated, newSk);
 
         if (newSk == oldSk)
@@ -262,17 +266,21 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
 
     private static Dictionary<string, AttributeValue> BuildItem(Category category, string sk)
     {
-        return new Dictionary<string, AttributeValue>
+        var item = new Dictionary<string, AttributeValue>
         {
             ["PK"] = new AttributeValue { S = $"ACCOUNT#{category.AccountId}" },
             ["SK"] = new AttributeValue { S = sk },
             ["GSI2PK"] = new AttributeValue { S = $"ID#{category.Id}" },
             ["Nome"] = new AttributeValue { S = category.Nome },
-            ["Cor"] = new AttributeValue { S = category.Cor },
-            ["Icone"] = new AttributeValue { S = category.Icone },
             ["Tipo"] = new AttributeValue { S = TipoCategoria },
+            ["TipoLancamento"] = new AttributeValue { S = category.Tipo },
             ["CreatedAt"] = new AttributeValue { S = category.CreatedAt.ToString("O") }
         };
+
+        if (category.OrcamentoMensalCents is { } orcamento)
+            item["OrcamentoMensalCents"] = new AttributeValue { N = orcamento.ToString(CultureInfo.InvariantCulture) };
+
+        return item;
     }
 
     private static Category MapToCategory(Dictionary<string, AttributeValue> item)
@@ -284,6 +292,16 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
         var createdAt = DateTimeOffset.Parse(
             item["CreatedAt"].S, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
 
-        return Category.Restore(id, accountId, item["Nome"].S, item["Cor"].S, item["Icone"].S, createdAt);
+        // Ausência de TipoLancamento == categoria gravada antes desta feature (FEAT-21) —
+        // tratada como "despesa" implícito, mesma postura defensiva já usada pro
+        // discriminador Tipo acima (nenhuma categoria de receita existia antes desta feature).
+        var tipo = item.TryGetValue("TipoLancamento", out var tipoAttr) ? tipoAttr.S : "despesa";
+        var orcamentoMensalCents = item.TryGetValue("OrcamentoMensalCents", out var orcamentoAttr)
+            ? long.Parse(orcamentoAttr.N, CultureInfo.InvariantCulture)
+            : (long?)null;
+
+        // Cor/Icone: se o item ainda os tiver (categoria gravada antes desta feature), são
+        // simplesmente ignorados — não fazem mais parte de Category.
+        return Category.Restore(id, accountId, item["Nome"].S, tipo, orcamentoMensalCents, createdAt);
     }
 }

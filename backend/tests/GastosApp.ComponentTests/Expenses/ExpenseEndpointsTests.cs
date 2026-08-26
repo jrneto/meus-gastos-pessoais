@@ -47,7 +47,7 @@ public sealed class ExpenseEndpointsTests : IClassFixture<ComponentTestWebApplic
 
     private void MockOwnedCategory(string userId, string categoryId) =>
         _factory.CategoryRepositoryMock.GetByIdAsync(userId, categoryId, Arg.Any<CancellationToken>())
-            .Returns(Category.Restore(categoryId, userId, "Alimentacao", "#F97316", "utensils", DateTimeOffset.UtcNow));
+            .Returns(Category.Restore(categoryId, userId, "Alimentacao", "despesa", null, DateTimeOffset.UtcNow));
 
     [Fact]
     public async Task RegisterExpense_ComDadosValidosEUsuarioAutenticado_Retorna201ComLocationEBody()

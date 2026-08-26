@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using FluentValidation;
 using GastosApp.Domain.Categories;
 
@@ -7,8 +6,6 @@ namespace GastosApp.Application.Categories.Commands.CreateCategory;
 public sealed class CreateCategoryCommandValidator : AbstractValidator<CreateCategoryCommand>
 {
     private const int MaxNomeLength = 50;
-    private const int MaxIconeLength = 50;
-    private static readonly Regex HexColor = new(@"^#[0-9A-Fa-f]{6}$", RegexOptions.Compiled);
 
     public CreateCategoryCommandValidator()
     {
@@ -20,12 +17,13 @@ public sealed class CreateCategoryCommandValidator : AbstractValidator<CreateCat
             .Must(nome => CategorySlug.From(nome).Length > 0)
                 .WithMessage("Nome deve conter ao menos uma letra ou número.");
 
-        RuleFor(c => c.Cor)
-            .NotEmpty().WithMessage("Cor é obrigatória.")
-            .Matches(HexColor).WithMessage("Cor deve estar no formato hexadecimal #RRGGBB.");
+        RuleFor(c => c.Tipo)
+            .NotEmpty().WithMessage("Tipo é obrigatório.")
+            .Must(tipo => tipo is "despesa" or "receita")
+                .WithMessage("Tipo deve ser \"despesa\" ou \"receita\".");
 
-        RuleFor(c => c.Icone)
-            .NotEmpty().WithMessage("Ícone é obrigatório.")
-            .MaximumLength(MaxIconeLength).WithMessage($"Ícone deve ter no máximo {MaxIconeLength} caracteres.");
+        RuleFor(c => c.OrcamentoMensalCents)
+            .GreaterThan(0).WithMessage("Orçamento mensal deve ser um valor positivo em centavos.")
+            .When(c => c.OrcamentoMensalCents is not null);
     }
 }
