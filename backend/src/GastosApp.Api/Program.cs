@@ -97,6 +97,7 @@ app.MapAuthEndpoints();
 app.MapTransactionEndpoints();
 app.MapCategoryEndpoints();
 app.MapMemberEndpoints();
+app.MapSummaryEndpoints();
 app.MapHealthEndpoints();
 
 app.Run();

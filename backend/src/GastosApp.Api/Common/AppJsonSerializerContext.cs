@@ -8,6 +8,7 @@ using GastosApp.Application.Categories.Commands.UpdateCategory;
 using GastosApp.Application.Categories.Queries.GetCategories;
 using GastosApp.Application.Health;
 using GastosApp.Application.Members;
+using GastosApp.Application.Summary.Queries.GetSummary;
 using GastosApp.Application.Transactions.Commands.RegisterTransaction;
 using GastosApp.Application.Transactions.Commands.UpdateTransaction;
 using GastosApp.Application.Transactions.Queries.GetTransactions;
@@ -45,6 +46,9 @@ namespace GastosApp.Api.Common;
 [JsonSerializable(typeof(UpdateMemberRoleRequest))]
 [JsonSerializable(typeof(MemberResult))]
 [JsonSerializable(typeof(GetMembersResult))]
+[JsonSerializable(typeof(GetSummaryResult))]
+[JsonSerializable(typeof(CategorySummaryItem))]
+[JsonSerializable(typeof(GetSummaryRequest))]
 public partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }

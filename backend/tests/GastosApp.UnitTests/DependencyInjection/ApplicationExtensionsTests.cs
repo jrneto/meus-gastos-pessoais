@@ -7,6 +7,7 @@ using GastosApp.Application.Common.Interfaces;
 using GastosApp.Application.DependencyInjection;
 using GastosApp.Application.Members.Commands.InviteMember;
 using GastosApp.Application.Members.Commands.UpdateMemberRole;
+using GastosApp.Application.Summary.Queries.GetSummary;
 using GastosApp.Application.Transactions.Commands.RegisterTransaction;
 using GastosApp.Application.Transactions.Commands.UpdateTransaction;
 using GastosApp.Application.Transactions.Queries.GetTransactions;
@@ -44,6 +45,7 @@ public class ApplicationExtensionsTests
     [InlineData(typeof(IValidator<GetTransactionsQuery>), typeof(GetTransactionsQueryValidator))]
     [InlineData(typeof(IValidator<InviteMemberCommand>), typeof(InviteMemberCommandValidator))]
     [InlineData(typeof(IValidator<UpdateMemberRoleCommand>), typeof(UpdateMemberRoleCommandValidator))]
+    [InlineData(typeof(IValidator<GetSummaryQuery>), typeof(GetSummaryQueryValidator))]
     public void AddApplicationServices_ShouldRegisterEveryValidator_ExplicitlyNotByAssemblyScan(
         Type validatorInterface, Type expectedImplementation)
     {
@@ -56,7 +58,7 @@ public class ApplicationExtensionsTests
     }
 
     [Fact]
-    public void AddApplicationServices_ShouldNotRegisterAnyOtherValidator_BeyondTheKnownEight()
+    public void AddApplicationServices_ShouldNotRegisterAnyOtherValidator_BeyondTheKnownNine()
     {
         // Defensivo: se uma nova classe AbstractValidator<T> for criada no
         // projeto sem entrar na lista acima (e sem ser registrada em
@@ -64,7 +66,7 @@ public class ApplicationExtensionsTests
         // não pega isso sozinho — mas documenta a lista fechada esperada,
         // pra quem for adicionar um validator novo saber que precisa mexer
         // nos dois lugares (registro + este teste).
-        var expectedValidatorCount = 8;
+        var expectedValidatorCount = 9;
 
         var validatorTypesInAssembly = typeof(ApplicationExtensions).Assembly.GetTypes()
             .Count(t => !t.IsAbstract && t.BaseType is { IsGenericType: true } baseType
