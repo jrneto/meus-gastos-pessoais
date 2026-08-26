@@ -81,7 +81,7 @@ coluna "Depende de".
   de cálculo do FEAT-23.
   Depende de: FEAT-22, FEAT-21.
 
-- [ ] **FEAT-25 — Exportação CSV de transações** *(menor, pode ficar por
+- [x] **FEAT-25 — Exportação CSV de transações** *(menor, pode ficar por
   último ou fora desta leva)*
   `GET /transactions/export` gerando CSV a partir da mesma `Query` de
   transações do período — cobre o botão "Exportar CSV" de Ajustes.
