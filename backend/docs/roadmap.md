@@ -54,7 +54,7 @@ coluna "Depende de".
   (despesas, categorias).
   Depende de: FEAT-19.
 
-- [ ] **FEAT-21 — Categoria: tipo e orçamento**
+- [x] **FEAT-21 — Categoria: tipo e orçamento**
   Adiciona `tipo` (`despesa`|`receita`, obrigatório) e
   `orcamentoMensalCents` (opcional) a `Category`. `GET /categories`
   ganha filtro `?tipo=`. Editar orçamento exige role `Total`.
