@@ -9,6 +9,7 @@ using GastosApp.Application.Reports.Queries.GetReports;
 using GastosApp.Application.Summary.Queries.GetSummary;
 using GastosApp.Application.Transactions.Commands.RegisterTransaction;
 using GastosApp.Application.Transactions.Commands.UpdateTransaction;
+using GastosApp.Application.Transactions.Queries.ExportTransactions;
 using GastosApp.Application.Transactions.Queries.GetTransactions;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,6 +39,7 @@ namespace GastosApp.Application.DependencyInjection
             services.AddScoped<IValidator<RegisterTransactionCommand>, RegisterTransactionCommandValidator>();
             services.AddScoped<IValidator<UpdateTransactionCommand>, UpdateTransactionCommandValidator>();
             services.AddScoped<IValidator<GetTransactionsQuery>, GetTransactionsQueryValidator>();
+            services.AddScoped<IValidator<ExportTransactionsQuery>, ExportTransactionsQueryValidator>();
             services.AddScoped<IValidator<InviteMemberCommand>, InviteMemberCommandValidator>();
             services.AddScoped<IValidator<UpdateMemberRoleCommand>, UpdateMemberRoleCommandValidator>();
             services.AddScoped<IValidator<GetSummaryQuery>, GetSummaryQueryValidator>();

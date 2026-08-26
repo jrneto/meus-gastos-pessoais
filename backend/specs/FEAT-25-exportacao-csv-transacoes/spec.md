@@ -236,32 +236,67 @@ Response 401 (unauthorized):
 
 ## Critérios de aceite
 
-- [ ] `GET /transactions/export` sem filtro retorna 200 com um CSV
+- [x] `GET /transactions/export` sem filtro retorna 200 com um CSV
       contendo uma linha por transação da conta ativa
-- [ ] Filtros `tipo`, `categoryId`, `yearMonth`, `dateFrom`, `dateTo`,
+- [x] Filtros `tipo`, `categoryId`, `yearMonth`, `dateFrom`, `dateTo`,
       `minAmountInCents`, `maxAmountInCents` funcionam combinados,
       restringindo as linhas do CSV às transações correspondentes
-- [ ] Filtro inválido (mesmas regras de `GET /transactions`) retorna 400
+- [x] Filtro inválido (mesmas regras de `GET /transactions`) retorna 400
       e nenhum arquivo é gerado
-- [ ] Filtro sem nenhuma transação correspondente retorna 200 com CSV
+- [x] Filtro sem nenhuma transação correspondente retorna 200 com CSV
       contendo somente a linha de cabeçalho (nunca 404)
-- [ ] Coluna `categoria` traz o nome da categoria (não o `categoryId`)
-- [ ] Coluna `valor` traz o valor em reais com vírgula decimal (ex.:
+- [x] Coluna `categoria` traz o nome da categoria (não o `categoryId`)
+- [x] Coluna `valor` traz o valor em reais com vírgula decimal (ex.:
       `45,90`), nunca em centavos
-- [ ] Coluna `lancadoPor` reflete o mesmo `createdByLabel` de
+- [x] Coluna `lancadoPor` reflete o mesmo `createdByLabel` de
       `GET /transactions` ("Você", nome do membro ou "Ex-membro")
-- [ ] Delimitador de coluna é `;`; campos com `;`, `"` ou quebra de
+- [x] Delimitador de coluna é `;`; campos com `;`, `"` ou quebra de
       linha são escapados conforme RFC 4180
-- [ ] Arquivo é servido com `Content-Type: text/csv; charset=utf-8` e
+- [x] Arquivo é servido com `Content-Type: text/csv; charset=utf-8` e
       `Content-Disposition: attachment; filename="transacoes.csv"`,
       codificado em UTF-8 com BOM
-- [ ] Dados de uma conta nunca aparecem na exportação de outra conta
-- [ ] Qualquer papel autenticado (`Leitura`, `Lancar`, `Total`,
+- [x] Dados de uma conta nunca aparecem na exportação de outra conta
+- [x] Qualquer papel autenticado (`Leitura`, `Lancar`, `Total`,
       `Titular`) recebe 200 em `GET /transactions/export`
-- [ ] Requisição sem token JWT válido retorna 401
-- [ ] `backend/docs/openapi.json` regenerado refletindo o novo endpoint
+- [x] Requisição sem token JWT válido retorna 401
+- [x] `backend/docs/openapi.json` regenerado refletindo o novo endpoint
       `GET /transactions/export` (parâmetros, `200` com
       `text/csv`, `400`/`401`)
+
+## Status
+
+Implementado conforme `plan.md`/`tasks.md`. Novo módulo
+`Transactions/Queries/ExportTransactions/` (Application) — sem mudança
+em Domain nem Infrastructure, reaproveitando
+`ITransactionRepository.QueryAsync` (`Cursor=null`, `Limit=int.MaxValue`,
+mesma decisão já usada nas FEAT-23/24), `ICategoryRepository.ListAsync
+(accountId, tipo: null)` pra nome de categoria (despesa e receita) e
+`CreatedByLabelResolver` (com cache por página) pra `lancadoPor`. Novo
+`GET /transactions/export` (`TransactionEndpoints`) sem
+`RoleEndpointFilters.Require` — qualquer papel autenticado da conta
+ativa passa, mesmo padrão de `GET /transactions`. Formatação do CSV
+isolada num formatter puro (`TransactionCsvBuilder`, sem I/O): cabeçalho
+`data;descricao;categoria;tipo;valor;lancadoPor`, delimitador `;`,
+`valor` em reais com vírgula decimal (única exceção à convenção
+"sempre centavos" do projeto), escaping RFC 4180, bytes em UTF-8 com
+BOM (`GetPreamble()` concatenado manualmente ao resultado de
+`GetBytes()` — `GetBytes()` sozinho nunca inclui o preamble, mesmo com
+`encoderShouldEmitUTF8Identifier: true`, bug encontrado e corrigido
+durante os testes unitários). Nenhum recurso AWS novo.
+
+`ExportTransactionsQueryValidator` duplica (não compartilha via
+herança) as regras de `GetTransactionsQueryValidator` pros filtros em
+comum — decisão confirmada no `plan.md`, consistente com o padrão já
+existente de validators pequenos e auto-contidos no projeto.
+
+`backend/docs/openapi.json` regenerado localmente (API rodando contra
+LocalStack/cognito-local, `backend/infra/`) — `git diff` confirma só a
+adição de `/transactions/export` (`GET`, parâmetros, `200`/`400`/`401`),
+sem tocar as demais rotas de `/transactions`, `/categories`, `/members`,
+`/summary` ou `/reports`.
+
+Suíte completa (`dotnet test` na solução) passa: 627/627 (1
+IntegrationTests placeholder + 430 UnitTests + 196 ComponentTests).
 
 ## Fora do escopo
 

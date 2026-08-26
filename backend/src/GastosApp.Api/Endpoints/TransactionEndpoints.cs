@@ -2,6 +2,7 @@ using GastosApp.Api.Common;
 using GastosApp.Application.Transactions.Commands.DeleteTransaction;
 using GastosApp.Application.Transactions.Commands.RegisterTransaction;
 using GastosApp.Application.Transactions.Commands.UpdateTransaction;
+using GastosApp.Application.Transactions.Queries.ExportTransactions;
 using GastosApp.Application.Transactions.Queries.GetTransactionById;
 using GastosApp.Application.Transactions.Queries.GetTransactions;
 using GastosApp.Domain.Accounts;
@@ -28,6 +29,14 @@ public static class TransactionEndpoints
 
         group.MapGet("/", GetTransactions)
             .Produces<GetTransactionsResult>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        // Registrada antes de GET /{id} só por legibilidade — o roteamento do
+        // ASP.NET Core já prioriza segmentos literais sobre parâmetros de rota,
+        // então "/export" nunca seria capturado por "/{id}" independente da
+        // ordem de registro.
+        group.MapGet("/export", ExportTransactions)
+            .Produces(StatusCodes.Status200OK, contentType: "text/csv")
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
         group.MapGet("/{id}", GetTransactionById)
@@ -94,6 +103,27 @@ public static class TransactionEndpoints
         return result.ToHttpResult(value => Results.Ok(value));
     }
 
+    private static async Task<IResult> ExportTransactions(
+        [AsParameters] ExportTransactionsRequest request,
+        CurrentAccountContext currentAccount,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var query = new ExportTransactionsQuery(
+            currentAccount.AccountId!,
+            currentAccount.UserId!,
+            NullIfEmpty(request.Tipo),
+            NullIfEmpty(request.YearMonth),
+            NullIfEmpty(request.CategoryId),
+            NullIfEmpty(request.DateFrom),
+            NullIfEmpty(request.DateTo),
+            request.MinAmountInCents,
+            request.MaxAmountInCents);
+
+        var result = await sender.Send(query, cancellationToken);
+        return result.ToHttpResult(csv => Results.File(csv, "text/csv; charset=utf-8", "transacoes.csv"));
+    }
+
     private static async Task<IResult> GetTransactionById(
         string id,
         CurrentAccountContext currentAccount,
@@ -157,3 +187,12 @@ public record GetTransactionsRequest(
     long? MaxAmountInCents = null,
     string Cursor = "",
     int? Limit = null);
+
+public record ExportTransactionsRequest(
+    string Tipo = "",
+    string YearMonth = "",
+    string CategoryId = "",
+    string DateFrom = "",
+    string DateTo = "",
+    long? MinAmountInCents = null,
+    long? MaxAmountInCents = null);
