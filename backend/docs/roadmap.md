@@ -108,3 +108,12 @@ coluna "Depende de".
 - Ajustes → notificações push/e-mail reais e seletor de moeda (hoje sem
   infra nenhuma por trás — ficam só de UI no front até haver decisão
   explícita de criar essa infra)
+- **Débito técnico (confirmado com o usuário durante a FEAT-22):**
+  `DELETE /members` deveria bloquear a remoção de um membro que já
+  lançou transações, transformando-o em `Inativo` (novo `Status` de
+  `Membership`) em vez de removê-lo de fato — um membro `Inativo`
+  continuaria aparecendo como `createdByLabel` nas transações que já
+  criou. Hoje (FEAT-20/FEAT-22) `DELETE /members` remove o `Membership`
+  incondicionalmente; transações de um membro removido caem no
+  fallback `createdByLabel="Ex-membro"` (ver
+  `backend/specs/FEAT-22-transacoes-receita-despesa/`)

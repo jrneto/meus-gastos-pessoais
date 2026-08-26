@@ -11,4 +11,5 @@ public sealed class CurrentAccountContext
     public string? AccountId { get; set; }
     public string? MembershipId { get; set; }
     public MembershipRole? Role { get; set; }
+    public string? UserId { get; set; }
 }

@@ -20,7 +20,7 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
     {
         _factory = factory;
         _factory.ResetCategoryRepositoryMock();
-        _factory.ResetExpenseRepositoryMock();
+        _factory.ResetTransactionRepositoryMock();
         _factory.ResetAccountRepositoryMock();
         _factory.ResetMembershipRepositoryMock();
         _client = factory.CreateClient();
@@ -482,12 +482,12 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
     // ----- DELETE /categories/{id} -----
 
     [Fact]
-    public async Task DeleteCategory_SemDespesasAssociadas_Retorna204SemCorpo()
+    public async Task DeleteCategory_SemTransacoesAssociadas_Retorna204SemCorpo()
     {
         AuthenticateAs("user-id-123");
         _factory.CategoryRepositoryMock.GetByIdAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(SampleCategory(nome: "Viagem"));
-        _factory.ExpenseRepositoryMock.ExistsByCategoryAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
+        _factory.TransactionRepositoryMock.ExistsByCategoryAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(false);
         _factory.CategoryRepositoryMock.DeleteAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(true);
@@ -499,12 +499,12 @@ public sealed class CategoryEndpointsTests : IClassFixture<ComponentTestWebAppli
     }
 
     [Fact]
-    public async Task DeleteCategory_ComDespesasAssociadas_Retorna422SemExcluir()
+    public async Task DeleteCategory_ComTransacoesAssociadas_Retorna422SemExcluir()
     {
         AuthenticateAs("user-id-123");
         _factory.CategoryRepositoryMock.GetByIdAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(SampleCategory(nome: "Alimentacao"));
-        _factory.ExpenseRepositoryMock.ExistsByCategoryAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
+        _factory.TransactionRepositoryMock.ExistsByCategoryAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(true);
 
         var response = await _client.DeleteAsync("/categories/category-1");

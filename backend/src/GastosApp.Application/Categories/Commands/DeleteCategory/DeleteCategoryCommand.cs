@@ -9,12 +9,12 @@ public sealed record DeleteCategoryCommand(string AccountId, string CategoryId) 
 public sealed class DeleteCategoryCommandHandler : ICommandHandler<DeleteCategoryCommand, Result>
 {
     private readonly ICategoryRepository _categoryRepository;
-    private readonly IExpenseRepository _expenseRepository;
+    private readonly ITransactionRepository _transactionRepository;
 
-    public DeleteCategoryCommandHandler(ICategoryRepository categoryRepository, IExpenseRepository expenseRepository)
+    public DeleteCategoryCommandHandler(ICategoryRepository categoryRepository, ITransactionRepository transactionRepository)
     {
         _categoryRepository = categoryRepository;
-        _expenseRepository = expenseRepository;
+        _transactionRepository = transactionRepository;
     }
 
     public async ValueTask<Result> Handle(DeleteCategoryCommand command, CancellationToken cancellationToken)
@@ -23,7 +23,7 @@ public sealed class DeleteCategoryCommandHandler : ICommandHandler<DeleteCategor
         if (category is null)
             return Result.Failure(CategoryErrors.NotFound);
 
-        var inUse = await _expenseRepository.ExistsByCategoryAsync(command.AccountId, command.CategoryId, cancellationToken);
+        var inUse = await _transactionRepository.ExistsByCategoryAsync(command.AccountId, command.CategoryId, cancellationToken);
         if (inUse)
             return Result.Failure(CategoryErrors.CategoryInUse);
 

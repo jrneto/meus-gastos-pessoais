@@ -5,11 +5,11 @@ using GastosApp.Application.Categories.Commands.UpdateCategory;
 using GastosApp.Application.Categories.Queries.GetCategories;
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.Application.DependencyInjection;
-using GastosApp.Application.Expenses.Commands.RegisterExpense;
-using GastosApp.Application.Expenses.Commands.UpdateExpense;
-using GastosApp.Application.Expenses.Queries.GetExpenses;
 using GastosApp.Application.Members.Commands.InviteMember;
 using GastosApp.Application.Members.Commands.UpdateMemberRole;
+using GastosApp.Application.Transactions.Commands.RegisterTransaction;
+using GastosApp.Application.Transactions.Commands.UpdateTransaction;
+using GastosApp.Application.Transactions.Queries.GetTransactions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Xunit;
@@ -30,7 +30,7 @@ public class ApplicationExtensionsTests
     private static ServiceProvider BuildProvider()
     {
         var services = new ServiceCollection();
-        services.AddSingleton(Substitute.For<ICategoryRepository>()); // dependência de Register/UpdateExpenseCommandValidator
+        services.AddSingleton(Substitute.For<ICategoryRepository>()); // dependência de Register/UpdateTransactionCommandValidator
         services.AddApplicationServices();
         return services.BuildServiceProvider();
     }
@@ -39,9 +39,9 @@ public class ApplicationExtensionsTests
     [InlineData(typeof(IValidator<CreateCategoryCommand>), typeof(CreateCategoryCommandValidator))]
     [InlineData(typeof(IValidator<UpdateCategoryCommand>), typeof(UpdateCategoryCommandValidator))]
     [InlineData(typeof(IValidator<GetCategoriesQuery>), typeof(GetCategoriesQueryValidator))]
-    [InlineData(typeof(IValidator<RegisterExpenseCommand>), typeof(RegisterExpenseCommandValidator))]
-    [InlineData(typeof(IValidator<UpdateExpenseCommand>), typeof(UpdateExpenseCommandValidator))]
-    [InlineData(typeof(IValidator<GetExpensesQuery>), typeof(GetExpensesQueryValidator))]
+    [InlineData(typeof(IValidator<RegisterTransactionCommand>), typeof(RegisterTransactionCommandValidator))]
+    [InlineData(typeof(IValidator<UpdateTransactionCommand>), typeof(UpdateTransactionCommandValidator))]
+    [InlineData(typeof(IValidator<GetTransactionsQuery>), typeof(GetTransactionsQueryValidator))]
     [InlineData(typeof(IValidator<InviteMemberCommand>), typeof(InviteMemberCommandValidator))]
     [InlineData(typeof(IValidator<UpdateMemberRoleCommand>), typeof(UpdateMemberRoleCommandValidator))]
     public void AddApplicationServices_ShouldRegisterEveryValidator_ExplicitlyNotByAssemblyScan(

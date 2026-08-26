@@ -11,14 +11,14 @@ namespace GastosApp.UnitTests.Application;
 public class DeleteCategoryCommandHandlerTests
 {
     private readonly ICategoryRepository _categoryRepositoryMock;
-    private readonly IExpenseRepository _expenseRepositoryMock;
+    private readonly ITransactionRepository _transactionRepositoryMock;
     private readonly DeleteCategoryCommandHandler _handler;
 
     public DeleteCategoryCommandHandlerTests()
     {
         _categoryRepositoryMock = Substitute.For<ICategoryRepository>();
-        _expenseRepositoryMock = Substitute.For<IExpenseRepository>();
-        _handler = new DeleteCategoryCommandHandler(_categoryRepositoryMock, _expenseRepositoryMock);
+        _transactionRepositoryMock = Substitute.For<ITransactionRepository>();
+        _handler = new DeleteCategoryCommandHandler(_categoryRepositoryMock, _transactionRepositoryMock);
     }
 
     private static Category SampleCategory(string nome = "Viagem") =>
@@ -39,17 +39,17 @@ public class DeleteCategoryCommandHandlerTests
         result.IsSuccess.Should().BeFalse();
         result.Error!.Code.Should().Be("not-found");
 
-        await _expenseRepositoryMock.DidNotReceiveWithAnyArgs().ExistsByCategoryAsync(default!, default!, default);
+        await _transactionRepositoryMock.DidNotReceiveWithAnyArgs().ExistsByCategoryAsync(default!, default!, default);
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnCategoryInUse_WhenExpensesReferenceCategoryId()
+    public async Task Handle_ShouldReturnCategoryInUse_WhenTransactionsReferenceCategoryId()
     {
         // Arrange
         var command = new DeleteCategoryCommand("user-id-123", "category-1");
         _categoryRepositoryMock.GetByIdAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(SampleCategory("Alimentacao"));
-        _expenseRepositoryMock.ExistsByCategoryAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
+        _transactionRepositoryMock.ExistsByCategoryAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(true);
 
         // Act
@@ -64,13 +64,13 @@ public class DeleteCategoryCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldDeleteCategory_WhenNoExpensesReferenceIt()
+    public async Task Handle_ShouldDeleteCategory_WhenNoTransactionsReferenceIt()
     {
         // Arrange
         var command = new DeleteCategoryCommand("user-id-123", "category-1");
         _categoryRepositoryMock.GetByIdAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(SampleCategory("Viagem"));
-        _expenseRepositoryMock.ExistsByCategoryAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
+        _transactionRepositoryMock.ExistsByCategoryAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(false);
         _categoryRepositoryMock.DeleteAsync("user-id-123", "category-1", Arg.Any<CancellationToken>())
             .Returns(true);
@@ -84,7 +84,7 @@ public class DeleteCategoryCommandHandlerTests
         Received.InOrder(() =>
         {
             _categoryRepositoryMock.GetByIdAsync("user-id-123", "category-1", Arg.Any<CancellationToken>());
-            _expenseRepositoryMock.ExistsByCategoryAsync("user-id-123", "category-1", Arg.Any<CancellationToken>());
+            _transactionRepositoryMock.ExistsByCategoryAsync("user-id-123", "category-1", Arg.Any<CancellationToken>());
             _categoryRepositoryMock.DeleteAsync("user-id-123", "category-1", Arg.Any<CancellationToken>());
         });
     }

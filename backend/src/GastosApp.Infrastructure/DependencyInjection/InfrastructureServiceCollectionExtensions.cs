@@ -6,9 +6,9 @@ using GastosApp.Application.Common.Interfaces;
 using GastosApp.Infrastructure.Accounts;
 using GastosApp.Infrastructure.Categories;
 using GastosApp.Infrastructure.Configuration;
-using GastosApp.Infrastructure.Expenses;
 using GastosApp.Infrastructure.Extensions;
 using GastosApp.Infrastructure.Members;
+using GastosApp.Infrastructure.Transactions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -23,7 +23,7 @@ namespace GastosApp.Infrastructure.DependencyInjection
         {
             services.AddAwsInfrastructure(configuration, environment);
 
-            services.AddScoped<IExpenseRepository, DynamoDbExpenseRepository>();
+            services.AddScoped<ITransactionRepository, DynamoDbTransactionRepository>();
             services.AddScoped<ICategoryRepository, DynamoDbCategoryRepository>();
             services.AddScoped<IAccountRepository, DynamoDbAccountRepository>();
             services.AddScoped<IMembershipRepository, DynamoDbMembershipRepository>();

@@ -10,5 +10,5 @@ public static class CategoryErrors
         Error.UnprocessableEntity("name-conflict", "Já existe uma categoria com esse nome.");
 
     public static Error CategoryInUse => Error.UnprocessableEntity(
-        "category-in-use", "A categoria não pode ser excluída enquanto houver despesas associadas a ela.");
+        "category-in-use", "A categoria não pode ser excluída enquanto houver transações associadas a ela.");
 }
