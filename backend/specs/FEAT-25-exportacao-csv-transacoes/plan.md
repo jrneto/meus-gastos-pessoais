@@ -530,17 +530,13 @@ esperados — mesma manutenção já feita nas FEAT-23/24.
    `Content-Disposition` manualmente** — já cobre header e
    `Content-Type` corretamente.
 
-## Pontos que precisam confirmação do usuário antes do `/tasks`
+## Decisões confirmadas com o usuário (revisão pós-plan)
 
-1. **Formatter puro `TransactionCsvBuilder` vs lógica direto no
-   Handler.** O plano extrai a formatação em uma classe estática
-   separada, testável sem mock — se preferir manter tudo no Handler
-   (mais raso, menos um arquivo), é só avisar antes do `/tasks`.
-2. **Não compartilhar regras de validação com
-   `GetTransactionsQueryValidator`** (item 2 acima). Se preferir
-   extrair uma base comum agora (em vez de manter o padrão de
-   duplicação já usado no projeto), também é só avisar — envolve tocar
-   `GetTransactionsQueryValidator`, hoje já testado e em produção.
+1. **`TransactionCsvBuilder` separado do Handler** (formatter puro,
+   testável sem mock) — confirmado.
+2. **`ExportTransactionsQueryValidator` mantido separado/duplicado**,
+   sem compartilhar regras com `GetTransactionsQueryValidator` via
+   herança/base comum — confirmado.
 
 Fora esses dois pontos, o plano segue 100% os precedentes já
 estabelecidos nas FEAT-22/23/24 (mesmos repositórios, mesmo padrão de
