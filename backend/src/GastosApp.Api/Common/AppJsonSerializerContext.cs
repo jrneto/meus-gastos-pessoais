@@ -54,6 +54,7 @@ namespace GastosApp.Api.Common;
 [JsonSerializable(typeof(ReportCategoryItem))]
 [JsonSerializable(typeof(ReportTopCategory))]
 [JsonSerializable(typeof(GetReportsRequest))]
+[JsonSerializable(typeof(ExportTransactionsRequest))]
 public partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }

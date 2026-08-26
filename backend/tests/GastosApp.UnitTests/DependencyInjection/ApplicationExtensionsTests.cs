@@ -11,6 +11,7 @@ using GastosApp.Application.Reports.Queries.GetReports;
 using GastosApp.Application.Summary.Queries.GetSummary;
 using GastosApp.Application.Transactions.Commands.RegisterTransaction;
 using GastosApp.Application.Transactions.Commands.UpdateTransaction;
+using GastosApp.Application.Transactions.Queries.ExportTransactions;
 using GastosApp.Application.Transactions.Queries.GetTransactions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -48,6 +49,7 @@ public class ApplicationExtensionsTests
     [InlineData(typeof(IValidator<UpdateMemberRoleCommand>), typeof(UpdateMemberRoleCommandValidator))]
     [InlineData(typeof(IValidator<GetSummaryQuery>), typeof(GetSummaryQueryValidator))]
     [InlineData(typeof(IValidator<GetReportsQuery>), typeof(GetReportsQueryValidator))]
+    [InlineData(typeof(IValidator<ExportTransactionsQuery>), typeof(ExportTransactionsQueryValidator))]
     public void AddApplicationServices_ShouldRegisterEveryValidator_ExplicitlyNotByAssemblyScan(
         Type validatorInterface, Type expectedImplementation)
     {
@@ -60,7 +62,7 @@ public class ApplicationExtensionsTests
     }
 
     [Fact]
-    public void AddApplicationServices_ShouldNotRegisterAnyOtherValidator_BeyondTheKnownTen()
+    public void AddApplicationServices_ShouldNotRegisterAnyOtherValidator_BeyondTheKnownEleven()
     {
         // Defensivo: se uma nova classe AbstractValidator<T> for criada no
         // projeto sem entrar na lista acima (e sem ser registrada em
@@ -68,7 +70,7 @@ public class ApplicationExtensionsTests
         // não pega isso sozinho — mas documenta a lista fechada esperada,
         // pra quem for adicionar um validator novo saber que precisa mexer
         // nos dois lugares (registro + este teste).
-        var expectedValidatorCount = 10;
+        var expectedValidatorCount = 11;
 
         var validatorTypesInAssembly = typeof(ApplicationExtensions).Assembly.GetTypes()
             .Count(t => !t.IsAbstract && t.BaseType is { IsGenericType: true } baseType
