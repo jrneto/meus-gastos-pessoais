@@ -5,6 +5,7 @@ using GastosApp.Application.Categories.Queries.GetCategories;
 using GastosApp.Application.Common.Behaviors;
 using GastosApp.Application.Members.Commands.InviteMember;
 using GastosApp.Application.Members.Commands.UpdateMemberRole;
+using GastosApp.Application.Summary.Queries.GetSummary;
 using GastosApp.Application.Transactions.Commands.RegisterTransaction;
 using GastosApp.Application.Transactions.Commands.UpdateTransaction;
 using GastosApp.Application.Transactions.Queries.GetTransactions;
@@ -38,6 +39,7 @@ namespace GastosApp.Application.DependencyInjection
             services.AddScoped<IValidator<GetTransactionsQuery>, GetTransactionsQueryValidator>();
             services.AddScoped<IValidator<InviteMemberCommand>, InviteMemberCommandValidator>();
             services.AddScoped<IValidator<UpdateMemberRoleCommand>, UpdateMemberRoleCommandValidator>();
+            services.AddScoped<IValidator<GetSummaryQuery>, GetSummaryQueryValidator>();
 
             services.AddMediator(options =>
             {
