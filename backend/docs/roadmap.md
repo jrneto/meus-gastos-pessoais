@@ -60,14 +60,13 @@ coluna "Depende de".
   ganha filtro `?tipo=`. Editar orçamento exige role `Total`.
   Depende de: FEAT-19 (e idealmente FEAT-20, pra já nascer com a role certa).
 
-- [ ] **FEAT-22 — Transações: generalizar Despesa para Receita/Despesa**
-  Generaliza `Expense` → `Transação`: renomeia `/expenses` → `/transactions`,
-  adiciona `tipo` (`despesa`|`receita`), expõe `createdByUserId`/
-  `createdByLabel` (pra "Lançado por: Você"). Reaproveita a mecânica de
-  chave já existente (`TXN#`, GSI1 por categoria, GSI2 por id).
-  **Decisão em aberto para o `/plan` desta FEAT:** rota única
-  `/transactions?tipo=` vs. `/expenses` + `/incomes` espelhados —
-  confirmar antes de detalhar o contrato.
+- [x] **FEAT-22 — Transações: generalizar Despesa para Receita/Despesa**
+  Generaliza `Expense` → `Transação`: renomeia `/expenses` → `/transactions`
+  (rota única, filtro `?tipo=`), adiciona `tipo` (`despesa`|`receita`,
+  validado contra a categoria referenciada), expõe `createdByUserId`/
+  `createdByLabel` (pra "Lançado por: Você"). Papel `Lancar` passa a
+  poder editar/excluir só o que criou. Reaproveita a mecânica de chave
+  já existente (`TXN#`, GSI1 por categoria, GSI2 por id).
   Depende de: FEAT-19, FEAT-21.
 
 - [ ] **FEAT-23 — Resumo mensal (dashboard)**
