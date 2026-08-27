@@ -218,43 +218,59 @@ endpoint, executados com sucesso localmente antes do merge
 
 ## Critérios de aceite
 
-- [ ] `GastosApp.IntegrationTests` (hoje vazio) passa a conter testes
+- [x] `GastosApp.IntegrationTests` (hoje vazio) passa a conter testes
       reais do módulo Auth (`register` + `login`, sucesso e pelo menos
       um erro mapeado), parametrizados por URL base de ambiente
-- [ ] Existe um único comando/script local que builda a imagem Native
+- [x] Existe um único comando/script local que builda a imagem Native
       AOT, sobe (ou reaproveita) LocalStack + cognito-local, e roda a
       suíte contra o binário publicado via Lambda Runtime Interface
-      Emulator — sem exigir credencial/rede AWS real
+      Emulator — sem exigir credencial/rede AWS real (`run-local.sh`,
+      validado ao vivo de ponta a ponta: os 3 testes de Auth passando
+      contra o container)
 - [ ] `backend-deploy-hom.yml` roda a suíte contra
       `https://api-hom.jrnexpenses.com` depois do deploy e antes do
-      rascunho de release; falha no teste impede novo rascunho
+      rascunho de release; falha no teste impede novo rascunho —
+      **job implementado, não validado ao vivo ainda** (depende de
+      push real em `develop` após merge do PR desta feature e da
+      permissão IAM da Fase 5 estar aplicada)
 - [ ] `backend-deploy-prod.yml` verifica, antes de buildar/deployar,
       que o teste integrado de hom passou para o commit da release
-      sendo publicada; falha a verificação impede build/deploy
+      sendo publicada; falha a verificação impede build/deploy —
+      **job implementado, não validado ao vivo ainda** (mesma
+      dependência acima)
 - [ ] Workflow novo `backend-integration-tests-prod.yml`
       (`workflow_dispatch`) roda a suíte contra
-      `https://api.jrnexpenses.com` isoladamente, sem build/deploy
+      `https://api.jrnexpenses.com` isoladamente, sem build/deploy —
+      **workflow criado, não disparado ainda**
 - [ ] Toda execução da suíte contra hom/prod cria uma conta de teste
       dedicada (confirmada via `AdminConfirmSignUp`) e a remove ao
-      final (Cognito + DynamoDB), mesmo em caso de falha nos testes
+      final (Cognito + DynamoDB), mesmo em caso de falha nos testes —
+      **implementado e validado contra o ambiente local (LocalStack +
+      cognito-local); ainda não validado contra Cognito/DynamoDB reais
+      de hom/prod**, que dependem da permissão IAM da Fase 5
 - [ ] Permissões IAM novas na role `gastosapp-backend-cicd`
       (`AdminConfirmSignUp`, `AdminDeleteUser`, exclusão de itens
       DynamoDB) aplicadas via Terraform só após aprovação explícita do
-      usuário
-- [ ] `backend/docs/constitution.md` atualizado com a regra de teste
+      usuário — **`.tf` escrito e validado (`fmt`/`validate`), mas
+      `terraform apply` ainda não rodou** (sem credenciais AWS válidas
+      nesta sessão — SSO expirado); aprovação de princípio já dada
+      pelo usuário no `/plan`, falta rodar `terraform plan`/`apply` de
+      fato
+- [x] `backend/docs/constitution.md` atualizado com a regra de teste
       integrado obrigatório (junto com componente) para endpoints
       novos daqui pra frente
-- [ ] `backend/docs/backlog.md` ganha os itens de débito técnico para
+- [x] `backend/docs/backlog.md` ganha os itens de débito técnico para
       os módulos ainda sem teste integrado (categorias, transações,
       membros, resumo, relatórios, export CSV, perfil)
-- [ ] `backend/infra/CLAUDE.md` (seção CI/CD) e `backend/CLAUDE.md`
+- [x] `backend/infra/CLAUDE.md` (seção CI/CD) e `backend/CLAUDE.md`
       (estrutura de projetos) atualizados refletindo o novo uso de
       `GastosApp.IntegrationTests` e os novos jobs/workflow
-- [ ] Nenhum contrato de API existente foi alterado
-- [ ] `dotnet test GastosApp.sln` continua rodando unitários e
+- [x] Nenhum contrato de API existente foi alterado
+- [x] `dotnet test GastosApp.sln` continua rodando unitários e
       componente normalmente, sem exigir Docker/rede — a suíte
       integrada roda separada (script próprio), não faz parte do
-      `dotnet test` padrão
+      `dotnet test` padrão (469 unitários + 205 componente passando,
+      0 falhas)
 
 ## Fora do escopo
 
