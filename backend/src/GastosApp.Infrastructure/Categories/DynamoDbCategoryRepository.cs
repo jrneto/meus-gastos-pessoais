@@ -10,7 +10,6 @@ namespace GastosApp.Infrastructure.Categories;
 
 public sealed class DynamoDbCategoryRepository : ICategoryRepository
 {
-    private const string SkPrefix = "CAT#";
     private const string Gsi2Index = "GSI2";
 
     // GSI2 (GSI2PK = "ID#{id}") é compartilhado com Expense (mesmo formato de
@@ -23,8 +22,8 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
     // itens de categoria antes desta correção — por isso a ausência do
     // atributo também é aceita como categoria (compatibilidade com dado já
     // gravado em hom/prod), só a presença de um "Tipo" diferente rejeita.
-    private const string TipoAttribute = "Tipo";
-    private const string TipoCategoria = "categoria";
+    // Constantes movidas pra CategoryItemMapper (FEAT-28) — fonte única do
+    // shape do item, compartilhada com DynamoDbAccountRepository.
 
     private readonly IAmazonDynamoDB _dynamoDbClient;
     private readonly DynamoDbOptions _options;
@@ -37,7 +36,7 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
 
     public async Task<CategoryWriteResult> CreateAsync(Category category, CancellationToken cancellationToken = default)
     {
-        var item = BuildItem(category, BuildSk(category.Nome));
+        var item = CategoryItemMapper.BuildItem(category, CategoryItemMapper.BuildSk(category.Nome));
 
         try
         {
@@ -65,7 +64,7 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
             ExpressionAttributeValues = new Dictionary<string, AttributeValue>
             {
                 [":pk"] = new AttributeValue { S = $"ACCOUNT#{accountId}" },
-                [":skPrefix"] = new AttributeValue { S = SkPrefix }
+                [":skPrefix"] = new AttributeValue { S = CategoryItemMapper.SkPrefix }
             }
         }, cancellationToken);
 
@@ -133,9 +132,9 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
 
         var createdAt = DateTimeOffset.Parse(
             current.Item["CreatedAt"].S, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
-        var newSk = BuildSk(nome);
+        var newSk = CategoryItemMapper.BuildSk(nome);
         var updated = Category.Restore(categoryId, accountId, nome, tipo, orcamentoMensalCents, createdAt);
-        var newItem = BuildItem(updated, newSk);
+        var newItem = CategoryItemMapper.BuildItem(updated, newSk);
 
         if (newSk == oldSk)
         {
@@ -221,10 +220,10 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
                 // attribute_not_exists cobre categorias já gravadas antes desta correção (nunca
                 // tiveram o atributo Tipo).
                 ConditionExpression = "attribute_exists(PK) AND (attribute_not_exists(#tipo) OR #tipo = :tipo)",
-                ExpressionAttributeNames = new Dictionary<string, string> { ["#tipo"] = TipoAttribute },
+                ExpressionAttributeNames = new Dictionary<string, string> { ["#tipo"] = CategoryItemMapper.TipoAttribute },
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
-                    [":tipo"] = new AttributeValue { S = TipoCategoria }
+                    [":tipo"] = new AttributeValue { S = CategoryItemMapper.TipoCategoria }
                 }
             }, cancellationToken);
 
@@ -256,32 +255,11 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
         return (lookup.Items[0]["PK"].S, lookup.Items[0]["SK"].S);
     }
 
-    private static string BuildSk(string nome) => $"{SkPrefix}{CategorySlug.From(nome)}";
-
     // Ausência do atributo também conta como categoria — itens gravados antes
     // desta correção nunca tiveram "Tipo". Só uma presença explícita de outro
     // valor (ex.: "despesa") rejeita.
     private static bool IsCategoriaItem(Dictionary<string, AttributeValue> item) =>
-        !item.TryGetValue(TipoAttribute, out var tipo) || tipo.S == TipoCategoria;
-
-    private static Dictionary<string, AttributeValue> BuildItem(Category category, string sk)
-    {
-        var item = new Dictionary<string, AttributeValue>
-        {
-            ["PK"] = new AttributeValue { S = $"ACCOUNT#{category.AccountId}" },
-            ["SK"] = new AttributeValue { S = sk },
-            ["GSI2PK"] = new AttributeValue { S = $"ID#{category.Id}" },
-            ["Nome"] = new AttributeValue { S = category.Nome },
-            ["Tipo"] = new AttributeValue { S = TipoCategoria },
-            ["TipoLancamento"] = new AttributeValue { S = category.Tipo },
-            ["CreatedAt"] = new AttributeValue { S = category.CreatedAt.ToString("O") }
-        };
-
-        if (category.OrcamentoMensalCents is { } orcamento)
-            item["OrcamentoMensalCents"] = new AttributeValue { N = orcamento.ToString(CultureInfo.InvariantCulture) };
-
-        return item;
-    }
+        !item.TryGetValue(CategoryItemMapper.TipoAttribute, out var tipo) || tipo.S == CategoryItemMapper.TipoCategoria;
 
     private static Category MapToCategory(Dictionary<string, AttributeValue> item)
     {

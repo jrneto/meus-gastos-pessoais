@@ -1,6 +1,8 @@
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using GastosApp.Application.Common.Interfaces;
+using GastosApp.Domain.Categories;
+using GastosApp.Infrastructure.Categories;
 using GastosApp.Infrastructure.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -41,7 +43,28 @@ public sealed class DynamoDbAccountRepository : IAccountRepository
     {
         var accountId = Guid.NewGuid().ToString();
         var membershipId = Guid.NewGuid().ToString();
-        var createdAt = DateTimeOffset.UtcNow.ToString("O");
+        var createdAtOffset = DateTimeOffset.UtcNow;
+        var createdAt = createdAtOffset.ToString("O");
+
+        // Categorias padrão (FEAT-28): semeadas na mesma transação que cria
+        // Account/Membership, nunca separadas — ver plan.md, decisão técnica 1.
+        // Ou a conta nasce completa (com as 13 categorias), ou a criação
+        // inteira cancela e é re-tentada do zero no próximo login/trigger.
+        var defaultCategoryItems = DefaultCategorySeed.Items.Select(seed =>
+        {
+            var category = Category.Restore(seed.Id, accountId, seed.Nome, DefaultCategorySeed.Tipo, null, createdAtOffset);
+            var sk = CategoryItemMapper.BuildSk(seed.Nome);
+
+            return new TransactWriteItem
+            {
+                Put = new Put
+                {
+                    TableName = _options.TableName,
+                    Item = CategoryItemMapper.BuildItem(category, sk),
+                    ConditionExpression = "attribute_not_exists(PK)"
+                }
+            };
+        });
 
         try
         {
@@ -94,7 +117,8 @@ public sealed class DynamoDbAccountRepository : IAccountRepository
                             },
                             ConditionExpression = "attribute_not_exists(PK)"
                         }
-                    }
+                    },
+                    .. defaultCategoryItems
                 ]
             }, cancellationToken);
 

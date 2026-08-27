@@ -12,6 +12,10 @@ namespace GastosApp.Application.Accounts.Commands.EnsureAccount;
 // (GastosApp.CognitoTriggers) quanto pelo fallback do login
 // (LoginUserCommandHandler) — nunca pelas rotas de Category/Expense,
 // que só resolvem via ResolveMembershipQuery.
+// Desde a FEAT-28, quando a Account é criada (AlreadyExisted: false),
+// IAccountRepository.CreateAsync também semeia atomicamente as 13
+// categorias padrão (DefaultCategorySeed) na mesma transação — este
+// Command/Handler não precisa saber disso, é transparente pra quem chama.
 public sealed record EnsureAccountCommand(string UserId, string Email) : ICommand<Result<EnsureAccountResult>>;
 
 public sealed record EnsureAccountResult(string AccountId, bool AlreadyExisted);
