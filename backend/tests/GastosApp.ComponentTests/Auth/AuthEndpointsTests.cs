@@ -377,7 +377,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
     [Fact]
     public async Task Me_SemPerfilCadastrado_Retorna200ComCamposNulos()
     {
-        // Usuário cadastrado antes desta feature (sem migração de dados, roadmap.md) —
+        // Usuário cadastrado antes desta feature (sem migração de dados, backlog.md) —
         // FindByUserIdAsync sem configuração já retorna null (default do mock).
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(TestAuthHandler.SchemeName, "uuid-123|neto@email.com|Neto");

@@ -215,7 +215,7 @@ Item-sentinela só pra barrar CPF duplicado via
   `totalDespesas`/`totalReceitas`/`saldoMes`/`porCategoria`): segue só
   como ideia de modelagem futura — a tabela hoje não tem DynamoDB
   Streams habilitado nem Lambda trigger algum, então nenhuma agregação
-  é calculada ou persistida automaticamente (FEAT-23 do roadmap)
+  é calculada ou persistida automaticamente (FEAT-23 do backlog)
 - `createdByLabel` em `Transaction` (rótulo legível de quem lançou,
   pro papel `Lancar` poder editar/excluir só o que lançou) —
   `CreatedByUserId` já existe desde a FEAT-22, mas só guarda o `userId`

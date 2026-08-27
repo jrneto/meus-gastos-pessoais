@@ -39,7 +39,7 @@ flowchart TB
     style system fill:none,stroke:#888,stroke-dasharray: 4 3
 ```
 
-Funcionalidades hoje implementadas (ver `backend/docs/roadmap.md` para
+Funcionalidades hoje implementadas (ver `backend/docs/backlog.md` para
 o histórico de FEATs): autenticação e cadastro com perfil (nome,
 telefone, CPF), contas multi-tenant com convites e permissões por
 membro, categorias com tipo e orçamento, transações de receita/despesa,
@@ -104,7 +104,7 @@ flowchart TB
 | S3 + CloudFront + WAF | frontend/infra | Hosting estático + CDN + TLS + regras gerenciadas | `frontend/infra/CLAUDE.md`, `frontend/infra/terraform/README.md` |
 | API GastosApp (.NET/Lambda) | backend | API HTTP, Clean Architecture, Minimal APIs | `backend/CLAUDE.md` |
 | API Gateway (HTTP API) | backend/infra | Roteamento + throttling na frente da Lambda | `backend/infra/CLAUDE.md` |
-| Lambda PostConfirmation | backend | Cria `Account`/`Membership` no 1º login (trigger do Cognito) | `backend/docs/data-model.md`, roadmap FEAT-19 |
+| Lambda PostConfirmation | backend | Cria `Account`/`Membership` no 1º login (trigger do Cognito) | `backend/docs/data-model.md`, backlog FEAT-19 |
 | DynamoDB (tabela `GastosApp`) | backend | Persistência single-table de todo o domínio | `backend/docs/data-model.md` |
 | Cognito User Pool | backend/infra | Autenticação (`USER_PASSWORD_AUTH`), emissão de JWT | `backend/infra/CLAUDE.md` |
 | SSM Parameter Store | backend/infra | Configuração/segredos em `/GastosApp/...` | `backend/infra/CLAUDE.md` |
@@ -250,7 +250,7 @@ criados manualmente no console):
 | Modelo de dados (DynamoDB) | `backend/docs/data-model.md` |
 | Contrato de API (OpenAPI) | `backend/docs/openapi.json` |
 | Processo SDD do backend | `backend/docs/README.md` |
-| Roadmap de features do backend | `backend/docs/roadmap.md` |
+| Backlog de features do backend | `backend/docs/backlog.md` |
 | Infra do backend | `backend/infra/CLAUDE.md` |
 | Infra do frontend | `frontend/infra/CLAUDE.md` |
 | Design system (Modernist) | `frontend/design-system/README.md` |

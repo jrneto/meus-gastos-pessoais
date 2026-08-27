@@ -33,6 +33,7 @@ frontend/
 ├── README.md
 ├── docs/
 │   ├── constitution.md
+│   ├── backlog.md                 # débitos técnicos e melhorias futuras
 │   └── README.md                  # explica o fluxo SDD do frontend
 ├── specs/
 │   └── FEAT-XX-nome-feature/{spec.md, plan.md, tasks.md}

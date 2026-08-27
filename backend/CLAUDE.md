@@ -44,7 +44,7 @@ backend/
 │   ├── architecture.md            # ponteiro pra /docs/architecture.md (raiz)
 │   ├── data-model.md
 │   ├── openapi.json                # contrato OpenAPI exportado (ver scripts/export-openapi.sh)
-│   ├── roadmap.md                 # sequência de FEATs planejadas/concluídas
+│   ├── backlog.md                 # sequência de FEATs + débitos técnicos/melhorias futuras
 │   └── README.md                  # explica o fluxo SDD do backend
 ├── specs/
 │   └── FEAT-XX-nome-feature/{spec.md, plan.md, tasks.md}
