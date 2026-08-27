@@ -87,7 +87,7 @@ coluna "Depende de".
   transações do período — cobre o botão "Exportar CSV" de Ajustes.
   Depende de: FEAT-22.
 
-- [ ] **FEAT-26 — Perfil do usuário no cadastro (nome, telefone, CPF)**
+- [x] **FEAT-26 — Perfil do usuário no cadastro (nome, telefone, CPF)**
   *(inserida fora da ordem original desta lista, a pedido do usuário,
   empurrando as duas linhas seguintes uma posição adiante)*
   `POST /auth/register` passa a exigir também `name`, `phoneNumber` e
