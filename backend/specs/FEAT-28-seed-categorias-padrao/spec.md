@@ -220,33 +220,64 @@ da API.
 
 ## Critérios de aceite
 
-- [ ] Confirmar o cadastro no Cognito cria, além de `Account`/
+- [x] Confirmar o cadastro no Cognito cria, além de `Account`/
       `Membership` (FEAT-19), as 13 categorias padrão com os ids fixos
       desta spec
-- [ ] Login bem-sucedido de um usuário sem `Account` ainda (trigger não
+- [x] Login bem-sucedido de um usuário sem `Account` ainda (trigger não
       rodou) cria `Account`/`Membership` e as 13 categorias padrão nesse
       momento
-- [ ] `GET /categories` de uma conta recém-criada retorna as 13
+- [x] `GET /categories` de uma conta recém-criada retorna as 13
       categorias padrão (nome/tipo/id conforme a tabela), sem nenhuma
       ação manual do usuário
-- [ ] Login bem-sucedido de uma conta cujo seed já foi aplicado não cria
+- [x] Login bem-sucedido de uma conta cujo seed já foi aplicado não cria
       categorias duplicadas
-- [ ] Criação concorrente (trigger + login, ou múltiplos logins em
+- [x] Criação concorrente (trigger + login, ou múltiplos logins em
       paralelo) nunca resulta em categorias padrão duplicadas para a
       mesma conta
-- [ ] `PUT /categories/{id}` de uma categoria padrão atualiza
+- [x] `PUT /categories/{id}` de uma categoria padrão atualiza
       normalmente (200), sem restrição adicional
-- [ ] `DELETE /categories/{id}` de uma categoria padrão sem transações
+- [x] `DELETE /categories/{id}` de uma categoria padrão sem transações
       associadas exclui normalmente (204) e não é recriada num login
       seguinte
-- [ ] `DELETE /categories/{id}` de uma categoria padrão com transações
+- [x] `DELETE /categories/{id}` de uma categoria padrão com transações
       associadas retorna 422, mesma regra já existente
-- [ ] O `id` de cada categoria padrão é sempre o GUID fixo listado nesta
+- [x] O `id` de cada categoria padrão é sempre o GUID fixo listado nesta
       spec, igual em qualquer ambiente
-- [ ] Falha transitória no seed não impede confirmação de cadastro nem
+- [x] Falha transitória no seed não impede confirmação de cadastro nem
       login
-- [ ] Nenhum contrato de API existente muda —
+- [x] Nenhum contrato de API existente muda —
       `backend/docs/openapi.json` regenerado sem diffs de contrato
+
+## Status
+
+Implementado conforme `plan.md`/`tasks.md`. `DefaultCategorySeed`
+(Domain) — catálogo fixo das 13 categorias padrão (id/nome), `Tipo`
+sempre `"despesa"`. `CategoryItemMapper` (Infrastructure) extraído de
+dentro de `DynamoDbCategoryRepository` (refactor puro, sem mudança de
+comportamento — os 23 testes já existentes continuaram passando sem
+alteração) e reaproveitado por `DynamoDbAccountRepository.CreateAsync`,
+que agora inclui as 13 categorias na mesma `TransactWriteItems` que já
+cria `AccountPointer`/`Account`/`Membership` (3 → 16 itens) — criação
+atômica: ou a conta nasce completa, ou a operação inteira cancela e é
+re-tentada no próximo login/trigger. Nenhuma mudança de assinatura
+pública em `EnsureAccountCommand`/`IAccountRepository`/`ICategoryRepository`
+— o seed é transparente pra `AccountTriggerHandler` e
+`LoginUserCommandHandler`, que continuam passando sem alteração.
+
+Nenhum endpoint novo ou alterado — `GET`/`POST`/`PUT`/`DELETE
+/categories` continuam com o contrato exato de `FEAT-21`; uma categoria
+padrão é uma `Category` como qualquer outra (mesmo código de leitura/
+edição/exclusão), sem nenhum campo ou regra nova que a distinga. `GET
+/categories` de uma conta recém-criada passa a refletir as 13
+categorias padrão por construção — é o mesmo `Query` que já lê qualquer
+`Category` da conta, sem lógica adicional.
+
+`backend/docs/openapi.json` regenerado localmente (API rodando contra
+LocalStack/cognito-local, `backend/infra/`) — `git diff` confirma zero
+diferença de contrato, exatamente como a spec previa.
+
+Suíte completa (`dotnet test` na solução) passa: 675/675 (1
+IntegrationTests placeholder + 469 UnitTests + 205 ComponentTests).
 
 ## Fora do escopo
 

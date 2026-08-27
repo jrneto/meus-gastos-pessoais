@@ -105,10 +105,11 @@ coluna "Depende de".
   hoje. Escopo deixado de fora da FEAT-19 de propósito.
   Depende de: FEAT-19.
 
-- [ ] **FEAT-28 — Seed de categorias padrão**
-  Cria automaticamente um conjunto de categorias padrão (nome, cor,
-  ícone) para toda conta nova. Já tinha sido adiado na FEAT-16;
-  retomado aqui porque a criação de conta (FEAT-19) é o gatilho natural.
+- [x] **FEAT-28 — Seed de categorias padrão**
+  Cria automaticamente um conjunto de categorias padrão para toda conta
+  nova. Já tinha sido adiado na FEAT-16; retomado aqui porque a criação
+  de conta (FEAT-19) é o gatilho natural. Implementada fora da ordem
+  original desta lista, a pedido do usuário, antes da FEAT-27.
   Depende de: FEAT-19, FEAT-16.
 
 ## Backlog de compliance (LGPD) — sem previsão de execução
