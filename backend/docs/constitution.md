@@ -13,6 +13,18 @@ API de controle de gastos pessoal. Backend-first, frontend React depois.
 - Todo novo endpoint deve ter testes de componente (mock de repositórios
   e dependências externas, ver `backend/specs/FEAT-03-testes-componentes/spec.md`)
   antes de ser considerado concluído
+- Todo novo endpoint deve **também** ter teste integrado cobrindo pelo
+  menos o fluxo de sucesso (`GastosApp.IntegrationTests`, contra a API
+  real — Cognito/DynamoDB reais em hom/prod, o binário Native AOT
+  publicado via Runtime Interface Emulator em local — nunca dublês, ver
+  `backend/specs/FEAT-29-testes-integrados/spec.md`) antes de ser
+  considerado concluído. Endpoints anteriores à FEAT-29 sem essa
+  cobertura ficam registrados como débito técnico em
+  `backend/docs/backlog.md`
+- A implementação de uma feature de backend só é considerada concluída
+  com sucesso depois da execução dos testes integrados relevantes (pelo
+  menos localmente, via `backend/infra/lambda/run-local.sh`) — não só
+  dos testes unitários/de componente
 - Sem Scan no DynamoDB — apenas Query com PK ou GSI definidos
 - Toda infraestrutura de produção/homologação é AWS real, provisionada via
   Terraform (não CloudFormation, não CDK) em `backend/infra/terraform/`,
