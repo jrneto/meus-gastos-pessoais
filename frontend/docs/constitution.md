@@ -79,6 +79,13 @@ seção de infraestrutura).
   placeholder: Início (dashboard, "Em breve"), Ajustes, Relatórios
   ("Em breve") — shadcn/ui só é removido quando toda a superfície
   estiver migrada
+- **Toda feature nova que envolve layout/UI (tela nova ou alteração
+  visual de tela existente) segue o Modernist como referência
+  obrigatória de layout** — antes de desenhar ou implementar, leia
+  `frontend/design-system/README.md` (índice das telas web/mobile
+  disponíveis como protótipo em `frontend/design-system/web/` e
+  `frontend/design-system/mobile/`) para entender o layout já proposto
+  para aquela tela/fluxo antes de propor algo novo
 - Gráficos: Tremor (adicionado apenas quando a primeira feature que
   precisar de gráfico for planejada — não instalado antecipadamente)
 - Testes: Vitest + React Testing Library + MSW (mock de chamadas HTTP)

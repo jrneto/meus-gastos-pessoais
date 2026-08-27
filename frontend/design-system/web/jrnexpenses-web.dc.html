@@ -47,7 +47,11 @@
     </div>
     <div style="display:flex;flex-direction:column;gap:12px">
       <sc-if value="{{ isSignupMode }}" hint-placeholder-val="{{ false }}">
-        <label class="field"><span style="font-size:12px;opacity:.7">Nome</span><input class="input" type="text" placeholder="Seu nome" value="{{ authName }}" onChange="{{ setAuthName }}"/></label>
+        <label class="field"><span style="font-size:12px;opacity:.7">Nome completo</span><input class="input" type="text" placeholder="Seu nome" value="{{ authName }}" onChange="{{ setAuthName }}"/></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <label class="field"><span style="font-size:12px;opacity:.7">CPF</span><input class="input" type="text" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" value="{{ authCpf }}" onChange="{{ setAuthCpf }}"/></label>
+          <label class="field"><span style="font-size:12px;opacity:.7">Telefone</span><input class="input" type="tel" inputmode="tel" maxlength="15" placeholder="(11) 98765-4321" value="{{ authPhone }}" onChange="{{ setAuthPhone }}"/></label>
+        </div>
       </sc-if>
       <label class="field"><span style="font-size:12px;opacity:.7">E-mail</span><input class="input" type="email" placeholder="voce@email.com" value="{{ authEmail }}" onChange="{{ setAuthEmail }}"/></label>
       <label class="field"><span style="font-size:12px;opacity:.7">Senha</span><input class="input" type="password" placeholder="••••••••" value="{{ authPassword }}" onChange="{{ setAuthPassword }}"/></label>
@@ -538,7 +542,7 @@ class Component extends DCLogic {
   state = {
     screen: 'login',
     authMode: 'login',
-    authName: '', authEmail: '', authPassword: '',
+    authName: '', authEmail: '', authPassword: '', authCpf: '', authPhone: '',
     tab: 'dashboard',
     showAdd: false,
     viewingTxId: null,
@@ -632,6 +636,21 @@ class Component extends DCLogic {
     }));
   }
 
+  maskCpf(v) {
+    const d = (v || '').replace(/\D/g, '').slice(0, 11);
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return d.slice(0, 3) + '.' + d.slice(3);
+    if (d.length <= 9) return d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6);
+    return d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6, 9) + '-' + d.slice(9);
+  }
+  maskPhone(v) {
+    const d = (v || '').replace(/\D/g, '').slice(0, 11);
+    if (!d) return '';
+    if (d.length <= 2) return '(' + d;
+    if (d.length <= 6) return '(' + d.slice(0, 2) + ') ' + d.slice(2);
+    if (d.length <= 10) return '(' + d.slice(0, 2) + ') ' + d.slice(2, 6) + '-' + d.slice(6);
+    return '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7);
+  }
   setLoginMode() { this.setState({ authMode: 'login' }); }
   setSignupMode() { this.setState({ authMode: 'signup' }); }
   submitAuth() {
@@ -792,6 +811,9 @@ class Component extends DCLogic {
       setAuthName: (e) => this.setState({ authName: e.target.value }),
       setAuthEmail: (e) => this.setState({ authEmail: e.target.value }),
       setAuthPassword: (e) => this.setState({ authPassword: e.target.value }),
+      authCpf: s.authCpf, authPhone: s.authPhone,
+      setAuthCpf: (e) => this.setState({ authCpf: this.maskCpf(e.target.value) }),
+      setAuthPhone: (e) => this.setState({ authPhone: this.maskPhone(e.target.value) }),
       authButtonLabel: s.authing ? (s.authMode === 'login' ? 'Entrando…' : 'Criando conta…') : (s.authMode === 'login' ? 'Entrar' : 'Criar conta'),
       submitAuth: () => this.submitAuth(),
       isAuthing: !!s.authing,
