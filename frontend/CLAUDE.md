@@ -11,7 +11,10 @@ veja "Modo Leve vs Fluxo Completo" no [`/CLAUDE.md`](../CLAUDE.md) raiz.
 - Roteamento: `react-router-dom`
 - Estado global: Zustand
 - Formulário: React Hook Form + Zod (`zodResolver`)
-- UI: shadcn/ui + Tailwind CSS
+- UI: design system **Modernist** (`.ds-modernist`, migração tela por
+  tela desde a FEAT-14) sobre a base shadcn/ui + Tailwind CSS ainda em
+  uso nas telas não migradas — ver estado atual da migração em
+  `docs/constitution.md`
 - Gráficos: Tremor (só quando a primeira feature de gráfico existir)
 - Testes: Vitest + React Testing Library + MSW
 - Consome a API do backend (`backend/specs/`) via HTTP — nenhuma lógica
@@ -30,11 +33,11 @@ frontend/
 ├── README.md
 ├── docs/
 │   ├── constitution.md
-│   └── README.md                  # (a criar) explica o fluxo SDD do frontend
+│   └── README.md                  # explica o fluxo SDD do frontend
 ├── specs/
 │   └── FEAT-XX-nome-feature/{spec.md, plan.md, tasks.md}
 ├── infra/
-│   └── CLAUDE.md                  # contexto de infra do frontend (ainda sem provisionamento real)
+│   └── CLAUDE.md                  # contexto de infra do frontend (S3+CloudFront+WAF+DNS, prod/hom, Terraform)
 └── app/                            # projeto Vite (package.json aqui)
     ├── src/
     │   ├── app/                    # bootstrap: main.tsx, App.tsx, providers, router
