@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -8,18 +8,34 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!--
+      Sem ProjectReference a GastosApp.Api/Application/Domain/Infrastructure
+      de propósito (FEAT-29) — este projeto testa a API como um cliente
+      real faria: só HTTP (ou, no modo local, o protocolo de invocação do
+      Lambda Runtime Interface Emulator), nunca código de produção
+      referenciado direto. DTOs de request/response são records próprios
+      (Support/Contracts.cs), espelhando backend/docs/openapi.json.
+    -->
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="FluentAssertions" Version="8.10.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+
+    <!--
+      Mesmas libs/versões usadas em GastosApp.Infrastructure — usadas só
+      pelos utilitários administrativos de setup/cleanup da conta de
+      teste (AdminConfirmSignUp/AdminDeleteUser, leitura de Parameter
+      Store, limpeza direta de itens no DynamoDB), nunca pelo fluxo de
+      negócio testado (sempre via IApiTransport/HTTP).
+    -->
+    <PackageReference Include="AWSSDK.CognitoIdentityProvider" Version="4.0.10.1" />
+    <PackageReference Include="AWSSDK.DynamoDBv2" Version="4.0.6" />
+    <PackageReference Include="AWSSDK.SimpleSystemsManagement" Version="4.0.6" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\GastosApp.Api\GastosApp.Api.csproj" />
   </ItemGroup>
 
 </Project>
