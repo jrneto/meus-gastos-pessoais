@@ -113,32 +113,56 @@ public sealed record TransportResponse(
   a Lambda de produção/homologação hoje.
 - **RIE não é embutido na imagem publicada** (essa imagem
   `local-run` nunca é usada em deploy real — só localmente): o
-  binário `aws-lambda-rie` (release oficial da AWS) é baixado uma vez
-  (cache em `backend/infra/lambda/.rie/`, versão pinada) e montado via
-  volume no `docker run`, sobrescrevendo o entrypoint — padrão
-  documentado pela própria AWS pra testar imagens de runtime
-  customizado localmente sem alterar o artefato de produção:
+  binário `aws-lambda-rie` (release oficial da AWS, sempre a última
+  versão — ferramenta de teste local, não artefato de deploy, sem
+  necessidade de fixar versão) é baixado sob demanda (cache em
+  `backend/infra/lambda/.rie/`, `.gitignore`) e montado via volume no
+  `docker run`, sobrescrevendo o entrypoint — padrão documentado pela
+  própria AWS pra testar imagens de runtime customizado localmente sem
+  alterar o artefato de produção.
+- **Achado real durante a implementação**: `cognito-local` fixa
+  `issuer`/`jwks_uri` do seu discovery document
+  (`/.well-known/openid-configuration`) em `http://localhost:9229`
+  (`config.json`, `IssuerDomain`), então o middleware de JWT da Api só
+  consegue buscar o JWKS se `localhost:9229` resolver pro próprio
+  `cognito-local` — o que só acontece compartilhando o mesmo
+  **namespace de rede** (Docker recusa sobrescrever `localhost` via
+  `--add-host`, confirmado empiricamente; anexar à mesma rede Docker
+  nomeada, resolvendo por nome de container, não é suficiente, porque a
+  URL retornada já vem fixa em `localhost`). Solução adotada:
+  `docker run --network container:gastosapp-cognito-local` (não
+  `--network gastosapp-local`) — nesse modo o container roda no MESMO
+  namespace do `cognito-local`, então `Cognito__ServiceURL=http://localhost:9229`
+  passa a funcionar, e `gastosapp-localstack` continua alcançável por
+  nome (herdado da rede `gastosapp-local`, anexada ao `cognito-local`).
+  Como `--network container:X` não permite publicar porta no próprio
+  container, a porta `9000→8080` é publicada no `cognito-local`
+  (`docker-compose.yml`) em vez de no container do teste:
   ```bash
-  docker run --rm -p 9000:8080 \
+  docker run --rm \
+    --network container:gastosapp-cognito-local \
     -v "$(pwd)/infra/lambda/.rie/aws-lambda-rie:/aws-lambda/aws-lambda-rie" \
     --entrypoint /aws-lambda/aws-lambda-rie \
-    --network gastosapp-local \
     -e DynamoDb__ServiceURL=http://gastosapp-localstack:4566 \
     -e DynamoDb__AccessKey=test -e DynamoDb__SecretKey=test \
-    -e Cognito__ServiceURL=http://gastosapp-cognito-local:9229 \
+    -e Cognito__ServiceURL=http://localhost:9229 \
     ... \
     gastosapp-api-local-run /var/runtime/bootstrap
   ```
 - Variáveis de ambiente do container = as mesmas hoje declaradas em
   `appsettings.Development.json` (`DynamoDb:ServiceURL`,
-  `AccessKey`/`SecretKey`, `ParameterStore:*`, `Cognito:*` local) — só
-  que como env vars (`Secao__Chave`), já que o binário publicado não
-  lê `appsettings.Development.json` (esse arquivo só existe hoje
-  porque `dotnet run` local carrega por `ASPNETCORE_ENVIRONMENT`; o
-  container roda o binário publicado direto). Precisa da rede Docker
-  nomeada (`gastosapp-local`, criada em `docker-compose.yml`) pra
-  resolver `gastosapp-localstack`/`gastosapp-cognito-local` pelo nome
-  do container.
+  `AccessKey`/`SecretKey`, `Cognito:*` local) — só que como env vars
+  (`Secao__Chave`), já que o binário publicado não lê
+  `appsettings.Development.json` (esse arquivo só existe hoje porque
+  `dotnet run` local carrega por `ASPNETCORE_ENVIRONMENT`; o container
+  roda o binário publicado direto). `ASPNETCORE_ENVIRONMENT=Testing`
+  pula o `AddAwsParameterStore` de `Program.cs` (mesmo mecanismo já
+  usado por `GastosApp.ComponentTests`) — sem isso, os parâmetros já
+  seedados no SSM local (`Cognito:ServiceURL=http://localhost:9229`,
+  válido só do ponto de vista do host) sobrescreveriam as variáveis de
+  ambiente passadas acima, já que fontes de configuração adicionadas
+  depois (`AddAwsParameterStore`, chamado em `Program.cs` após o
+  `CreateBuilder`) têm precedência sobre variáveis de ambiente.
 - Script único `backend/infra/lambda/run-local.sh` (mesmo princípio
   do "um comando" já em `build.sh`/FEAT-18): builda a imagem
   `local-run`, garante `docker compose up -d` (LocalStack +
@@ -339,11 +363,19 @@ filtro.
    o SDK não cobrir algum método específico, o fallback é chamar o
    endpoint HTTP do `cognito-local` diretamente (mesmo protocolo),
    nunca mudar o comportamento pra `AutoConfirmUser`.
-3. **Versão pinada do `aws-lambda-rie`** a baixar/cachear — vou fixar
-   a última versão estável no momento da implementação, documentada
-   no `Dockerfile.local-run`/`run-local.sh`.
-4. **Nome exato dos caminhos no Parameter Store** para
-   `Cognito:UserPoolId` — confirmar contra
-   `AwsParameterStoreExtensions`/Terraform durante a implementação
-   (assumido `/GastosApp/Cognito/UserPoolId` e
-   `/GastosApp/Hom/Cognito/UserPoolId` neste plano).
+3. ~~**Versão pinada do `aws-lambda-rie`**~~ — decisão final (durante a
+   implementação): sempre a última versão (`releases/latest/download`),
+   não uma versão fixa — é ferramenta de teste local, nunca embarcada
+   no artefato de produção, então o risco de reprodutibilidade é baixo
+   e o ganho de nunca precisar atualizar um número de versão manualmente
+   compensa.
+4. ~~**Nome exato dos caminhos no Parameter Store**~~ — confirmado
+   contra `backend/infra/terraform/environments/{hom,prod}/parameter-store.tf`:
+   `/GastosApp/Cognito/UserPoolId` (prod) e
+   `/GastosApp/Hom/Cognito/UserPoolId` (hom), exatamente como assumido.
+
+**Resolvidos durante a implementação e validação ao vivo (todos os 4
+itens acima, já refletidos nas seções anteriores deste documento)** —
+incluindo um achado real não previsto no plano original: o namespace de
+rede compartilhado necessário pra JWT funcionar dentro do container
+local (ver "Container local" acima).
