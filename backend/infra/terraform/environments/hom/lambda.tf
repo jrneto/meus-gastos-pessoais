@@ -61,7 +61,8 @@ resource "aws_iam_role_policy" "lambda_exec" {
         Action = [
           "cognito-idp:SignUp",
           "cognito-idp:InitiateAuth",
-          "cognito-idp:GetUser"
+          "cognito-idp:GetUser",
+          "cognito-idp:AdminDeleteUser"
         ]
         Resource = aws_cognito_user_pool.main.arn
       },

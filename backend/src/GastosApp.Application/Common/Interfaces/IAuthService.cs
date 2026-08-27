@@ -7,6 +7,12 @@ public interface IAuthService
     Task<Result<RegisterResult>> RegisterAsync(string email, string password, CancellationToken cancellationToken = default);
     Task<Result<LoginResult>> LoginAsync(string email, string password, CancellationToken cancellationToken = default);
     Task<Result<RefreshResult>> RefreshAsync(string refreshToken, CancellationToken cancellationToken = default);
+
+    // Rollback de um SignUp já concluído (FEAT-26) — usado quando a gravação do
+    // perfil (nome/telefone/cpf) falha depois do Cognito já ter criado o usuário,
+    // pra não deixar uma conta "pela metade" nem "queimar" o email numa tentativa
+    // frustrada de cadastro.
+    Task DeleteAsync(string email, CancellationToken cancellationToken = default);
 }
 
 public record RegisterResult(string UserId, string Email);

@@ -159,12 +159,21 @@ Response 400 (parâmetro ausente ou inválido — email/senha/nome/
 telefone/cpf):
 ```json
 {
-  "type": "https://gastosapp.dev/errors/bad-request",
+  "type": "https://gastosapp.dev/errors/validation-error",
   "title": "Parâmetros inválidos",
   "status": 400,
   "detail": "Telefone deve conter 10 ou 11 dígitos numéricos."
 }
 ```
+**Nota (descoberta durante a implementação):** o `type` é
+`validation-error`, não `bad-request` como um rascunho anterior desta
+spec previa — a validação de `POST /auth/register` migrou pro
+`ValidationBehavior` compartilhado (`plan.md`, decisão técnica 3), que
+sempre usa esse código, o mesmo já usado por `/categories`,
+`/transactions` etc. Isso também muda o `type` de erros de
+`email`/`password` ausentes (já existentes desde a FEAT-01), que antes
+retornavam `bad-request` — sem impacto real hoje (sem frontend
+consumindo o valor literal ainda).
 
 Response 409 (email já cadastrado — comportamento já existente):
 ```json
@@ -213,28 +222,73 @@ genérico por tipo de erro (RFC 9457), mensagem específica sempre em
 
 ## Critérios de aceite
 
-- [ ] `POST /auth/register` com `name`, `phoneNumber` e `cpf` válidos
+- [x] `POST /auth/register` com `name`, `phoneNumber` e `cpf` válidos
       retorna 201 com os 5 campos no corpo (`userId`, `email`, `name`,
       `phoneNumber`, `cpf`)
-- [ ] Ausência de `name`, `phoneNumber` ou `cpf` retorna 400
-- [ ] `phoneNumber` fora do formato (não numérico, ou diferente de 10/11
+- [x] Ausência de `name`, `phoneNumber` ou `cpf` retorna 400
+- [x] `phoneNumber` fora do formato (não numérico, ou diferente de 10/11
       dígitos) retorna 400
-- [ ] `cpf` com dígito verificador inválido, com menos/mais de 11
+- [x] `cpf` com dígito verificador inválido, com menos/mais de 11
       dígitos, ou com todos os dígitos iguais retorna 400
-- [ ] `cpf` já usado por outro usuário retorna 409
+- [x] `cpf` já usado por outro usuário retorna 409
       (`cpf-already-exists`)
-- [ ] Comportamento existente de `email` duplicado (409) continua
+- [x] Comportamento existente de `email` duplicado (409) continua
       funcionando sem alteração
-- [ ] `GET /auth/me` retorna `name`, `phoneNumber` e `cpf` gravados no
+- [x] `GET /auth/me` retorna `name`, `phoneNumber` e `cpf` gravados no
       registro
-- [ ] Falha ao gravar o perfil após o `SignUp` no Cognito reverte o
+- [x] Falha ao gravar o perfil após o `SignUp` no Cognito reverte o
       cadastro (usuário removido do Cognito) e retorna 500, permitindo
       nova tentativa com o mesmo email
-- [ ] Nenhuma mudança no Cognito User Pool (schema/atributos) — todo o
+- [x] Nenhuma mudança no Cognito User Pool (schema/atributos) — todo o
       perfil vive no DynamoDB
-- [ ] Todo novo endpoint/campo coberto por teste de componente
-- [ ] `backend/docs/openapi.json` regenerado refletindo os novos campos
+- [x] Todo novo endpoint/campo coberto por teste de componente
+- [x] `backend/docs/openapi.json` regenerado refletindo os novos campos
       de request/response de `POST /auth/register` e `GET /auth/me`
+
+## Status
+
+Implementado conforme `plan.md`/`tasks.md`. Perfil (`Name`/`PhoneNumber`/
+`Cpf`) vive num novo item DynamoDB (`GastosApp.Domain.Users.UserProfile`,
+`PK=USER#<userId>`/`SK=PROFILE#`), gravado por
+`DynamoDbUserProfileRepository` via `TransactWriteItems` junto com um
+item-sentinela `CpfPointer` (`PK=CPF#<cpf>`) que barra CPF duplicado —
+mesmo padrão do `AccountPointer` (FEAT-19), sem `Scan`, sem GSI novo.
+Nenhuma mudança no Cognito User Pool. `CognitoAuthService.DeleteAsync`
+(`AdminDeleteUser`) faz o rollback do `SignUp` quando o CPF já existe ou
+quando a gravação do perfil falha por qualquer motivo inesperado —
+`RegisterUserCommandHandler` chama esse rollback nos dois casos, pra
+nunca deixar o email "queimado" no Cognito numa tentativa frustrada.
+
+Validação de `RegisterUserCommand` (email/senha/nome/telefone/cpf)
+migrou pra `RegisterUserCommandValidator` (FluentValidation), removendo
+a validação manual (`if`) que existia desde a FEAT-01 — exigido pela
+constitution ao tocar o Handler. `Cpf.IsValid` (algoritmo de dígito
+verificador, com rejeição de sequências repetidas) vive no Domain
+(`GastosApp.Domain.Users.Cpf`), mesmo padrão de `CategorySlug`.
+`GET /auth/me` deixou de montar a resposta só com claims do JWT e passou
+a usar `Mediator` (`GetCurrentUserQuery`), já que agora precisa ler o
+`UserProfile` no DynamoDB — `userId`/`email` continuam vindo das claims,
+nunca do body.
+
+**Descoberto durante a implementação:** o `ValidationBehavior`
+compartilhado sempre usa o código de erro `validation-error`
+(independente do validator), diferente do `bad-request` que a validação
+manual antiga de `email`/`password` usava. `spec.md` (contrato de
+`POST /auth/register`) e `plan.md` foram corrigidos de acordo — sem
+impacto real hoje, sem frontend consumindo o `type` literal ainda.
+
+Permissão IAM `cognito-idp:AdminDeleteUser` adicionada à policy
+`CognitoAccess` em `backend/infra/terraform/environments/{prod,hom}/lambda.tf`
+(aprovada no `/plan`) — nenhum recurso AWS novo, só ampliação de uma
+policy já existente.
+
+`backend/docs/openapi.json` regenerado localmente (API rodando contra
+LocalStack/cognito-local) — `git diff` confirma que só `RegisterRequest`,
+`RegisterUserResult` e `UserInfoResponse` mudaram (os 3 campos novos),
+sem tocar nenhuma outra rota.
+
+Suíte completa (`dotnet test` na solução) passa: 670/670 (1
+IntegrationTests placeholder + 464 UnitTests + 205 ComponentTests).
 
 ## Fora do escopo
 

@@ -121,4 +121,15 @@ public sealed class CognitoAuthService : IAuthService
             return Result.Failure<RefreshResult>(AuthErrors.InvalidRefreshToken);
         }
     }
+
+    public async Task DeleteAsync(string email, CancellationToken cancellationToken = default)
+    {
+        // Username = email porque o User Pool usa username_attributes=["email"]
+        // (cognito.tf) — não é um alias, é o próprio Username.
+        await _cognitoClient.AdminDeleteUserAsync(new AdminDeleteUserRequest
+        {
+            UserPoolId = _options.UserPoolId,
+            Username = email
+        }, cancellationToken);
+    }
 }

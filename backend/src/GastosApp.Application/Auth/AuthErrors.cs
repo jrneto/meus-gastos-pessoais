@@ -6,6 +6,8 @@ public static class AuthErrors
 {
     public static Error EmailAlreadyExists => Error.Conflict("email-already-exists", "Email já cadastrado");
 
+    public static Error CpfAlreadyExists => Error.Conflict("cpf-already-exists", "CPF já cadastrado");
+
     public static Error InvalidCredentials => Error.Unauthorized("invalid-credentials", "Email ou senha inválidos");
 
     public static Error RefreshTokenMissing => Error.Unauthorized("refresh-token-missing", "Refresh token ausente.");

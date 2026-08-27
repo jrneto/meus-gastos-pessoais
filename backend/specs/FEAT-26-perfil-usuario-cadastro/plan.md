@@ -498,16 +498,27 @@ pelo `AddMediator()` já configurado, sem novo `Map*Endpoints()`.
 
 | Cenário | `Error.Code` | `ErrorType` | HTTP |
 |---|---|---|---|
-| `email`/`password` ausente ou inválido (já existente) | `bad-request` | `Validation` | 400 |
-| `name` ausente ou fora de 2-150 caracteres | `bad-request` | `Validation` | 400 |
-| `phoneNumber` ausente, não numérico ou fora de 10/11 dígitos | `bad-request` | `Validation` | 400 |
-| `cpf` ausente, não numérico, fora de 11 dígitos, ou dígito verificador inválido | `bad-request` | `Validation` | 400 |
+| `email`/`password` ausente ou inválido (já existente) | `validation-error` (**mudou de `bad-request`** — ver nota abaixo) | `Validation` | 400 |
+| `name` ausente ou fora de 2-150 caracteres | `validation-error` | `Validation` | 400 |
+| `phoneNumber` ausente, não numérico ou fora de 10/11 dígitos | `validation-error` | `Validation` | 400 |
+| `cpf` ausente, não numérico, fora de 11 dígitos, ou dígito verificador inválido | `validation-error` | `Validation` | 400 |
 | `email` já cadastrado (já existente) | `email-already-exists` | `Conflict` | 409 |
 | `cpf` já cadastrado por outro usuário | `cpf-already-exists` (novo) | `Conflict` | 409 |
 | Falha inesperada gravando o perfil (ex.: throttling do DynamoDB) | — (exceção, não `Result`) | — | 500 via `GlobalExceptionHandler` |
 
 `401` de `GET /auth/me` continua vindo da checagem de claims no próprio
 endpoint (antes de qualquer `sender.Send`), sem mudança.
+
+**Descoberto durante a implementação:** `ValidationBehavior` (pipeline
+compartilhado) sempre usa `Error.Validation("validation-error", ...)`,
+independente do validator — não havia como `RegisterUserCommandValidator`
+preservar o código `bad-request` que o `AuthErrors.Validation` manual
+usava antes. Isso deixa o `type` de erro de `POST /auth/register`
+consistente com o resto da API (`/categories`, `/transactions` etc.), ao
+custo de mudar o `type` de `email`/`password` ausentes (já existente
+desde a FEAT-01) de `bad-request` pra `validation-error` — sem impacto
+real hoje, sem frontend consumindo o valor literal ainda. `spec.md`
+corrigido de acordo.
 
 ## Recursos AWS
 

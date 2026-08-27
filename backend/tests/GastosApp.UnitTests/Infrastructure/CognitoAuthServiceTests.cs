@@ -211,4 +211,22 @@ public class CognitoAuthServiceTests
         result.Error!.Type.Should().Be(ErrorType.Unauthorized);
         result.Error.Code.Should().Be("invalid-refresh-token");
     }
+
+    [Fact]
+    public async Task DeleteAsync_ShouldCallAdminDeleteUser_WithUserPoolIdAndEmailAsUsername()
+    {
+        // Arrange
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.AdminDeleteUserAsync(Arg.Any<AdminDeleteUserRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminDeleteUserResponse());
+
+        // Act
+        await service.DeleteAsync("neto@email.com");
+
+        // Assert
+        await _cognitoMock.Received(1).AdminDeleteUserAsync(
+            Arg.Is<AdminDeleteUserRequest>(r => r.UserPoolId == "us-east-1_testpool" && r.Username == "neto@email.com"),
+            Arg.Any<CancellationToken>());
+    }
 }

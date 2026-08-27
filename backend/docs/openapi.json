@@ -2012,7 +2012,10 @@
       "RegisterRequest": {
         "required": [
           "email",
-          "password"
+          "password",
+          "name",
+          "phoneNumber",
+          "cpf"
         ],
         "type": "object",
         "properties": {
@@ -2020,6 +2023,15 @@
             "type": "string"
           },
           "password": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phoneNumber": {
+            "type": "string"
+          },
+          "cpf": {
             "type": "string"
           }
         }
@@ -2110,7 +2122,10 @@
       "RegisterUserResult": {
         "required": [
           "userId",
-          "email"
+          "email",
+          "name",
+          "phoneNumber",
+          "cpf"
         ],
         "type": "object",
         "properties": {
@@ -2118,6 +2133,15 @@
             "type": "string"
           },
           "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phoneNumber": {
+            "type": "string"
+          },
+          "cpf": {
             "type": "string"
           }
         }
@@ -2387,7 +2411,9 @@
         "required": [
           "userId",
           "email",
-          "name"
+          "name",
+          "phoneNumber",
+          "cpf"
         ],
         "type": "object",
         "properties": {
@@ -2401,6 +2427,18 @@
             ]
           },
           "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phoneNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cpf": {
             "type": [
               "null",
               "string"
