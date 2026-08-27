@@ -8,6 +8,15 @@
 # Uso: docker compose up -d && ./scripts/local-init.sh
 # Detalhes em backend/infra/README.md.
 
+networks:
+  # Rede nomeada explicitamente (em vez do default implícito
+  # "<pasta>_default" do Compose) — o container do teste integrado local
+  # (FEAT-29, infra/lambda/run-local.sh) não faz parte deste
+  # docker-compose.yml, mas precisa entrar nesta mesma rede pra resolver
+  # "gastosapp-localstack"/"gastosapp-cognito-local" pelo nome.
+  gastosapp-local:
+    name: gastosapp-local
+
 services:
   localstack:
     image: localstack/localstack:4
@@ -19,6 +28,8 @@ services:
       - "4566:4566"
     volumes:
       - ./.localstack:/var/lib/localstack
+    networks:
+      - gastosapp-local
 
   cognito-local:
     build:
@@ -35,3 +46,5 @@ services:
       - "9229:9229"
     volumes:
       - ./.cognito-local:/app/.cognito
+    networks:
+      - gastosapp-local

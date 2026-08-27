@@ -1,0 +1,59 @@
+# Build efêmero do artefato Native AOT da Api, empacotado numa imagem
+# que RODA localmente (diferente de Dockerfile.build, que só produz o
+# function.zip pra deploy) — usado pelos testes integrados locais
+# (FEAT-29, ver backend/specs/FEAT-29-testes-integrados/plan.md,
+# "Container local"). Não é publicado em lugar nenhum: existe só pra
+# subir o binário publicado num container consultável via Runtime
+# Interface Emulator (RIE), rodando na mesma família de imagem base que
+# o runtime "provided.al2023" da Lambda real — é esse caminho que expõe
+# erro específico de Native AOT antes de qualquer deploy real.
+#
+# Estágio de build idêntico ao de Dockerfile.build (ver aquele arquivo
+# para o achado sobre GLIBC/Amazon Linux 2023) — duplicado aqui em vez
+# de reaproveitado via `--from=` porque cada Dockerfile deste diretório
+# já é self-contained (mesmo padrão de Dockerfile.build-account-trigger).
+#
+# Contexto de build esperado: backend/ (para enxergar src/*)
+# Uso normal: via infra/lambda/run-local.sh — não rodar direto, a menos
+# que só queira construir a imagem sem executar a suíte.
+
+FROM amazonlinux:2023 AS build
+
+RUN dnf install -y -q clang zlib-devel tar gzip \
+    && dnf clean all
+
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+
+RUN curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh \
+    && chmod +x /tmp/dotnet-install.sh \
+    && /tmp/dotnet-install.sh --channel 10.0 --quality preview --install-dir /usr/share/dotnet
+ENV PATH="/usr/share/dotnet:${PATH}"
+
+WORKDIR /src
+COPY . .
+
+RUN dotnet publish src/GastosApp.Api/GastosApp.Api.csproj \
+    -c Release \
+    -r linux-x64 \
+    --self-contained \
+    -p:PublishAot=true \
+    -p:NuGetPackageFolders=/root/.nuget/packages \
+    -o /app/publish
+
+# Imagem oficial da AWS pro runtime "provided.al2023" — mesma família de
+# base que roda a Lambda real em hom/prod (ver
+# backend/infra/terraform/environments/{hom,prod}/lambda.tf,
+# runtime = "provided.al2023"). O Runtime Interface Emulator NÃO é
+# embutido aqui de propósito — esta imagem nunca é usada em deploy real,
+# mas ainda assim o bootstrap final fica idêntico ao publicado pra
+# produção. O RIE é montado via volume no `docker run`
+# (infra/lambda/run-local.sh), sobrescrevendo o ENTRYPOINT — jeito
+# documentado pela AWS de testar imagem de runtime customizado local sem
+# alterar o artefato de produção.
+FROM public.ecr.aws/lambda/provided:al2023 AS local-run
+
+COPY --from=build /app/publish/GastosApp.Api ${LAMBDA_TASK_ROOT}/bootstrap
+COPY --from=build /app/publish/appsettings.json ${LAMBDA_TASK_ROOT}/appsettings.json
+RUN chmod +x ${LAMBDA_TASK_ROOT}/bootstrap
+
+ENTRYPOINT [ "/var/runtime/bootstrap" ]
