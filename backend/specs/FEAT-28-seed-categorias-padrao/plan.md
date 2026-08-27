@@ -233,27 +233,13 @@ criação de conta, FEAT-19).
   esperada (exigência da constitution) — só pra confirmar ausência de
   diff.
 
-## Pontos a confirmar antes do `/tasks`
+## Pontos confirmados pelo usuário
 
-1. **Ajuste necessário na spec.md.** O requisito de negócio "se já
-   existir uma categoria com o mesmo slug de uma categoria padrão,
-   aquela categoria específica do seed é ignorada, sem falhar o
-   restante" não é implementável com a abordagem atômica escolhida
-   (decisão técnica 1) — `TransactWriteItems` é tudo-ou-nada, não dá pra
-   ignorar só um item da transação e manter os outros 15. Esse cenário
-   já era descrito na própria spec como "só possível em cenário de
-   borda" (a conta é sempre nova nesse ponto, não pode ter categoria
-   prévia em uso normal). Proposta: trocar esse trecho por "se qualquer
-   item da transação falhar (cenário de dado corrompido/manual — não
-   deveria ocorrer em uso normal), a criação inteira da conta cancela e
-   é re-tentada por completo no próximo login, sem duplicar o que já
-   existir" — mesma garantia de resiliência, só que tudo-ou-nada em vez
-   de por categoria. Confirma esse ajuste antes de eu seguir pro
-   `/tasks`?
-2. Confirma a extração de `CategoryItemMapper` compartilhado (pequeno
-   refactor em `DynamoDbCategoryRepository`, sem mudança de
-   comportamento) — ou prefere duplicar a montagem do item dentro de
-   `DynamoDbAccountRepository`, sem tocar no repositório existente?
-3. Confirma `DefaultCategorySeed` em `GastosApp.Domain.Categories`
-   (decisão técnica 4) — ids fixos versionados no código-fonte, sem
-   variável de ambiente/Parameter Store novo?
+1. Ajuste em `spec.md` (o requisito de colisão de slug virou "criação
+   atômica tudo-ou-nada, re-tentada por completo no próximo login" —
+   ver `spec.md`, seção "Requisitos de negócio" e US9) — **confirmado e
+   aplicado**.
+2. Extração de `CategoryItemMapper` compartilhado entre
+   `DynamoDbCategoryRepository` e `DynamoDbAccountRepository` —
+   **confirmado**.
+3. `DefaultCategorySeed` em `GastosApp.Domain.Categories` — **confirmado**.

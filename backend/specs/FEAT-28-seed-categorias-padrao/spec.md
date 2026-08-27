@@ -45,12 +45,15 @@ do usuário, antes da FEAT-27.
    (continua string) — só fixa o valor gravado para estas 13 categorias
    específicas, em vez do `Guid.NewGuid()` aleatório usado hoje para
    categorias criadas pelo usuário.
-5. **Mesmo gatilho e mesma postura de resiliência da FEAT-19**: o seed
-   roda junto da criação de `Account`/`Membership` (trigger `Post
-   Confirmation`, com fallback no primeiro login quando o trigger não
-   rodou). Falha transitória no seed nunca impede a confirmação do
-   cadastro nem bloqueia o login — completa assim que possível (ex.:
-   próximo login), sem duplicar o que já foi criado.
+5. **Mesmo gatilho da FEAT-19, criado atomicamente junto de `Account`/
+   `Membership`**: o seed roda na mesma operação que cria a conta
+   (trigger `Post Confirmation`, com fallback no primeiro login quando
+   o trigger não rodou) — conta, titular e as 13 categorias nascem
+   juntos ou nenhum deles nasce (tudo ou nada). Falha transitória em
+   qualquer parte dessa criação nunca impede a confirmação do cadastro
+   nem bloqueia o login — a criação inteira é re-tentada por completo
+   no próximo login, sem duplicar o que já existir (mesma postura de
+   resiliência da FEAT-19, agora cobrindo também as categorias).
 6. **Sem backfill.** Só contas criadas a partir do deploy desta feature
    recebem o seed automaticamente; nenhuma conta já existente antes
    desse deploy é populada retroativamente por esta feature.
@@ -86,15 +89,17 @@ Todas com `tipo="despesa"` e `orcamentoMensalCents=null`.
   (mesma garantia já exigida para `Account`/`Membership` na FEAT-19,
   ex.: trigger e login quase simultâneos, ou múltiplos logins em
   paralelo)
-- Se, por qualquer motivo, já existir na conta uma categoria com o mesmo
-  slug de nome de uma categoria padrão (colisão só possível em cenário
-  de borda, já que a conta é recém-criada e nenhuma operação manual de
-  categoria é possível antes dela existir), aquela categoria específica
-  do seed é ignorada, sem falhar o restante do seed nem a criação da
-  conta
-- Falha transitória ao gravar as categorias padrão nunca impede a
-  confirmação do cadastro nem o login — o seed é completado assim que
-  possível (ex.: próximo login), sem duplicar categorias já criadas
+- A criação da conta (`Account`/`Membership`/13 categorias padrão) é
+  atômica: ou tudo é criado numa única operação, ou nada é — não existe
+  conta criada com só parte das categorias padrão. Se qualquer parte
+  falhar (incluindo o cenário de borda em que já existisse uma
+  categoria com o mesmo slug de uma categoria padrão — só possível com
+  dado corrompido/manual, já que a conta é recém-criada), a criação
+  inteira é desfeita e re-tentada do zero no próximo login, sem
+  duplicar o que já existir
+- Falha transitória durante essa criação nunca impede a confirmação do
+  cadastro nem o login — é sempre re-tentada por completo assim que
+  possível (ex.: próximo login)
 - Categoria padrão não tem nenhuma restrição adicional em relação a uma
   categoria criada manualmente: pode ser editada (`PUT
   /categories/{id}`) ou excluída (`DELETE /categories/{id}`) livremente,
@@ -164,13 +169,15 @@ Todas com `tipo="despesa"` e `orcamentoMensalCents=null`.
 - Then o `id` retornado para "Moradia" é sempre
   `862d8a7c-c3ef-412b-b4d3-88c1b4d317d9`, independente do ambiente
 
-**US9 — Falha transitória no seed não bloqueia confirmação/login**
-- Given uma falha transitória ao gravar as categorias padrão durante a
-  confirmação de cadastro ou o login
+**US9 — Falha transitória na criação não bloqueia confirmação/login**
+- Given uma falha transitória durante a criação atômica de `Account`/
+  `Membership`/categorias padrão (na confirmação de cadastro ou no
+  login)
 - When o restante do fluxo de confirmação/login prossegue
-- Then a confirmação/login não falha por causa disso, e o seed é
-  completado assim que possível (ex.: próximo login), sem duplicar o
-  que já foi criado
+- Then a confirmação/login não falha por causa disso, e a criação
+  inteira (conta, titular e as 13 categorias) é re-tentada por completo
+  assim que possível (ex.: próximo login), sem duplicar o que já
+  existir — nunca fica com a conta criada e só parte das categorias
 
 ## Contratos da API
 
