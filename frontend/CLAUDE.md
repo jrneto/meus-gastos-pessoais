@@ -33,6 +33,7 @@ frontend/
 ├── README.md
 ├── docs/
 │   ├── constitution.md
+│   ├── backlog.md                 # débitos técnicos e melhorias futuras
 │   └── README.md                  # explica o fluxo SDD do frontend
 ├── specs/
 │   └── FEAT-XX-nome-feature/{spec.md, plan.md, tasks.md}
@@ -63,6 +64,10 @@ Regra de dependência: `features/*` pode depender de `lib/` e
 feature nunca importa de dentro de outra.
 
 ## Convenções que valem só para o frontend
+- Toda feature nova com layout/UI segue o design system **Modernist**
+  em `frontend/design-system/` como referência — leia
+  `frontend/design-system/README.md` antes de desenhar/implementar (ver
+  `docs/constitution.md`)
 - Token de sessão em memória (Zustand), nunca em `localStorage`/
   `sessionStorage` (ver `docs/constitution.md`)
 - Nenhum `.env*` com valor real é versionado — só `.env.example`

@@ -107,3 +107,20 @@ que pareça tocar arquitetura, contrato de API ou infraestrutura.
 Vale a mesma lógica de Modo Leve vs Fluxo Completo para o contexto
 frontend — troque as referências a `backend/docs/constitution.md` e
 `backend/CLAUDE.md` pelas equivalentes em `frontend/`.
+
+## Débitos técnicos e oportunidades de melhoria
+
+Frequentemente, durante `/specify`, `/plan`, `/tasks`, implementação,
+`/review` ou qualquer trabalho em Modo Leve, surgem débitos técnicos ou
+oportunidades de melhoria que não fazem parte do escopo do que está
+sendo feito no momento. Sempre que isso acontecer, pergunte ao usuário
+se deseja anotar o item para implementação futura — nunca decida
+sozinho se anota ou não, nem deixe passar sem perguntar.
+
+Se a resposta for sim, o item vai para a seção **"Débitos técnicos e
+melhorias futuras"** do `backlog.md` do contexto correspondente
+(`backend/docs/backlog.md` ou `frontend/docs/backlog.md`), com contexto
+suficiente pra ser retomado depois sem precisar relembrar a conversa
+original (o que é, por que foi adiado, em que FEAT/momento foi
+percebido). Ao priorizar um item depois, ele sai do backlog e vira
+trabalho normal (spec nova ou Modo Leve, conforme o caso).

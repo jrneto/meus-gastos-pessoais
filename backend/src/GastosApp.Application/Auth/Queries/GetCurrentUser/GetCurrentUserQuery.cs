@@ -18,7 +18,7 @@ public sealed class GetCurrentUserQueryHandler : IQueryHandler<GetCurrentUserQue
 
     public async ValueTask<Result<UserInfoResult>> Handle(GetCurrentUserQuery query, CancellationToken cancellationToken)
     {
-        // Sem migração de dados (roadmap.md): usuário cadastrado antes desta feature
+        // Sem migração de dados (backlog.md): usuário cadastrado antes desta feature
         // não tem UserProfile — campos voltam null, sem erro (spec.md não define esse
         // caso como falha).
         var profile = await _userProfileRepository.FindByUserIdAsync(query.UserId, cancellationToken);

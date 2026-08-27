@@ -1,4 +1,4 @@
-# Roadmap — Backend para o Design System (Modernist)
+# Backlog — Backend para o Design System (Modernist)
 
 Sequência combinada em 2026-08-22 para o backend alcançar tudo que o
 design system (`frontend/design-system/screenshots/`) já assume, com
@@ -136,6 +136,24 @@ priorizar, ex.: se o projeto deixar de ser uso pessoal.
   obrigatório no porte atual, mas necessário antes de qualquer escala
   maior, dado que CPF é alvo preferencial de fraude
 
+## Débitos técnicos e melhorias futuras
+
+Itens levantados durante specify/plan/tasks/implementação/review ou
+Modo Leve, fora do escopo do que estava sendo feito no momento — ver
+"Débitos técnicos e oportunidades de melhoria" no `/CLAUDE.md` raiz do
+monorepo. Ao priorizar um item, ele vira `spec.md` própria (Fluxo
+Completo) ou é resolvido direto (Modo Leve) e sai desta lista.
+
+- **`DELETE /members` remove o membro em vez de inativá-lo** (confirmado
+  com o usuário durante a FEAT-22): deveria bloquear a remoção de um
+  membro que já lançou transações, transformando-o em `Inativo` (novo
+  `Status` de `Membership`) em vez de removê-lo de fato — um membro
+  `Inativo` continuaria aparecendo como `createdByLabel` nas transações
+  que já criou. Hoje (FEAT-20/FEAT-22) `DELETE /members` remove o
+  `Membership` incondicionalmente; transações de um membro removido
+  caem no fallback `createdByLabel="Ex-membro"` (ver
+  `backend/specs/FEAT-22-transacoes-receita-despesa/`)
+
 ## Fora desta leva, de propósito
 
 - Comprovante/anexo real (upload S3)
@@ -143,12 +161,3 @@ priorizar, ex.: se o projeto deixar de ser uso pessoal.
 - Ajustes → notificações push/e-mail reais e seletor de moeda (hoje sem
   infra nenhuma por trás — ficam só de UI no front até haver decisão
   explícita de criar essa infra)
-- **Débito técnico (confirmado com o usuário durante a FEAT-22):**
-  `DELETE /members` deveria bloquear a remoção de um membro que já
-  lançou transações, transformando-o em `Inativo` (novo `Status` de
-  `Membership`) em vez de removê-lo de fato — um membro `Inativo`
-  continuaria aparecendo como `createdByLabel` nas transações que já
-  criou. Hoje (FEAT-20/FEAT-22) `DELETE /members` remove o `Membership`
-  incondicionalmente; transações de um membro removido caem no
-  fallback `createdByLabel="Ex-membro"` (ver
-  `backend/specs/FEAT-22-transacoes-receita-despesa/`)
