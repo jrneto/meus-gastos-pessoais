@@ -159,10 +159,15 @@ public sealed record TransportResponse(
    `CpfPointer` de execuções anteriores).
 2. `AdminConfirmSignUpAsync` (SDK Cognito direto —
    `UserPoolId`+`Username=email`) pra confirmar sem depender de e-mail
-   real. **A confirmar durante a implementação**: se `cognito-local`
-   não suportar essa chamada, o fallback é habilitar
-   `AutoConfirmUser` no `config.json` do `cognito-local` (só afeta o
-   ambiente local, não hom/prod).
+   real. O `cognito-local` expõe a mesma API HTTP/JSON do Cognito
+   real (já validado manualmente via Postman) — o `IAmazonCognitoIdentityProvider`
+   configurado com `ServiceURL` apontando pro `cognito-local`
+   (`http://localhost:9229`, mesmo padrão de `CognitoOptions.ServiceURL`
+   já usado pela aplicação) chama `AdminConfirmSignUp`/`AdminDeleteUser`
+   contra ele exatamente como chamaria o Cognito real; se algum desses
+   métodos não estiver implementado no `cognito-local`, o fallback é
+   chamar o endpoint HTTP dele diretamente (mesmo protocolo, sem passar
+   pelo SDK), não mudar o ambiente pra `AutoConfirmUser`.
 3. `POST /auth/login` (via `IApiTransport`) pra obter o `accessToken`
    usado pelos testes.
 
@@ -329,9 +334,11 @@ filtro.
    segurança; preciso do seu "ok" explícito antes de qualquer
    `terraform apply`, tratado como etapa isolada no `/tasks`.
 2. **`cognito-local` suportar `AdminConfirmSignUp`/`AdminDeleteUser`** —
-   assumido como suportado (a lib emula boa parte da API Admin do
-   Cognito); se não suportar na prática, o fallback
-   (`AutoConfirmUser` no `config.json`) só afeta o ambiente local.
+   confirmado pelo usuário: `cognito-local` expõe a mesma API
+   HTTP/JSON do Cognito real (já testada manualmente via Postman); se
+   o SDK não cobrir algum método específico, o fallback é chamar o
+   endpoint HTTP do `cognito-local` diretamente (mesmo protocolo),
+   nunca mudar o comportamento pra `AutoConfirmUser`.
 3. **Versão pinada do `aws-lambda-rie`** a baixar/cachear — vou fixar
    a última versão estável no momento da implementação, documentada
    no `Dockerfile.local-run`/`run-local.sh`.
