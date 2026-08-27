@@ -690,3 +690,12 @@ feita nas features anteriores que adicionaram validator.
    `phoneNumber`, `cpf`) está adequado — segue o padrão em inglês já
    usado por `email`/`userId`/`name` (existente), diferente de campos
    de domínio como `tipo`/`categoria`/`descricao` que são em português.
+
+## Decisões confirmadas com o usuário (revisão pós-plan)
+
+1. **Permissão IAM `cognito-idp:AdminDeleteUser`** aprovada — segue
+   como task do `/tasks`, alterando `lambda.tf` de `prod` e `hom`.
+2. **Nomes dos campos em inglês** (`name`, `phoneNumber`, `cpf`)
+   aprovados sem alteração.
+
+Plano segue 100% como descrito acima — nenhum ajuste adicional.
