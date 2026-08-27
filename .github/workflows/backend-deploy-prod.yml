@@ -98,9 +98,53 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
 
-  quality:
+  # Verifica, antes de buildar/deployar qualquer coisa, que o teste
+  # integrado de homologação (FEAT-29) passou para o commit exato desta
+  # release/tag — não basta a release existir (um rascunho pode em
+  # teoria ser editado/publicado manualmente fora de ordem). Sem essa
+  # execução bem-sucedida, produção nunca recebe um deploy que não foi
+  # validado contra a API real de hom (ver spec.md, US3).
+  check-hom-integration-tests:
     needs: check-changes
     if: needs.check-changes.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # necessário para `gh run list` (execuções de workflow, escopo distinto de "contents")
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Verificar teste integrado de hom bem-sucedido para este commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          commit_sha=$(git rev-parse HEAD)
+          echo "Commit da release/tag $RELEASE_TAG: $commit_sha"
+
+          # gh run list --json conclusion reflete o resultado do workflow
+          # INTEIRO — como draft-release (backend-deploy-hom.yml) só roda
+          # depois do job integration-tests, um workflow com
+          # conclusion=success pra esse commit já garante que o teste
+          # integrado passou; não precisa inspecionar o job individualmente.
+          conclusion=$(gh run list --repo "${{ github.repository }}" \
+            --workflow backend-deploy-hom.yml \
+            --json headSha,conclusion,status \
+            --jq "[.[] | select(.headSha == \"$commit_sha\" and .status == \"completed\")] | sort_by(.conclusion) | last | .conclusion // \"\"")
+
+          if [ "$conclusion" != "success" ]; then
+            echo "Nenhuma execução BEM-SUCEDIDA de backend-deploy-hom.yml (job integration-tests incluso) encontrada para o commit $commit_sha."
+            echo "Produção não pode ser deployada sem o teste integrado de homologação ter passado para este commit."
+            exit 1
+          fi
+
+          echo "OK: backend-deploy-hom.yml passou (com teste integrado) para o commit $commit_sha."
+
+  quality:
+    needs: check-hom-integration-tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -112,7 +156,10 @@ jobs:
           dotnet-version: '10.0.x'
 
       - run: dotnet build GastosApp.sln -c Release
-      - run: dotnet test GastosApp.sln -c Release
+      # --filter exclui GastosApp.IntegrationTests (FEAT-29) — já
+      # verificado contra hom pelo job check-hom-integration-tests acima;
+      # não roda de novo aqui (rodaria contra hom outra vez, não prod).
+      - run: dotnet test GastosApp.sln -c Release --filter "Category!=Integration"
 
   deploy:
     needs: quality
