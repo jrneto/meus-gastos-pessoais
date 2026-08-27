@@ -10,10 +10,12 @@
 
 networks:
   # Rede nomeada explicitamente (em vez do default implícito
-  # "<pasta>_default" do Compose) — o container do teste integrado local
-  # (FEAT-29, infra/lambda/run-local.sh) não faz parte deste
-  # docker-compose.yml, mas precisa entrar nesta mesma rede pra resolver
-  # "gastosapp-localstack"/"gastosapp-cognito-local" pelo nome.
+  # "<pasta>_default" do Compose) — localstack e cognito-local
+  # conversam entre si por ela, e o container do teste integrado local
+  # (FEAT-29, infra/lambda/run-local.sh) precisa alcançar
+  # "gastosapp-localstack" pelo nome. Esse container não se anexa a ela
+  # diretamente (ver comentário em "ports" do cognito-local abaixo) —
+  # herda o acesso por rodar no mesmo namespace de rede do cognito-local.
   gastosapp-local:
     name: gastosapp-local
 
@@ -44,6 +46,19 @@ services:
       - PORT=9229
     ports:
       - "9229:9229"
+      # Não usado por este container — reservado para o container do
+      # teste integrado local (FEAT-29, infra/lambda/run-local.sh), que
+      # roda com --network container:gastosapp-cognito-local (namespace
+      # de rede compartilhado, não só a mesma rede Docker). Necessário
+      # porque config.json fixa IssuerDomain em "localhost:9229": o
+      # discovery document do Cognito real (e do cognito-local) devolve
+      # jwks_uri/issuer usando esse valor literal, então só resolve
+      # corretamente de dentro do MESMO namespace de rede — Docker não
+      # permite sobrescrever "localhost" via --add-host (testado/
+      # confirmado durante a implementação da FEAT-29). Publicar a porta
+      # aqui é o que permite o host alcançar, via localhost:9000, o RIE
+      # que o outro container liga na porta 8080 desse mesmo namespace.
+      - "9000:8080"
     volumes:
       - ./.cognito-local:/app/.cognito
     networks:

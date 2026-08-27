@@ -446,3 +446,8 @@ FodyWeavers.xsd
 backend/infra/.localstack/
 backend/infra/.cognito-local/
 backend/infra/.local-cognito-ids
+
+# Binário do Lambda Runtime Interface Emulator, baixado sob demanda por
+# run-local.sh (FEAT-29) — ferramenta de terceiros, não código do
+# projeto, nunca fixado em versão (ver plan.md).
+backend/infra/lambda/.rie/

@@ -13,11 +13,17 @@
 #   ./infra/lambda/run-local.sh
 set -euo pipefail
 
+# Git Bash/MSYS (Windows) reescreve argumentos começando com "/" (ex.:
+# "/aws-lambda/aws-lambda-rie", usado como --entrypoint abaixo) como
+# caminho de arquivo Windows antes de chegar no `docker`, corrompendo o
+# valor silenciosamente (mesmo achado já documentado em
+# backend/infra/CLAUDE.md e usado pelos scripts de backend/infra/scripts/).
+export MSYS_NO_PATHCONV=1
+
 cd "$(dirname "$0")/../.."  # backend/
 
 IMAGE_NAME="gastosapp-api-local-run"
 CONTAINER_NAME="gastosapp-api-local-run-container"
-NETWORK_NAME="gastosapp-local"
 RIE_DIR="infra/lambda/.rie"
 RIE_PATH="$RIE_DIR/aws-lambda-rie"
 # Sempre a última versão — o RIE é ferramenta de teste local, não um
@@ -35,10 +41,17 @@ trap cleanup EXIT
 echo "==> Garantindo LocalStack + cognito-local no ar (FEAT-18)..."
 docker compose -f infra/docker-compose.yml up -d
 
-if [ ! -f "$COGNITO_IDS_FILE" ]; then
-  echo "==> Ambiente local ainda não inicializado — rodando local-init.sh..."
-  (cd infra && ./scripts/local-init.sh)
-fi
+# Sempre roda local-init.sh (idempotente, ver backend/infra/README.md) em
+# vez de só checar se $COGNITO_IDS_FILE já existe — um `docker compose up`
+# que precisou RECRIAR os containers (ex.: mudança de config, como a rede
+# nomeada desta própria feature) reseta o estado do LocalStack/
+# cognito-local mesmo com o volume montado, deixando o Parameter Store
+# vazio; a existência do arquivo sozinha não garante que o SSM local
+# ainda tem os parâmetros. local-init.sh resolve/recria os IDs certos e
+# regrava os parâmetros a cada chamada, então rodar de novo é sempre
+# seguro.
+echo "==> Garantindo Cognito/DynamoDB/Parameter Store locais inicializados..."
+(cd infra && ./scripts/local-init.sh)
 
 # shellcheck disable=SC1090
 source "$COGNITO_IDS_FILE"
@@ -64,24 +77,34 @@ docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
 
 # ASPNETCORE_ENVIRONMENT=Testing pula o AddAwsParameterStore de
 # Program.cs (mesmo mecanismo já usado por GastosApp.ComponentTests) —
-# necessário porque os parâmetros Cognito:ServiceURL/AccessKey/SecretKey
-# já seedados no SSM local (init-parameter-store.sh) apontam pra
-# "localhost:9229", correto só quando quem consome é um processo rodando
-# no host (dotnet run); de dentro deste container, o endereço certo é o
-# nome do container na rede Docker ("gastosapp-cognito-local"). Pulando
-# o Parameter Store, todo config necessário é passado direto como
-# variável de ambiente abaixo, sempre com o hostname de rede correto.
+# todo config necessário é passado direto como variável de ambiente
+# abaixo, sem depender do Parameter Store local.
+#
+# --network container:gastosapp-cognito-local (namespace de rede
+# COMPARTILHADO, não só a mesma rede Docker) — achado real durante a
+# implementação: o discovery document que o cognito-local expõe
+# (/.well-known/openid-configuration) devolve issuer/jwks_uri fixos em
+# "http://localhost:9229" (config.json, IssuerDomain), então o middleware
+# de JWT da Api só consegue buscar o JWKS se "localhost:9229" resolver
+# pro próprio cognito-local — o que só acontece compartilhando o mesmo
+# namespace de rede (Docker recusa sobrescrever "localhost" via
+# --add-host). Nesse modo não é permitido publicar porta no próprio
+# container (nem "-p", nem "--network gastosapp-local" junto) — por isso
+# a porta 9000→8080 é publicada no cognito-local (ver docker-compose.yml),
+# e por isso Cognito__ServiceURL aqui é "localhost", não o nome do
+# container. gastosapp-localstack continua alcançável por nome porque a
+# rede "gastosapp-local" é anexada ao cognito-local, herdada por quem
+# compartilha o namespace dele.
 docker run -d --rm \
   --name "$CONTAINER_NAME" \
-  --network "$NETWORK_NAME" \
-  -p 9000:8080 \
+  --network container:gastosapp-cognito-local \
   -v "$(pwd)/$RIE_PATH:/aws-lambda/aws-lambda-rie:ro" \
   --entrypoint /aws-lambda/aws-lambda-rie \
   -e ASPNETCORE_ENVIRONMENT=Testing \
   -e Cognito__Region=us-east-1 \
   -e Cognito__UserPoolId="$USER_POOL_ID" \
   -e Cognito__ClientId="$CLIENT_ID" \
-  -e Cognito__ServiceURL=http://gastosapp-cognito-local:9229 \
+  -e Cognito__ServiceURL=http://localhost:9229 \
   -e Cognito__AccessKey=test \
   -e Cognito__SecretKey=test \
   -e DynamoDb__TableName=GastosApp-Local \
