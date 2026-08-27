@@ -1,5 +1,6 @@
 using FluentAssertions;
 using FluentValidation;
+using GastosApp.Application.Auth.Commands.Register;
 using GastosApp.Application.Categories.Commands.CreateCategory;
 using GastosApp.Application.Categories.Commands.UpdateCategory;
 using GastosApp.Application.Categories.Queries.GetCategories;
@@ -39,6 +40,7 @@ public class ApplicationExtensionsTests
     }
 
     [Theory]
+    [InlineData(typeof(IValidator<RegisterUserCommand>), typeof(RegisterUserCommandValidator))]
     [InlineData(typeof(IValidator<CreateCategoryCommand>), typeof(CreateCategoryCommandValidator))]
     [InlineData(typeof(IValidator<UpdateCategoryCommand>), typeof(UpdateCategoryCommandValidator))]
     [InlineData(typeof(IValidator<GetCategoriesQuery>), typeof(GetCategoriesQueryValidator))]
@@ -62,7 +64,7 @@ public class ApplicationExtensionsTests
     }
 
     [Fact]
-    public void AddApplicationServices_ShouldNotRegisterAnyOtherValidator_BeyondTheKnownEleven()
+    public void AddApplicationServices_ShouldNotRegisterAnyOtherValidator_BeyondTheKnownTwelve()
     {
         // Defensivo: se uma nova classe AbstractValidator<T> for criada no
         // projeto sem entrar na lista acima (e sem ser registrada em
@@ -70,7 +72,7 @@ public class ApplicationExtensionsTests
         // não pega isso sozinho — mas documenta a lista fechada esperada,
         // pra quem for adicionar um validator novo saber que precisa mexer
         // nos dois lugares (registro + este teste).
-        var expectedValidatorCount = 11;
+        var expectedValidatorCount = 12;
 
         var validatorTypesInAssembly = typeof(ApplicationExtensions).Assembly.GetTypes()
             .Count(t => !t.IsAbstract && t.BaseType is { IsGenericType: true } baseType

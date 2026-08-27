@@ -1,5 +1,6 @@
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.Domain.Accounts;
+using GastosApp.Domain.Users;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -18,12 +19,14 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
     public ICategoryRepository CategoryRepositoryMock { get; private set; } = Substitute.For<ICategoryRepository>();
     public IAccountRepository AccountRepositoryMock { get; private set; } = BuildDefaultAccountRepositoryMock();
     public IMembershipRepository MembershipRepositoryMock { get; private set; } = BuildDefaultMembershipRepositoryMock();
+    public IUserProfileRepository UserProfileRepositoryMock { get; private set; } = BuildDefaultUserProfileRepositoryMock();
 
     public void ResetAuthServiceMock() => AuthServiceMock = Substitute.For<IAuthService>();
     public void ResetTransactionRepositoryMock() => TransactionRepositoryMock = Substitute.For<ITransactionRepository>();
     public void ResetCategoryRepositoryMock() => CategoryRepositoryMock = Substitute.For<ICategoryRepository>();
     public void ResetAccountRepositoryMock() => AccountRepositoryMock = BuildDefaultAccountRepositoryMock();
     public void ResetMembershipRepositoryMock() => MembershipRepositoryMock = BuildDefaultMembershipRepositoryMock();
+    public void ResetUserProfileRepositoryMock() => UserProfileRepositoryMock = BuildDefaultUserProfileRepositoryMock();
 
     // Default "esperto": resolve accountId = userId (mesmo valor) pra todo
     // usuário — ResolveAccountEndpointFilter passa a exigir essa resolução
@@ -52,6 +55,20 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
         var mock = Substitute.For<IMembershipRepository>();
         mock.FindByAccountAndUserIdAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(call => Membership.CreateTitular(call.ArgAt<string>(0), call.ArgAt<string>(1), "titular@email.com"));
+        return mock;
+    }
+
+    // Default "esperto" (mesmo espírito do AccountRepositoryMock/MembershipRepositoryMock
+    // acima, FEAT-26): CreateAsync sempre "sucesso, sem CPF duplicado" — testes que
+    // precisam simular CPF já cadastrado sobrescrevem isso explicitamente.
+    // FindByUserIdAsync sem configuração retorna null (sem perfil), o próprio
+    // default do NSubstitute pra um retorno de referência — comportamento válido
+    // (spec.md: perfil ausente não é erro).
+    private static IUserProfileRepository BuildDefaultUserProfileRepositoryMock()
+    {
+        var mock = Substitute.For<IUserProfileRepository>();
+        mock.CreateAsync(Arg.Any<UserProfile>(), Arg.Any<CancellationToken>())
+            .Returns(new CreateUserProfileResult(CpfAlreadyExists: false));
         return mock;
     }
 
@@ -87,6 +104,9 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
 
             services.RemoveAll<IMembershipRepository>();
             services.AddScoped(_ => MembershipRepositoryMock);
+
+            services.RemoveAll<IUserProfileRepository>();
+            services.AddScoped(_ => UserProfileRepositoryMock);
 
             services.AddAuthentication()
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });

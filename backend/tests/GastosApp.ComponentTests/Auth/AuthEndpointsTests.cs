@@ -7,6 +7,7 @@ using GastosApp.Application.Auth;
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.Application.Common.Results;
 using GastosApp.ComponentTests.Support;
+using GastosApp.Domain.Users;
 using NSubstitute;
 
 namespace GastosApp.ComponentTests.Auth;
@@ -22,8 +23,18 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
         _factory.ResetAuthServiceMock();
         _factory.ResetAccountRepositoryMock();
         _factory.ResetMembershipRepositoryMock();
+        _factory.ResetUserProfileRepositoryMock();
         _client = factory.CreateClient();
     }
+
+    private static readonly object ValidRegisterRequest = new
+    {
+        email = "neto@email.com",
+        password = "Senha123",
+        name = "Fulano da Silva",
+        phoneNumber = "11999998888",
+        cpf = "11144477735"
+    };
 
     [Fact]
     public async Task Register_ComDadosValidos_Retorna201ComLocationEBody()
@@ -32,7 +43,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
             .RegisterAsync("neto@email.com", "Senha123", Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result.Success(new RegisterResult("uuid-123", "neto@email.com"))));
 
-        var response = await _client.PostAsJsonAsync("/auth/register", new { email = "neto@email.com", password = "Senha123" });
+        var response = await _client.PostAsJsonAsync("/auth/register", ValidRegisterRequest);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         response.Headers.Location!.ToString().Should().Be("/auth/me");
@@ -40,6 +51,9 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("userId").GetString().Should().Be("uuid-123");
         body.GetProperty("email").GetString().Should().Be("neto@email.com");
+        body.GetProperty("name").GetString().Should().Be("Fulano da Silva");
+        body.GetProperty("phoneNumber").GetString().Should().Be("11999998888");
+        body.GetProperty("cpf").GetString().Should().Be("11144477735");
     }
 
     [Fact]
@@ -49,7 +63,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
             .RegisterAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result.Failure<RegisterResult>(AuthErrors.EmailAlreadyExists)));
 
-        var response = await _client.PostAsJsonAsync("/auth/register", new { email = "neto@email.com", password = "Senha123" });
+        var response = await _client.PostAsJsonAsync("/auth/register", ValidRegisterRequest);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
 
@@ -57,17 +71,49 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/email-already-exists");
     }
 
-    [Theory]
-    [InlineData("", "Senha123")]
-    [InlineData("neto@email.com", "")]
-    [InlineData("neto@email.com", "123")]
-    public async Task Register_ComParametrosInvalidos_Retorna400SemChamarAuthService(string email, string password)
+    [Fact]
+    public async Task Register_ComCpfJaCadastrado_Retorna409EDesfazCadastroNoCognito()
     {
-        var response = await _client.PostAsJsonAsync("/auth/register", new { email, password });
+        _factory.AuthServiceMock
+            .RegisterAsync("neto@email.com", "Senha123", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Success(new RegisterResult("uuid-123", "neto@email.com"))));
+        _factory.UserProfileRepositoryMock
+            .CreateAsync(Arg.Any<UserProfile>(), Arg.Any<CancellationToken>())
+            .Returns(new CreateUserProfileResult(CpfAlreadyExists: true));
+
+        var response = await _client.PostAsJsonAsync("/auth/register", ValidRegisterRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/cpf-already-exists");
+
+        await _factory.AuthServiceMock.Received(1).DeleteAsync("neto@email.com", Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("", "Senha123", "Fulano da Silva", "11999998888", "11144477735")]
+    [InlineData("neto@email.com", "", "Fulano da Silva", "11999998888", "11144477735")]
+    [InlineData("neto@email.com", "123", "Fulano da Silva", "11999998888", "11144477735")]
+    [InlineData("neto@email.com", "Senha123", "", "11999998888", "11144477735")]
+    [InlineData("neto@email.com", "Senha123", "A", "11999998888", "11144477735")]
+    [InlineData("neto@email.com", "Senha123", "Fulano da Silva", "", "11144477735")]
+    [InlineData("neto@email.com", "Senha123", "Fulano da Silva", "(11) 99999-8888", "11144477735")]
+    [InlineData("neto@email.com", "Senha123", "Fulano da Silva", "11999998888", "")]
+    [InlineData("neto@email.com", "Senha123", "Fulano da Silva", "11999998888", "11111111111")]
+    [InlineData("neto@email.com", "Senha123", "Fulano da Silva", "11999998888", "11144477736")]
+    public async Task Register_ComParametrosInvalidos_Retorna400SemChamarAuthService(
+        string email, string password, string name, string phoneNumber, string cpf)
+    {
+        var response = await _client.PostAsJsonAsync("/auth/register", new { email, password, name, phoneNumber, cpf });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
-        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/bad-request");
+        // "validation-error", não mais "bad-request": a validação de RegisterUserCommand
+        // migrou pro ValidationBehavior (mesmo pipeline usado por Category/Transaction/etc.),
+        // que sempre usa esse código (ver ValidationBehavior.cs) — descoberto durante os
+        // testes desta feature, spec.md corrigido de acordo (não há frontend consumindo
+        // o "type" literal ainda).
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/validation-error");
 
         _ = _factory.AuthServiceMock.DidNotReceive()
             .RegisterAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -308,8 +354,31 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
     }
 
     [Fact]
-    public async Task Me_ComHeaderDeAutenticacaoDeTeste_Retorna200ComDadosDoUsuario()
+    public async Task Me_ComPerfilCadastrado_Retorna200ComNomeTelefoneCpf()
     {
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue(TestAuthHandler.SchemeName, "uuid-123|neto@email.com|Neto");
+        _factory.UserProfileRepositoryMock
+            .FindByUserIdAsync("uuid-123", Arg.Any<CancellationToken>())
+            .Returns(UserProfile.Restore("uuid-123", "Fulano da Silva", "11999998888", "11144477735", DateTimeOffset.UtcNow));
+
+        var response = await _client.GetAsync("/auth/me");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("userId").GetString().Should().Be("uuid-123");
+        body.GetProperty("email").GetString().Should().Be("neto@email.com");
+        body.GetProperty("name").GetString().Should().Be("Fulano da Silva");
+        body.GetProperty("phoneNumber").GetString().Should().Be("11999998888");
+        body.GetProperty("cpf").GetString().Should().Be("11144477735");
+    }
+
+    [Fact]
+    public async Task Me_SemPerfilCadastrado_Retorna200ComCamposNulos()
+    {
+        // Usuário cadastrado antes desta feature (sem migração de dados, roadmap.md) —
+        // FindByUserIdAsync sem configuração já retorna null (default do mock).
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(TestAuthHandler.SchemeName, "uuid-123|neto@email.com|Neto");
 
@@ -320,7 +389,9 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("userId").GetString().Should().Be("uuid-123");
         body.GetProperty("email").GetString().Should().Be("neto@email.com");
-        body.GetProperty("name").GetString().Should().Be("Neto");
+        body.GetProperty("name").ValueKind.Should().Be(JsonValueKind.Null);
+        body.GetProperty("phoneNumber").ValueKind.Should().Be(JsonValueKind.Null);
+        body.GetProperty("cpf").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     [Fact]
@@ -341,7 +412,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
             .RegisterAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<Result<RegisterResult>>(new InvalidOperationException("Falha simulada")));
 
-        var response = await _client.PostAsJsonAsync("/auth/register", new { email = "neto@email.com", password = "Senha123" });
+        var response = await _client.PostAsJsonAsync("/auth/register", ValidRegisterRequest);
 
         response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
 

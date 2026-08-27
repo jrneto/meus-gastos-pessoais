@@ -87,18 +87,53 @@ coluna "Depende de".
   transações do período — cobre o botão "Exportar CSV" de Ajustes.
   Depende de: FEAT-22.
 
-- [ ] **FEAT-26 — E-mail de boas-vindas**
+- [ ] **FEAT-26 — Perfil do usuário no cadastro (nome, telefone, CPF)**
+  *(inserida fora da ordem original desta lista, a pedido do usuário,
+  empurrando as duas linhas seguintes uma posição adiante)*
+  `POST /auth/register` passa a exigir também `name`, `phoneNumber` e
+  `cpf`, armazenados num novo item de perfil no DynamoDB (não em
+  atributos do Cognito — CPF não é atributo padrão e um atributo
+  customizado só pode ser definido na criação do User Pool). CPF único
+  e validado por dígito verificador. `GET /auth/me` passa a expor os
+  três campos.
+  Depende de: FEAT-01 (auth).
+
+- [ ] **FEAT-27 — E-mail de boas-vindas**
   Envia e-mail de boas-vindas quando a conta é criada (mesmo trigger
   `Post Confirmation` da FEAT-19). Exige decidir/provisionar
   infraestrutura de e-mail (SES ou similar) — inexistente no projeto
   hoje. Escopo deixado de fora da FEAT-19 de propósito.
   Depende de: FEAT-19.
 
-- [ ] **FEAT-27 — Seed de categorias padrão**
+- [ ] **FEAT-28 — Seed de categorias padrão**
   Cria automaticamente um conjunto de categorias padrão (nome, cor,
   ícone) para toda conta nova. Já tinha sido adiado na FEAT-16;
   retomado aqui porque a criação de conta (FEAT-19) é o gatilho natural.
   Depende de: FEAT-19, FEAT-16.
+
+## Backlog de compliance (LGPD) — sem previsão de execução
+
+Levantado durante o `/specify` da FEAT-26 (coleta de CPF no cadastro).
+Sem timeline — só entram na `## Sequência` quando o usuário decidir
+priorizar, ex.: se o projeto deixar de ser uso pessoal.
+
+- **Direito de exclusão/anonimização** (`Art. 16` LGPD): hoje não existe
+  fluxo de encerramento de conta; ao existir, precisa apagar ou
+  anonimizar nome/telefone/CPF, não reter indefinidamente
+- **Direito de retificação** (`Art. 18` LGPD): edição do próprio perfil
+  (nome/telefone/CPF) pelo usuário — hoje fora do escopo da FEAT-26
+  de propósito
+- **Base legal e consentimento explícito** (`Art. 7º`/`Art. 9º` LGPD):
+  tela de cadastro sem Termos de Uso/Política de Privacidade hoje —
+  necessário formalizar a finalidade da coleta de CPF antes de
+  qualquer uso além de identificação da conta
+- **Transferência internacional de dados** (`Art. 33` LGPD): infra de
+  produção roda em `us-east-1` (`backend/infra/terraform/environments/
+  prod/variables.tf`) — reavaliar migração para `sa-east-1` (São Paulo)
+  se o volume de dados pessoais justificar simplificar essa exigência
+- **Encarregado (DPO) e plano de resposta a incidente**: não
+  obrigatório no porte atual, mas necessário antes de qualquer escala
+  maior, dado que CPF é alvo preferencial de fraude
 
 ## Fora desta leva, de propósito
 
