@@ -43,32 +43,43 @@ API" acima) — não muda nada em como você debuga o lado do teste.
 
 ### Modo local
 
-1. Suba o ambiente e **deixe rodando** — não use `run-local.sh` pra
-   isso, ele desliga tudo ao final:
-   ```bash
-   cd backend
-   ./infra/lambda/local-env-up.sh
-   ```
-2. No VS Code, abra o arquivo do teste (ex.:
-   `tests/GastosApp.IntegrationTests/Auth/AuthFlowTests.cs`) e clique
-   na margem esquerda da linha onde quer parar.
-3. Dispare de um destes jeitos:
-   - **Test Explorer** (ícone de frasco na barra lateral, exige C# Dev
-     Kit): ache o teste na árvore (ou use o ícone de debug que aparece
-     acima do método, via CodeLens) e clique em "Debug Test".
-     `INTEGRATION_TESTS_MODE=local` já é aplicado automaticamente —
-     `.vscode/settings.json`, chave `dotnet.unitTestDebuggingOptions`.
-   - **Run and Debug** (`Ctrl+Shift+D`): escolha **"Debug Integration
-     Tests (local, todos)"** (roda os 3 testes de Auth) ou **"Debug
-     Integration Tests (local, escolher filtro)"** (pede um filtro,
-     ex.: `FullyQualifiedName~Login_CredenciaisInvalidas` pra rodar só
-     um) e aperte `F5`.
-4. A execução para no breakpoint — inspeciona variável, watch, call
-   stack, normalmente.
-5. Quando terminar de debugar:
-   ```bash
-   ./infra/lambda/local-env-down.sh
-   ```
+**Duas formas de disparar, cada uma falando com um "backend" diferente
+— não misture as duas ao mesmo tempo (ver "Debugar a própria Api"
+abaixo pra entender a diferença):**
+
+- **Test Explorer** (ícone de frasco na barra lateral, ou o ícone de
+  debug/run que aparece via CodeLens acima do método, exige C# Dev
+  Kit) — **aponta pra Api rodando via Kestrel/JIT**
+  (`http://localhost:5049`, `.vscode/settings.json`,
+  `dotnet.unitTestDebuggingOptions`). Precisa da Api rodando à parte
+  **antes** de clicar Run/Debug Test:
+  ```bash
+  cd backend
+  dotnet run --project src/GastosApp.Api   # ou F5 na config "GastosApp.Api"
+  ```
+  Sem isso, dá `HttpIOException: The response ended prematurely`
+  (achado real — ver "Debugar a própria Api" abaixo pro porquê exato
+  dessa mensagem específica).
+
+- **Run and Debug** (`Ctrl+Shift+D`) com as configs
+  **"Debug Integration Tests (local, todos)"** ou **"Debug Integration
+  Tests (local, escolher filtro)"** — essas **sim** apontam pro
+  container Native AOT via Runtime Interface Emulator (têm seu próprio
+  `env` no `launch.json`, não usam o default do Test Explorer). Precisa
+  do container no ar:
+  ```bash
+  cd backend
+  ./infra/lambda/local-env-up.sh   # deixa rodando — não use run-local.sh aqui, ele desliga tudo ao final
+  ```
+  Aperte `F5` na config escolhida. Quando terminar:
+  ```bash
+  ./infra/lambda/local-env-down.sh
+  ```
+
+Nos dois casos: coloque o breakpoint no arquivo do teste antes de
+disparar (ex.: `tests/GastosApp.IntegrationTests/Auth/AuthFlowTests.cs`)
+— a execução para ali, inspeciona variável/watch/call stack
+normalmente.
 
 ### Debugar a própria Api (não só o teste)
 

@@ -5,16 +5,31 @@
         "strings": true
     },
     "editor.suggestOnTriggerCharacters": true,
-    // Aplicado a toda sessão de debug disparada pelo Test Explorer
-    // (ícone de bug ao lado de um [Fact]/[Theory], via C# Dev Kit) —
-    // inofensivo pros outros projetos de teste (UnitTests/ComponentTests
-    // simplesmente ignoram essa env var). Cobre o caso comum (local);
-    // pra debugar contra hom, use a config "Debug Integration Tests
-    // (hom)" em launch.json em vez do Test Explorer — ver
+    // Aplicado a toda execução/debug disparada pelo Test Explorer
+    // (ícone de frasco na barra lateral, ou o ícone de debug/run acima
+    // de um [Fact]/[Theory], via C# Dev Kit) — inofensivo pros outros
+    // projetos de teste (UnitTests/ComponentTests simplesmente ignoram
+    // essas env vars).
+    //
+    // INTEGRATION_TESTS_BASE_URL aqui faz o Test Explorer apontar pra
+    // Api rodando via Kestrel/JIT (`http://localhost:5049` — a mesma
+    // porta da config "GastosApp.Api" em launch.json), NÃO pro
+    // container Native AOT/RIE. Precisa da Api rodando à parte
+    // (`F5` na config "GastosApp.Api", ou `dotnet run --project
+    // src/GastosApp.Api`) ANTES de rodar/debugar pelo Test Explorer —
+    // sem isso, cai numa "resposta terminou prematuramente" (achado
+    // real: o Docker aceita a conexão em localhost:9000 via
+    // cognito-local, que publica essa porta pro container FEAT-29, mas
+    // fecha na hora se não tiver nada ouvindo do outro lado).
+    //
+    // Pra validar contra o binário Native AOT publicado de verdade
+    // (mais fiel à produção), use `./infra/lambda/run-local.sh` (CLI)
+    // em vez do Test Explorer — ver
     // backend/tests/GastosApp.IntegrationTests/README.md.
     "dotnet.unitTestDebuggingOptions": {
         "env": {
-            "INTEGRATION_TESTS_MODE": "local"
+            "INTEGRATION_TESTS_MODE": "local",
+            "INTEGRATION_TESTS_BASE_URL": "http://localhost:5049"
         }
     }
 }
