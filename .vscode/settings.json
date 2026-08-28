@@ -4,5 +4,17 @@
         "comments": true,
         "strings": true
     },
-    "editor.suggestOnTriggerCharacters": true
+    "editor.suggestOnTriggerCharacters": true,
+    // Aplicado a toda sessão de debug disparada pelo Test Explorer
+    // (ícone de bug ao lado de um [Fact]/[Theory], via C# Dev Kit) —
+    // inofensivo pros outros projetos de teste (UnitTests/ComponentTests
+    // simplesmente ignoram essa env var). Cobre o caso comum (local);
+    // pra debugar contra hom, use a config "Debug Integration Tests
+    // (hom)" em launch.json em vez do Test Explorer — ver
+    // backend/tests/GastosApp.IntegrationTests/README.md.
+    "dotnet.unitTestDebuggingOptions": {
+        "env": {
+            "INTEGRATION_TESTS_MODE": "local"
+        }
+    }
 }

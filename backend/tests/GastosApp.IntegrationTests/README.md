@@ -17,7 +17,86 @@ desenho completo. Este README é só o passo a passo prático de debug.
   (`POST /auth/register` → `AdminConfirmSignUp` via SDK → `POST /auth/login`)
   e limpa tudo ao final (Cognito + DynamoDB), mesmo se o teste falhar.
 
-## 1. Debugar contra o ambiente local (mais comum)
+## 1. Debugar com breakpoint no VS Code
+
+Pré-requisito: extensão **C#** (`ms-dotnettools.csharp`) instalada — o
+Test Explorer com CodeLens/ícone de debug por teste vem do **C# Dev
+Kit**, mas o F5 via `launch.json` funciona só com a C# "básica".
+
+O ponto chave: o processo que roda o **código da suíte**
+(`AuthFlowTests.cs`, `TestAccountFixture.cs`, `LambdaRieTransport.cs`
+etc.) é sempre um `dotnet test` normal rodando **na sua máquina** —
+nunca dentro de um container, em nenhum dos 3 modos. Breakpoint nesses
+arquivos funciona exatamente como em qualquer outro projeto de teste
+.NET (`UnitTests`/`ComponentTests`). O que muda por modo é só **pra
+onde** a suíte manda a requisição HTTP (ver "Como a suíte fala com a
+API" acima) — não muda nada em como você debuga o lado do teste.
+
+> Se o objetivo é debugar o **código da Api** (não o do teste) rodando
+> dentro do container Native AOT em modo local, isso é bem mais
+> limitado — Native AOT não tem o mesmo suporte de debug interativo que
+> um binário JIT normal. Pra investigar um bug da Api nesse cenário,
+> prefira reproduzir contra `dotnet run` local (config `GastosApp.Api`
+> já existente em `.vscode/launch.json`, com breakpoint normal) e só
+> confirmar depois contra o binário publicado — os dois rodam o mesmo
+> código-fonte, a diferença é só JIT vs. AOT.
+
+### Modo local
+
+1. Suba o ambiente e **deixe rodando** — não use `run-local.sh` pra
+   isso, ele desliga tudo ao final:
+   ```bash
+   cd backend
+   ./infra/lambda/local-env-up.sh
+   ```
+2. No VS Code, abra o arquivo do teste (ex.:
+   `tests/GastosApp.IntegrationTests/Auth/AuthFlowTests.cs`) e clique
+   na margem esquerda da linha onde quer parar.
+3. Dispare de um destes jeitos:
+   - **Test Explorer** (ícone de frasco na barra lateral, exige C# Dev
+     Kit): ache o teste na árvore (ou use o ícone de debug que aparece
+     acima do método, via CodeLens) e clique em "Debug Test".
+     `INTEGRATION_TESTS_MODE=local` já é aplicado automaticamente —
+     `.vscode/settings.json`, chave `dotnet.unitTestDebuggingOptions`.
+   - **Run and Debug** (`Ctrl+Shift+D`): escolha **"Debug Integration
+     Tests (local, todos)"** (roda os 3 testes de Auth) ou **"Debug
+     Integration Tests (local, escolher filtro)"** (pede um filtro,
+     ex.: `FullyQualifiedName~Login_CredenciaisInvalidas` pra rodar só
+     um) e aperte `F5`.
+4. A execução para no breakpoint — inspeciona variável, watch, call
+   stack, normalmente.
+5. Quando terminar de debugar:
+   ```bash
+   ./infra/lambda/local-env-down.sh
+   ```
+
+### Modo hom (contra a API real de homologação)
+
+1. Autentique na AWS no **mesmo** terminal/perfil que o VS Code herda
+   (ex.: `aws sso login --profile <seu-profile>` e
+   `export AWS_PROFILE=<seu-profile>` antes de abrir o VS Code a partir
+   desse terminal) — a suíte usa a cadeia padrão de credenciais do SDK,
+   nada é declarado no `launch.json`.
+2. Use a config **"Debug Integration Tests (hom, escolher filtro)"** em
+   Run and Debug (`F5`) — pede um filtro de teste.
+3. Isso cria e limpa uma conta de teste **real** em homologação (ver
+   `TestAccountFixture`). Evite deixar pausado num breakpoint por muito
+   tempo no meio de um teste — a limpeza só roda quando o teste
+   termina (`DisposeAsync`).
+
+### Sem VS Code — anexar um debugger via linha de comando
+
+```bash
+INTEGRATION_TESTS_MODE=local VSTEST_HOST_DEBUG=1 \
+  dotnet test tests/GastosApp.IntegrationTests --filter "FullyQualifiedName~NomeDoTeste"
+```
+
+O `testhost` imprime o próprio PID e fica esperando um debugger anexar
+antes de continuar. No VS Code: **Run → Attach to Process** (ou
+`Ctrl+Shift+P` → "Debug: Attach to a .NET 5+ or .NET Core Process") e
+escolha esse PID.
+
+## 2. Debugar contra o ambiente local (mais comum)
 
 ### Rodar do zero
 
@@ -130,7 +209,7 @@ como caminho de arquivo Windows antes de chegar no programa. Os
 scripts (`run-local.sh`, `local-init.sh` etc.) já fazem isso
 internamente.
 
-## 2. Debugar contra homologação/produção
+## 3. Debugar contra homologação/produção
 
 Precisa de credenciais AWS reais com permissão na role
 `gastosapp-backend-cicd` (ou equivalente) — localmente, geralmente via
@@ -190,14 +269,14 @@ aws dynamodb query --table-name GastosApp-Hom \
   --expression-attribute-values '{":pk":{"S":"USER#<userId>"}}'
 ```
 
-## 3. Rodando um teste específico (qualquer modo)
+## 4. Rodando um teste específico (qualquer modo)
 
 ```bash
 dotnet test tests/GastosApp.IntegrationTests -c Release \
   --filter "FullyQualifiedName~AuthFlowTests.Login_CredenciaisInvalidas_Retorna401"
 ```
 
-## 4. Por que a suíte não roda no `dotnet test GastosApp.sln` normal
+## 5. Por que a suíte não roda no `dotnet test GastosApp.sln` normal
 
 Todo teste aqui tem `[Trait("Category", "Integration")]`. O `dotnet
 test` usado no gate de qualidade (local e CI) filtra

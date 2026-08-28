@@ -14,6 +14,86 @@
       },
       "console": "internalConsole",
       "stopAtEntry": false
+    },
+    // Debuga a suíte GastosApp.IntegrationTests (FEAT-29) via `dotnet
+    // test` sob o debugger — o adaptador coreclr anexa automaticamente
+    // no processo filho (testhost) que de fato roda a suíte, então
+    // breakpoint em qualquer arquivo de tests/GastosApp.IntegrationTests
+    // funciona normalmente. Pré-requisito pro modo local: ambiente no ar
+    // via `./infra/lambda/local-env-up.sh` (ver README.md do projeto de
+    // testes). "justMyCode": false ajuda a inspecionar dentro de
+    // FluentAssertions/SDK da AWS se precisar.
+    {
+      "name": "Debug Integration Tests (local, todos)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/backend/tests/GastosApp.IntegrationTests/GastosApp.IntegrationTests.csproj",
+        "--filter", "Category=Integration"
+      ],
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "INTEGRATION_TESTS_MODE": "local"
+      },
+      "console": "internalConsole",
+      "stopAtEntry": false,
+      "justMyCode": false
+    },
+    // Igual à de cima, mas pede o filtro na hora — cole algo como
+    // "FullyQualifiedName~Login_CredenciaisInvalidas" pra rodar (e
+    // debugar) só um teste específico.
+    {
+      "name": "Debug Integration Tests (local, escolher filtro)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/backend/tests/GastosApp.IntegrationTests/GastosApp.IntegrationTests.csproj",
+        "--filter", "${input:integrationTestFilter}"
+      ],
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "INTEGRATION_TESTS_MODE": "local"
+      },
+      "console": "internalConsole",
+      "stopAtEntry": false,
+      "justMyCode": false
+    },
+    // Contra homologação real — precisa de `aws sso login` (ou
+    // equivalente) já feito no terminal/perfil que o VS Code herda
+    // ANTES de disparar esta config (credenciais resolvidas pela cadeia
+    // padrão do SDK, não declaradas aqui). Cria/limpa uma conta de
+    // teste real em hom.
+    {
+      "name": "Debug Integration Tests (hom, escolher filtro)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/backend/tests/GastosApp.IntegrationTests/GastosApp.IntegrationTests.csproj",
+        "--filter", "${input:integrationTestFilter}"
+      ],
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "INTEGRATION_TESTS_MODE": "hom",
+        "INTEGRATION_TESTS_BASE_URL": "https://api-hom.jrnexpenses.com",
+        "INTEGRATION_TESTS_PARAMETER_STORE_PATH": "/GastosApp/Hom/"
+      },
+      "console": "internalConsole",
+      "stopAtEntry": false,
+      "justMyCode": false
+    }
+  ],
+  "inputs": [
+    {
+      "id": "integrationTestFilter",
+      "type": "promptString",
+      "description": "Filtro do dotnet test (ex.: Category=Integration, ou FullyQualifiedName~NomeDoTeste)",
+      "default": "Category=Integration"
     }
   ]
 }
