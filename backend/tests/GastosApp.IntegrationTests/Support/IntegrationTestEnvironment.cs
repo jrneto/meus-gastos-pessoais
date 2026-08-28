@@ -24,7 +24,18 @@ public sealed class IntegrationTestEnvironment
 
     public required IntegrationTestMode Mode { get; init; }
 
-    /// <summary>URL base da API — só usada em Hom/Prod (DirectHttpTransport).</summary>
+    /// <summary>
+    /// URL base da API — usada em Hom/Prod (sempre), e opcionalmente em
+    /// Local também: se <c>INTEGRATION_TESTS_BASE_URL</c> estiver setada
+    /// com <c>Mode=Local</c>, <see cref="ApiTransportFactory"/> troca o
+    /// transporte pra <see cref="DirectHttpTransport"/> (HTTP direto)
+    /// em vez de <see cref="LambdaRieTransport"/> — usado pra debugar a
+    /// própria Api com breakpoint (`dotnet run`/Kestrel, JIT normal) sem
+    /// abrir mão dos emuladores locais (Cognito/DynamoDB continuam via
+    /// LocalStack/cognito-local, só o transporte HTTP muda). Ver
+    /// backend/tests/GastosApp.IntegrationTests/README.md, "Debugar a
+    /// própria Api (não só o teste)".
+    /// </summary>
     public string? BaseUrl { get; init; }
 
     /// <summary>Endpoint do Runtime Interface Emulator — só usado em Local (LambdaRieTransport).</summary>
@@ -74,9 +85,13 @@ public sealed class IntegrationTestEnvironment
             },
             // Default: local — permite rodar a suíte sem configurar nada
             // além de `docker compose up -d` + run-local.sh (FEAT-18/FEAT-29).
+            // BaseUrl só é lida aqui (diferente de Hom/Prod, onde é
+            // obrigatória) — presença opcional é o que sinaliza "local
+            // direto via Kestrel" pra ApiTransportFactory.
             _ => new IntegrationTestEnvironment
             {
                 Mode = IntegrationTestMode.Local,
+                BaseUrl = Environment.GetEnvironmentVariable("INTEGRATION_TESTS_BASE_URL"),
                 ParameterStorePath = "/GastosApp/",
                 DynamoDbTableName = "GastosApp-Local",
                 ParameterStoreServiceUrl = "http://localhost:4566",

@@ -70,6 +70,45 @@ API" acima) — não muda nada em como você debuga o lado do teste.
    ./infra/lambda/local-env-down.sh
    ```
 
+### Debugar a própria Api (não só o teste)
+
+O fluxo acima ("Modo local") debuga o **código do teste** — o
+container continua sendo o binário Native AOT via RIE, sem debugger
+nenhum anexado nele. Native AOT não tem o mesmo suporte de debug
+interativo que código JIT, então **não dá pra colocar breakpoint
+dentro do código da Api enquanto ela roda no container**.
+
+Pra colocar breakpoint dentro da própria Api (um `Handler`, um
+`Endpoint`, etc.), a saída é rodar a Api via `dotnet run`/Kestrel (JIT
+normal — breakpoint funciona igual a qualquer projeto ASP.NET Core) e
+apontar a suíte pra ela via HTTP direto, em vez do container/RIE.
+`INTEGRATION_TESTS_MODE=local` continua usando LocalStack/cognito-local
+pros emuladores — só o transporte HTTP muda (basta
+`INTEGRATION_TESTS_BASE_URL` estar setada nesse modo, ver
+`Support/ApiTransportFactory.cs`).
+
+1. Garanta LocalStack + cognito-local no ar:
+   ```bash
+   cd backend/infra && docker compose up -d && cd ..
+   ```
+2. Coloque o breakpoint dentro do código da Api (ex.:
+   `src/GastosApp.Application/Auth/Commands/Register/RegisterUserCommand.cs`).
+3. Duas formas de disparar (Run and Debug, `Ctrl+Shift+D`):
+   - **Um clique**: escolha o compound **"Debug Api + Integration Test
+     (local via Kestrel)"** e aperte `F5` — sobe a Api e já dispara o
+     teste (pede o filtro). Tem uma corrida em aberto: se o teste
+     disparar antes da Api terminar de subir, a primeira tentativa
+     falha por "connection refused" — só rodar de novo a config do
+     teste sozinha (a Api já vai estar de pé). Se isso incomodar, use o
+     fluxo em 2 passos abaixo.
+   - **2 passos (mais previsível)**: rode **"GastosApp.Api"** primeiro,
+     espere aparecer `Now listening on: http://localhost:5000` no
+     Debug Console; só então, numa segunda sessão de debug, rode
+     **"Debug Integration Tests (local via Kestrel, escolher
+     filtro)"**.
+4. Os dois breakpoints (Api e teste) funcionam ao mesmo tempo — são
+   duas sessões de debug simultâneas no VS Code.
+
 ### Modo hom (contra a API real de homologação)
 
 1. Autentique na AWS no **mesmo** terminal/perfil que o VS Code herda

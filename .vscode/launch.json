@@ -1,6 +1,13 @@
 {
   "version": "0.2.0",
   "configurations": [
+    // Sobe a Api via Kestrel (JIT normal, breakpoint funciona igual a
+    // qualquer projeto ASP.NET Core) — binda em http://localhost:5000
+    // (confirmado empiricamente; como lança o .dll direto, não passa
+    // pelo profile "http" de launchSettings.json, que aponta 5049).
+    // Pré-requisito: LocalStack + cognito-local no ar
+    // (`docker compose -f backend/infra/docker-compose.yml up -d`) —
+    // appsettings.Development.json já aponta pra eles.
     {
       "name": "GastosApp.Api",
       "type": "coreclr",
@@ -62,6 +69,33 @@
       "stopAtEntry": false,
       "justMyCode": false
     },
+    // "Local direto": em vez do container Native AOT/RIE, aponta pra
+    // Api rodando via Kestrel/JIT (config "GastosApp.Api" acima) —
+    // permite breakpoint DENTRO do código da própria Api (handler,
+    // endpoint etc.), não só no código do teste. Cognito/DynamoDB
+    // continuam via LocalStack/cognito-local (isso não muda). Use o
+    // compound "Debug Api + Integration Test (local via Kestrel)" pra
+    // subir os dois numa tacada só. Ver README.md, "Debugar a própria
+    // Api (não só o teste)".
+    {
+      "name": "Debug Integration Tests (local via Kestrel, escolher filtro)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/backend/tests/GastosApp.IntegrationTests/GastosApp.IntegrationTests.csproj",
+        "--filter", "${input:integrationTestFilter}"
+      ],
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "INTEGRATION_TESTS_MODE": "local",
+        "INTEGRATION_TESTS_BASE_URL": "http://localhost:5000"
+      },
+      "console": "internalConsole",
+      "stopAtEntry": false,
+      "justMyCode": false
+    },
     // Contra homologação real — precisa de `aws sso login` (ou
     // equivalente) já feito no terminal/perfil que o VS Code herda
     // ANTES de disparar esta config (credenciais resolvidas pela cadeia
@@ -94,6 +128,25 @@
       "type": "promptString",
       "description": "Filtro do dotnet test (ex.: Category=Integration, ou FullyQualifiedName~NomeDoTeste)",
       "default": "Category=Integration"
+    }
+  ],
+  "compounds": [
+    // Sobe a Api (Kestrel/JIT) E dispara o teste integrado contra ela
+    // numa tacada só — duas sessões de debug simultâneas no VS Code,
+    // breakpoint funciona nas duas (código da Api E código do teste).
+    // Pré-requisito: LocalStack + cognito-local no ar (ver comentário
+    // na config "GastosApp.Api"). Risco de corrida: o compound não
+    // espera a Api terminar de subir antes de disparar o teste — se a
+    // primeira tentativa falhar por "connection refused", é só rodar
+    // de novo só a config do teste (a Api já vai estar de pé). Se isso
+    // incomodar, prefira o fluxo manual em 2 passos (README.md).
+    {
+      "name": "Debug Api + Integration Test (local via Kestrel)",
+      "configurations": [
+        "GastosApp.Api",
+        "Debug Integration Tests (local via Kestrel, escolher filtro)"
+      ],
+      "stopAll": true
     }
   ]
 }
