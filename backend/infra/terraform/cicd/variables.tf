@@ -39,3 +39,30 @@ variable "prod_account_trigger_function_name" {
   type        = string
   default     = "jrnexpenses-account-trigger"
 }
+
+# FEAT-29 — usados só pelo job de teste integrado em CI (nunca pela
+# Lambda da aplicação, cujas permissões não mudam nesta feature).
+
+variable "hom_cognito_user_pool_name" {
+  description = "Nome do User Pool do Cognito de homologação (backend/infra/terraform/environments/hom/cognito.tf) — usado pra resolver o ARN via data source, já que o Id é gerado pela AWS."
+  type        = string
+  default     = "user-pool-gastos-app-hom"
+}
+
+variable "prod_cognito_user_pool_name" {
+  description = "Nome do User Pool do Cognito de produção (backend/infra/terraform/environments/prod/cognito.tf) — usado pra resolver o ARN via data source, já que o Id é gerado pela AWS."
+  type        = string
+  default     = "user-pool-gastos-app"
+}
+
+variable "hom_table_name" {
+  description = "Nome da tabela DynamoDB de homologação (backend/infra/terraform/environments/hom/variables.tf)."
+  type        = string
+  default     = "GastosApp-Hom"
+}
+
+variable "prod_table_name" {
+  description = "Nome da tabela DynamoDB de produção (backend/infra/terraform/environments/prod/variables.tf)."
+  type        = string
+  default     = "GastosApp"
+}

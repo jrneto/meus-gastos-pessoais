@@ -1,0 +1,39 @@
+name: Backend — Teste Integrado (Produção)
+
+# Só disparo manual, de propósito (FEAT-29) — permite validar produção
+# a qualquer momento (ex.: depois de uma mudança de infraestrutura fora
+# do código, ou como checagem periódica) sem precisar rodar o restante
+# da pipeline de deploy. Visível/disparável pela aba Actions do GitHub.
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write # necessário para autenticação AWS via OIDC (sem access key fixa)
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    environment: backend-prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CICD_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Rodar testes integrados contra produção
+        run: dotnet test tests/GastosApp.IntegrationTests -c Release
+        env:
+          INTEGRATION_TESTS_MODE: prod
+          INTEGRATION_TESTS_BASE_URL: https://api.jrnexpenses.com
+          INTEGRATION_TESTS_PARAMETER_STORE_PATH: /GastosApp/

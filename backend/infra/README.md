@@ -70,6 +70,23 @@ Depois de confirmado, `POST /auth/login` com esse e-mail/senha funciona
 normalmente. Repita o comando (trocando `--username`) para cada novo
 usuário de teste que precisar de login.
 
+## Testes integrados locais (FEAT-29)
+
+Sobe o binário Native AOT publicado num container da mesma família de
+imagem base da Lambda real (`provided.al2023`), acessível via Lambda
+Runtime Interface Emulator, e roda `GastosApp.IntegrationTests` contra
+ele — pega erro específico de AOT antes de qualquer deploy real. Requer
+`docker compose up -d` (passo 1 acima), mas **não** requer
+`./scripts/local-init.sh` nem `dotnet run` manuais — o próprio script
+cuida disso:
+
+```bash
+cd backend
+./infra/lambda/run-local.sh
+```
+
+Ver `backend/specs/FEAT-29-testes-integrados/plan.md` para detalhes.
+
 ## Parando/limpando
 
 ```bash

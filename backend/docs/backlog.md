@@ -144,6 +144,23 @@ Modo Leve, fora do escopo do que estava sendo feito no momento — ver
 monorepo. Ao priorizar um item, ele vira `spec.md` própria (Fluxo
 Completo) ou é resolvido direto (Modo Leve) e sai desta lista.
 
+- **Módulos sem teste integrado ainda** (levantado na FEAT-29 —
+  `backend/specs/FEAT-29-testes-integrados/`): a infraestrutura de
+  testes integrados (suíte multiambiente, execução local via Docker/
+  Native AOT/Runtime Interface Emulator, gates de CI/CD em hom/prod)
+  foi entregue cobrindo só o módulo Auth como prova de conceito — os
+  demais módulos existentes continuam sem teste integrado, cobertos só
+  por teste de componente (mocks). Preencher incrementalmente, seguindo
+  o padrão já estabelecido (`TestAccountFixture` +
+  `<Modulo>/<Modulo>FlowTests.cs`, ver
+  `backend/specs/FEAT-29-testes-integrados/plan.md`):
+  - Categorias (`FEAT-16-crud-categorias`, `FEAT-21-categoria-tipo-orcamento`)
+  - Transações (`FEAT-22-transacoes-receita-despesa`)
+  - Membros/convites (`FEAT-20-membros-convites-permissoes`)
+  - Resumo mensal (`FEAT-23-resumo-mensal-dashboard`)
+  - Relatórios por período (`FEAT-24-relatorios-por-periodo`)
+  - Exportação CSV (`FEAT-25-exportacao-csv-transacoes`)
+  - Perfil do usuário (`FEAT-26-perfil-usuario-cadastro`)
 - **`DELETE /members` remove o membro em vez de inativá-lo** (confirmado
   com o usuário durante a FEAT-22): deveria bloquear a remoção de um
   membro que já lançou transações, transformando-o em `Inativo` (novo
