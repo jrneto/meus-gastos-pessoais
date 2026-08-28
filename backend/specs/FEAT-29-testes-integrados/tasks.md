@@ -107,11 +107,17 @@ reformulado.
        ARNs das tabelas `GastosApp-Hom`/`GastosApp`); confirmar se
        `ssm:GetParametersByPath` já cobre os caminhos usados por este
        plano ou precisa de ajuste
-- [ ] 17. Rodar `terraform plan` em `backend/infra/terraform/cicd/`,
-       mostrar o diff ao usuário e só então `terraform apply`
-       (`.tf` já escrito e validado — `fmt`/`validate` passam — mas
-       `plan`/`apply` não rodaram: sem credenciais AWS válidas nesta
-       sessão; SSO expirado, `aws sts get-caller-identity` falhou)
+- [x] 17. Rodar `terraform plan` em `backend/infra/terraform/cicd/`,
+       mostrar o diff ao usuário e só então `terraform apply` —
+       aplicado. Achado real: a role `gastosapp-backend-cicd` já
+       existia na AWS (criada na FEAT-14) mas o `terraform.tfstate`
+       local deste módulo não estava presente neste checkout (state
+       local, `.gitignore`d) — precisou `terraform import` da role e
+       da policy inline antes do `plan` refletir a realidade (senão
+       tentaria recriar do zero e colidiria com a role em uso pela
+       pipeline). Diff final aplicado: 0 a criar, 1 a alterar (só a
+       policy inline, adicionando as 3 novas statements), 0 a
+       destruir — confirmado ao vivo via `aws iam get-role-policy`
 
 ## Fase 6 — Workflows de CI/CD
 

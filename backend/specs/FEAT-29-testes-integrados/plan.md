@@ -250,6 +250,13 @@ aprovação explícita sua**, tratada como etapa própria no `/tasks`
 (revisão do diff do Terraform antes de aplicar, ambiente por
 ambiente).
 
+**Aplicado** (após aprovação explícita, diff revisado: 0 a criar, 1 a
+alterar — só a policy inline, 0 a destruir). Achado real: a role já
+existia (criada na FEAT-14) mas o `terraform.tfstate` local do módulo
+`cicd/` não estava neste checkout (state local, fora do git) — foi
+necessário `terraform import` da role e da policy antes do `plan`
+refletir a realidade, senão tentaria recriar do zero.
+
 ## Mudanças nos workflows (detalhamento)
 
 ### `backend-deploy-hom.yml` — novo job `integration-tests`

@@ -248,14 +248,12 @@ endpoint, executados com sucesso localmente antes do merge
       **implementado e validado contra o ambiente local (LocalStack +
       cognito-local); ainda não validado contra Cognito/DynamoDB reais
       de hom/prod**, que dependem da permissão IAM da Fase 5
-- [ ] Permissões IAM novas na role `gastosapp-backend-cicd`
+- [x] Permissões IAM novas na role `gastosapp-backend-cicd`
       (`AdminConfirmSignUp`, `AdminDeleteUser`, exclusão de itens
-      DynamoDB) aplicadas via Terraform só após aprovação explícita do
-      usuário — **`.tf` escrito e validado (`fmt`/`validate`), mas
-      `terraform apply` ainda não rodou** (sem credenciais AWS válidas
-      nesta sessão — SSO expirado); aprovação de princípio já dada
-      pelo usuário no `/plan`, falta rodar `terraform plan`/`apply` de
-      fato
+      DynamoDB, leitura do Parameter Store) aplicadas via Terraform só
+      após aprovação explícita do usuário — aprovado e aplicado
+      (`terraform apply`, confirmado ao vivo via
+      `aws iam get-role-policy`)
 - [x] `backend/docs/constitution.md` atualizado com a regra de teste
       integrado obrigatório (junto com componente) para endpoints
       novos daqui pra frente

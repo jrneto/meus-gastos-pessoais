@@ -43,4 +43,9 @@ data "aws_iam_policy_document" "github_trust" {
 resource "aws_iam_role" "backend_cicd" {
   name               = "gastosapp-backend-cicd"
   assume_role_policy = data.aws_iam_policy_document.github_trust.json
+  # Declarado explicitamente pra não divergir do valor já existente na
+  # role real (criada antes deste .tf declarar `description`) — sem
+  # isso, o primeiro `terraform apply` depois de importar o state
+  # removeria essa descrição sem necessidade.
+  description = "Assumida via OIDC pelos workflows de deploy do backend  update-function-code/update-function-configuration nas Lambdas hom/prod"
 }
