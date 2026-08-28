@@ -27,5 +27,11 @@ trap cleanup EXIT
 
 ./infra/lambda/local-env-up.sh
 
-echo "==> Rodando testes integrados (modo local)..."
-INTEGRATION_TESTS_MODE=local dotnet test tests/GastosApp.IntegrationTests -c Release --filter "Category=Integration"
+echo "==> Rodando testes integrados (modo local, contra o container)..."
+# INTEGRATION_TESTS_TRANSPORT=rie é obrigatório aqui — sem ela, o
+# default de "local" passou a ser a Api via Kestrel/dotnet run (achado
+# real: Test Explorer do VS Code não injeta env var de forma confiável,
+# ver README.md), o que faria este script (que builda e sobe o
+# container) não testar o binário que ele acabou de subir.
+INTEGRATION_TESTS_MODE=local INTEGRATION_TESTS_TRANSPORT=rie \
+  dotnet test tests/GastosApp.IntegrationTests -c Release --filter "Category=Integration"

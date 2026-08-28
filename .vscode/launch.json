@@ -29,57 +29,19 @@
     // test` sob o debugger — o adaptador coreclr anexa automaticamente
     // no processo filho (testhost) que de fato roda a suíte, então
     // breakpoint em qualquer arquivo de tests/GastosApp.IntegrationTests
-    // funciona normalmente. Pré-requisito pro modo local: ambiente no ar
-    // via `./infra/lambda/local-env-up.sh` (ver README.md do projeto de
-    // testes). "justMyCode": false ajuda a inspecionar dentro de
-    // FluentAssertions/SDK da AWS se precisar.
-    {
-      "name": "Debug Integration Tests (local, todos)",
-      "type": "coreclr",
-      "request": "launch",
-      "program": "dotnet",
-      "args": [
-        "test",
-        "${workspaceFolder}/backend/tests/GastosApp.IntegrationTests/GastosApp.IntegrationTests.csproj",
-        "--filter", "Category=Integration"
-      ],
-      "cwd": "${workspaceFolder}/backend",
-      "env": {
-        "INTEGRATION_TESTS_MODE": "local"
-      },
-      "console": "internalConsole",
-      "stopAtEntry": false,
-      "justMyCode": false
-    },
-    // Igual à de cima, mas pede o filtro na hora — cole algo como
-    // "FullyQualifiedName~Login_CredenciaisInvalidas" pra rodar (e
-    // debugar) só um teste específico.
-    {
-      "name": "Debug Integration Tests (local, escolher filtro)",
-      "type": "coreclr",
-      "request": "launch",
-      "program": "dotnet",
-      "args": [
-        "test",
-        "${workspaceFolder}/backend/tests/GastosApp.IntegrationTests/GastosApp.IntegrationTests.csproj",
-        "--filter", "${input:integrationTestFilter}"
-      ],
-      "cwd": "${workspaceFolder}/backend",
-      "env": {
-        "INTEGRATION_TESTS_MODE": "local"
-      },
-      "console": "internalConsole",
-      "stopAtEntry": false,
-      "justMyCode": false
-    },
-    // "Local direto": em vez do container Native AOT/RIE, aponta pra
-    // Api rodando via Kestrel/JIT (config "GastosApp.Api" acima) —
-    // permite breakpoint DENTRO do código da própria Api (handler,
-    // endpoint etc.), não só no código do teste. Cognito/DynamoDB
-    // continuam via LocalStack/cognito-local (isso não muda). Use o
-    // compound "Debug Api + Integration Test (local via Kestrel)" pra
-    // subir os dois numa tacada só. Ver README.md, "Debugar a própria
-    // Api (não só o teste)".
+    // funciona normalmente. "justMyCode": false ajuda a inspecionar
+    // dentro de FluentAssertions/SDK da AWS se precisar.
+    //
+    // Por padrão (sem env aqui, ou com INTEGRATION_TESTS_MODE=local
+    // sozinha) a suíte aponta pra Api via Kestrel/JIT — precisa dela
+    // rodando à parte (config "GastosApp.Api" acima, ou
+    // `dotnet run --project src/GastosApp.Api`). É o padrão porque é o
+    // caminho mais rápido pra iterar E o único onde dá pra colocar
+    // breakpoint dentro do código da própria Api (não só do teste) —
+    // ver README.md, "Debugar a própria Api". Pra validar contra o
+    // binário Native AOT publicado de verdade, use
+    // INTEGRATION_TESTS_TRANSPORT=rie (configs abaixo) — aí precisa do
+    // container no ar via `./infra/lambda/local-env-up.sh`.
     {
       "name": "Debug Integration Tests (local via Kestrel, escolher filtro)",
       "type": "coreclr",
@@ -92,8 +54,32 @@
       ],
       "cwd": "${workspaceFolder}/backend",
       "env": {
+        "INTEGRATION_TESTS_MODE": "local"
+      },
+      "console": "internalConsole",
+      "stopAtEntry": false,
+      "justMyCode": false
+    },
+    // Contra o container Native AOT via Runtime Interface Emulator (não
+    // Kestrel) — precisa de INTEGRATION_TESTS_TRANSPORT=rie explícita
+    // (esse é o modo "não-padrão" agora, ver comentário acima). Só
+    // debuga o CÓDIGO DO TESTE (o container roda sem debugger anexado
+    // — Native AOT não tem suporte de debug interativo equivalente ao
+    // JIT). Pré-requisito: `./infra/lambda/local-env-up.sh`.
+    {
+      "name": "Debug Integration Tests (local via container/RIE, escolher filtro)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/backend/tests/GastosApp.IntegrationTests/GastosApp.IntegrationTests.csproj",
+        "--filter", "${input:integrationTestFilter}"
+      ],
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
         "INTEGRATION_TESTS_MODE": "local",
-        "INTEGRATION_TESTS_BASE_URL": "http://localhost:5049"
+        "INTEGRATION_TESTS_TRANSPORT": "rie"
       },
       "console": "internalConsole",
       "stopAtEntry": false,

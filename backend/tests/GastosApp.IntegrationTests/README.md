@@ -1,18 +1,24 @@
 # GastosApp.IntegrationTests — guia de debug
 
 Suíte de testes integrados (FEAT-29) — roda contra a API real (Cognito
-+ DynamoDB reais em hom/prod, o binário Native AOT publicado via Lambda
-Runtime Interface Emulator em local), nunca contra dublês. Ver
-`backend/specs/FEAT-29-testes-integrados/spec.md` e `plan.md` para o
-desenho completo. Este README é só o passo a passo prático de debug.
++ DynamoDB reais em hom/prod; em local, por padrão a Api via
+`dotnet run`/Kestrel, ou o binário Native AOT publicado via Lambda
+Runtime Interface Emulator quando pedido explicitamente), nunca contra
+dublês. Ver `backend/specs/FEAT-29-testes-integrados/spec.md` e
+`plan.md` para o desenho completo. Este README é só o passo a passo
+prático de debug.
 
 ## Como a suíte fala com a API (recap rápido)
 
 - `Support/IApiTransport.cs` abstrai o transporte: `DirectHttpTransport`
-  (hom/prod, HTTP puro) ou `LambdaRieTransport` (local, protocolo de
-  invocação do Runtime Interface Emulator).
+  (HTTP puro — hom/prod sempre, e local por padrão, contra
+  `dotnet run`/Kestrel) ou `LambdaRieTransport` (protocolo de invocação
+  do Runtime Interface Emulator, contra o container Native AOT — local,
+  só com `INTEGRATION_TESTS_TRANSPORT=rie` explícita).
 - `Support/IntegrationTestEnvironment.cs` decide o modo a partir de
-  `INTEGRATION_TESTS_MODE` (`local`\|`hom`\|`prod`, default `local`).
+  `INTEGRATION_TESTS_MODE` (`local`\|`hom`\|`prod`, default `local`) e,
+  em `local`, o transporte a partir de `INTEGRATION_TESTS_TRANSPORT`
+  (`kestrel` — default, `http://localhost:5049` — \|`rie`).
 - `Support/TestAccountFixture.cs` cria uma conta de teste real
   (`POST /auth/register` → `AdminConfirmSignUp` via SDK → `POST /auth/login`)
   e limpa tudo ao final (Cognito + DynamoDB), mesmo se o teste falhar.
@@ -32,71 +38,68 @@ arquivos funciona exatamente como em qualquer outro projeto de teste
 onde** a suíte manda a requisição HTTP (ver "Como a suíte fala com a
 API" acima) — não muda nada em como você debuga o lado do teste.
 
-> Se o objetivo é debugar o **código da Api** (não o do teste) rodando
-> dentro do container Native AOT em modo local, isso é bem mais
-> limitado — Native AOT não tem o mesmo suporte de debug interativo que
-> um binário JIT normal. Pra investigar um bug da Api nesse cenário,
-> prefira reproduzir contra `dotnet run` local (config `GastosApp.Api`
-> já existente em `.vscode/launch.json`, com breakpoint normal) e só
-> confirmar depois contra o binário publicado — os dois rodam o mesmo
-> código-fonte, a diferença é só JIT vs. AOT.
+> Se o objetivo é debugar o **código da Api** (não só o do teste), é
+> exatamente pra isso que serve o modo padrão descrito abaixo — a Api
+> roda via `dotnet run`/Kestrel (JIT), então breakpoint funciona nela
+> também. Só o modo explícito "via container/RIE" (Native AOT) não tem
+> esse suporte — ver "Debugar a própria Api (não só o teste)".
 
 ### Modo local
 
-**Duas formas de disparar, cada uma falando com um "backend" diferente
-— não misture as duas ao mesmo tempo (ver "Debugar a própria Api"
-abaixo pra entender a diferença):**
+**Por padrão, sem nenhuma configuração especial, `GastosApp.IntegrationTests`
+aponta pra Api rodando via `dotnet run`/Kestrel (JIT normal) em
+`http://localhost:5049`** — não pro container Native AOT. Isso vale
+tanto pra CLI quanto pro Test Explorer do VS Code (ícone de frasco na
+barra lateral, ou o ícone de debug/run via CodeLens acima do método,
+C# Dev Kit): **precisa da Api rodando à parte antes**:
+```bash
+cd backend
+dotnet run --project src/GastosApp.Api   # ou F5 na config "GastosApp.Api"
+```
+Sem isso, dá `HttpIOException: The response ended prematurely` (achado
+real — não é um "conexão recusada" comum porque o `cognito-local`
+publica a porta 9000, reservada pro container FEAT-29, então o Docker
+aceita a conexão e derruba na hora se não tiver nada ouvindo do outro
+lado).
 
-- **Test Explorer** (ícone de frasco na barra lateral, ou o ícone de
-  debug/run que aparece via CodeLens acima do método, exige C# Dev
-  Kit) — **aponta pra Api rodando via Kestrel/JIT**
-  (`http://localhost:5049`, `.vscode/settings.json`,
-  `dotnet.unitTestDebuggingOptions`). Precisa da Api rodando à parte
-  **antes** de clicar Run/Debug Test:
-  ```bash
-  cd backend
-  dotnet run --project src/GastosApp.Api   # ou F5 na config "GastosApp.Api"
-  ```
-  Sem isso, dá `HttpIOException: The response ended prematurely`
-  (achado real — ver "Debugar a própria Api" abaixo pro porquê exato
-  dessa mensagem específica).
+> **Por que o padrão é Kestrel, não o container?** Tentamos fazer o
+> Test Explorer injetar `INTEGRATION_TESTS_BASE_URL` via
+> `.vscode/settings.json` (`dotnet.unitTestDebuggingOptions`) — não se
+> mostrou confiável (o teste continuava caindo no RIE mesmo com a
+> chave setada). Em vez de depender disso, o próprio código passou a
+> ter esse default embutido — funciona igual não importa como o teste
+> é disparado.
 
-- **Run and Debug** (`Ctrl+Shift+D`) com as configs
-  **"Debug Integration Tests (local, todos)"** ou **"Debug Integration
-  Tests (local, escolher filtro)"** — essas **sim** apontam pro
-  container Native AOT via Runtime Interface Emulator (têm seu próprio
-  `env` no `launch.json`, não usam o default do Test Explorer). Precisa
-  do container no ar:
-  ```bash
-  cd backend
-  ./infra/lambda/local-env-up.sh   # deixa rodando — não use run-local.sh aqui, ele desliga tudo ao final
-  ```
-  Aperte `F5` na config escolhida. Quando terminar:
-  ```bash
-  ./infra/lambda/local-env-down.sh
-  ```
+Pra validar contra o **binário Native AOT publicado de verdade** (não
+Kestrel — mais fiel ao que vai pra produção, mas sem breakpoint dentro
+do código da Api, só do teste, ver "Debugar a própria Api" abaixo), use
+a config **"Debug Integration Tests (local via container/RIE, escolher
+filtro)"** no Run and Debug (`Ctrl+Shift+D`) — ela seta
+`INTEGRATION_TESTS_TRANSPORT=rie` explicitamente. Precisa do container
+no ar:
+```bash
+cd backend
+./infra/lambda/local-env-up.sh   # deixa rodando — não use run-local.sh aqui, ele desliga tudo ao final
+```
+Quando terminar: `./infra/lambda/local-env-down.sh`.
 
-Nos dois casos: coloque o breakpoint no arquivo do teste antes de
-disparar (ex.: `tests/GastosApp.IntegrationTests/Auth/AuthFlowTests.cs`)
+Em qualquer um dos dois: coloque o breakpoint no arquivo do teste antes
+de disparar (ex.: `tests/GastosApp.IntegrationTests/Auth/AuthFlowTests.cs`)
 — a execução para ali, inspeciona variável/watch/call stack
 normalmente.
 
 ### Debugar a própria Api (não só o teste)
 
-O fluxo acima ("Modo local") debuga o **código do teste** — o
-container continua sendo o binário Native AOT via RIE, sem debugger
-nenhum anexado nele. Native AOT não tem o mesmo suporte de debug
-interativo que código JIT, então **não dá pra colocar breakpoint
-dentro do código da Api enquanto ela roda no container**.
+O fluxo "via container/RIE" acima debuga só o **código do teste** — o
+container roda o binário Native AOT sem nenhum debugger anexado nele.
+Native AOT não tem o mesmo suporte de debug interativo que código JIT,
+então **não dá pra colocar breakpoint dentro do código da Api enquanto
+ela roda no container**.
 
 Pra colocar breakpoint dentro da própria Api (um `Handler`, um
-`Endpoint`, etc.), a saída é rodar a Api via `dotnet run`/Kestrel (JIT
-normal — breakpoint funciona igual a qualquer projeto ASP.NET Core) e
-apontar a suíte pra ela via HTTP direto, em vez do container/RIE.
-`INTEGRATION_TESTS_MODE=local` continua usando LocalStack/cognito-local
-pros emuladores — só o transporte HTTP muda (basta
-`INTEGRATION_TESTS_BASE_URL` estar setada nesse modo, ver
-`Support/ApiTransportFactory.cs`).
+`Endpoint`, etc.), use o modo **padrão** descrito acima (Kestrel/JIT) —
+já é exatamente isso: a suíte fala HTTP direto com a Api rodando via
+`dotnet run`, então breakpoint funciona nos dois lados.
 
 1. Garanta LocalStack + cognito-local no ar:
    ```bash
@@ -109,14 +112,14 @@ pros emuladores — só o transporte HTTP muda (basta
      (local via Kestrel)"** e aperte `F5` — sobe a Api e já dispara o
      teste (pede o filtro). Tem uma corrida em aberto: se o teste
      disparar antes da Api terminar de subir, a primeira tentativa
-     falha por "connection refused" — só rodar de novo a config do
-     teste sozinha (a Api já vai estar de pé). Se isso incomodar, use o
-     fluxo em 2 passos abaixo.
+     falha — só rodar de novo a config do teste sozinha (a Api já vai
+     estar de pé). Se isso incomodar, use o fluxo em 2 passos abaixo.
    - **2 passos (mais previsível)**: rode **"GastosApp.Api"** primeiro,
      espere aparecer `Now listening on: http://localhost:5049` no
      Debug Console; só então, numa segunda sessão de debug, rode
      **"Debug Integration Tests (local via Kestrel, escolher
-     filtro)"**.
+     filtro)"** (ou o Test Explorer, ou um `dotnet test` direto no
+     terminal — todos batem na mesma Api).
 4. Os dois breakpoints (Api e teste) funcionam ao mesmo tempo — são
    duas sessões de debug simultâneas no VS Code.
 

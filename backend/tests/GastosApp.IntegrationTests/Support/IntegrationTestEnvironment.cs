@@ -25,16 +25,17 @@ public sealed class IntegrationTestEnvironment
     public required IntegrationTestMode Mode { get; init; }
 
     /// <summary>
-    /// URL base da API — usada em Hom/Prod (sempre), e opcionalmente em
-    /// Local também: se <c>INTEGRATION_TESTS_BASE_URL</c> estiver setada
-    /// com <c>Mode=Local</c>, <see cref="ApiTransportFactory"/> troca o
-    /// transporte pra <see cref="DirectHttpTransport"/> (HTTP direto)
-    /// em vez de <see cref="LambdaRieTransport"/> — usado pra debugar a
-    /// própria Api com breakpoint (`dotnet run`/Kestrel, JIT normal) sem
-    /// abrir mão dos emuladores locais (Cognito/DynamoDB continuam via
-    /// LocalStack/cognito-local, só o transporte HTTP muda). Ver
-    /// backend/tests/GastosApp.IntegrationTests/README.md, "Debugar a
-    /// própria Api (não só o teste)".
+    /// URL base da API — usada em Hom/Prod (sempre) e, por padrão, em
+    /// Local também (Api via `dotnet run`/Kestrel, JIT normal — permite
+    /// breakpoint dentro do código da própria Api, não só do teste).
+    /// <see cref="ApiTransportFactory"/> usa <see cref="DirectHttpTransport"/>
+    /// sempre que <c>BaseUrl</c> não for nulo. Só fica nulo em Local
+    /// quando <c>INTEGRATION_TESTS_TRANSPORT=rie</c> é setada
+    /// explicitamente (aí <see cref="ApiTransportFactory"/> usa
+    /// <see cref="LambdaRieTransport"/> contra o container Native AOT).
+    /// Cognito/DynamoDB continuam via LocalStack/cognito-local nos dois
+    /// casos — isso não depende do transporte escolhido aqui. Ver
+    /// backend/tests/GastosApp.IntegrationTests/README.md.
     /// </summary>
     public string? BaseUrl { get; init; }
 
@@ -84,14 +85,28 @@ public sealed class IntegrationTestEnvironment
                 DynamoDbTableName = "GastosApp"
             },
             // Default: local — permite rodar a suíte sem configurar nada
-            // além de `docker compose up -d` + run-local.sh (FEAT-18/FEAT-29).
-            // BaseUrl só é lida aqui (diferente de Hom/Prod, onde é
-            // obrigatória) — presença opcional é o que sinaliza "local
-            // direto via Kestrel" pra ApiTransportFactory.
+            // além de ter a Api rodando via `dotnet run`/Kestrel
+            // (padrão mais comum: clicar Run/Debug no Test Explorer do
+            // VS Code, cuja capacidade de injetar env vars custom não é
+            // confiável o suficiente pra depender dela — achado real,
+            // ver README.md). BaseUrl default é a Api local via Kestrel
+            // (mesma porta de `.vscode/launch.json`, config
+            // "GastosApp.Api" — 5049, lida de `Properties/launchSettings.json`
+            // pelo VS Code). Só troca pro container Native AOT/Runtime
+            // Interface Emulator se INTEGRATION_TESTS_TRANSPORT=rie for
+            // setada explicitamente — usado por run-local.sh e pelas
+            // configs "Debug Integration Tests (local, ...)" em
+            // launch.json (ambos setam a env var no próprio processo
+            // filho, mecanismo comprovadamente confiável, diferente de
+            // configuração global do Test Explorer).
             _ => new IntegrationTestEnvironment
             {
                 Mode = IntegrationTestMode.Local,
-                BaseUrl = Environment.GetEnvironmentVariable("INTEGRATION_TESTS_BASE_URL"),
+                BaseUrl = UseRieTransport()
+                    ? null
+                    : Environment.GetEnvironmentVariable("INTEGRATION_TESTS_BASE_URL") is { Length: > 0 } url
+                        ? url
+                        : "http://localhost:5049",
                 ParameterStorePath = "/GastosApp/",
                 DynamoDbTableName = "GastosApp-Local",
                 ParameterStoreServiceUrl = "http://localhost:4566",
@@ -105,4 +120,10 @@ public sealed class IntegrationTestEnvironment
 
     private static string RequireEnv(string name, string fallback) =>
         Environment.GetEnvironmentVariable(name) is { Length: > 0 } value ? value : fallback;
+
+    private static bool UseRieTransport() =>
+        string.Equals(
+            Environment.GetEnvironmentVariable("INTEGRATION_TESTS_TRANSPORT"),
+            "rie",
+            StringComparison.OrdinalIgnoreCase);
 }
