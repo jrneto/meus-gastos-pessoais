@@ -2,10 +2,13 @@
   "version": "0.2.0",
   "configurations": [
     // Sobe a Api via Kestrel (JIT normal, breakpoint funciona igual a
-    // qualquer projeto ASP.NET Core) — binda em http://localhost:5000
-    // (confirmado empiricamente; como lança o .dll direto, não passa
-    // pelo profile "http" de launchSettings.json, que aponta 5049).
-    // Pré-requisito: LocalStack + cognito-local no ar
+    // qualquer projeto ASP.NET Core) — binda em http://localhost:5049
+    // (e https://localhost:7236), lendo o perfil de
+    // Properties/launchSettings.json (confirmado ao vivo via VS Code —
+    // um teste anterior via `dotnet <dll>` puro no terminal, fora do VS
+    // Code, tinha dado 5000, mas o VS Code lê launchSettings.json e usa
+    // 5049 de verdade; corrigido depois de reproduzir o problema com o
+    // usuário). Pré-requisito: LocalStack + cognito-local no ar
     // (`docker compose -f backend/infra/docker-compose.yml up -d`) —
     // appsettings.Development.json já aponta pra eles.
     {
@@ -90,7 +93,7 @@
       "cwd": "${workspaceFolder}/backend",
       "env": {
         "INTEGRATION_TESTS_MODE": "local",
-        "INTEGRATION_TESTS_BASE_URL": "http://localhost:5000"
+        "INTEGRATION_TESTS_BASE_URL": "http://localhost:5049"
       },
       "console": "internalConsole",
       "stopAtEntry": false,

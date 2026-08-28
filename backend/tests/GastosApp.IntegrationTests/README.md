@@ -102,7 +102,7 @@ pros emuladores — só o transporte HTTP muda (basta
      teste sozinha (a Api já vai estar de pé). Se isso incomodar, use o
      fluxo em 2 passos abaixo.
    - **2 passos (mais previsível)**: rode **"GastosApp.Api"** primeiro,
-     espere aparecer `Now listening on: http://localhost:5000` no
+     espere aparecer `Now listening on: http://localhost:5049` no
      Debug Console; só então, numa segunda sessão de debug, rode
      **"Debug Integration Tests (local via Kestrel, escolher
      filtro)"**.
