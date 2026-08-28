@@ -1,23 +1,155 @@
 # GastosApp.IntegrationTests — guia de debug
 
 Suíte de testes integrados (FEAT-29) — roda contra a API real (Cognito
-+ DynamoDB reais em hom/prod, o binário Native AOT publicado via Lambda
-Runtime Interface Emulator em local), nunca contra dublês. Ver
-`backend/specs/FEAT-29-testes-integrados/spec.md` e `plan.md` para o
-desenho completo. Este README é só o passo a passo prático de debug.
++ DynamoDB reais em hom/prod; em local, por padrão a Api via
+`dotnet run`/Kestrel, ou o binário Native AOT publicado via Lambda
+Runtime Interface Emulator quando pedido explicitamente), nunca contra
+dublês. Ver `backend/specs/FEAT-29-testes-integrados/spec.md` e
+`plan.md` para o desenho completo. Este README é só o passo a passo
+prático de debug.
 
 ## Como a suíte fala com a API (recap rápido)
 
 - `Support/IApiTransport.cs` abstrai o transporte: `DirectHttpTransport`
-  (hom/prod, HTTP puro) ou `LambdaRieTransport` (local, protocolo de
-  invocação do Runtime Interface Emulator).
+  (HTTP puro — hom/prod sempre, e local por padrão, contra
+  `dotnet run`/Kestrel) ou `LambdaRieTransport` (protocolo de invocação
+  do Runtime Interface Emulator, contra o container Native AOT — local,
+  só com `INTEGRATION_TESTS_TRANSPORT=rie` explícita).
 - `Support/IntegrationTestEnvironment.cs` decide o modo a partir de
-  `INTEGRATION_TESTS_MODE` (`local`\|`hom`\|`prod`, default `local`).
+  `INTEGRATION_TESTS_MODE` (`local`\|`hom`\|`prod`, default `local`) e,
+  em `local`, o transporte a partir de `INTEGRATION_TESTS_TRANSPORT`
+  (`kestrel` — default, `http://localhost:5049` — \|`rie`).
 - `Support/TestAccountFixture.cs` cria uma conta de teste real
   (`POST /auth/register` → `AdminConfirmSignUp` via SDK → `POST /auth/login`)
   e limpa tudo ao final (Cognito + DynamoDB), mesmo se o teste falhar.
 
-## 1. Debugar contra o ambiente local (mais comum)
+## 1. Debugar com breakpoint no VS Code
+
+Pré-requisito: extensão **C#** (`ms-dotnettools.csharp`) instalada — o
+Test Explorer com CodeLens/ícone de debug por teste vem do **C# Dev
+Kit**, mas o F5 via `launch.json` funciona só com a C# "básica".
+
+O ponto chave: o processo que roda o **código da suíte**
+(`AuthFlowTests.cs`, `TestAccountFixture.cs`, `LambdaRieTransport.cs`
+etc.) é sempre um `dotnet test` normal rodando **na sua máquina** —
+nunca dentro de um container, em nenhum dos 3 modos. Breakpoint nesses
+arquivos funciona exatamente como em qualquer outro projeto de teste
+.NET (`UnitTests`/`ComponentTests`). O que muda por modo é só **pra
+onde** a suíte manda a requisição HTTP (ver "Como a suíte fala com a
+API" acima) — não muda nada em como você debuga o lado do teste.
+
+> Se o objetivo é debugar o **código da Api** (não só o do teste), é
+> exatamente pra isso que serve o modo padrão descrito abaixo — a Api
+> roda via `dotnet run`/Kestrel (JIT), então breakpoint funciona nela
+> também. Só o modo explícito "via container/RIE" (Native AOT) não tem
+> esse suporte — ver "Debugar a própria Api (não só o teste)".
+
+### Modo local
+
+**Por padrão, sem nenhuma configuração especial, `GastosApp.IntegrationTests`
+aponta pra Api rodando via `dotnet run`/Kestrel (JIT normal) em
+`http://localhost:5049`** — não pro container Native AOT. Isso vale
+tanto pra CLI quanto pro Test Explorer do VS Code (ícone de frasco na
+barra lateral, ou o ícone de debug/run via CodeLens acima do método,
+C# Dev Kit): **precisa da Api rodando à parte antes**:
+```bash
+cd backend
+dotnet run --project src/GastosApp.Api   # ou F5 na config "GastosApp.Api"
+```
+Sem isso, dá `HttpIOException: The response ended prematurely` (achado
+real — não é um "conexão recusada" comum porque o `cognito-local`
+publica a porta 9000, reservada pro container FEAT-29, então o Docker
+aceita a conexão e derruba na hora se não tiver nada ouvindo do outro
+lado).
+
+> **Por que o padrão é Kestrel, não o container?** Tentamos fazer o
+> Test Explorer injetar `INTEGRATION_TESTS_BASE_URL` via
+> `.vscode/settings.json` (`dotnet.unitTestDebuggingOptions`) — não se
+> mostrou confiável (o teste continuava caindo no RIE mesmo com a
+> chave setada). Em vez de depender disso, o próprio código passou a
+> ter esse default embutido — funciona igual não importa como o teste
+> é disparado.
+
+Pra validar contra o **binário Native AOT publicado de verdade** (não
+Kestrel — mais fiel ao que vai pra produção, mas sem breakpoint dentro
+do código da Api, só do teste, ver "Debugar a própria Api" abaixo), use
+a config **"Debug Integration Tests (local via container/RIE, escolher
+filtro)"** no Run and Debug (`Ctrl+Shift+D`) — ela seta
+`INTEGRATION_TESTS_TRANSPORT=rie` explicitamente. Precisa do container
+no ar:
+```bash
+cd backend
+./infra/lambda/local-env-up.sh   # deixa rodando — não use run-local.sh aqui, ele desliga tudo ao final
+```
+Quando terminar: `./infra/lambda/local-env-down.sh`.
+
+Em qualquer um dos dois: coloque o breakpoint no arquivo do teste antes
+de disparar (ex.: `tests/GastosApp.IntegrationTests/Auth/AuthFlowTests.cs`)
+— a execução para ali, inspeciona variável/watch/call stack
+normalmente.
+
+### Debugar a própria Api (não só o teste)
+
+O fluxo "via container/RIE" acima debuga só o **código do teste** — o
+container roda o binário Native AOT sem nenhum debugger anexado nele.
+Native AOT não tem o mesmo suporte de debug interativo que código JIT,
+então **não dá pra colocar breakpoint dentro do código da Api enquanto
+ela roda no container**.
+
+Pra colocar breakpoint dentro da própria Api (um `Handler`, um
+`Endpoint`, etc.), use o modo **padrão** descrito acima (Kestrel/JIT) —
+já é exatamente isso: a suíte fala HTTP direto com a Api rodando via
+`dotnet run`, então breakpoint funciona nos dois lados.
+
+1. Garanta LocalStack + cognito-local no ar:
+   ```bash
+   cd backend/infra && docker compose up -d && cd ..
+   ```
+2. Coloque o breakpoint dentro do código da Api (ex.:
+   `src/GastosApp.Application/Auth/Commands/Register/RegisterUserCommand.cs`).
+3. Duas formas de disparar (Run and Debug, `Ctrl+Shift+D`):
+   - **Um clique**: escolha o compound **"Debug Api + Integration Test
+     (local via Kestrel)"** e aperte `F5` — sobe a Api e já dispara o
+     teste (pede o filtro). Tem uma corrida em aberto: se o teste
+     disparar antes da Api terminar de subir, a primeira tentativa
+     falha — só rodar de novo a config do teste sozinha (a Api já vai
+     estar de pé). Se isso incomodar, use o fluxo em 2 passos abaixo.
+   - **2 passos (mais previsível)**: rode **"GastosApp.Api"** primeiro,
+     espere aparecer `Now listening on: http://localhost:5049` no
+     Debug Console; só então, numa segunda sessão de debug, rode
+     **"Debug Integration Tests (local via Kestrel, escolher
+     filtro)"** (ou o Test Explorer, ou um `dotnet test` direto no
+     terminal — todos batem na mesma Api).
+4. Os dois breakpoints (Api e teste) funcionam ao mesmo tempo — são
+   duas sessões de debug simultâneas no VS Code.
+
+### Modo hom (contra a API real de homologação)
+
+1. Autentique na AWS no **mesmo** terminal/perfil que o VS Code herda
+   (ex.: `aws sso login --profile <seu-profile>` e
+   `export AWS_PROFILE=<seu-profile>` antes de abrir o VS Code a partir
+   desse terminal) — a suíte usa a cadeia padrão de credenciais do SDK,
+   nada é declarado no `launch.json`.
+2. Use a config **"Debug Integration Tests (hom, escolher filtro)"** em
+   Run and Debug (`F5`) — pede um filtro de teste.
+3. Isso cria e limpa uma conta de teste **real** em homologação (ver
+   `TestAccountFixture`). Evite deixar pausado num breakpoint por muito
+   tempo no meio de um teste — a limpeza só roda quando o teste
+   termina (`DisposeAsync`).
+
+### Sem VS Code — anexar um debugger via linha de comando
+
+```bash
+INTEGRATION_TESTS_MODE=local VSTEST_HOST_DEBUG=1 \
+  dotnet test tests/GastosApp.IntegrationTests --filter "FullyQualifiedName~NomeDoTeste"
+```
+
+O `testhost` imprime o próprio PID e fica esperando um debugger anexar
+antes de continuar. No VS Code: **Run → Attach to Process** (ou
+`Ctrl+Shift+P` → "Debug: Attach to a .NET 5+ or .NET Core Process") e
+escolha esse PID.
+
+## 2. Debugar contra o ambiente local (mais comum)
 
 ### Rodar do zero
 
@@ -73,7 +205,7 @@ export AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-e
 aws --endpoint-url http://localhost:4566 ssm get-parameters-by-path --path /GastosApp/ --recursive
 ```
 
-### `GET /auth/me` retorna 401 mesmo com token válido (achado real, já corrigido)
+### `GET /auth/me` retorna 401 mesmo com token válido — via container/RIE (achado real, já corrigido)
 
 Se você alterar `run-local.sh` e isso voltar a acontecer: o
 `cognito-local` fixa `issuer`/`jwks_uri` do seu discovery document
@@ -100,6 +232,30 @@ docker run --rm --network container:gastosapp-cognito-local --entrypoint sh \
   public.ecr.aws/lambda/provided:al2023 \
   -c "curl -s http://localhost:9229/<USER_POOL_ID>/.well-known/openid-configuration"
 ```
+
+### `GET /auth/me` retorna 401 mesmo com token válido — via Kestrel/dotnet run (achado real, já corrigido)
+
+Diferente do de cima (esse é específico do modo padrão, Kestrel, não do
+container). Causa: `Program.cs` chama `app.UseHttpsRedirection()`
+incondicionalmente — quando a Api sobe nas duas portas (perfil
+`https` de `launchSettings.json`, o que o VS Code usa por padrão ao
+rodar a config `GastosApp.Api`: `http://localhost:5049` **e**
+`https://localhost:7236`), toda requisição HTTP vira um `307` pra
+HTTPS. O `HttpClient` segue esse redirect automaticamente, mas o .NET
+**remove o header `Authorization`** ao seguir um redirect que muda
+scheme/porta (comportamento de segurança documentado) — por isso só as
+chamadas autenticadas (`GET /auth/me`) quebram; `register`/`login`
+(sem `Authorization`) passam batido pelo redirect sem problema. Pra
+reproduzir o diagnóstico:
+```bash
+curl -sv -X GET http://localhost:5049/health -H "Authorization: Bearer teste" \
+  2>&1 | grep -E "^< |^> |HTTP/1.1"
+# HTTP/1.1 307 Temporary Redirect ... Location: https://localhost:7236/health
+```
+Corrigido em `Support/DirectHttpTransport.cs` (não em `Program.cs` —
+evita mudar comportamento de produção): o `HttpClient` desliga
+`AllowAutoRedirect` e segue o redirect manualmente, preservando todos
+os headers, incluindo `Authorization`.
 
 ### Rodar só a suíte, sem rebuildar a imagem (iteração rápida)
 
@@ -130,7 +286,7 @@ como caminho de arquivo Windows antes de chegar no programa. Os
 scripts (`run-local.sh`, `local-init.sh` etc.) já fazem isso
 internamente.
 
-## 2. Debugar contra homologação/produção
+## 3. Debugar contra homologação/produção
 
 Precisa de credenciais AWS reais com permissão na role
 `gastosapp-backend-cicd` (ou equivalente) — localmente, geralmente via
@@ -190,14 +346,14 @@ aws dynamodb query --table-name GastosApp-Hom \
   --expression-attribute-values '{":pk":{"S":"USER#<userId>"}}'
 ```
 
-## 3. Rodando um teste específico (qualquer modo)
+## 4. Rodando um teste específico (qualquer modo)
 
 ```bash
 dotnet test tests/GastosApp.IntegrationTests -c Release \
   --filter "FullyQualifiedName~AuthFlowTests.Login_CredenciaisInvalidas_Retorna401"
 ```
 
-## 4. Por que a suíte não roda no `dotnet test GastosApp.sln` normal
+## 5. Por que a suíte não roda no `dotnet test GastosApp.sln` normal
 
 Todo teste aqui tem `[Trait("Category", "Integration")]`. O `dotnet
 test` usado no gate de qualidade (local e CI) filtra

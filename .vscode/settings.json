@@ -5,4 +5,17 @@
         "strings": true
     },
     "editor.suggestOnTriggerCharacters": true
+    // NOTA (achado real, FEAT-29): já existiu aqui uma tentativa de usar
+    // "dotnet.unitTestDebuggingOptions" pra injetar
+    // INTEGRATION_TESTS_BASE_URL nas execuções disparadas pelo Test
+    // Explorer (ícone de frasco/C# Dev Kit) — removida porque não se
+    // mostrou confiável (o teste continuou caindo no transporte
+    // default mesmo com a chave setada). Em vez de depender de
+    // configuração do VS Code pra isso, o default de
+    // GastosApp.IntegrationTests (INTEGRATION_TESTS_MODE=local sem
+    // nada mais setado) já aponta sozinho pra Api via Kestrel em
+    // http://localhost:5049 — ver
+    // backend/tests/GastosApp.IntegrationTests/Support/IntegrationTestEnvironment.cs
+    // e o README daquele projeto. Não reintroduza essa chave sem
+    // validar de verdade que ela funciona no Test Explorer.
 }
