@@ -205,7 +205,7 @@ export AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-e
 aws --endpoint-url http://localhost:4566 ssm get-parameters-by-path --path /GastosApp/ --recursive
 ```
 
-### `GET /auth/me` retorna 401 mesmo com token válido (achado real, já corrigido)
+### `GET /auth/me` retorna 401 mesmo com token válido — via container/RIE (achado real, já corrigido)
 
 Se você alterar `run-local.sh` e isso voltar a acontecer: o
 `cognito-local` fixa `issuer`/`jwks_uri` do seu discovery document
@@ -232,6 +232,30 @@ docker run --rm --network container:gastosapp-cognito-local --entrypoint sh \
   public.ecr.aws/lambda/provided:al2023 \
   -c "curl -s http://localhost:9229/<USER_POOL_ID>/.well-known/openid-configuration"
 ```
+
+### `GET /auth/me` retorna 401 mesmo com token válido — via Kestrel/dotnet run (achado real, já corrigido)
+
+Diferente do de cima (esse é específico do modo padrão, Kestrel, não do
+container). Causa: `Program.cs` chama `app.UseHttpsRedirection()`
+incondicionalmente — quando a Api sobe nas duas portas (perfil
+`https` de `launchSettings.json`, o que o VS Code usa por padrão ao
+rodar a config `GastosApp.Api`: `http://localhost:5049` **e**
+`https://localhost:7236`), toda requisição HTTP vira um `307` pra
+HTTPS. O `HttpClient` segue esse redirect automaticamente, mas o .NET
+**remove o header `Authorization`** ao seguir um redirect que muda
+scheme/porta (comportamento de segurança documentado) — por isso só as
+chamadas autenticadas (`GET /auth/me`) quebram; `register`/`login`
+(sem `Authorization`) passam batido pelo redirect sem problema. Pra
+reproduzir o diagnóstico:
+```bash
+curl -sv -X GET http://localhost:5049/health -H "Authorization: Bearer teste" \
+  2>&1 | grep -E "^< |^> |HTTP/1.1"
+# HTTP/1.1 307 Temporary Redirect ... Location: https://localhost:7236/health
+```
+Corrigido em `Support/DirectHttpTransport.cs` (não em `Program.cs` —
+evita mudar comportamento de produção): o `HttpClient` desliga
+`AllowAutoRedirect` e segue o redirect manualmente, preservando todos
+os headers, incluindo `Authorization`.
 
 ### Rodar só a suíte, sem rebuildar a imagem (iteração rápida)
 
