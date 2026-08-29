@@ -243,16 +243,18 @@ genérica, antes dessas FEATs, em vez de cada uma reinventar. Registro
 aqui só para decisão do usuário — não vira item do `backlog.md` sem
 confirmação.
 
-## Pontos que precisam de confirmação antes do `/tasks`
+## Pontos confirmados com o usuário
 
-1. Confirma que o `RegisterValidationError` (400 genérico) não precisa
-   diferenciar qual campo o backend rejeitou? Hoje o backend retorna só
-   `detail` (texto livre), sem código por campo — dado que a validação
-   client-side já cobre os mesmos casos antes do submit, o 400 real do
-   servidor deveria ser raro (ex.: alguém contornando o client).
-2. Confirma a decisão de **não** introduzir toast/overlay novos nesta
-   feature (item 1 dos débitos técnicos acima), usando o padrão inline
-   já existente para a confirmação de cadastro?
-3. Nomenclatura `utils/cpf.ts` + `utils/phoneMask.ts` (ou um único
-   `utils/masks.ts` com tudo) — sem impacto de contrato, posso decidir
-   no `/tasks` se preferir não opinar agora.
+1. **Erro 400 genérico** — confirmado: `RegisterValidationError` fica
+   com mensagem genérica ("Verifique os dados informados"), sem tentar
+   mapear pra um campo específico. O backend não retorna código por
+   campo, e a validação client-side já cobre os casos comuns antes do
+   submit.
+2. **Sem toast/overlay novos nesta feature** — confirmado: usa o padrão
+   inline já existente (mensagem de sucesso/erro + botão com spinner).
+   Os dois itens (toast genérico, overlay de processamento) foram
+   registrados em `frontend/docs/backlog.md` como débitos técnicos,
+   para revisitar antes das FEATs que também assumem esses componentes
+   no design (FEAT-24, FEAT-28).
+3. Nomenclatura `utils/cpf.ts` + `utils/phoneMask.ts` fica em aberto,
+   decidida no `/tasks` sem impacto de contrato.
