@@ -157,10 +157,11 @@ reformulado.
        caminho "gate encontra sucesso e libera o deploy de fato").
        Falta uma release com mudança real de camada Api pra validar
        esse caminho específico
-- [ ] 23. Disparar manualmente `backend-integration-tests-prod.yml`
+- [x] 23. Disparar manualmente `backend-integration-tests-prod.yml`
        pela aba Actions do GitHub → confirmar execução isolada contra
        produção, sem tocar build/deploy, com limpeza da conta de
-       teste ao final — ainda não disparado
+       teste ao final — validado ao vivo em 2026-08-29 (run #1,
+       `integration-tests`: 3 passed, 0 failed, 0 skipped, 9s)
 
 ## Fase 10 — Correções pós-merge (achados reais rodando a pipeline de verdade)
 
