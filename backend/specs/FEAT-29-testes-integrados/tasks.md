@@ -138,21 +138,61 @@ reformulado.
 
 ## Fase 7 — Validação ao vivo
 
-Depende da Fase 5 (permissão IAM aplicada) e de PR/merge pra `develop`
-(fora do escopo de uma sessão de implementação isolada — precisa do
-fluxo normal de PR automático + merge manual do repositório).
-
-- [ ] 21. Push em `develop` com uma mudança trivial no backend →
+- [x] 21. Push em `develop` com uma mudança trivial no backend →
        confirmar que `backend-deploy-hom.yml` roda `integration-tests`
        com sucesso contra hom real (conta de teste criada e
-       removida) e só então cria/atualiza o rascunho de release
+       removida) e só então cria/atualiza o rascunho de release —
+       **validado**: PR #65 (FEAT-29) mergeado em `develop`,
+       `integration-tests` passou contra hom real, rascunho virou a
+       release `backend-v0.0.10`
 - [ ] 22. Publicar a release de teste (`backend-v*`) → confirmar que
        `check-hom-integration-tests` encontra a execução bem-sucedida
-       e libera `quality`/`deploy` em `backend-deploy-prod.yml`
+       e libera `quality`/`deploy` em `backend-deploy-prod.yml` —
+       **parcialmente validado**: `backend-v0.0.10` foi publicada e o
+       job `check-hom-integration-tests` rodou, mas como a FEAT-29 não
+       alterou `src/GastosApp.Api|Application|Domain|Infrastructure`,
+       `check-changes` desta release deu `changed=false` — a cadeia
+       `check-hom-integration-tests` → `quality` → `deploy` foi pulada
+       de propósito (comportamento correto, mas não exercita o
+       caminho "gate encontra sucesso e libera o deploy de fato").
+       Falta uma release com mudança real de camada Api pra validar
+       esse caminho específico
 - [ ] 23. Disparar manualmente `backend-integration-tests-prod.yml`
        pela aba Actions do GitHub → confirmar execução isolada contra
        produção, sem tocar build/deploy, com limpeza da conta de
-       teste ao final
+       teste ao final — ainda não disparado
+
+## Fase 10 — Correções pós-merge (achados reais rodando a pipeline de verdade)
+
+A validação ao vivo da Fase 7 expôs 3 bugs que só apareciam com a
+pipeline real de CI/CD (impossíveis de pegar numa sessão de
+implementação isolada) — cada um numa branch `fix/*` própria, já
+mergeada em `develop`:
+
+- [x] `backend-deploy-account-trigger-{hom,prod}.yml` também rodavam
+      `dotnet test GastosApp.sln` sem `--filter "Category!=Integration"`
+      — o filtro da FEAT-29 só tinha sido aplicado em
+      `backend-feature-pr.yml`/`backend-deploy-hom.yml`/
+      `backend-deploy-prod.yml`, esquecendo os workflows irmãos do
+      Lambda trigger de conta. Quebrou o deploy de prod do trigger na
+      release `backend-v0.0.10` (`Connection refused (localhost:4566)`
+      no runner do GitHub, sem LocalStack). Corrigido em
+      `fix/filtro-integration-tests-account-trigger`
+- [x] `backend-feature-pr.yml` não disparava PR automático pra
+      mudanças isoladas em `.github/workflows/**` (o `paths:` só
+      cobria `backend/src|tests|infra/lambda/**` e `GastosApp.sln`) —
+      o fix acima nunca abriu PR sozinho por causa disso. Adicionado
+      `.github/workflows/backend-*.yml` ao filtro em
+      `fix/filtro-pr-automatico-workflows`
+- [x] `backend-deploy-account-trigger-prod.yml` nunca teve o job
+      `open-pr-main` (apesar do comentário do topo dizer "espelha
+      `backend-deploy-prod.yml`") — mascarado porque o `open-pr-main`
+      da Api já roda em toda publicação de release `backend-v*`
+      independente de mudança na própria Api, cobrindo o gatilho
+      `release: published`; o buraco real é um `workflow_dispatch`
+      isolado deste workflow (recuperando um deploy que falhou sem
+      re-rodar o da Api — exatamente o caso de `backend-v0.0.10`).
+      Corrigido em `fix/open-pr-main-trigger-conta-prod`
 
 ## Fase 8 — Documentação
 
