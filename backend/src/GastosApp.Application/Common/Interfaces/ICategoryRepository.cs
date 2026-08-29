@@ -19,14 +19,14 @@ public sealed record CategoryWriteResult(CategoryWriteOutcome Outcome, Category?
 public interface ICategoryRepository
 {
     Task<CategoryWriteResult> CreateAsync(Category category, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<Category>> ListAsync(string accountId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Category>> ListAsync(string accountId, string? tipo, CancellationToken cancellationToken = default);
     Task<Category?> GetByIdAsync(string accountId, string categoryId, CancellationToken cancellationToken = default);
     Task<CategoryWriteResult> UpdateAsync(
         string accountId,
         string categoryId,
         string nome,
-        string cor,
-        string icone,
+        string tipo,
+        long? orcamentoMensalCents,
         CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(string accountId, string categoryId, CancellationToken cancellationToken = default);
 }

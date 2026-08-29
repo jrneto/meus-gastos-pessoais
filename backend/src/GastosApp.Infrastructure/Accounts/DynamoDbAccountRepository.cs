@@ -1,6 +1,8 @@
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using GastosApp.Application.Common.Interfaces;
+using GastosApp.Domain.Categories;
+using GastosApp.Infrastructure.Categories;
 using GastosApp.Infrastructure.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -15,6 +17,7 @@ public sealed class DynamoDbAccountRepository : IAccountRepository
     private const string AccountPointerSk = "ACCOUNT#";
     private const string MemberSkPrefix = "MEMBER#";
     private const string TitularRole = "Titular";
+    private const string ActiveStatus = "Ativo";
 
     private readonly IAmazonDynamoDB _dynamoDbClient;
     private readonly DynamoDbOptions _options;
@@ -36,10 +39,32 @@ public sealed class DynamoDbAccountRepository : IAccountRepository
         return response.IsItemSet ? response.Item["AccountId"].S : null;
     }
 
-    public async Task<CreateAccountResult> CreateAsync(string userId, CancellationToken cancellationToken = default)
+    public async Task<CreateAccountResult> CreateAsync(string userId, string email, CancellationToken cancellationToken = default)
     {
         var accountId = Guid.NewGuid().ToString();
-        var createdAt = DateTimeOffset.UtcNow.ToString("O");
+        var membershipId = Guid.NewGuid().ToString();
+        var createdAtOffset = DateTimeOffset.UtcNow;
+        var createdAt = createdAtOffset.ToString("O");
+
+        // Categorias padrão (FEAT-28): semeadas na mesma transação que cria
+        // Account/Membership, nunca separadas — ver plan.md, decisão técnica 1.
+        // Ou a conta nasce completa (com as 13 categorias), ou a criação
+        // inteira cancela e é re-tentada do zero no próximo login/trigger.
+        var defaultCategoryItems = DefaultCategorySeed.Items.Select(seed =>
+        {
+            var category = Category.Restore(seed.Id, accountId, seed.Nome, DefaultCategorySeed.Tipo, null, createdAtOffset);
+            var sk = CategoryItemMapper.BuildSk(seed.Nome);
+
+            return new TransactWriteItem
+            {
+                Put = new Put
+                {
+                    TableName = _options.TableName,
+                    Item = CategoryItemMapper.BuildItem(category, sk),
+                    ConditionExpression = "attribute_not_exists(PK)"
+                }
+            };
+        });
 
         try
         {
@@ -81,15 +106,19 @@ public sealed class DynamoDbAccountRepository : IAccountRepository
                             Item = new Dictionary<string, AttributeValue>
                             {
                                 ["PK"] = new AttributeValue { S = $"ACCOUNT#{accountId}" },
-                                ["SK"] = new AttributeValue { S = $"{MemberSkPrefix}{userId}" },
+                                ["SK"] = new AttributeValue { S = $"{MemberSkPrefix}{membershipId}" },
                                 ["GSI1PK"] = new AttributeValue { S = $"USER#{userId}" },
                                 ["GSI1SK"] = new AttributeValue { S = $"ACCOUNT#{accountId}" },
+                                ["Email"] = new AttributeValue { S = email },
                                 ["Role"] = new AttributeValue { S = TitularRole },
+                                ["Status"] = new AttributeValue { S = ActiveStatus },
+                                ["UserId"] = new AttributeValue { S = userId },
                                 ["CreatedAt"] = new AttributeValue { S = createdAt }
                             },
                             ConditionExpression = "attribute_not_exists(PK)"
                         }
-                    }
+                    },
+                    .. defaultCategoryItems
                 ]
             }, cancellationToken);
 
@@ -113,6 +142,21 @@ public sealed class DynamoDbAccountRepository : IAccountRepository
 
             return new CreateAccountResult(winnerAccountId, AlreadyExisted: true);
         }
+    }
+
+    public async Task SetActiveAccountAsync(string userId, string accountId, CancellationToken cancellationToken = default)
+    {
+        // Troca deliberada de conta ativa (aceitação de convite, FEAT-20) —
+        // sobrescrita incondicional ("última operação vence"), diferente de
+        // CreateAsync: aqui não há corrida a serializar.
+        await _dynamoDbClient.PutItemAsync(new PutItemRequest
+        {
+            TableName = _options.TableName,
+            Item = new Dictionary<string, AttributeValue>(AccountPointerKey(userId))
+            {
+                ["AccountId"] = new AttributeValue { S = accountId }
+            }
+        }, cancellationToken);
     }
 
     private static Dictionary<string, AttributeValue> AccountPointerKey(string userId) => new()

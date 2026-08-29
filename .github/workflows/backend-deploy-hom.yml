@@ -59,7 +59,9 @@ jobs:
           dotnet-version: '10.0.x'
 
       - run: dotnet build GastosApp.sln -c Release
-      - run: dotnet test GastosApp.sln -c Release
+      # --filter exclui GastosApp.IntegrationTests (FEAT-29) — roda à
+      # parte, contra a API real, no job integration-tests abaixo.
+      - run: dotnet test GastosApp.sln -c Release --filter "Category!=Integration"
 
   deploy:
     needs: quality
@@ -119,6 +121,40 @@ jobs:
             --environment "$environment_json"
           aws lambda wait function-updated --function-name "${{ vars.FUNCTION_NAME }}"
 
+  # Roda a suíte de testes integrados (FEAT-29) contra a API de
+  # homologação já publicada pelo job anterior — não contra dublês,
+  # contra Cognito/DynamoDB reais de hom. Só depois desse job passar é
+  # que o rascunho de release é criado/atualizado (job seguinte),
+  # garantindo que nenhuma release chega a existir sem o teste
+  # integrado de hom ter passado (ver spec.md, US2, e
+  # backend-deploy-prod.yml, job check-hom-integration-tests, que
+  # depende dessa mesma garantia).
+  integration-tests:
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: backend-hom
+    permissions:
+      id-token: write # necessário para autenticação AWS via OIDC (sem access key fixa)
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CICD_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Rodar testes integrados contra hom
+        run: dotnet test tests/GastosApp.IntegrationTests -c Release
+        env:
+          INTEGRATION_TESTS_MODE: hom
+          INTEGRATION_TESTS_BASE_URL: https://api-hom.jrnexpenses.com
+          INTEGRATION_TESTS_PARAMETER_STORE_PATH: /GastosApp/Hom/
+
   # Cria/atualiza uma GitHub Release em rascunho a cada deploy de hom
   # bem-sucedido (mesmo princípio da FEAT-11 do frontend) — nunca
   # publica sozinho, só deixa pronta pra revisão. Publicar continua
@@ -129,7 +165,7 @@ jobs:
   # sem esse filtro, este job poderia apagar/confundir o rascunho
   # pendente do frontend, e vice-versa.
   draft-release:
-    needs: deploy
+    needs: [deploy, integration-tests]
     runs-on: ubuntu-latest
     permissions:
       contents: write # necessário pra criar/deletar release

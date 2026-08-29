@@ -94,8 +94,11 @@ app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapAuthEndpoints();
-app.MapExpenseEndpoints();
+app.MapTransactionEndpoints();
 app.MapCategoryEndpoints();
+app.MapMemberEndpoints();
+app.MapSummaryEndpoints();
+app.MapReportEndpoints();
 app.MapHealthEndpoints();
 
 app.Run();

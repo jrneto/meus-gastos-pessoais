@@ -1,16 +1,18 @@
 # GastosApp — Monorepo
 
-Monorepo com dois contextos independentes:
-- **`/backend`** — API .NET (Clean Architecture), foco atual do projeto.
-- **`/frontend`** — React (ainda não iniciado).
+Monorepo com dois contextos independentes, ambos ativos em paralelo,
+cada um com seu próprio ciclo SDD (`/specify` → `/plan` → `/tasks` →
+`/review`):
+- **`/backend`** — API .NET (Clean Architecture).
+- **`/frontend`** — SPA React (feature-based/bulletproof-react).
 
 **Não existe infraestrutura compartilhada entre contextos.** Cada contexto
 tem sua própria pasta `infra/` (`backend/infra/`, `frontend/infra/`), com
-seu próprio `CLAUDE.md`, provisionada de forma independente (futuramente
-via Terraform).
+seu próprio `CLAUDE.md`, provisionada de forma independente via Terraform.
 
-O foco atual do projeto é **exclusivamente o backend**. Frontend (e sua
-infra) ainda não foram iniciados.
+A arquitetura do sistema como um todo (backend + frontend, modelo C4
+até o nível 3) vive em [`/docs/architecture.md`](docs/architecture.md)
+— nenhum dos dois contextos, isoladamente, a representa por completo.
 
 ## Roteamento por contexto
 
@@ -18,8 +20,8 @@ infra) ainda não foram iniciados.
   sempre consulte `/backend/CLAUDE.md`, `/backend/infra/CLAUDE.md` e os
   documentos em `/backend/docs/` antes de gerar código.
 - Ao trabalhar em algo dentro de `/frontend` (incluindo `/frontend/infra`),
-  consulte `/frontend/CLAUDE.md` e `/frontend/docs/` (a serem criados
-  quando o frontend for iniciado) e `/frontend/infra/CLAUDE.md`.
+  sempre consulte `/frontend/CLAUDE.md`, `/frontend/infra/CLAUDE.md` e os
+  documentos em `/frontend/docs/` antes de gerar código.
 - **Nunca aplicar decisões arquiteturais ou de infraestrutura de um
   contexto ao outro por padrão** (ex.: Clean Architecture é uma decisão do
   backend — não impor a outros contextos sem que faça sentido para eles).
@@ -28,7 +30,9 @@ infra) ainda não foram iniciados.
 
 Toda spec vive em sua própria subpasta: `{contexto}/specs/{FEAT-XX-nome}/`,
 contendo `spec.md`, `plan.md` e `tasks.md`. **Nunca criar arquivos soltos
-direto em `specs/`.** Hoje só existe `backend/specs/`.
+direto em `specs/`.** A numeração `FEAT-XX` é independente por contexto
+(ex.: `backend/specs/FEAT-19-...` e `frontend/specs/FEAT-19-...` são
+features diferentes, sem relação entre si).
 
 ## Fluxo de Git (branches e PRs)
 
@@ -60,12 +64,13 @@ Desde a FEAT-10 (frontend), toda feature em **Fluxo Completo** segue:
 
 ## Infraestrutura
 
-Toda infraestrutura, em qualquer contexto, é **AWS**. O plano futuro é
-provisionar cada `infra/` via **Terraform**. Não gerar código Terraform
-até que seja solicitado explicitamente. Regras específicas de cada
-contexto (ex.: backend conecta-se diretamente aos recursos AWS reais em
-desenvolvimento local, sem LocalStack/Kong) vivem no `CLAUDE.md` de
-`{contexto}/infra/`, não aqui.
+Toda infraestrutura, em qualquer contexto, é **AWS**, provisionada via
+**Terraform** (produção e homologação de ambos os contextos já estão
+sob Terraform). Não gerar/alterar código Terraform para um recurso além
+do já existente até que seja solicitado explicitamente. Regras
+específicas de cada contexto (ex.: backend roda local contra emuladores
+Docker — LocalStack + cognito-local, sem depender de credenciais AWS
+reais) vivem no `CLAUDE.md` de `{contexto}/infra/`, não aqui.
 
 ## Modo Leve vs Fluxo Completo
 
@@ -93,11 +98,29 @@ antes de decidir. Nunca decida sozinho pular o fluxo completo para algo
 que pareça tocar arquitetura, contrato de API ou infraestrutura.
 
 ### No modo leve:
-- Ainda é obrigatório consultar `backend/docs/constitution.md` e
-  `backend/CLAUDE.md` antes de implementar
+- Ainda é obrigatório consultar `{contexto}/docs/constitution.md` e
+  `{contexto}/CLAUDE.md` antes de implementar
 - Não é necessário criar pasta em `specs/`
 - Ao final, resuma em 2-3 linhas o que foi feito e por quê (pode ir direto
   na mensagem de commit ou no chat, não precisa de arquivo)
 
-Aplique essa mesma lógica de Modo Leve vs Fluxo Completo para o contexto
-frontend quando ele for iniciado no futuro.
+Vale a mesma lógica de Modo Leve vs Fluxo Completo para o contexto
+frontend — troque as referências a `backend/docs/constitution.md` e
+`backend/CLAUDE.md` pelas equivalentes em `frontend/`.
+
+## Débitos técnicos e oportunidades de melhoria
+
+Frequentemente, durante `/specify`, `/plan`, `/tasks`, implementação,
+`/review` ou qualquer trabalho em Modo Leve, surgem débitos técnicos ou
+oportunidades de melhoria que não fazem parte do escopo do que está
+sendo feito no momento. Sempre que isso acontecer, pergunte ao usuário
+se deseja anotar o item para implementação futura — nunca decida
+sozinho se anota ou não, nem deixe passar sem perguntar.
+
+Se a resposta for sim, o item vai para a seção **"Débitos técnicos e
+melhorias futuras"** do `backlog.md` do contexto correspondente
+(`backend/docs/backlog.md` ou `frontend/docs/backlog.md`), com contexto
+suficiente pra ser retomado depois sem precisar relembrar a conversa
+original (o que é, por que foi adiado, em que FEAT/momento foi
+percebido). Ao priorizar um item depois, ele sai do backlog e vira
+trabalho normal (spec nova ou Modo Leve, conforme o caso).

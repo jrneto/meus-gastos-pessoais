@@ -2,10 +2,11 @@
 
 **Antes de gerar código neste diretório, leia sempre:**
 `backend/docs/constitution.md` (regras imutáveis) e
-`backend/docs/architecture.md` (decisões de banco/infra). Ao trabalhar
-dentro de `backend/infra/`, leia também `backend/infra/CLAUDE.md`. Para o
-critério de quando abrir uma spec, veja "Modo Leve vs Fluxo Completo" no
-[`/CLAUDE.md`](../CLAUDE.md) raiz.
+[`/docs/architecture.md`](../docs/architecture.md) (arquitetura C4 do
+monorepo completo — `backend/docs/architecture.md` é hoje só um
+ponteiro pra lá). Ao trabalhar dentro de `backend/infra/`, leia também
+`backend/infra/CLAUDE.md`. Para o critério de quando abrir uma spec,
+veja "Modo Leve vs Fluxo Completo" no [`/CLAUDE.md`](../CLAUDE.md) raiz.
 
 ## Stack
 - .NET 10, ASP.NET Core Minimal APIs (sem controllers)
@@ -37,12 +38,13 @@ backend/
 ├── tests/
 │   ├── GastosApp.UnitTests/       # xUnit + NSubstitute + FluentAssertions
 │   ├── GastosApp.ComponentTests/  # WebApplicationFactory + mocks (ver FEAT-03)
-│   └── GastosApp.IntegrationTests/# esqueleto, não usado hoje (ver FEAT-03/spec.md)
+│   └── GastosApp.IntegrationTests/# suíte black-box multiambiente (local/hom/prod, ver FEAT-29)
 ├── docs/
 │   ├── constitution.md
-│   ├── architecture.md
+│   ├── architecture.md            # ponteiro pra /docs/architecture.md (raiz)
 │   ├── data-model.md
 │   ├── openapi.json                # contrato OpenAPI exportado (ver scripts/export-openapi.sh)
+│   ├── backlog.md                 # sequência de FEATs + débitos técnicos/melhorias futuras
 │   └── README.md                  # explica o fluxo SDD do backend
 ├── specs/
 │   └── FEAT-XX-nome-feature/{spec.md, plan.md, tasks.md}
@@ -74,6 +76,14 @@ interfaces definidas em Application). `Domain` não depende de nada.
 - Todo novo endpoint precisa de teste de componente (mock de
   repositórios/dependências externas), ver
   `backend/specs/FEAT-03-testes-componentes/spec.md`
+- Todo novo endpoint **também** precisa de teste integrado (contra a
+  API real, sem dublês — `GastosApp.IntegrationTests`), cobrindo pelo
+  menos o fluxo de sucesso, ver
+  `backend/specs/FEAT-29-testes-integrados/spec.md`. Roda localmente
+  via `backend/infra/lambda/run-local.sh` (binário Native AOT publicado,
+  via Runtime Interface Emulator — pega erro de AOT antes do deploy);
+  em CI, roda contra hom/prod (`--filter Category=Integration`), fora
+  do `dotnet test GastosApp.sln` padrão
 
 ## Comandos úteis
 

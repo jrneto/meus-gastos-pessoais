@@ -1,50 +1,36 @@
-# jrnexpenses — Protótipo Web (handoff)
+# jrnexpenses — Export completo (web + mobile)
 
-Protótipo funcional da versão desktop/web do jrnexpenses, construído sobre o design system **Modernist**.
-
-## Como abrir
-
-Abra `jrnexpenses-web.dc.html` em um navegador (via servidor local, ex. `python3 -m http.server`, para que os arquivos relativos carreguem).
-
-## Conteúdo
+Protótipos funcionais do jrnexpenses nas duas plataformas, construídos sobre o design system **Modernist** (near-mono vermelho #ec3013 sobre fundo claro, Archivo, zero raio, réguas de 2px).
 
 ```
-jrnexpenses-web.dc.html   protótipo completo (markup + lógica)
-browser-window.jsx        moldura de janela de navegador
-image-slot.js             placeholder de imagem (comprovantes)
-support.js                runtime do componente
-_ds/modernist-…/          design system: styles.css (tokens), bundle, readme
-screenshots/              17 telas exportadas em PNG
+web/      jrnexpenses-web.dc.html  + dependências + 19 screenshots
+mobile/   jrnexpenses.dc.html      + dependências + 16 screenshots
 ```
 
-## Telas exportadas
+Cada pasta é autossuficiente (inclui `_ds/modernist-…/` com `styles.css`, tokens e bundle). Abra o `.dc.html` por um servidor local — ex. `python3 -m http.server` na raiz da pasta — para que os arquivos relativos carreguem.
 
-| Arquivo | Tela |
-| --- | --- |
-| 01-login | Login / criar conta |
-| 02-login-loading | Autenticação em progresso (spinner no botão) |
-| 03-dashboard | Resumo: saldo do mês, receitas, despesas, orçamentos |
-| 04-nova-despesa | Diálogo de nova despesa |
-| 05-nova-despesa-preenchida | Valor e categoria preenchidos |
-| 06-loading-salvando-despesa | Estado de processamento: overlay + barra indeterminada |
-| 07-toast-despesa-lancada | Confirmação por toast após salvar |
-| 08-nova-receita | Diálogo de nova receita (categorias de receita) |
-| 09-transacoes | Lista unificada, receitas em verde / despesas em vermelho |
-| 10-relatorios | Relatórios por categoria e período |
-| 11-categorias-orcamentos | Categorias e edição de orçamento |
-| 12-membros | Membros e níveis de acesso |
-| 13-convidar-pessoa | Diálogo de convite |
-| 14-loading-enviando-convite | Envio de convite em progresso |
-| 15-toast-convite-enviado | Confirmação do convite |
-| 16-ajustes | Preferências e notificações |
-| 17-detalhe-transacao | Detalhe de lançamento com comprovante |
+## Web — telas (`web/screenshots/`)
 
-## Padrão de estados de carregamento
+01 login · 02 criar conta · 03 criar conta preenchida (nome, CPF, telefone, e-mail, senha) · 04 login processando · 05 dashboard · 06–07 nova despesa · 08 salvando (loading) · 09 toast de confirmação · 10 nova receita · 11 transações · 12 relatórios · 13 categorias e orçamentos · 14 membros · 15 convidar pessoa · 16 enviando convite (loading) · 17 toast do convite · 18 ajustes · 19 detalhe de transação
 
-Três camadas, todas com tokens do Modernist (sem cantos arredondados, acento #ec3013):
+## Mobile — telas (`mobile/screenshots/`)
 
-1. **Botão ocupado** — spinner de 15px dentro do botão, rótulo muda para gerúndio (“Entrando…”, “Salvando…”), botão desabilitado.
-2. **Overlay de processamento** — cobre o diálogo com véu do fundo a 86%, spinner de 34px, rótulo em caixa alta e barra de progresso indeterminada. Cancelar fica desabilitado para evitar estado inconsistente.
-3. **Toast de confirmação** — canto inferior direito, fundo tinta sobre texto claro, mensagem que informa o efeito (“Despesa lançada e orçamento atualizado.”), some em 3,2s.
+01 onboarding · 02 login · 03 criar conta · 04 criar conta preenchida · 05 dashboard · 06–07 nova despesa · 08 dashboard após salvar · 09 nova receita · 10 transações · 11 relatórios · 12 ajustes · 13 categorias e orçamentos · 14 membros e convites · 15 membro convidado · 16 detalhe de transação
 
-Latência simulada: 1,7–1,8s. Em produção, substituir os `setTimeout` por promessas da API e manter os mesmos estados.
+## Cadastro de conta
+
+Modo "Criar conta" pede **nome completo, CPF, telefone, e-mail e senha**. CPF e telefone têm máscara progressiva no próprio campo (`000.000.000-00` e `(11) 98765-4321`), `inputmode` numérico e limite de dígitos. No web os dois ficam lado a lado em grid de 2 colunas; no mobile, empilhados. O modo "Entrar" continua com apenas e-mail e senha.
+
+## Estados de processamento
+
+Três camadas, todas com tokens do Modernist:
+
+1. **Botão ocupado** — spinner dentro do botão, rótulo em gerúndio ("Entrando…", "Salvando…"), botão desabilitado.
+2. **Overlay de processamento** — véu do fundo a ~88%, spinner, rótulo em caixa alta e barra de progresso indeterminada; Cancelar desabilitado.
+3. **Toast de confirmação** — fundo tinta sobre texto claro, mensagem que informa o efeito ("Despesa lançada e orçamento atualizado."), desaparece em 3,2s.
+
+Latência simulada de 1,7–1,8s. Em produção, trocar os `setTimeout` por promessas da API mantendo exatamente os mesmos estados.
+
+## Modelo de dados do protótipo
+
+Receitas e despesas vivem na mesma lista (`transactions`) com campo `type: 'income' | 'expense'`, categorias separadas por tipo, e orçamento como conceito exclusivo de despesa. O dashboard calcula saldo do mês = receitas − despesas.

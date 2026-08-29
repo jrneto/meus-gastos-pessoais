@@ -4,8 +4,8 @@ using FluentValidation.Results;
 using GastosApp.Application.Auth.Commands.Login;
 using GastosApp.Application.Common.Behaviors;
 using GastosApp.Application.Common.Results;
-using GastosApp.Application.Expenses.Commands.RegisterExpense;
-using GastosApp.Domain.Expenses;
+using GastosApp.Application.Transactions.Commands.RegisterTransaction;
+using GastosApp.Domain.Transactions;
 using NSubstitute;
 using Xunit;
 
@@ -16,21 +16,22 @@ public class ValidationBehaviorTests
     [Fact]
     public async Task Handle_ShouldReturnValidationFailure_WithoutCallingNext_WhenValidatorFails()
     {
-        var validator = Substitute.For<IValidator<RegisterExpenseCommand>>();
+        var validator = Substitute.For<IValidator<RegisterTransactionCommand>>();
         validator
-            .ValidateAsync(Arg.Any<ValidationContext<RegisterExpenseCommand>>(), Arg.Any<CancellationToken>())
+            .ValidateAsync(Arg.Any<ValidationContext<RegisterTransactionCommand>>(), Arg.Any<CancellationToken>())
             .Returns(new ValidationResult([new ValidationFailure("Description", "Descrição é obrigatória.")]));
 
-        var behavior = new ValidationBehavior<RegisterExpenseCommand, Result<RegisterExpenseResult>>([validator]);
-        var command = new RegisterExpenseCommand("user-id-123", "", 100, "Outros", new DateOnly(2025, 6, 15));
+        var behavior = new ValidationBehavior<RegisterTransactionCommand, Result<RegisterTransactionResult>>([validator]);
+        var command = new RegisterTransactionCommand("account-123", "", 100, "category-1", "despesa", new DateOnly(2025, 6, 15), "user-123");
 
         var nextCalled = false;
-        ValueTask<Result<RegisterExpenseResult>> Next(RegisterExpenseCommand _, CancellationToken __)
+        ValueTask<Result<RegisterTransactionResult>> Next(RegisterTransactionCommand _, CancellationToken __)
         {
             nextCalled = true;
-            return new ValueTask<Result<RegisterExpenseResult>>(
-                Result.Success(RegisterExpenseResult.FromExpense(
-                    Expense.Create("user-id-123", "x", 1, "category-1", command.ExpenseDate))));
+            return new ValueTask<Result<RegisterTransactionResult>>(
+                Result.Success(RegisterTransactionResult.FromEntity(
+                    Transaction.Create("account-123", "x", 1, "category-1", "despesa", command.Date, "user-123"),
+                    createdByLabel: "Você")));
         }
 
         var result = await behavior.Handle(command, Next, CancellationToken.None);
@@ -45,18 +46,19 @@ public class ValidationBehaviorTests
     [Fact]
     public async Task Handle_ShouldCallNext_WhenValidatorPasses()
     {
-        var validator = Substitute.For<IValidator<RegisterExpenseCommand>>();
+        var validator = Substitute.For<IValidator<RegisterTransactionCommand>>();
         validator
-            .ValidateAsync(Arg.Any<ValidationContext<RegisterExpenseCommand>>(), Arg.Any<CancellationToken>())
+            .ValidateAsync(Arg.Any<ValidationContext<RegisterTransactionCommand>>(), Arg.Any<CancellationToken>())
             .Returns(new ValidationResult());
 
-        var behavior = new ValidationBehavior<RegisterExpenseCommand, Result<RegisterExpenseResult>>([validator]);
-        var command = new RegisterExpenseCommand("user-id-123", "Almoço", 100, "Outros", new DateOnly(2025, 6, 15));
-        var expected = Result.Success(RegisterExpenseResult.FromExpense(
-            Expense.Create("user-id-123", "Almoço", 100, "category-1", command.ExpenseDate)));
+        var behavior = new ValidationBehavior<RegisterTransactionCommand, Result<RegisterTransactionResult>>([validator]);
+        var command = new RegisterTransactionCommand("account-123", "Almoço", 100, "category-1", "despesa", new DateOnly(2025, 6, 15), "user-123");
+        var expected = Result.Success(RegisterTransactionResult.FromEntity(
+            Transaction.Create("account-123", "Almoço", 100, "category-1", "despesa", command.Date, "user-123"),
+            createdByLabel: "Você"));
 
         var result = await behavior.Handle(
-            command, (_, _) => new ValueTask<Result<RegisterExpenseResult>>(expected), CancellationToken.None);
+            command, (_, _) => new ValueTask<Result<RegisterTransactionResult>>(expected), CancellationToken.None);
 
         result.Should().BeSameAs(expected);
     }

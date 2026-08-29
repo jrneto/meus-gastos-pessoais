@@ -138,6 +138,27 @@ public class CognitoAuthServiceTests
     }
 
     [Fact]
+    public async Task LoginAsync_ShouldReturnUserNotConfirmedFailure_WhenCognitoThrowsUserNotConfirmedException()
+    {
+        // Arrange — usuário existe e a senha está certa, mas ainda não
+        // confirmou o cadastro (POST /auth/register sem confirmação
+        // subsequente). Sem este catch, a exceção não era tratada e caía
+        // no GlobalExceptionHandler como 500.
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.InitiateAuthAsync(Arg.Any<InitiateAuthRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<InitiateAuthResponse>(new UserNotConfirmedException("User is not confirmed.")));
+
+        // Act
+        var result = await service.LoginAsync("neto@email.com", "Senha123");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Unauthorized);
+        result.Error.Code.Should().Be("user-not-confirmed");
+    }
+
+    [Fact]
     public async Task RefreshAsync_ShouldRefreshSuccessfully_WhenCognitoCallSucceeds()
     {
         // Arrange
@@ -189,5 +210,23 @@ public class CognitoAuthServiceTests
         result.IsFailure.Should().BeTrue();
         result.Error!.Type.Should().Be(ErrorType.Unauthorized);
         result.Error.Code.Should().Be("invalid-refresh-token");
+    }
+
+    [Fact]
+    public async Task DeleteAsync_ShouldCallAdminDeleteUser_WithUserPoolIdAndEmailAsUsername()
+    {
+        // Arrange
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.AdminDeleteUserAsync(Arg.Any<AdminDeleteUserRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminDeleteUserResponse());
+
+        // Act
+        await service.DeleteAsync("neto@email.com");
+
+        // Assert
+        await _cognitoMock.Received(1).AdminDeleteUserAsync(
+            Arg.Is<AdminDeleteUserRequest>(r => r.UserPoolId == "us-east-1_testpool" && r.Username == "neto@email.com"),
+            Arg.Any<CancellationToken>());
     }
 }

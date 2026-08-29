@@ -5,34 +5,34 @@ public sealed class Category
     public string Id { get; }
     public string AccountId { get; }
     public string Nome { get; }
-    public string Cor { get; }
-    public string Icone { get; }
+    public string Tipo { get; }
+    public long? OrcamentoMensalCents { get; }
     public DateTimeOffset CreatedAt { get; }
 
     private Category(
         string id,
         string accountId,
         string nome,
-        string cor,
-        string icone,
+        string tipo,
+        long? orcamentoMensalCents,
         DateTimeOffset createdAt)
     {
         Id = id;
         AccountId = accountId;
         Nome = nome;
-        Cor = cor;
-        Icone = icone;
+        Tipo = tipo;
+        OrcamentoMensalCents = orcamentoMensalCents;
         CreatedAt = createdAt;
     }
 
-    public static Category Create(string accountId, string nome, string cor, string icone)
+    public static Category Create(string accountId, string nome, string tipo, long? orcamentoMensalCents)
     {
         return new Category(
             Guid.NewGuid().ToString(),
             accountId,
             nome,
-            cor,
-            icone,
+            tipo,
+            orcamentoMensalCents,
             DateTimeOffset.UtcNow);
     }
 
@@ -40,10 +40,10 @@ public sealed class Category
         string id,
         string accountId,
         string nome,
-        string cor,
-        string icone,
+        string tipo,
+        long? orcamentoMensalCents,
         DateTimeOffset createdAt)
     {
-        return new Category(id, accountId, nome, cor, icone, createdAt);
+        return new Category(id, accountId, nome, tipo, orcamentoMensalCents, createdAt);
     }
 }

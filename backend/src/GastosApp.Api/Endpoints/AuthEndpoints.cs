@@ -3,6 +3,7 @@ using GastosApp.Application.Auth.Commands.Login;
 using GastosApp.Application.Auth.Commands.Logout;
 using GastosApp.Application.Auth.Commands.Refresh;
 using GastosApp.Application.Auth.Commands.Register;
+using GastosApp.Application.Auth.Queries.GetCurrentUser;
 using Mediator;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -43,12 +44,12 @@ public static class AuthEndpoints
     }
 
     private static async Task<IResult> UserData(ClaimsPrincipal user,
+        ISender sender,
         CancellationToken cancellationToken)
     {
 
         var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var email = user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value;
-        var name = user.FindFirst("name")?.Value ?? user.FindFirst(ClaimTypes.Name)?.Value;
 
         if (string.IsNullOrEmpty(userId))
         {
@@ -60,8 +61,9 @@ public static class AuthEndpoints
             }, AppJsonSerializerContext.Default.ProblemDetails, statusCode: StatusCodes.Status401Unauthorized, contentType: "application/problem+json");
         }
 
-        return Results.Ok(new UserInfoResponse(userId, email, name));
-
+        var query = new GetCurrentUserQuery(userId, email);
+        var result = await sender.Send(query, cancellationToken);
+        return result.ToHttpResult(value => Results.Ok(new UserInfoResponse(value.UserId, value.Email, value.Name, value.PhoneNumber, value.Cpf)));
     }
 
     private static async Task<IResult> Login(
@@ -109,12 +111,12 @@ public static class AuthEndpoints
         ISender sender,
         CancellationToken cancellationToken)
     {
-        var command = new RegisterUserCommand(request.Email, request.Password);
+        var command = new RegisterUserCommand(request.Email, request.Password, request.Name, request.PhoneNumber, request.Cpf);
         var result = await sender.Send(command, cancellationToken);
         return result.ToHttpResult(value => Results.Created("/auth/me", value));
     }
 }
 
-public record RegisterRequest(string Email, string Password);
+public record RegisterRequest(string Email, string Password, string Name, string PhoneNumber, string Cpf);
 public record LoginRequest(string Email, string Password);
-public record UserInfoResponse(string UserId, string? Email, string? Name);
+public record UserInfoResponse(string UserId, string? Email, string? Name, string? PhoneNumber, string? Cpf);

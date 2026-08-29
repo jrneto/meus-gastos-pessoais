@@ -11,7 +11,17 @@ public class CreateCategoryCommandValidatorTests
     [Fact]
     public void Validate_ShouldBeValid_WhenCommandIsValid()
     {
-        var command = new CreateCategoryCommand("user-id-123", "Viagem", "#0EA5E9", "plane");
+        var command = new CreateCategoryCommand("user-id-123", "Viagem", "despesa", null);
+
+        var result = _validator.Validate(command);
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Validate_ShouldBeValid_WhenOrcamentoMensalCentsIsInformed()
+    {
+        var command = new CreateCategoryCommand("user-id-123", "Viagem", "receita", 50000);
 
         var result = _validator.Validate(command);
 
@@ -23,7 +33,7 @@ public class CreateCategoryCommandValidatorTests
     [InlineData("   ")]
     public void Validate_ShouldBeInvalid_WhenNomeIsEmpty(string nome)
     {
-        var command = new CreateCategoryCommand("user-id-123", nome, "#0EA5E9", "plane");
+        var command = new CreateCategoryCommand("user-id-123", nome, "despesa", null);
 
         var result = _validator.Validate(command);
 
@@ -33,7 +43,7 @@ public class CreateCategoryCommandValidatorTests
     [Fact]
     public void Validate_ShouldBeInvalid_WhenNomeExceedsMaxLength()
     {
-        var command = new CreateCategoryCommand("user-id-123", new string('a', 51), "#0EA5E9", "plane");
+        var command = new CreateCategoryCommand("user-id-123", new string('a', 51), "despesa", null);
 
         var result = _validator.Validate(command);
 
@@ -45,21 +55,7 @@ public class CreateCategoryCommandValidatorTests
     [InlineData("🎉🎉🎉")]
     public void Validate_ShouldBeInvalid_WhenNomeHasNoAlphanumericCharacters(string nome)
     {
-        var command = new CreateCategoryCommand("user-id-123", nome, "#0EA5E9", "plane");
-
-        var result = _validator.Validate(command);
-
-        result.IsValid.Should().BeFalse();
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("0EA5E9")]
-    [InlineData("#0EA5")]
-    [InlineData("#GGGGGG")]
-    public void Validate_ShouldBeInvalid_WhenCorIsNotAValidHexColor(string cor)
-    {
-        var command = new CreateCategoryCommand("user-id-123", "Viagem", cor, "plane");
+        var command = new CreateCategoryCommand("user-id-123", nome, "despesa", null);
 
         var result = _validator.Validate(command);
 
@@ -69,19 +65,25 @@ public class CreateCategoryCommandValidatorTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void Validate_ShouldBeInvalid_WhenIconeIsEmpty(string icone)
+    [InlineData("Despesa")]
+    [InlineData("DESPESA")]
+    [InlineData("expense")]
+    public void Validate_ShouldBeInvalid_WhenTipoIsNotDespesaOrReceita(string tipo)
     {
-        var command = new CreateCategoryCommand("user-id-123", "Viagem", "#0EA5E9", icone);
+        var command = new CreateCategoryCommand("user-id-123", "Viagem", tipo, null);
 
         var result = _validator.Validate(command);
 
         result.IsValid.Should().BeFalse();
     }
 
-    [Fact]
-    public void Validate_ShouldBeInvalid_WhenIconeExceedsMaxLength()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(-5000)]
+    public void Validate_ShouldBeInvalid_WhenOrcamentoMensalCentsIsZeroOrNegative(long orcamentoMensalCents)
     {
-        var command = new CreateCategoryCommand("user-id-123", "Viagem", "#0EA5E9", new string('a', 51));
+        var command = new CreateCategoryCommand("user-id-123", "Viagem", "despesa", orcamentoMensalCents);
 
         var result = _validator.Validate(command);
 

@@ -73,9 +73,19 @@ seção de infraestrutura).
   originais; a stylesheet de produção fica vendorizada e escopada em
   `frontend/app/src/styles/modernist/`, sob a classe `.ds-modernist` —
   ver `frontend/specs/FEAT-14-design-system-modernist-login/plan.md`
-  para o racional do escopo). Hoje: Login já migrado para Modernist; o
-  restante do app ainda usa shadcn/ui + Tailwind CSS, removidos somente
-  quando toda a superfície estiver migrada
+  para o racional do escopo). Migrado (FEAT-14 a FEAT-20): login, menu/
+  navegação, transações (listagem, filtros, popups de nova/editar
+  despesa, detalhe), categorias (CRUD). Ainda em shadcn/ui + Tailwind ou
+  placeholder: Início (dashboard, "Em breve"), Ajustes, Relatórios
+  ("Em breve") — shadcn/ui só é removido quando toda a superfície
+  estiver migrada
+- **Toda feature nova que envolve layout/UI (tela nova ou alteração
+  visual de tela existente) segue o Modernist como referência
+  obrigatória de layout** — antes de desenhar ou implementar, leia
+  `frontend/design-system/README.md` (índice das telas web/mobile
+  disponíveis como protótipo em `frontend/design-system/web/` e
+  `frontend/design-system/mobile/`) para entender o layout já proposto
+  para aquela tela/fluxo antes de propor algo novo
 - Gráficos: Tremor (adicionado apenas quando a primeira feature que
   precisar de gráfico for planejada — não instalado antecipadamente)
 - Testes: Vitest + React Testing Library + MSW (mock de chamadas HTTP)

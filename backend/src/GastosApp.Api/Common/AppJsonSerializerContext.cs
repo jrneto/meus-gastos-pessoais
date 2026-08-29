@@ -6,10 +6,13 @@ using GastosApp.Application.Auth.Commands.Register;
 using GastosApp.Application.Categories.Commands.CreateCategory;
 using GastosApp.Application.Categories.Commands.UpdateCategory;
 using GastosApp.Application.Categories.Queries.GetCategories;
-using GastosApp.Application.Expenses.Commands.RegisterExpense;
-using GastosApp.Application.Expenses.Commands.UpdateExpense;
-using GastosApp.Application.Expenses.Queries.GetExpenses;
 using GastosApp.Application.Health;
+using GastosApp.Application.Members;
+using GastosApp.Application.Reports.Queries.GetReports;
+using GastosApp.Application.Summary.Queries.GetSummary;
+using GastosApp.Application.Transactions.Commands.RegisterTransaction;
+using GastosApp.Application.Transactions.Commands.UpdateTransaction;
+using GastosApp.Application.Transactions.Queries.GetTransactions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GastosApp.Api.Common;
@@ -21,17 +24,17 @@ namespace GastosApp.Api.Common;
 // só reproduzido rodando de fato na Lambda).
 [JsonSerializable(typeof(RegisterRequest))]
 [JsonSerializable(typeof(LoginRequest))]
-[JsonSerializable(typeof(RegisterExpenseRequest))]
-[JsonSerializable(typeof(UpdateExpenseRequest))]
+[JsonSerializable(typeof(RegisterTransactionRequest))]
+[JsonSerializable(typeof(UpdateTransactionRequest))]
 [JsonSerializable(typeof(RegisterUserResult))]
 [JsonSerializable(typeof(LoginUserResult))]
 [JsonSerializable(typeof(RefreshTokenResult))]
-[JsonSerializable(typeof(RegisterExpenseResult))]
-[JsonSerializable(typeof(UpdateExpenseResult))]
-[JsonSerializable(typeof(GetExpensesResult))]
-[JsonSerializable(typeof(ExpenseSummary))]
+[JsonSerializable(typeof(RegisterTransactionResult))]
+[JsonSerializable(typeof(UpdateTransactionResult))]
+[JsonSerializable(typeof(GetTransactionsResult))]
+[JsonSerializable(typeof(TransactionSummary))]
 [JsonSerializable(typeof(UserInfoResponse))]
-[JsonSerializable(typeof(GetExpensesRequest))]
+[JsonSerializable(typeof(GetTransactionsRequest))]
 [JsonSerializable(typeof(HealthResponse))]
 [JsonSerializable(typeof(ProblemDetails))]
 [JsonSerializable(typeof(CreateCategoryRequest))]
@@ -40,6 +43,18 @@ namespace GastosApp.Api.Common;
 [JsonSerializable(typeof(UpdateCategoryResult))]
 [JsonSerializable(typeof(GetCategoriesResult))]
 [JsonSerializable(typeof(CategorySummary))]
+[JsonSerializable(typeof(InviteMemberRequest))]
+[JsonSerializable(typeof(UpdateMemberRoleRequest))]
+[JsonSerializable(typeof(MemberResult))]
+[JsonSerializable(typeof(GetMembersResult))]
+[JsonSerializable(typeof(GetSummaryResult))]
+[JsonSerializable(typeof(CategorySummaryItem))]
+[JsonSerializable(typeof(GetSummaryRequest))]
+[JsonSerializable(typeof(GetReportsResult))]
+[JsonSerializable(typeof(ReportCategoryItem))]
+[JsonSerializable(typeof(ReportTopCategory))]
+[JsonSerializable(typeof(GetReportsRequest))]
+[JsonSerializable(typeof(ExportTransactionsRequest))]
 public partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }

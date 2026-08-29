@@ -25,34 +25,34 @@ public class EnsureAccountCommandHandlerTests
             .Returns("account-existente");
 
         // Act
-        var result = await _handler.Handle(new EnsureAccountCommand("user-1"), CancellationToken.None);
+        var result = await _handler.Handle(new EnsureAccountCommand("user-1", "user1@email.com"), CancellationToken.None);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.AccountId.Should().Be("account-existente");
         result.Value.AlreadyExisted.Should().BeTrue();
 
-        await _accountRepositoryMock.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+        await _accountRepositoryMock.DidNotReceiveWithAnyArgs().CreateAsync(default!, default!, default);
     }
 
     [Fact]
-    public async Task Handle_ShouldCreateAccount_WhenNoneExistsYet()
+    public async Task Handle_ShouldCreateAccountWithEmail_WhenNoneExistsYet()
     {
         // Arrange
         _accountRepositoryMock.FindAccountIdByUserIdAsync("user-1", Arg.Any<CancellationToken>())
             .Returns((string?)null);
-        _accountRepositoryMock.CreateAsync("user-1", Arg.Any<CancellationToken>())
+        _accountRepositoryMock.CreateAsync("user-1", "user1@email.com", Arg.Any<CancellationToken>())
             .Returns(new CreateAccountResult("account-novo", AlreadyExisted: false));
 
         // Act
-        var result = await _handler.Handle(new EnsureAccountCommand("user-1"), CancellationToken.None);
+        var result = await _handler.Handle(new EnsureAccountCommand("user-1", "user1@email.com"), CancellationToken.None);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.AccountId.Should().Be("account-novo");
         result.Value.AlreadyExisted.Should().BeFalse();
 
-        await _accountRepositoryMock.Received(1).CreateAsync("user-1", Arg.Any<CancellationToken>());
+        await _accountRepositoryMock.Received(1).CreateAsync("user-1", "user1@email.com", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -63,11 +63,11 @@ public class EnsureAccountCommandHandlerTests
         // (ex.: trigger do Cognito criou entre o Find e o Create).
         _accountRepositoryMock.FindAccountIdByUserIdAsync("user-1", Arg.Any<CancellationToken>())
             .Returns((string?)null);
-        _accountRepositoryMock.CreateAsync("user-1", Arg.Any<CancellationToken>())
+        _accountRepositoryMock.CreateAsync("user-1", "user1@email.com", Arg.Any<CancellationToken>())
             .Returns(new CreateAccountResult("account-do-vencedor", AlreadyExisted: true));
 
         // Act
-        var result = await _handler.Handle(new EnsureAccountCommand("user-1"), CancellationToken.None);
+        var result = await _handler.Handle(new EnsureAccountCommand("user-1", "user1@email.com"), CancellationToken.None);
 
         // Assert
         result.IsSuccess.Should().BeTrue();

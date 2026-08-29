@@ -75,6 +75,10 @@ public sealed class CognitoAuthService : IAuthService
 
             return Result.Success(new LoginResult(result.IdToken, result.ExpiresIn ?? 3600, userId, result.RefreshToken));
         }
+        catch (UserNotConfirmedException)
+        {
+            return Result.Failure<LoginResult>(AuthErrors.UserNotConfirmed);
+        }
         catch (NotAuthorizedException)
         {
             return Result.Failure<LoginResult>(AuthErrors.InvalidCredentials);
@@ -116,5 +120,16 @@ public sealed class CognitoAuthService : IAuthService
         {
             return Result.Failure<RefreshResult>(AuthErrors.InvalidRefreshToken);
         }
+    }
+
+    public async Task DeleteAsync(string email, CancellationToken cancellationToken = default)
+    {
+        // Username = email porque o User Pool usa username_attributes=["email"]
+        // (cognito.tf) — não é um alias, é o próprio Username.
+        await _cognitoClient.AdminDeleteUserAsync(new AdminDeleteUserRequest
+        {
+            UserPoolId = _options.UserPoolId,
+            Username = email
+        }, cancellationToken);
     }
 }

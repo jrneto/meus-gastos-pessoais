@@ -23,7 +23,7 @@ public class CreateCategoryCommandHandlerTests
     public async Task Handle_ShouldReturnSuccess_WhenRepositoryCreatesCategory()
     {
         // Arrange
-        var command = new CreateCategoryCommand("user-id-123", "Viagem", "#0EA5E9", "plane");
+        var command = new CreateCategoryCommand("user-id-123", "Viagem", "despesa", 50000);
 
         _categoryRepositoryMock.CreateAsync(Arg.Any<Category>(), Arg.Any<CancellationToken>())
             .Returns(call => CategoryWriteResult.Success(call.Arg<Category>()));
@@ -34,8 +34,8 @@ public class CreateCategoryCommandHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Nome.Should().Be("Viagem");
-        result.Value.Cor.Should().Be("#0EA5E9");
-        result.Value.Icone.Should().Be("plane");
+        result.Value.Tipo.Should().Be("despesa");
+        result.Value.OrcamentoMensalCents.Should().Be(50000);
         result.Value.Id.Should().NotBeNullOrWhiteSpace();
 
         await _categoryRepositoryMock.Received(1).CreateAsync(
@@ -47,7 +47,7 @@ public class CreateCategoryCommandHandlerTests
     public async Task Handle_ShouldReturnNameConflict_WhenRepositoryReportsDuplicateName()
     {
         // Arrange
-        var command = new CreateCategoryCommand("user-id-123", "Lazer", "#0EA5E9", "plane");
+        var command = new CreateCategoryCommand("user-id-123", "Lazer", "despesa", null);
 
         _categoryRepositoryMock.CreateAsync(Arg.Any<Category>(), Arg.Any<CancellationToken>())
             .Returns(CategoryWriteResult.NameConflict());

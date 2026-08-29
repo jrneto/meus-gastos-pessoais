@@ -20,7 +20,7 @@ public class AccountTriggerHandlerTests
         _loggerMock = Substitute.For<ILogger>();
     }
 
-    private static CognitoPostConfirmationEvent BuildEvent(string? sub) => new()
+    private static CognitoPostConfirmationEvent BuildEvent(string? sub, string? email = "neto@email.com") => new()
     {
         Version = "1",
         Region = "us-east-1",
@@ -29,17 +29,25 @@ public class AccountTriggerHandlerTests
         TriggerSource = "PostConfirmation_ConfirmSignUp",
         Request = new CognitoPostConfirmationRequest
         {
-            UserAttributes = sub is null
-                ? new Dictionary<string, string> { ["email"] = "neto@email.com" }
-                : new Dictionary<string, string> { ["sub"] = sub, ["email"] = "neto@email.com" }
+            UserAttributes = BuildAttributes(sub, email)
         }
     };
 
+    private static Dictionary<string, string> BuildAttributes(string? sub, string? email)
+    {
+        var attributes = new Dictionary<string, string>();
+        if (sub is not null)
+            attributes["sub"] = sub;
+        if (email is not null)
+            attributes["email"] = email;
+        return attributes;
+    }
+
     [Fact]
-    public async Task HandleAsync_ShouldDispatchEnsureAccountCommand_WhenSubIsPresent()
+    public async Task HandleAsync_ShouldDispatchEnsureAccountCommand_WhenSubAndEmailArePresent()
     {
         // Arrange
-        var evt = BuildEvent("user-sub-123");
+        var evt = BuildEvent("user-sub-123", "neto@email.com");
         _senderMock.Send(Arg.Any<EnsureAccountCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Success(new EnsureAccountResult("account-1", AlreadyExisted: false)));
 
@@ -49,7 +57,8 @@ public class AccountTriggerHandlerTests
         // Assert — Cognito exige o evento de volta, alterado ou não.
         result.Should().BeSameAs(evt);
         await _senderMock.Received(1).Send(
-            Arg.Is<EnsureAccountCommand>(c => c.UserId == "user-sub-123"), Arg.Any<CancellationToken>());
+            Arg.Is<EnsureAccountCommand>(c => c.UserId == "user-sub-123" && c.Email == "neto@email.com"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -68,12 +77,27 @@ public class AccountTriggerHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_ShouldNotDispatchAnything_WhenEmailIsMissing()
+    {
+        // Arrange — defensivo (FEAT-20): EnsureAccountCommand agora exige
+        // e-mail; sem ele, não deve derrubar a confirmação nem despachar nada.
+        var evt = BuildEvent("user-sub-123", email: null);
+
+        // Act
+        var result = await AccountTriggerHandler.HandleAsync(evt, _senderMock, _loggerMock, CancellationToken.None);
+
+        // Assert
+        result.Should().BeSameAs(evt);
+        await _senderMock.DidNotReceiveWithAnyArgs().Send(Arg.Any<EnsureAccountCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task HandleAsync_ShouldNeverPropagateFailure_WhenEnsureAccountCommandThrows()
     {
         // Arrange — falha transitória do trigger nunca pode impedir a
         // confirmação do cadastro no Cognito (ver spec.md/plan.md, decisão
         // técnica 2): o handler sempre devolve o evento, mesmo sob erro.
-        var evt = BuildEvent("user-sub-123");
+        var evt = BuildEvent("user-sub-123", "neto@email.com");
         _senderMock.Send(Arg.Any<EnsureAccountCommand>(), Arg.Any<CancellationToken>())
             .Returns<Result<EnsureAccountResult>>(_ => throw new InvalidOperationException("Falha simulada no DynamoDB"));
 
