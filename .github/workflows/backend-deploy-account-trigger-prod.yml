@@ -113,7 +113,9 @@ jobs:
           dotnet-version: '10.0.x'
 
       - run: dotnet build GastosApp.sln -c Release
-      - run: dotnet test GastosApp.sln -c Release
+      # --filter exclui GastosApp.IntegrationTests (FEAT-29) — exige
+      # Docker/rede real, não roda nos gates de qualidade padrão.
+      - run: dotnet test GastosApp.sln -c Release --filter "Category!=Integration"
 
   deploy:
     needs: quality
