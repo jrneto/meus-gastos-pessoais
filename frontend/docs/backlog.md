@@ -38,7 +38,7 @@ backend correspondente, já pronto) conforme a coluna "Depende de".
 
 ## Sequência
 
-- [ ] **FEAT-21 — Cadastro real (substituir `SignupComingSoonPage`)**
+- [x] **FEAT-21 — Cadastro real (substituir `SignupComingSoonPage`)**
   Implementa a tela de "Criar conta" do design (`02-criar-conta.png`,
   `03-criar-conta-preenchida.png`) integrada a `POST /auth/register`,
   incluindo os campos novos exigidos pelo backend: nome, telefone e
