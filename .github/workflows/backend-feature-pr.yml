@@ -20,6 +20,12 @@ on:
       - 'backend/tests/**'
       - 'backend/infra/lambda/**'
       - 'backend/GastosApp.sln'
+      # Workflows do backend em si — achado real: uma branch fix/* que só
+      # mexia em backend-deploy-account-trigger-{hom,prod}.yml (esquecido
+      # de um filtro --filter aplicado nos demais workflows na FEAT-29)
+      # nunca abriu PR automático, porque nenhum padrão acima cobria
+      # .github/workflows/**.
+      - '.github/workflows/backend-*.yml'
 
 defaults:
   run:
