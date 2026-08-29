@@ -1,10 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { AccountPendingApprovalError } from '../errors/authErrors'
 import { useLogin } from '../hooks/useLogin'
+import { useRegister } from '../hooks/useRegister'
 import { loginSchema, type LoginCredentials } from '../schemas/loginSchema'
-import { signupSchema, type SignupFormData } from '../schemas/signupSchema'
+import { registerSchema, type RegisterFormData } from '../schemas/registerSchema'
+import { extractDigits, maskCpf } from '../utils/cpf'
+import { maskPhone } from '../utils/phoneMask'
 
 type AuthMode = 'login' | 'signup'
 
@@ -38,7 +41,7 @@ export function LoginForm() {
         </label>
       </div>
 
-      {isSignupMode ? <SignupForm /> : <LoginModeForm />}
+      {isSignupMode ? <SignupForm onDone={() => setAuthMode('login')} /> : <LoginModeForm />}
     </div>
   )
 }
@@ -59,7 +62,9 @@ function LoginModeForm() {
     >
       {error && (
         <p style={{ color: 'var(--color-accent-700)', fontSize: '13px' }} role="alert">
-          {error.message}
+          {error instanceof AccountPendingApprovalError
+            ? error.message
+            : 'Email ou senha inválidos.'}
         </p>
       )}
 
@@ -104,23 +109,50 @@ function LoginModeForm() {
   )
 }
 
-function SignupForm() {
-  const navigate = useNavigate()
+function SignupForm({ onDone }: { onDone: () => void }) {
+  const { register: doRegister, isLoading, error, success } = useRegister()
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
-  } = useForm<SignupFormData>({ resolver: zodResolver(signupSchema) })
+  } = useForm<RegisterFormData>({ resolver: zodResolver(registerSchema) })
 
-  // Não há endpoint de cadastro no backend hoje: este submit nunca chama
-  // API — apenas navega para a página fake que sinaliza que o cadastro
-  // ainda não está disponível (ver spec.md, "Fora do escopo").
-  function onSubmit() {
-    navigate('/cadastro-em-breve')
+  const phoneDigits = watch('phoneDigits') ?? ''
+  const cpfDigits = watch('cpfDigits') ?? ''
+
+  if (success) {
+    return (
+      <div className="flex w-full max-w-sm flex-col gap-4">
+        <p style={{ color: 'var(--color-success-700, #15803d)', fontSize: '13px' }} role="status">
+          Conta criada! Aguarde a aprovação do administrador para poder entrar.
+        </p>
+        <button type="button" className="btn btn-primary btn-block" onClick={onDone}>
+          Voltar para o login
+        </button>
+      </div>
+    )
+  }
+
+  async function onSubmit(data: RegisterFormData) {
+    await doRegister({
+      email: data.email,
+      password: data.password,
+      name: data.name,
+      phoneNumber: data.phoneDigits,
+      cpf: data.cpfDigits,
+    })
   }
 
   return (
     <form className="flex w-full max-w-sm flex-col gap-4" noValidate onSubmit={handleSubmit(onSubmit)}>
+      {error && (
+        <p style={{ color: 'var(--color-accent-700)', fontSize: '13px' }} role="alert">
+          {error.message}
+        </p>
+      )}
+
       <label className="field">
         <span>Nome</span>
         <input className="input" id="name" type="text" autoComplete="name" {...register('name')} />
@@ -128,6 +160,44 @@ function SignupForm() {
       {errors.name && (
         <p style={{ color: 'var(--color-accent-700)', fontSize: '12px' }} role="alert">
           {errors.name.message}
+        </p>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+        <label className="field">
+          <span>CPF</span>
+          <input
+            className="input"
+            id="cpf"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            value={maskCpf(cpfDigits)}
+            onChange={(e) => setValue('cpfDigits', extractDigits(e.target.value, 11), { shouldValidate: true })}
+          />
+        </label>
+
+        <label className="field">
+          <span>Telefone</span>
+          <input
+            className="input"
+            id="phone"
+            type="text"
+            inputMode="numeric"
+            autoComplete="tel"
+            value={maskPhone(phoneDigits)}
+            onChange={(e) => setValue('phoneDigits', extractDigits(e.target.value, 11), { shouldValidate: true })}
+          />
+        </label>
+      </div>
+      {errors.cpfDigits && (
+        <p style={{ color: 'var(--color-accent-700)', fontSize: '12px' }} role="alert">
+          {errors.cpfDigits.message}
+        </p>
+      )}
+      {errors.phoneDigits && (
+        <p style={{ color: 'var(--color-accent-700)', fontSize: '12px' }} role="alert">
+          {errors.phoneDigits.message}
         </p>
       )}
 
@@ -157,8 +227,8 @@ function SignupForm() {
         </p>
       )}
 
-      <button type="submit" className="btn btn-primary btn-block">
-        Criar conta
+      <button type="submit" className="btn btn-primary btn-block" disabled={isLoading}>
+        {isLoading ? 'Criando conta...' : 'Criar conta'}
       </button>
     </form>
   )

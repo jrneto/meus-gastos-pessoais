@@ -69,7 +69,7 @@
   font-weight: 400;
 }
 
-/* Modificador "página inteira": usado por LoginPage/SignupComingSoonPage,
+/* Modificador "página inteira": usado por LoginPage,
    nunca pela navegação (que só ocupa a faixa da sidebar/bottom-nav). */
 .ds-modernist-page {
   min-height: 100vh;
