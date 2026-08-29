@@ -1,8 +1,12 @@
 import { httpClient } from '@/lib/httpClient'
 import {
+  AccountPendingApprovalError,
+  CpfAlreadyExistsError,
+  EmailAlreadyExistsError,
   InvalidCredentialsError,
   NetworkError,
   RefreshFailedError,
+  RegisterValidationError,
   UnknownAuthError,
 } from '../errors/authErrors'
 import type { LoginCredentials } from '../schemas/loginSchema'
@@ -19,6 +23,26 @@ interface MeResponse {
   name: string
 }
 
+export interface RegisterPayload {
+  email: string
+  password: string
+  name: string
+  phoneNumber: string
+  cpf: string
+}
+
+export interface RegisterResponse {
+  userId: string
+  email: string
+  name: string
+  phoneNumber: string
+  cpf: string
+}
+
+interface ProblemDetails {
+  type?: string
+}
+
 async function safeFetch(fn: () => Promise<Response>): Promise<Response> {
   try {
     return await fn()
@@ -27,26 +51,59 @@ async function safeFetch(fn: () => Promise<Response>): Promise<Response> {
   }
 }
 
-function assertOk(response: Response): void {
+async function readProblemType(response: Response): Promise<string | undefined> {
+  const problem = (await response.json().catch(() => null)) as ProblemDetails | null
+  return problem?.type
+}
+
+async function login(credentials: LoginCredentials): Promise<LoginResponse> {
+  const response = await safeFetch(() => httpClient.post('/auth/login', credentials))
+
   if (response.status === 401) {
+    const type = await readProblemType(response)
+    if (type?.endsWith('user-not-confirmed')) {
+      throw new AccountPendingApprovalError()
+    }
     throw new InvalidCredentialsError()
   }
   if (!response.ok) {
     throw new UnknownAuthError()
   }
+  return response.json() as Promise<LoginResponse>
 }
 
-async function login(credentials: LoginCredentials): Promise<LoginResponse> {
-  const response = await safeFetch(() => httpClient.post('/auth/login', credentials))
-  assertOk(response)
-  return response.json() as Promise<LoginResponse>
+async function register(payload: RegisterPayload): Promise<RegisterResponse> {
+  const response = await safeFetch(() => httpClient.post('/auth/register', payload))
+
+  if (response.status === 409) {
+    const type = await readProblemType(response)
+    if (type?.endsWith('email-already-exists')) {
+      throw new EmailAlreadyExistsError()
+    }
+    if (type?.endsWith('cpf-already-exists')) {
+      throw new CpfAlreadyExistsError()
+    }
+    throw new UnknownAuthError()
+  }
+  if (response.status === 400) {
+    throw new RegisterValidationError()
+  }
+  if (!response.ok) {
+    throw new UnknownAuthError()
+  }
+  return response.json() as Promise<RegisterResponse>
 }
 
 async function me(token: string): Promise<MeResponse> {
   const response = await safeFetch(() =>
     httpClient.get('/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
   )
-  assertOk(response)
+  if (response.status === 401) {
+    throw new InvalidCredentialsError()
+  }
+  if (!response.ok) {
+    throw new UnknownAuthError()
+  }
   return response.json() as Promise<MeResponse>
 }
 
@@ -72,4 +129,4 @@ async function logout(): Promise<void> {
   }
 }
 
-export const authApi = { login, me, refresh, logout }
+export const authApi = { login, register, me, refresh, logout }

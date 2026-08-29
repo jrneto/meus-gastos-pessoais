@@ -208,28 +208,28 @@ versus
 
 ## Critérios de aceite
 
-- [ ] Cadastro com nome, CPF, telefone, email e senha válidos chama
+- [x] Cadastro com nome, CPF, telefone, email e senha válidos chama
       `POST /auth/register`, recebe 201 e exibe confirmação de conta
       criada/pendente de aprovação, voltando ao modo "Entrar"
-- [ ] Nenhum token é armazenado nem navegação para rota autenticada
+- [x] Nenhum token é armazenado nem navegação para rota autenticada
       acontece após o cadastro
-- [ ] Validação client-side (Zod) bloqueia submit com nome, telefone ou
+- [x] Validação client-side (Zod) bloqueia submit com nome, telefone ou
       CPF inválidos, com mensagens por campo
-- [ ] CPF e telefone exibem máscara progressiva durante a digitação
+- [x] CPF e telefone exibem máscara progressiva durante a digitação
       (`000.000.000-00` e `(11) 98765-4321`), enviando à API somente os
       dígitos
-- [ ] 409 `email-already-exists` exibe "Este email já está cadastrado."
-- [ ] 409 `cpf-already-exists` exibe "Este CPF já está cadastrado."
-- [ ] 400 (`validation-error`) exibe mensagem genérica de dados
+- [x] 409 `email-already-exists` exibe "Este email já está cadastrado."
+- [x] 409 `cpf-already-exists` exibe "Este CPF já está cadastrado."
+- [x] 400 (`validation-error`) exibe mensagem genérica de dados
       inválidos
-- [ ] Erro de rede no cadastro exibe a mesma `NetworkError` já usada no
+- [x] Erro de rede no cadastro exibe a mesma `NetworkError` já usada no
       login, sem perder os dados preenchidos
-- [ ] Login com 401 `user-not-confirmed` exibe mensagem específica de
+- [x] Login com 401 `user-not-confirmed` exibe mensagem específica de
       conta pendente de aprovação, distinta de credenciais inválidas
-- [ ] Login com 401 `invalid-credentials` continua exibindo a mensagem
+- [x] Login com 401 `invalid-credentials` continua exibindo a mensagem
       já existente, sem regressão
-- [ ] `SignupComingSoonPage` e a rota `/cadastro-em-breve` são removidas
-- [ ] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima
+- [x] `SignupComingSoonPage` e a rota `/cadastro-em-breve` são removidas
+- [x] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima
       (sucesso, cada erro 4xx, erro de rede, distinção dos dois 401 no
       login)
 

@@ -7,16 +7,11 @@ import { HomePage } from '@/routes/HomePage'
 import { LoginPage } from '@/routes/LoginPage'
 import { ReportsComingSoonPage } from '@/routes/ReportsComingSoonPage'
 import { SettingsPage } from '@/routes/SettingsPage'
-import { SignupComingSoonPage } from '@/routes/SignupComingSoonPage'
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
-  },
-  {
-    path: '/cadastro-em-breve',
-    element: <SignupComingSoonPage />,
   },
   {
     path: '/',
