@@ -69,10 +69,19 @@ backend correspondente, já pronto) conforme a coluna "Depende de".
   seletor de tipo já visível no design.
   Depende de: frontend FEAT-23.
 
-- [ ] **FEAT-25 — Detalhe de transação (generalizar p/ receita)**
+- [x] **FEAT-25 — Detalhe de transação (generalizar p/ receita)**
   Ajusta o popup de detalhe (hoje só despesa, da FEAT-20) para exibir
   receitas também, conforme `19-detalhe-transacao.png`.
   Depende de: frontend FEAT-23.
+  **Fechada sem código/spec em 2026-08-30**, durante o `/specify`:
+  conferindo `jrnexpenses-web.dc.html` (fonte de verdade), o popup de
+  detalhe não tem nenhuma cor/ícone diferente por tipo — o tile de
+  categoria é sempre neutro, igual ao que já existia. Título, cor e
+  sinal do valor por tipo (tudo que o design realmente pede) já foram
+  entregues antecipadamente na FEAT-24 (`TransactionDetailDialog`).
+  Gaps remanescentes contra o `.dc.html` (data por extenso, rótulo
+  "Observação"/fallback, divisor) não têm relação com despesa/receita
+  — registrados como débito técnico separado, abaixo.
 
 - [ ] **FEAT-26 — Dashboard (Início)**
   Substitui `HomePage` pela tela de resumo mensal (`05-dashboard.png`):
@@ -135,4 +144,20 @@ backend correspondente, já pronto) conforme a coluna "Depende de".
   `16-enviando-convite-loading.png`), também inexistente no código hoje
   — só o padrão de botão ocupado (spinner + label em gerúndio +
   `disabled`) é usado. Mesma relevância futura que o item acima.
+- **Fidelidade visual do popup de detalhe de transação** (`Transaction
+  DetailDialog`) — levantado durante o `/specify` da FEAT-25, ao
+  conferir `jrnexpenses-web.dc.html` (bloco `isViewingTx`) contra a
+  implementação atual (título/cor/sinal por tipo já corretos desde a
+  FEAT-24). Três gaps sem relação com despesa/receita, válidos pros
+  dois tipos:
+  - Data exibida crua (`2025-06-15`) em vez de formatada por extenso
+    (`this.formatDateLong`, ex.: "15 de junho de 2025")
+  - Campo rotulado "Descrição" em vez de "Observação", sem fallback
+    "Sem observação" quando vazio (hoje não é um problema prático
+    porque `description` é obrigatório no schema, mas o rótulo diverge
+    do design)
+  - Falta o divisor (`<div class="hr">`) entre a seção "Lançado por" e
+    a de observação/descrição
+  Nenhum desses existe desde a FEAT-20 (popup de detalhe original, só
+  despesa) — não é regressão de nenhuma feature recente.
 
