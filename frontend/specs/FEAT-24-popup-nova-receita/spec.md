@@ -222,30 +222,30 @@ Sem mudança — já documentado na FEAT-23.
 
 ## Critérios de aceite
 
-- [ ] Botão "+ Nova receita" aparece na tela de Transações, ao lado do
+- [x] Botão "+ Nova receita" aparece na tela de Transações, ao lado do
       "+ Nova despesa" já existente
-- [ ] "+ Nova receita" abre o popup com título "Nova receita",
+- [x] "+ Nova receita" abre o popup com título "Nova receita",
       dropdown de categoria só com categorias de tipo receita, e botão
       "Registrar receita"
-- [ ] Submeter o formulário de nova receita chama `POST /transactions`
+- [x] Submeter o formulário de nova receita chama `POST /transactions`
       com `tipo: "receita"` e os demais campos preenchidos
-- [ ] Sem categoria de receita cadastrada, o popup mostra a orientação
+- [x] Sem categoria de receita cadastrada, o popup mostra a orientação
       para criar uma (com o texto ajustado a "categoria de receita"),
       em vez do formulário
-- [ ] Editar uma receita existente abre o popup com título "Editar
+- [x] Editar uma receita existente abre o popup com título "Editar
       receita", dropdown filtrado por receita, e `PUT /transactions/{id}`
       preserva `tipo: "receita"`
-- [ ] Excluir uma receita existente mostra "Excluir receita" no popup
+- [x] Excluir uma receita existente mostra "Excluir receita" no popup
       de confirmação e funciona normalmente (`DELETE`)
-- [ ] Popup de detalhe de uma receita mostra "Detalhe da receita" e a
+- [x] Popup de detalhe de uma receita mostra "Detalhe da receita" e a
       cor do valor em verde (positive)
-- [ ] Popup de detalhe de uma despesa continua mostrando "Detalhe da
+- [x] Popup de detalhe de uma despesa continua mostrando "Detalhe da
       despesa" e a cor accent, sem regressão
-- [ ] Fluxo de despesa (criar/editar/excluir/detalhe) continua
+- [x] Fluxo de despesa (criar/editar/excluir/detalhe) continua
       funcionando exatamente como na FEAT-23, sem regressão
-- [ ] Não existe nenhum campo ou controle na UI para trocar o tipo de
+- [x] Não existe nenhum campo ou controle na UI para trocar o tipo de
       uma transação existente
-- [ ] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima,
+- [x] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima,
       100% dos testes passando
 
 ## Fora do escopo
