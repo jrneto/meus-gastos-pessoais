@@ -4,18 +4,18 @@ import { useForm } from 'react-hook-form'
 import '@/styles/modernist/modernist.css'
 import { useCategories } from '@/lib/categories/useCategories'
 import {
-  expenseFilterSchema,
-  type ExpenseFilterInput,
-  type ExpenseFilterOutput,
+  transactionFilterSchema,
+  type TransactionFilterInput,
+  type TransactionFilterOutput,
 } from '../schemas/transactionFilterSchema'
 
-interface ExpenseFiltersProps {
-  onApply: (filters: ExpenseFilterOutput) => void
+interface TransactionFiltersProps {
+  onApply: (filters: TransactionFilterOutput) => void
 }
 
 const ADVANCED_FIELD_NAMES = ['yearMonth', 'dateFrom', 'dateTo', 'minAmount', 'maxAmount'] as const
 
-export function ExpenseFilters({ onApply }: ExpenseFiltersProps) {
+export function TransactionFilters({ onApply }: TransactionFiltersProps) {
   const { items: categories } = useCategories()
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const {
@@ -25,8 +25,8 @@ export function ExpenseFilters({ onApply }: ExpenseFiltersProps) {
     reset,
     watch,
     formState: { errors },
-  } = useForm<ExpenseFilterInput, unknown, ExpenseFilterOutput>({
-    resolver: zodResolver(expenseFilterSchema),
+  } = useForm<TransactionFilterInput, unknown, TransactionFilterOutput>({
+    resolver: zodResolver(transactionFilterSchema),
     defaultValues: {
       yearMonth: '',
       categoryId: '',

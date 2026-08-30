@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/features/auth/store/authStore'
-import { expensesApi, type ExpenseDetail } from '../api/transactionsApi'
+import { transactionsApi, type TransactionDetail } from '../api/transactionsApi'
 import { SessionExpiredError } from '../errors/transactionErrors'
 
-interface UseExpenseResult {
-  data: ExpenseDetail | null
+interface UseTransactionResult {
+  data: TransactionDetail | null
   isLoading: boolean
   error: Error | null
 }
 
-export function useExpense(id: string): UseExpenseResult {
-  const [data, setData] = useState<ExpenseDetail | null>(null)
+export function useTransaction(id: string): UseTransactionResult {
+  const [data, setData] = useState<TransactionDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const token = useAuthStore((state) => state.token)
@@ -18,7 +18,7 @@ export function useExpense(id: string): UseExpenseResult {
   useEffect(() => {
     // Sem id, não há o que buscar — usado pelo popup unificado de
     // formulário (FEAT-18), que chama este hook incondicionalmente
-    // mesmo no modo cadastro, onde não existe despesa a carregar.
+    // mesmo no modo cadastro, onde não existe transação a carregar.
     if (!id) {
       setIsLoading(false)
       return
@@ -27,8 +27,8 @@ export function useExpense(id: string): UseExpenseResult {
     let cancelled = false
     setIsLoading(true)
     setError(null)
-    expensesApi
-      .getExpenseById(token ?? '', id)
+    transactionsApi
+      .getTransactionById(token ?? '', id)
       .then((result) => {
         if (!cancelled) {
           setData(result)

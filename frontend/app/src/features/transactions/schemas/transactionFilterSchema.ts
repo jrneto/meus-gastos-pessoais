@@ -3,7 +3,7 @@ import { parseCurrencyToCents } from '@/lib/currency'
 
 const CURRENCY_REGEX = /^\d+(\.\d{3})*(,\d{2})?$/
 
-export const expenseFilterSchema = z
+export const transactionFilterSchema = z
   .object({
     yearMonth: z.string().optional(),
     categoryId: z.string().optional(),
@@ -38,5 +38,5 @@ export const expenseFilterSchema = z
     { message: 'Valor mínimo não pode ser maior que o máximo.', path: ['maxAmount'] },
   )
 
-export type ExpenseFilterInput = z.input<typeof expenseFilterSchema>
-export type ExpenseFilterOutput = z.output<typeof expenseFilterSchema>
+export type TransactionFilterInput = z.input<typeof transactionFilterSchema>
+export type TransactionFilterOutput = z.output<typeof transactionFilterSchema>

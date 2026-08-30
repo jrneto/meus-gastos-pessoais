@@ -9,7 +9,7 @@ function renderAppShell(initialPath: string) {
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/" element={<div>Home Content</div>} />
-          <Route path="/expenses" element={<div>Expenses Content</div>} />
+          <Route path="/transactions" element={<div>Transactions Content</div>} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -25,9 +25,9 @@ describe('AppShell', () => {
   })
 
   it('trocar de rota troca o conteúdo do Outlet mantendo a navegação', () => {
-    renderAppShell('/expenses')
+    renderAppShell('/transactions')
 
-    expect(screen.getByText('Expenses Content')).toBeInTheDocument()
+    expect(screen.getByText('Transactions Content')).toBeInTheDocument()
     expect(screen.queryByText('Home Content')).not.toBeInTheDocument()
     expect(screen.getAllByRole('navigation', { name: /navegação principal/i })).toHaveLength(2)
   })

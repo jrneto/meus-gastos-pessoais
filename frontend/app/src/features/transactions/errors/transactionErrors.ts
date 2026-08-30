@@ -19,10 +19,10 @@ export class NetworkError extends Error {
   }
 }
 
-export class UnknownExpenseError extends Error {
+export class UnknownTransactionError extends Error {
   constructor() {
     super('Ocorreu um erro inesperado. Tente novamente.')
-    this.name = 'UnknownExpenseError'
+    this.name = 'UnknownTransactionError'
   }
 }
 
@@ -33,16 +33,16 @@ export class InvalidFilterError extends Error {
   }
 }
 
-export class UnknownExpenseQueryError extends Error {
+export class UnknownTransactionQueryError extends Error {
   constructor() {
-    super('Ocorreu um erro inesperado ao buscar as despesas. Tente novamente.')
-    this.name = 'UnknownExpenseQueryError'
+    super('Ocorreu um erro inesperado ao buscar as transações. Tente novamente.')
+    this.name = 'UnknownTransactionQueryError'
   }
 }
 
 export class NotFoundError extends Error {
   constructor() {
-    super('Despesa não encontrada.')
+    super('Transação não encontrada.')
     this.name = 'NotFoundError'
   }
 }

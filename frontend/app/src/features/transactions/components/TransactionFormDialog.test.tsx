@@ -5,32 +5,35 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { ExpenseFormDialog } from './TransactionFormDialog'
+import { TransactionFormDialog } from './TransactionFormDialog'
 
-const EXPENSES_URL = 'http://localhost:5049/expenses'
+const TRANSACTIONS_URL = 'http://localhost:5049/transactions'
 const CATEGORIES_URL = 'http://localhost:5049/categories'
 
 const category = {
   id: 'cat-1',
   nome: 'Alimentação',
-  cor: '#F97316',
-  icone: 'utensils',
+  tipo: 'despesa',
+  orcamentoMensalCents: null,
   createdAt: '2025-06-15T12:00:00Z',
 }
 
-const expenseDetail = {
-  id: 'exp-1',
+const transactionDetail = {
+  id: 'tx-1',
   description: 'Almoço no restaurante',
   amountInCents: 4590,
   categoryId: 'cat-1',
-  expenseDate: '2025-06-15',
+  tipo: 'despesa',
+  date: '2025-06-15',
+  createdByUserId: 'user-1',
+  createdByLabel: 'Você',
   createdAt: '2025-06-15T12:00:00Z',
 }
 
-function renderDialog(props: Partial<React.ComponentProps<typeof ExpenseFormDialog>> = {}) {
+function renderDialog(props: Partial<React.ComponentProps<typeof TransactionFormDialog>> = {}) {
   return render(
     <MemoryRouter>
-      <ExpenseFormDialog
+      <TransactionFormDialog
         open
         onOpenChange={vi.fn()}
         onSaved={vi.fn()}
@@ -40,7 +43,7 @@ function renderDialog(props: Partial<React.ComponentProps<typeof ExpenseFormDial
   )
 }
 
-describe('ExpenseFormDialog', () => {
+describe('TransactionFormDialog', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
@@ -84,7 +87,7 @@ describe('ExpenseFormDialog', () => {
     const user = userEvent.setup()
     let apiCalled = false
     server.use(
-      http.post(EXPENSES_URL, () => {
+      http.post(TRANSACTIONS_URL, () => {
         apiCalled = true
         return HttpResponse.json({})
       }),
@@ -101,7 +104,7 @@ describe('ExpenseFormDialog', () => {
 
   it('cadastro com sucesso chama onSaved e fecha o popup', async () => {
     const user = userEvent.setup()
-    server.use(http.post(EXPENSES_URL, () => HttpResponse.json(expenseDetail)))
+    server.use(http.post(TRANSACTIONS_URL, () => HttpResponse.json(transactionDetail)))
     const onSaved = vi.fn()
     const onOpenChange = vi.fn()
 
@@ -122,13 +125,13 @@ describe('ExpenseFormDialog', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  describe('com expenseId (modo edição, FEAT-18)', () => {
-    const EXPENSE_URL = 'http://localhost:5049/expenses/exp-1'
+  describe('com transactionId (modo edição, FEAT-18)', () => {
+    const TRANSACTION_URL = 'http://localhost:5049/transactions/tx-1'
 
     it('mostra "Carregando..." e depois "Editar despesa" com os campos pré-preenchidos', async () => {
-      server.use(http.get(EXPENSE_URL, () => HttpResponse.json(expenseDetail)))
+      server.use(http.get(TRANSACTION_URL, () => HttpResponse.json(transactionDetail)))
 
-      renderDialog({ expenseId: 'exp-1' })
+      renderDialog({ transactionId: 'tx-1' })
 
       expect(screen.getByText('Editar despesa')).toBeInTheDocument()
       expect(screen.getByText('Carregando...')).toBeInTheDocument()
@@ -138,11 +141,11 @@ describe('ExpenseFormDialog', () => {
     })
 
     it('404 ao carregar fecha o popup e chama onSaved, sem exibir erro', async () => {
-      server.use(http.get(EXPENSE_URL, () => new HttpResponse(null, { status: 404 })))
+      server.use(http.get(TRANSACTION_URL, () => new HttpResponse(null, { status: 404 })))
       const onSaved = vi.fn()
       const onOpenChange = vi.fn()
 
-      renderDialog({ expenseId: 'exp-1', onSaved, onOpenChange })
+      renderDialog({ transactionId: 'tx-1', onSaved, onOpenChange })
 
       await waitFor(() => expect(onSaved).toHaveBeenCalled())
       expect(onOpenChange).toHaveBeenCalledWith(false)
@@ -151,13 +154,13 @@ describe('ExpenseFormDialog', () => {
     it('editar com sucesso chama onSaved e fecha o popup', async () => {
       const user = userEvent.setup()
       server.use(
-        http.get(EXPENSE_URL, () => HttpResponse.json(expenseDetail)),
-        http.put(EXPENSE_URL, () => HttpResponse.json({ ...expenseDetail, description: 'Atualizado' })),
+        http.get(TRANSACTION_URL, () => HttpResponse.json(transactionDetail)),
+        http.put(TRANSACTION_URL, () => HttpResponse.json({ ...transactionDetail, description: 'Atualizado' })),
       )
       const onSaved = vi.fn()
       const onOpenChange = vi.fn()
 
-      renderDialog({ expenseId: 'exp-1', onSaved, onOpenChange })
+      renderDialog({ transactionId: 'tx-1', onSaved, onOpenChange })
       await screen.findByLabelText('Descrição')
 
       await user.click(screen.getByRole('button', { name: /salvar alterações/i }))

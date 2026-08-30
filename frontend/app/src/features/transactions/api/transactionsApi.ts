@@ -4,29 +4,34 @@ import {
   NetworkError,
   NotFoundError,
   SessionExpiredError,
-  UnknownExpenseError,
-  UnknownExpenseQueryError,
+  UnknownTransactionError,
+  UnknownTransactionQueryError,
   UpdateValidationError,
   ValidationError,
 } from '../errors/transactionErrors'
 
-interface RegisterExpensePayload {
+interface RegisterTransactionPayload {
   description: string
   amountInCents: number
   categoryId: string
-  expenseDate: string
+  tipo: 'despesa' | 'receita'
+  date: string
 }
 
-interface RegisterExpenseResponse {
+interface RegisterTransactionResponse {
   id: string
   description: string
   amountInCents: number
   categoryId: string
-  expenseDate: string
+  tipo: 'despesa' | 'receita'
+  date: string
+  createdByUserId: string
+  createdByLabel: string
   createdAt: string
 }
 
-export interface GetExpensesParams {
+export interface GetTransactionsParams {
+  tipo?: 'despesa' | 'receita'
   yearMonth?: string
   categoryId?: string
   dateFrom?: string
@@ -36,33 +41,40 @@ export interface GetExpensesParams {
   cursor?: string
 }
 
-export interface ExpenseQueryItem {
+export interface TransactionQueryItem {
   id: string
   description: string
   amountInCents: number
   categoryId: string
-  expenseDate: string
+  tipo: 'despesa' | 'receita'
+  date: string
+  createdByUserId: string
+  createdByLabel: string
   createdAt: string
 }
 
-export interface GetExpensesResponse {
-  items: ExpenseQueryItem[]
+export interface GetTransactionsResponse {
+  items: TransactionQueryItem[]
   nextCursor: string | null
 }
 
-export interface UpdateExpensePayload {
+interface UpdateTransactionPayload {
   description: string
   amountInCents: number
   categoryId: string
-  expenseDate: string
+  tipo: 'despesa' | 'receita'
+  date: string
 }
 
-export interface ExpenseDetail {
+export interface TransactionDetail {
   id: string
   description: string
   amountInCents: number
   categoryId: string
-  expenseDate: string
+  tipo: 'despesa' | 'receita'
+  date: string
+  createdByUserId: string
+  createdByLabel: string
   createdAt: string
 }
 
@@ -82,7 +94,7 @@ function assertOk(response: Response): void {
     throw new SessionExpiredError()
   }
   if (!response.ok) {
-    throw new UnknownExpenseError()
+    throw new UnknownTransactionError()
   }
 }
 
@@ -94,7 +106,7 @@ function assertQueryOk(response: Response): void {
     throw new SessionExpiredError()
   }
   if (!response.ok) {
-    throw new UnknownExpenseQueryError()
+    throw new UnknownTransactionQueryError()
   }
 }
 
@@ -106,7 +118,7 @@ function assertDetailOk(response: Response): void {
     throw new SessionExpiredError()
   }
   if (!response.ok) {
-    throw new UnknownExpenseError()
+    throw new UnknownTransactionError()
   }
 }
 
@@ -121,7 +133,7 @@ function assertUpdateOk(response: Response): void {
     throw new SessionExpiredError()
   }
   if (!response.ok) {
-    throw new UnknownExpenseError()
+    throw new UnknownTransactionError()
   }
 }
 
@@ -133,80 +145,80 @@ function assertDeleteOk(response: Response): void {
     throw new SessionExpiredError()
   }
   if (!response.ok) {
-    throw new UnknownExpenseError()
+    throw new UnknownTransactionError()
   }
 }
 
-function toQueryString(params: GetExpensesParams): string {
+function toQueryString(params: GetTransactionsParams): string {
   const entries = Object.entries(params).filter(([, value]) => value !== undefined && value !== '')
   const search = new URLSearchParams(entries.map(([key, value]) => [key, String(value)]))
   const query = search.toString()
   return query ? `?${query}` : ''
 }
 
-async function registerExpense(
+async function registerTransaction(
   token: string,
-  payload: RegisterExpensePayload,
-): Promise<RegisterExpenseResponse> {
+  payload: RegisterTransactionPayload,
+): Promise<RegisterTransactionResponse> {
   const response = await safeFetch(() =>
-    httpClient.post('/expenses', payload, {
+    httpClient.post('/transactions', payload, {
       headers: { Authorization: `Bearer ${token}` },
     }),
   )
   assertOk(response)
-  return response.json() as Promise<RegisterExpenseResponse>
+  return response.json() as Promise<RegisterTransactionResponse>
 }
 
-async function getExpenses(
+async function getTransactions(
   token: string,
-  params: GetExpensesParams,
-): Promise<GetExpensesResponse> {
+  params: GetTransactionsParams,
+): Promise<GetTransactionsResponse> {
   const response = await safeFetch(() =>
-    httpClient.get(`/expenses${toQueryString(params)}`, {
+    httpClient.get(`/transactions${toQueryString(params)}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
   )
   assertQueryOk(response)
-  return response.json() as Promise<GetExpensesResponse>
+  return response.json() as Promise<GetTransactionsResponse>
 }
 
-async function getExpenseById(token: string, id: string): Promise<ExpenseDetail> {
+async function getTransactionById(token: string, id: string): Promise<TransactionDetail> {
   const response = await safeFetch(() =>
-    httpClient.get(`/expenses/${id}`, {
+    httpClient.get(`/transactions/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
   )
   assertDetailOk(response)
-  return response.json() as Promise<ExpenseDetail>
+  return response.json() as Promise<TransactionDetail>
 }
 
-async function updateExpense(
+async function updateTransaction(
   token: string,
   id: string,
-  payload: UpdateExpensePayload,
-): Promise<ExpenseDetail> {
+  payload: UpdateTransactionPayload,
+): Promise<TransactionDetail> {
   const response = await safeFetch(() =>
-    httpClient.put(`/expenses/${id}`, payload, {
+    httpClient.put(`/transactions/${id}`, payload, {
       headers: { Authorization: `Bearer ${token}` },
     }),
   )
   assertUpdateOk(response)
-  return response.json() as Promise<ExpenseDetail>
+  return response.json() as Promise<TransactionDetail>
 }
 
-async function deleteExpense(token: string, id: string): Promise<void> {
+async function deleteTransaction(token: string, id: string): Promise<void> {
   const response = await safeFetch(() =>
-    httpClient.delete(`/expenses/${id}`, {
+    httpClient.delete(`/transactions/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
   )
   assertDeleteOk(response)
 }
 
-export const expensesApi = {
-  registerExpense,
-  getExpenses,
-  getExpenseById,
-  updateExpense,
-  deleteExpense,
+export const transactionsApi = {
+  registerTransaction,
+  getTransactions,
+  getTransactionById,
+  updateTransaction,
+  deleteTransaction,
 }

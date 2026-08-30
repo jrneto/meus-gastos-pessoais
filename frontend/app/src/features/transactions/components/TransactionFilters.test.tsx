@@ -5,15 +5,15 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { vi } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { ExpenseFilters } from './TransactionFilters'
+import { TransactionFilters } from './TransactionFilters'
 
 const CATEGORIES_URL = 'http://localhost:5049/categories'
 
 const category = {
   id: 'cat-1',
   nome: 'Alimentação',
-  cor: '#F97316',
-  icone: 'utensils',
+  tipo: 'despesa',
+  orcamentoMensalCents: null,
   createdAt: '2025-06-15T12:00:00Z',
 }
 
@@ -23,7 +23,7 @@ async function openAdvancedPanel() {
   return user
 }
 
-describe('ExpenseFilters', () => {
+describe('TransactionFilters', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
@@ -33,7 +33,7 @@ describe('ExpenseFilters', () => {
   it('submit sem nenhum filtro chama onApply com todos os campos undefined', async () => {
     const onApply = vi.fn()
 
-    render(<ExpenseFilters onApply={onApply} />)
+    render(<TransactionFilters onApply={onApply} />)
     const user = await openAdvancedPanel()
     await user.click(screen.getByRole('button', { name: /^filtrar$/i }))
 
@@ -51,7 +51,7 @@ describe('ExpenseFilters', () => {
     const onApply = vi.fn()
     const user = userEvent.setup()
 
-    render(<ExpenseFilters onApply={onApply} />)
+    render(<TransactionFilters onApply={onApply} />)
 
     const chip = await screen.findByRole('button', { name: 'Alimentação' })
     await user.click(chip)
@@ -64,7 +64,7 @@ describe('ExpenseFilters', () => {
     const onApply = vi.fn()
     const user = userEvent.setup()
 
-    render(<ExpenseFilters onApply={onApply} />)
+    render(<TransactionFilters onApply={onApply} />)
 
     const chip = await screen.findByRole('button', { name: 'Alimentação' })
     await user.click(chip)
@@ -77,7 +77,7 @@ describe('ExpenseFilters', () => {
   it('submit com filtros avançados preenchidos chama onApply com dados transformados', async () => {
     const onApply = vi.fn()
 
-    render(<ExpenseFilters onApply={onApply} />)
+    render(<TransactionFilters onApply={onApply} />)
     const user = await openAdvancedPanel()
 
     fireEvent.change(screen.getByLabelText('Mês'), { target: { value: '2025-06' } })
@@ -99,7 +99,7 @@ describe('ExpenseFilters', () => {
   })
 
   it('exibe um indicador visual quando algum filtro avançado está ativo', async () => {
-    render(<ExpenseFilters onApply={vi.fn()} />)
+    render(<TransactionFilters onApply={vi.fn()} />)
     await openAdvancedPanel()
 
     const toggle = screen.getByRole('button', { name: /filtros avançados/i })
@@ -113,7 +113,7 @@ describe('ExpenseFilters', () => {
   it('exibe erro inline e não chama onApply quando dateFrom é posterior a dateTo', async () => {
     const onApply = vi.fn()
 
-    render(<ExpenseFilters onApply={onApply} />)
+    render(<TransactionFilters onApply={onApply} />)
     const user = await openAdvancedPanel()
 
     fireEvent.change(screen.getByLabelText('De'), { target: { value: '2025-06-30' } })
@@ -130,7 +130,7 @@ describe('ExpenseFilters', () => {
   it('exibe erro inline e não chama onApply quando minAmount é maior que maxAmount', async () => {
     const onApply = vi.fn()
 
-    render(<ExpenseFilters onApply={onApply} />)
+    render(<TransactionFilters onApply={onApply} />)
     const user = await openAdvancedPanel()
 
     await user.type(screen.getByLabelText('Valor mín.'), '100,00')
@@ -148,7 +148,7 @@ describe('ExpenseFilters', () => {
     const onApply = vi.fn()
     const user = userEvent.setup()
 
-    render(<ExpenseFilters onApply={onApply} />)
+    render(<TransactionFilters onApply={onApply} />)
 
     const chip = await screen.findByRole('button', { name: 'Alimentação' })
     await user.click(chip)

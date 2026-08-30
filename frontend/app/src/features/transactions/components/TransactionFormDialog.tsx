@@ -1,27 +1,29 @@
 import { useEffect } from 'react'
 import '@/styles/modernist/modernist.css'
 import { NotFoundError } from '../errors/transactionErrors'
-import { useExpense } from '../hooks/useTransaction'
+import { useTransaction } from '../hooks/useTransaction'
 import { centsToAmountInput } from '@/lib/currency'
-import { ExpenseForm } from './TransactionForm'
+import { TransactionForm } from './TransactionForm'
 
-interface ExpenseFormDialogProps {
+interface TransactionFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSaved: () => void
-  expenseId?: string
+  transactionId?: string
 }
 
 // Painel próprio (`.dialog-backdrop`/`.dialog` do Modernist), mesmo
-// padrão de `ExpenseDeleteDialog`/`NavMoreSheet` — substitui as antigas
-// rotas `/expenses/new` (FEAT-17) e `/expenses/:id/edit` (FEAT-18),
-// unificando cadastro e edição no mesmo popup.
-export function ExpenseFormDialog({ open, onOpenChange, onSaved, expenseId }: ExpenseFormDialogProps) {
-  const isEdit = !!expenseId
-  const { data, isLoading, error } = useExpense(expenseId ?? '')
+// padrão de `TransactionDeleteDialog`/`NavMoreSheet` — substitui as
+// antigas rotas `/expenses/new` (FEAT-17) e `/expenses/:id/edit`
+// (FEAT-18), unificando cadastro e edição no mesmo popup. Título
+// continua fixo "Nova despesa"/"Editar despesa" nesta feature (FEAT-23)
+// — generalizar para receita é escopo da FEAT-24.
+export function TransactionFormDialog({ open, onOpenChange, onSaved, transactionId }: TransactionFormDialogProps) {
+  const isEdit = !!transactionId
+  const { data, isLoading, error } = useTransaction(transactionId ?? '')
 
   useEffect(() => {
-    // A despesa não existe mais (excluída por outra sessão) — fecha o
+    // A transação não existe mais (excluída por outra sessão) — fecha o
     // popup silenciosamente e atualiza a listagem, sem exibir erro.
     if (open && isEdit && error instanceof NotFoundError) {
       onSaved()
@@ -58,31 +60,31 @@ export function ExpenseFormDialog({ open, onOpenChange, onSaved, expenseId }: Ex
         className="dialog"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="expense-form-dialog-title"
+        aria-labelledby="transaction-form-dialog-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="dialog-title" id="expense-form-dialog-title">
+        <div className="dialog-title" id="transaction-form-dialog-title">
           {isEdit ? 'Editar despesa' : 'Nova despesa'}
         </div>
 
         {isEdit && isLoading && <p>Carregando...</p>}
 
         {isEdit && !isLoading && data && (
-          <ExpenseForm
+          <TransactionForm
             mode="edit"
-            expenseId={data.id}
+            transactionId={data.id}
             initialValues={{
               description: data.description,
               amount: centsToAmountInput(data.amountInCents),
               categoryId: data.categoryId,
-              expenseDate: data.expenseDate,
+              date: data.date,
             }}
             onSuccess={handleSuccess}
             onCancel={() => onOpenChange(false)}
           />
         )}
 
-        {!isEdit && <ExpenseForm mode="create" onSuccess={handleSuccess} onCancel={() => onOpenChange(false)} />}
+        {!isEdit && <TransactionForm mode="create" onSuccess={handleSuccess} onCancel={() => onOpenChange(false)} />}
       </div>
     </div>
   )

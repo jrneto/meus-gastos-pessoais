@@ -11,8 +11,8 @@ interface CategoryDeleteDialogProps {
 }
 
 // Painel próprio (`.dialog-backdrop`/`.dialog` do Modernist), mesmo
-// padrão de `ExpenseDeleteDialog` (FEAT-16), no lugar do `AlertDialog`
-// do shadcn/ui.
+// padrão de `TransactionDeleteDialog` (FEAT-16), no lugar do
+// `AlertDialog` do shadcn/ui.
 export function CategoryDeleteDialog({ category, onOpenChange, onDeleted }: CategoryDeleteDialogProps) {
   const { deleteCategory, isLoading, error, success } = useDeleteCategory()
   const open = category !== null

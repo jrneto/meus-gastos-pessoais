@@ -4,37 +4,40 @@ import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import type { ExpenseQueryItem } from '../api/transactionsApi'
-import { ExpenseDeleteDialog } from './TransactionDeleteDialog'
+import type { TransactionQueryItem } from '../api/transactionsApi'
+import { TransactionDeleteDialog } from './TransactionDeleteDialog'
 
-const EXPENSE_URL = 'http://localhost:5049/expenses/exp-1'
+const TRANSACTION_URL = 'http://localhost:5049/transactions/tx-1'
 
-const expense: ExpenseQueryItem = {
-  id: 'exp-1',
+const transaction: TransactionQueryItem = {
+  id: 'tx-1',
   description: 'Almoço no restaurante',
   amountInCents: 4590,
   categoryId: 'cat-1',
-  expenseDate: '2025-06-15',
+  tipo: 'despesa',
+  date: '2025-06-15',
+  createdByUserId: 'user-1',
+  createdByLabel: 'Você',
   createdAt: '2025-06-15T12:00:00Z',
 }
 
-describe('ExpenseDeleteDialog', () => {
+describe('TransactionDeleteDialog', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
   })
 
-  it('fica fechado quando expense é null', () => {
+  it('fica fechado quando transaction é null', () => {
     render(
-      <ExpenseDeleteDialog expense={null} onOpenChange={vi.fn()} onDeleted={vi.fn()} />,
+      <TransactionDeleteDialog transaction={null} onOpenChange={vi.fn()} onDeleted={vi.fn()} />,
     )
 
     expect(screen.queryByText('Excluir despesa')).not.toBeInTheDocument()
   })
 
-  it('aberto exibe a descrição da despesa', () => {
+  it('aberto exibe a descrição da transação', () => {
     render(
-      <ExpenseDeleteDialog expense={expense} onOpenChange={vi.fn()} onDeleted={vi.fn()} />,
+      <TransactionDeleteDialog transaction={transaction} onOpenChange={vi.fn()} onDeleted={vi.fn()} />,
     )
 
     expect(screen.getByText('Excluir despesa')).toBeInTheDocument()
@@ -45,7 +48,7 @@ describe('ExpenseDeleteDialog', () => {
     const user = userEvent.setup()
     let apiCalled = false
     server.use(
-      http.delete(EXPENSE_URL, () => {
+      http.delete(TRANSACTION_URL, () => {
         apiCalled = true
         return new HttpResponse(null, { status: 204 })
       }),
@@ -53,7 +56,7 @@ describe('ExpenseDeleteDialog', () => {
     const onOpenChange = vi.fn()
 
     render(
-      <ExpenseDeleteDialog expense={expense} onOpenChange={onOpenChange} onDeleted={vi.fn()} />,
+      <TransactionDeleteDialog transaction={transaction} onOpenChange={onOpenChange} onDeleted={vi.fn()} />,
     )
 
     await user.click(screen.getByRole('button', { name: /cancelar/i }))
@@ -64,30 +67,30 @@ describe('ExpenseDeleteDialog', () => {
 
   it('confirmar com sucesso chama a API e onDeleted', async () => {
     const user = userEvent.setup()
-    server.use(http.delete(EXPENSE_URL, () => new HttpResponse(null, { status: 204 })))
+    server.use(http.delete(TRANSACTION_URL, () => new HttpResponse(null, { status: 204 })))
     const onDeleted = vi.fn()
 
     render(
-      <ExpenseDeleteDialog expense={expense} onOpenChange={vi.fn()} onDeleted={onDeleted} />,
+      <TransactionDeleteDialog transaction={transaction} onOpenChange={vi.fn()} onDeleted={onDeleted} />,
     )
 
     await user.click(screen.getByRole('button', { name: /^excluir$/i }))
 
-    await waitFor(() => expect(onDeleted).toHaveBeenCalledWith('exp-1'))
+    await waitFor(() => expect(onDeleted).toHaveBeenCalledWith('tx-1'))
   })
 
-  it('confirmar com 404 chama onDeleted (despesa já não existia)', async () => {
+  it('confirmar com 404 chama onDeleted (transação já não existia)', async () => {
     const user = userEvent.setup()
-    server.use(http.delete(EXPENSE_URL, () => new HttpResponse(null, { status: 404 })))
+    server.use(http.delete(TRANSACTION_URL, () => new HttpResponse(null, { status: 404 })))
     const onDeleted = vi.fn()
 
     render(
-      <ExpenseDeleteDialog expense={expense} onOpenChange={vi.fn()} onDeleted={onDeleted} />,
+      <TransactionDeleteDialog transaction={transaction} onOpenChange={vi.fn()} onDeleted={onDeleted} />,
     )
 
     await user.click(screen.getByRole('button', { name: /^excluir$/i }))
 
-    await waitFor(() => expect(onDeleted).toHaveBeenCalledWith('exp-1'))
+    await waitFor(() => expect(onDeleted).toHaveBeenCalledWith('tx-1'))
   })
 
   it('fecha ao pressionar Esc', async () => {
@@ -95,7 +98,7 @@ describe('ExpenseDeleteDialog', () => {
     const onOpenChange = vi.fn()
 
     render(
-      <ExpenseDeleteDialog expense={expense} onOpenChange={onOpenChange} onDeleted={vi.fn()} />,
+      <TransactionDeleteDialog transaction={transaction} onOpenChange={onOpenChange} onDeleted={vi.fn()} />,
     )
 
     await user.keyboard('{Escape}')
@@ -108,7 +111,7 @@ describe('ExpenseDeleteDialog', () => {
     const onOpenChange = vi.fn()
 
     render(
-      <ExpenseDeleteDialog expense={expense} onOpenChange={onOpenChange} onDeleted={vi.fn()} />,
+      <TransactionDeleteDialog transaction={transaction} onOpenChange={onOpenChange} onDeleted={vi.fn()} />,
     )
 
     await user.click(screen.getByRole('alertdialog').parentElement as HTMLElement)
@@ -118,11 +121,11 @@ describe('ExpenseDeleteDialog', () => {
 
   it('confirmar com erro inesperado mantém o dialog aberto com alerta, sem chamar onDeleted', async () => {
     const user = userEvent.setup()
-    server.use(http.delete(EXPENSE_URL, () => new HttpResponse(null, { status: 500 })))
+    server.use(http.delete(TRANSACTION_URL, () => new HttpResponse(null, { status: 500 })))
     const onDeleted = vi.fn()
 
     render(
-      <ExpenseDeleteDialog expense={expense} onOpenChange={vi.fn()} onDeleted={onDeleted} />,
+      <TransactionDeleteDialog transaction={transaction} onOpenChange={vi.fn()} onDeleted={onDeleted} />,
     )
 
     await user.click(screen.getByRole('button', { name: /^excluir$/i }))

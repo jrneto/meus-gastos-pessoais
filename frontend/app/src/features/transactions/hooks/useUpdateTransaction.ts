@@ -1,32 +1,33 @@
 import { useState } from 'react'
 import { useAuthStore } from '@/features/auth/store/authStore'
-import { expensesApi } from '../api/transactionsApi'
+import { transactionsApi } from '../api/transactionsApi'
 import { SessionExpiredError } from '../errors/transactionErrors'
-import type { ExpenseFormOutput } from '../schemas/transactionSchema'
+import type { TransactionFormOutput } from '../schemas/transactionSchema'
 
-interface UseUpdateExpenseResult {
-  updateExpense: (data: ExpenseFormOutput) => Promise<void>
+interface UseUpdateTransactionResult {
+  updateTransaction: (data: TransactionFormOutput) => Promise<void>
   isLoading: boolean
   error: Error | null
   success: boolean
 }
 
-export function useUpdateExpense(id: string): UseUpdateExpenseResult {
+export function useUpdateTransaction(id: string): UseUpdateTransactionResult {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const [success, setSuccess] = useState(false)
   const token = useAuthStore((state) => state.token)
 
-  async function updateExpense(data: ExpenseFormOutput): Promise<void> {
+  async function updateTransaction(data: TransactionFormOutput): Promise<void> {
     setIsLoading(true)
     setError(null)
     setSuccess(false)
     try {
-      await expensesApi.updateExpense(token ?? '', id, {
+      await transactionsApi.updateTransaction(token ?? '', id, {
         description: data.description,
         amountInCents: data.amount,
         categoryId: data.categoryId,
-        expenseDate: data.expenseDate,
+        tipo: 'despesa', // fixo nesta feature — sem campo correspondente no formulário (FEAT-23)
+        date: data.date,
       })
       setSuccess(true)
     } catch (err) {
@@ -39,5 +40,5 @@ export function useUpdateExpense(id: string): UseUpdateExpenseResult {
     }
   }
 
-  return { updateExpense, isLoading, error, success }
+  return { updateTransaction, isLoading, error, success }
 }

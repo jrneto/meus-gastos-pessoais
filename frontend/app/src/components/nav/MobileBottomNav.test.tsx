@@ -26,7 +26,7 @@ describe('MobileBottomNav', () => {
   })
 
   it('destaca o item ativo pela rota atual', () => {
-    renderBottomNav('/expenses')
+    renderBottomNav('/transactions')
 
     const nav = screen.getByRole('navigation', { name: /navegação principal/i })
     expect(within(nav).getByRole('link', { name: /transações/i })).toHaveAttribute(

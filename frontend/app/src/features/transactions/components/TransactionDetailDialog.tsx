@@ -2,23 +2,28 @@ import '@/styles/modernist/modernist.css'
 import { useEffect } from 'react'
 import { CategoryLetterTile } from '@/lib/categories/CategoryLetterTile'
 import { useCategories } from '@/lib/categories/useCategories'
-import type { ExpenseQueryItem } from '../api/transactionsApi'
+import type { TransactionQueryItem } from '../api/transactionsApi'
 import { formatCentsToCurrency } from '@/lib/currency'
 
-interface ExpenseDetailDialogProps {
-  expense: ExpenseQueryItem | null
+interface TransactionDetailDialogProps {
+  transaction: TransactionQueryItem | null
   onOpenChange: (open: boolean) => void
-  onEdit: (expense: ExpenseQueryItem) => void
-  onDelete: (expense: ExpenseQueryItem) => void
+  onEdit: (transaction: TransactionQueryItem) => void
+  onDelete: (transaction: TransactionQueryItem) => void
 }
 
 // Popup "Detalhe da despesa" (FEAT-20) — sem chamada à API, usa o item
 // já carregado na listagem. Só orquestra os popups de editar
-// (`ExpenseFormDialog`) e excluir (`ExpenseDeleteDialog`) já
-// existentes, sem duplicar lógica de formulário/exclusão.
-export function ExpenseDetailDialog({ expense, onOpenChange, onEdit, onDelete }: ExpenseDetailDialogProps) {
+// (`TransactionFormDialog`) e excluir (`TransactionDeleteDialog`) já
+// existentes, sem duplicar lógica de formulário/exclusão. Ganhou a
+// seção "Lançado por" na FEAT-23, mas título e cor do valor continuam
+// fixos como despesa (mesmo que a transação clicada seja uma receita —
+// só pode acontecer com dado inserido fora da UI, já que criar/editar
+// continua restrito a despesa nesta feature); generalizar de fato é
+// escopo da FEAT-25.
+export function TransactionDetailDialog({ transaction, onOpenChange, onEdit, onDelete }: TransactionDetailDialogProps) {
   const { items: categories } = useCategories()
-  const open = expense !== null
+  const open = transaction !== null
 
   useEffect(() => {
     if (!open) return undefined
@@ -37,7 +42,7 @@ export function ExpenseDetailDialog({ expense, onOpenChange, onEdit, onDelete }:
     return null
   }
 
-  const category = categories.find((c) => c.id === expense.categoryId)
+  const category = categories.find((c) => c.id === transaction.categoryId)
 
   return (
     <div className="ds-modernist dialog-backdrop" onClick={() => onOpenChange(false)}>
@@ -45,18 +50,18 @@ export function ExpenseDetailDialog({ expense, onOpenChange, onEdit, onDelete }:
         className="dialog"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="expense-detail-title"
+        aria-labelledby="transaction-detail-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="dialog-title" id="expense-detail-title">
+        <div className="dialog-title" id="transaction-detail-title">
           Detalhe da despesa
         </div>
 
         <div>
           <div style={{ fontSize: '30px', fontWeight: 800, fontFamily: 'var(--font-heading)', color: 'var(--color-accent-700)' }}>
-            {formatCentsToCurrency(expense.amountInCents)}
+            {formatCentsToCurrency(transaction.amountInCents)}
           </div>
-          <div style={{ fontSize: '13px', opacity: 0.6 }}>{expense.expenseDate}</div>
+          <div style={{ fontSize: '13px', opacity: 0.6 }}>{transaction.date}</div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
@@ -71,8 +76,13 @@ export function ExpenseDetailDialog({ expense, onOpenChange, onEdit, onDelete }:
         </div>
 
         <div>
+          <div style={{ fontSize: '12px', opacity: 0.6, marginBottom: '4px' }}>Lançado por</div>
+          <div style={{ fontSize: '14px' }}>{transaction.createdByLabel}</div>
+        </div>
+
+        <div>
           <div style={{ fontSize: '12px', opacity: 0.6, marginBottom: '4px' }}>Descrição</div>
-          <div style={{ fontSize: '14px' }}>{expense.description}</div>
+          <div style={{ fontSize: '14px' }}>{transaction.description}</div>
         </div>
 
         <div className="dialog-actions" style={{ justifyContent: 'space-between' }}>
@@ -81,7 +91,7 @@ export function ExpenseDetailDialog({ expense, onOpenChange, onEdit, onDelete }:
             className="btn btn-ghost"
             style={{ color: 'var(--color-accent-700)' }}
             onClick={() => {
-              onDelete(expense)
+              onDelete(transaction)
               onOpenChange(false)
             }}
           >
@@ -92,7 +102,7 @@ export function ExpenseDetailDialog({ expense, onOpenChange, onEdit, onDelete }:
               type="button"
               className="btn btn-secondary"
               onClick={() => {
-                onEdit(expense)
+                onEdit(transaction)
                 onOpenChange(false)
               }}
             >

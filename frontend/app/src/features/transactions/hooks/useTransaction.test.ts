@@ -4,57 +4,60 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
 import { NetworkError, NotFoundError, SessionExpiredError } from '../errors/transactionErrors'
-import { useExpense } from './useTransaction'
+import { useTransaction } from './useTransaction'
 
-const EXPENSE_URL = 'http://localhost:5049/expenses/exp-1'
+const TRANSACTION_URL = 'http://localhost:5049/transactions/tx-1'
 
-const expenseDetail = {
-  id: 'exp-1',
+const transactionDetail = {
+  id: 'tx-1',
   description: 'Almoço no restaurante',
   amountInCents: 4590,
   categoryId: 'cat-1',
-  expenseDate: '2025-06-15',
+  tipo: 'despesa',
+  date: '2025-06-15',
+  createdByUserId: 'user-1',
+  createdByLabel: 'Você',
   createdAt: '2025-06-15T12:00:00Z',
 }
 
-describe('useExpense', () => {
+describe('useTransaction', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
   })
 
-  it('carrega a despesa com sucesso', async () => {
-    server.use(http.get(EXPENSE_URL, () => HttpResponse.json(expenseDetail)))
+  it('carrega a transação com sucesso', async () => {
+    server.use(http.get(TRANSACTION_URL, () => HttpResponse.json(transactionDetail)))
 
-    const { result } = renderHook(() => useExpense('exp-1'))
+    const { result } = renderHook(() => useTransaction('tx-1'))
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.data).toEqual(expenseDetail)
+    expect(result.current.data).toEqual(transactionDetail)
     expect(result.current.error).toBeNull()
   })
 
   it('em caso de 404, expõe NotFoundError', async () => {
-    server.use(http.get(EXPENSE_URL, () => new HttpResponse(null, { status: 404 })))
+    server.use(http.get(TRANSACTION_URL, () => new HttpResponse(null, { status: 404 })))
 
-    const { result } = renderHook(() => useExpense('exp-1'))
+    const { result } = renderHook(() => useTransaction('tx-1'))
 
     await waitFor(() => expect(result.current.error).toBeInstanceOf(NotFoundError))
     expect(result.current.data).toBeNull()
   })
 
   it('em caso de 401, expõe SessionExpiredError e limpa a authStore', async () => {
-    server.use(http.get(EXPENSE_URL, () => new HttpResponse(null, { status: 401 })))
+    server.use(http.get(TRANSACTION_URL, () => new HttpResponse(null, { status: 401 })))
 
-    const { result } = renderHook(() => useExpense('exp-1'))
+    const { result } = renderHook(() => useTransaction('tx-1'))
 
     await waitFor(() => expect(result.current.error).toBeInstanceOf(SessionExpiredError))
     expect(useAuthStore.getState().token).toBeNull()
   })
 
   it('em caso de falha de rede, expõe NetworkError', async () => {
-    server.use(http.get(EXPENSE_URL, () => HttpResponse.error()))
+    server.use(http.get(TRANSACTION_URL, () => HttpResponse.error()))
 
-    const { result } = renderHook(() => useExpense('exp-1'))
+    const { result } = renderHook(() => useTransaction('tx-1'))
 
     await waitFor(() => expect(result.current.error).toBeInstanceOf(NetworkError))
   })
@@ -62,13 +65,13 @@ describe('useExpense', () => {
   it('id vazio não chama a API e não fica em carregamento (FEAT-18)', async () => {
     let apiCalled = false
     server.use(
-      http.get(EXPENSE_URL, () => {
+      http.get(TRANSACTION_URL, () => {
         apiCalled = true
-        return HttpResponse.json(expenseDetail)
+        return HttpResponse.json(transactionDetail)
       }),
     )
 
-    const { result } = renderHook(() => useExpense(''))
+    const { result } = renderHook(() => useTransaction(''))
 
     expect(result.current.isLoading).toBe(false)
     expect(result.current.data).toBeNull()

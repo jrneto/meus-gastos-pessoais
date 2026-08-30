@@ -5,47 +5,56 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { ExpensesListPage } from './ExpensesListPage'
+import { TransactionsListPage } from './TransactionsListPage'
 
-const EXPENSES_URL = 'http://localhost:5049/expenses'
+const TRANSACTIONS_URL = 'http://localhost:5049/transactions'
 const CATEGORIES_URL = 'http://localhost:5049/categories'
 
 const category = {
   id: 'cat-1',
   nome: 'Alimentação',
-  cor: '#f97316',
-  icone: 'utensils',
+  tipo: 'despesa',
+  orcamentoMensalCents: null,
   createdAt: '2025-06-15T12:00:00Z',
 }
 
 const item = {
-  id: 'exp-1',
+  id: 'tx-1',
   description: 'Almoço no restaurante',
   amountInCents: 4590,
   categoryId: 'cat-1',
-  expenseDate: '2025-06-15',
+  tipo: 'despesa',
+  date: '2025-06-15',
+  createdByUserId: 'user-1',
+  createdByLabel: 'Você',
   createdAt: '2025-06-15T12:00:00Z',
 }
 
 function renderPage() {
   return render(
     <MemoryRouter>
-      <ExpensesListPage />
+      <TransactionsListPage />
     </MemoryRouter>,
   )
 }
 
-describe('ExpensesListPage', () => {
+describe('TransactionsListPage', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
-    server.use(http.get(EXPENSES_URL, () => HttpResponse.json({ items: [], nextCursor: null })))
+    server.use(http.get(TRANSACTIONS_URL, () => HttpResponse.json({ items: [], nextCursor: null })))
   })
 
   it('exibe o título "Transações" (FEAT-16)', () => {
     renderPage()
 
     expect(screen.getByRole('heading', { name: 'Transações' })).toBeInTheDocument()
+  })
+
+  it('não exibe o botão "+ Nova receita" nesta feature (FEAT-23)', () => {
+    renderPage()
+
+    expect(screen.queryByRole('button', { name: /nova receita/i })).not.toBeInTheDocument()
   })
 
   it('clicar em "+ Nova despesa" abre o popup de cadastro (FEAT-17)', async () => {
@@ -62,7 +71,7 @@ describe('ExpensesListPage', () => {
   it('clicar numa linha abre o popup de detalhe (FEAT-20)', async () => {
     const user = userEvent.setup()
     server.use(
-      http.get(EXPENSES_URL, () => HttpResponse.json({ items: [item], nextCursor: null })),
+      http.get(TRANSACTIONS_URL, () => HttpResponse.json({ items: [item], nextCursor: null })),
       http.get(CATEGORIES_URL, () => HttpResponse.json({ items: [category] })),
     )
 
@@ -76,9 +85,9 @@ describe('ExpensesListPage', () => {
   it('"Editar" no detalhe abre o popup de edição pré-preenchido (FEAT-20)', async () => {
     const user = userEvent.setup()
     server.use(
-      http.get(EXPENSES_URL, () => HttpResponse.json({ items: [item], nextCursor: null })),
+      http.get(TRANSACTIONS_URL, () => HttpResponse.json({ items: [item], nextCursor: null })),
       http.get(CATEGORIES_URL, () => HttpResponse.json({ items: [category] })),
-      http.get('http://localhost:5049/expenses/exp-1', () => HttpResponse.json(item)),
+      http.get('http://localhost:5049/transactions/tx-1', () => HttpResponse.json(item)),
     )
 
     renderPage()
@@ -94,9 +103,9 @@ describe('ExpensesListPage', () => {
   it('"Excluir" no detalhe abre a confirmação e exclui com sucesso (FEAT-20)', async () => {
     const user = userEvent.setup()
     server.use(
-      http.get(EXPENSES_URL, () => HttpResponse.json({ items: [item], nextCursor: null })),
+      http.get(TRANSACTIONS_URL, () => HttpResponse.json({ items: [item], nextCursor: null })),
       http.get(CATEGORIES_URL, () => HttpResponse.json({ items: [category] })),
-      http.delete('http://localhost:5049/expenses/exp-1', () => new HttpResponse(null, { status: 204 })),
+      http.delete('http://localhost:5049/transactions/tx-1', () => new HttpResponse(null, { status: 204 })),
     )
 
     renderPage()

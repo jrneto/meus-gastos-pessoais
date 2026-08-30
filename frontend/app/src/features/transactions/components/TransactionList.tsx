@@ -1,20 +1,20 @@
 import { useMemo } from 'react'
 import '@/styles/modernist/modernist.css'
 import { useCategories } from '@/lib/categories/useCategories'
-import type { ExpenseQueryItem } from '../api/transactionsApi'
+import type { TransactionQueryItem } from '../api/transactionsApi'
 import { formatCentsToCurrency } from '@/lib/currency'
 
-interface ExpenseListProps {
-  items: ExpenseQueryItem[]
+interface TransactionListProps {
+  items: TransactionQueryItem[]
   isLoading: boolean
   isLoadingMore: boolean
   error: Error | null
   hasMore: boolean
   onLoadMore: () => void
-  onRowClick: (item: ExpenseQueryItem) => void
+  onRowClick: (item: TransactionQueryItem) => void
 }
 
-export function ExpenseList({
+export function TransactionList({
   items,
   isLoading,
   isLoadingMore,
@@ -22,7 +22,7 @@ export function ExpenseList({
   hasMore,
   onLoadMore,
   onRowClick,
-}: ExpenseListProps) {
+}: TransactionListProps) {
   const { items: categories } = useCategories()
   const categoryById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
@@ -57,6 +57,12 @@ export function ExpenseList({
           <tbody>
             {items.map((item) => {
               const category = categoryById.get(item.categoryId)
+              // Listagem já mista (despesa e receita, FEAT-23) — sinal
+              // e cor por tipo, igual ao design; criar/editar continua
+              // restrito a despesa nesta feature (ver TransactionForm).
+              const isIncome = item.tipo === 'receita'
+              const amountColor = isIncome ? 'var(--color-positive-700)' : 'var(--color-accent-700)'
+              const amountSign = isIncome ? '+ ' : '- '
               return (
                 <tr key={item.id} onClick={() => onRowClick(item)} style={{ cursor: 'pointer' }}>
                   <td>
@@ -67,8 +73,9 @@ export function ExpenseList({
                     )}
                   </td>
                   <td>{item.description}</td>
-                  <td style={{ opacity: 0.65 }}>{item.expenseDate}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-accent-700)' }}>
+                  <td style={{ opacity: 0.65 }}>{item.date}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: amountColor }}>
+                    {amountSign}
                     {formatCentsToCurrency(item.amountInCents)}
                   </td>
                 </tr>

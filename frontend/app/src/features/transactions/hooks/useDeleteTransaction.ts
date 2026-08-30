@@ -1,27 +1,27 @@
 import { useState } from 'react'
 import { useAuthStore } from '@/features/auth/store/authStore'
-import { expensesApi } from '../api/transactionsApi'
+import { transactionsApi } from '../api/transactionsApi'
 import { SessionExpiredError } from '../errors/transactionErrors'
 
-interface UseDeleteExpenseResult {
-  deleteExpense: (id: string) => Promise<void>
+interface UseDeleteTransactionResult {
+  deleteTransaction: (id: string) => Promise<void>
   isLoading: boolean
   error: Error | null
   success: boolean
 }
 
-export function useDeleteExpense(): UseDeleteExpenseResult {
+export function useDeleteTransaction(): UseDeleteTransactionResult {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const [success, setSuccess] = useState(false)
   const token = useAuthStore((state) => state.token)
 
-  async function deleteExpense(id: string): Promise<void> {
+  async function deleteTransaction(id: string): Promise<void> {
     setIsLoading(true)
     setError(null)
     setSuccess(false)
     try {
-      await expensesApi.deleteExpense(token ?? '', id)
+      await transactionsApi.deleteTransaction(token ?? '', id)
       setSuccess(true)
     } catch (err) {
       if (err instanceof SessionExpiredError) {
@@ -33,5 +33,5 @@ export function useDeleteExpense(): UseDeleteExpenseResult {
     }
   }
 
-  return { deleteExpense, isLoading, error, success }
+  return { deleteTransaction, isLoading, error, success }
 }

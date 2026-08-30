@@ -5,27 +5,35 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { ExpenseForm } from './TransactionForm'
+import { TransactionForm } from './TransactionForm'
 
-const EXPENSES_URL = 'http://localhost:5049/expenses'
+const TRANSACTIONS_URL = 'http://localhost:5049/transactions'
 const CATEGORIES_URL = 'http://localhost:5049/categories'
 
-const category = {
+const expenseCategory = {
   id: 'cat-1',
   nome: 'Alimentação',
-  cor: '#F97316',
-  icone: 'utensils',
+  tipo: 'despesa',
+  orcamentoMensalCents: null,
   createdAt: '2025-06-15T12:00:00Z',
 }
 
-function mockCategories(items: unknown[] = [category]) {
+const incomeCategory = {
+  id: 'cat-2',
+  nome: 'Salário',
+  tipo: 'receita',
+  orcamentoMensalCents: null,
+  createdAt: '2025-06-15T12:00:00Z',
+}
+
+function mockCategories(items: unknown[] = [expenseCategory]) {
   server.use(http.get(CATEGORIES_URL, () => HttpResponse.json({ items })))
 }
 
-function renderForm(props: Partial<React.ComponentProps<typeof ExpenseForm>> = {}) {
+function renderForm(props: Partial<React.ComponentProps<typeof TransactionForm>> = {}) {
   return render(
     <MemoryRouter>
-      <ExpenseForm {...props} />
+      <TransactionForm {...props} />
     </MemoryRouter>,
   )
 }
@@ -40,7 +48,7 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2025-06-15' } })
 }
 
-describe('ExpenseForm', () => {
+describe('TransactionForm', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
@@ -51,11 +59,33 @@ describe('ExpenseForm', () => {
 
     renderForm()
 
-    expect(await screen.findByText('Você ainda não tem nenhuma categoria cadastrada.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Você ainda não tem nenhuma categoria de despesa cadastrada.'),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /criar categoria/i })).toHaveAttribute(
       'href',
       '/categories',
     )
+  })
+
+  it('usuário com só categoria de receita também é orientado a criar uma (dropdown é só de despesa)', async () => {
+    mockCategories([incomeCategory])
+
+    renderForm()
+
+    expect(
+      await screen.findByText('Você ainda não tem nenhuma categoria de despesa cadastrada.'),
+    ).toBeInTheDocument()
+  })
+
+  it('dropdown de categoria não lista categoria de receita', async () => {
+    mockCategories([expenseCategory, incomeCategory])
+
+    renderForm()
+    await screen.findByLabelText('Descrição')
+    await screen.findByRole('option', { name: 'Alimentação' })
+
+    expect(screen.queryByRole('option', { name: 'Salário' })).not.toBeInTheDocument()
   })
 
   it('exibe erros de validação inline e não chama a API com campos vazios', async () => {
@@ -63,7 +93,7 @@ describe('ExpenseForm', () => {
     const user = userEvent.setup()
     let apiCalled = false
     server.use(
-      http.post(EXPENSES_URL, () => {
+      http.post(TRANSACTIONS_URL, () => {
         apiCalled = true
         return HttpResponse.json({})
       }),
@@ -83,7 +113,7 @@ describe('ExpenseForm', () => {
   it('erro 400 da API exibe alerta genérico e mantém os dados preenchidos', async () => {
     mockCategories()
     const user = userEvent.setup()
-    server.use(http.post(EXPENSES_URL, () => new HttpResponse(null, { status: 400 })))
+    server.use(http.post(TRANSACTIONS_URL, () => new HttpResponse(null, { status: 400 })))
 
     renderForm()
     await screen.findByLabelText('Descrição')
@@ -101,13 +131,16 @@ describe('ExpenseForm', () => {
     const user = userEvent.setup()
     const onSuccess = vi.fn()
     server.use(
-      http.post(EXPENSES_URL, () =>
+      http.post(TRANSACTIONS_URL, () =>
         HttpResponse.json({
-          id: 'exp-1',
+          id: 'tx-1',
           description: 'Almoço no restaurante',
           amountInCents: 4590,
           categoryId: 'cat-1',
-          expenseDate: '2025-06-15',
+          tipo: 'despesa',
+          date: '2025-06-15',
+          createdByUserId: 'user-1',
+          createdByLabel: 'Você',
           createdAt: '2025-06-15T12:00:00Z',
         }),
       ),
@@ -137,18 +170,18 @@ describe('ExpenseForm', () => {
   })
 
   describe('mode="edit" (FEAT-18)', () => {
-    const EXPENSE_URL = 'http://localhost:5049/expenses/exp-1'
+    const TRANSACTION_URL = 'http://localhost:5049/transactions/tx-1'
     const initialValues = {
       description: 'Almoço no restaurante',
       amount: '45,90',
       categoryId: 'cat-1',
-      expenseDate: '2025-06-15',
+      date: '2025-06-15',
     }
 
     it('renderiza pré-preenchido com o rótulo "Salvar alterações"', async () => {
       mockCategories()
 
-      renderForm({ mode: 'edit', expenseId: 'exp-1', initialValues })
+      renderForm({ mode: 'edit', transactionId: 'tx-1', initialValues })
 
       expect(await screen.findByLabelText('Descrição')).toHaveValue('Almoço no restaurante')
       expect(screen.getByLabelText('Valor')).toHaveValue('45,90')
@@ -160,19 +193,19 @@ describe('ExpenseForm', () => {
       expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeInTheDocument()
     })
 
-    it('submit chama PUT /expenses/{id} e onSuccess ao ter sucesso', async () => {
+    it('submit chama PUT /transactions/{id} e onSuccess ao ter sucesso', async () => {
       mockCategories()
       const user = userEvent.setup()
       const onSuccess = vi.fn()
       let apiCalled = false
       server.use(
-        http.put(EXPENSE_URL, () => {
+        http.put(TRANSACTION_URL, () => {
           apiCalled = true
-          return HttpResponse.json({ ...initialValues, id: 'exp-1', amountInCents: 4590 })
+          return HttpResponse.json({ ...initialValues, id: 'tx-1', amountInCents: 4590, tipo: 'despesa' })
         }),
       )
 
-      renderForm({ mode: 'edit', expenseId: 'exp-1', initialValues, onSuccess })
+      renderForm({ mode: 'edit', transactionId: 'tx-1', initialValues, onSuccess })
       await screen.findByLabelText('Descrição')
 
       await user.click(screen.getByRole('button', { name: /salvar alterações/i }))
@@ -185,9 +218,9 @@ describe('ExpenseForm', () => {
       mockCategories()
       const user = userEvent.setup()
       const onSuccess = vi.fn()
-      server.use(http.put(EXPENSE_URL, () => new HttpResponse(null, { status: 404 })))
+      server.use(http.put(TRANSACTION_URL, () => new HttpResponse(null, { status: 404 })))
 
-      renderForm({ mode: 'edit', expenseId: 'exp-1', initialValues, onSuccess })
+      renderForm({ mode: 'edit', transactionId: 'tx-1', initialValues, onSuccess })
       await screen.findByLabelText('Descrição')
 
       await user.click(screen.getByRole('button', { name: /salvar alterações/i }))
@@ -199,9 +232,9 @@ describe('ExpenseForm', () => {
     it('erro 400 exibe "Não foi possível salvar" e mantém os dados preenchidos', async () => {
       mockCategories()
       const user = userEvent.setup()
-      server.use(http.put(EXPENSE_URL, () => new HttpResponse(null, { status: 400 })))
+      server.use(http.put(TRANSACTION_URL, () => new HttpResponse(null, { status: 400 })))
 
-      renderForm({ mode: 'edit', expenseId: 'exp-1', initialValues })
+      renderForm({ mode: 'edit', transactionId: 'tx-1', initialValues })
       await screen.findByLabelText('Descrição')
 
       await user.click(screen.getByRole('button', { name: /salvar alterações/i }))

@@ -3,7 +3,7 @@ import { parseCurrencyToCents } from '@/lib/currency'
 
 const CURRENCY_REGEX = /^\d+(\.\d{3})*(,\d{2})?$/
 
-export const expenseSchema = z.object({
+export const transactionSchema = z.object({
   description: z
     .string()
     .trim()
@@ -16,8 +16,8 @@ export const expenseSchema = z.object({
     .transform(parseCurrencyToCents)
     .refine((cents) => cents > 0, 'O valor deve ser maior que zero.'),
   categoryId: z.string().min(1, 'Selecione uma categoria.'),
-  expenseDate: z.string().min(1, 'Informe a data.'),
+  date: z.string().min(1, 'Informe a data.'),
 })
 
-export type ExpenseFormInput = z.input<typeof expenseSchema>
-export type ExpenseFormOutput = z.output<typeof expenseSchema>
+export type TransactionFormInput = z.input<typeof transactionSchema>
+export type TransactionFormOutput = z.output<typeof transactionSchema>

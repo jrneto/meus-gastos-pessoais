@@ -1,32 +1,32 @@
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/features/auth/store/authStore'
-import { expensesApi, type ExpenseQueryItem, type GetExpensesParams } from '../api/transactionsApi'
+import { transactionsApi, type TransactionQueryItem, type GetTransactionsParams } from '../api/transactionsApi'
 import { SessionExpiredError } from '../errors/transactionErrors'
-import type { ExpenseFilterOutput } from '../schemas/transactionFilterSchema'
+import type { TransactionFilterOutput } from '../schemas/transactionFilterSchema'
 
-interface UseExpensesQueryResult {
-  items: ExpenseQueryItem[]
+interface UseTransactionsQueryResult {
+  items: TransactionQueryItem[]
   isLoading: boolean
   isLoadingMore: boolean
   error: Error | null
   hasMore: boolean
-  applyFilters: (filters: ExpenseFilterOutput) => void
+  applyFilters: (filters: TransactionFilterOutput) => void
   loadMore: () => void
   removeItem: (id: string) => void
   refetch: () => void
 }
 
-export function useExpensesQuery(): UseExpensesQueryResult {
-  const [items, setItems] = useState<ExpenseQueryItem[]>([])
+export function useTransactionsQuery(): UseTransactionsQueryResult {
+  const [items, setItems] = useState<TransactionQueryItem[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
-  const [filters, setFilters] = useState<GetExpensesParams>({})
+  const [filters, setFilters] = useState<GetTransactionsParams>({})
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const token = useAuthStore((state) => state.token)
 
   async function fetchPage(
-    nextFilters: GetExpensesParams,
+    nextFilters: GetTransactionsParams,
     cursorParam: string | null,
     append: boolean,
   ): Promise<void> {
@@ -37,7 +37,7 @@ export function useExpensesQuery(): UseExpensesQueryResult {
     }
     setError(null)
     try {
-      const result = await expensesApi.getExpenses(token ?? '', {
+      const result = await transactionsApi.getTransactions(token ?? '', {
         ...nextFilters,
         cursor: cursorParam ?? undefined,
       })
@@ -61,7 +61,7 @@ export function useExpensesQuery(): UseExpensesQueryResult {
     fetchPage({}, null, false)
   }, [])
 
-  function applyFilters(newFilters: ExpenseFilterOutput): void {
+  function applyFilters(newFilters: TransactionFilterOutput): void {
     setFilters(newFilters)
     setCursor(null)
     fetchPage(newFilters, null, false)
@@ -79,7 +79,7 @@ export function useExpensesQuery(): UseExpensesQueryResult {
   }
 
   // Reexecuta a busca com os filtros já aplicados (primeira página) —
-  // usado para atualizar a listagem depois de criar uma despesa
+  // usado para atualizar a listagem depois de criar uma transação
   // (FEAT-17), sem alterar os filtros em uso.
   function refetch(): void {
     fetchPage(filters, null, false)

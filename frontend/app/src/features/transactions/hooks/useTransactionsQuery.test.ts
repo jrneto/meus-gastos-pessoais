@@ -4,10 +4,10 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
 import { InvalidFilterError, SessionExpiredError } from '../errors/transactionErrors'
-import type { ExpenseFilterOutput } from '../schemas/transactionFilterSchema'
-import { useExpensesQuery } from './useTransactionsQuery'
+import type { TransactionFilterOutput } from '../schemas/transactionFilterSchema'
+import { useTransactionsQuery } from './useTransactionsQuery'
 
-const EXPENSES_URL = 'http://localhost:5049/expenses'
+const TRANSACTIONS_URL = 'http://localhost:5049/transactions'
 
 function item(id: string) {
   return {
@@ -15,12 +15,15 @@ function item(id: string) {
     description: `Despesa ${id}`,
     amountInCents: 1000,
     categoryId: 'cat-1',
-    expenseDate: '2025-06-15',
+    tipo: 'despesa',
+    date: '2025-06-15',
+    createdByUserId: 'user-1',
+    createdByLabel: 'Você',
     createdAt: '2025-06-15T12:00:00Z',
   }
 }
 
-describe('useExpensesQuery', () => {
+describe('useTransactionsQuery', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
@@ -28,12 +31,12 @@ describe('useExpensesQuery', () => {
 
   it('carrega a primeira página sem filtros ao montar', async () => {
     server.use(
-      http.get(EXPENSES_URL, () =>
+      http.get(TRANSACTIONS_URL, () =>
         HttpResponse.json({ items: [item('1'), item('2')], nextCursor: null }),
       ),
     )
 
-    const { result } = renderHook(() => useExpensesQuery())
+    const { result } = renderHook(() => useTransactionsQuery())
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
@@ -43,22 +46,22 @@ describe('useExpensesQuery', () => {
 
   it('applyFilters reinicia items/cursor antes de buscar a nova página', async () => {
     server.use(
-      http.get(EXPENSES_URL, () =>
+      http.get(TRANSACTIONS_URL, () =>
         HttpResponse.json({ items: [item('1')], nextCursor: 'cursor-1' }),
       ),
     )
 
-    const { result } = renderHook(() => useExpensesQuery())
+    const { result } = renderHook(() => useTransactionsQuery())
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.hasMore).toBe(true)
 
     server.use(
-      http.get(EXPENSES_URL, () =>
+      http.get(TRANSACTIONS_URL, () =>
         HttpResponse.json({ items: [item('2')], nextCursor: null }),
       ),
     )
 
-    const filters: ExpenseFilterOutput = {
+    const filters: TransactionFilterOutput = {
       yearMonth: undefined,
       categoryId: 'cat-2',
       dateFrom: undefined,
@@ -77,7 +80,7 @@ describe('useExpensesQuery', () => {
 
   it('loadMore anexa a próxima página usando nextCursor', async () => {
     server.use(
-      http.get(EXPENSES_URL, ({ request }) => {
+      http.get(TRANSACTIONS_URL, ({ request }) => {
         const cursor = new URL(request.url).searchParams.get('cursor')
         if (!cursor) {
           return HttpResponse.json({ items: [item('1')], nextCursor: 'cursor-1' })
@@ -86,7 +89,7 @@ describe('useExpensesQuery', () => {
       }),
     )
 
-    const { result } = renderHook(() => useExpensesQuery())
+    const { result } = renderHook(() => useTransactionsQuery())
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.items).toEqual([item('1')])
 
@@ -100,26 +103,26 @@ describe('useExpensesQuery', () => {
   })
 
   it('em caso de 400, expõe InvalidFilterError', async () => {
-    server.use(http.get(EXPENSES_URL, () => new HttpResponse(null, { status: 400 })))
+    server.use(http.get(TRANSACTIONS_URL, () => new HttpResponse(null, { status: 400 })))
 
-    const { result } = renderHook(() => useExpensesQuery())
+    const { result } = renderHook(() => useTransactionsQuery())
 
     await waitFor(() => expect(result.current.error).toBeInstanceOf(InvalidFilterError))
   })
 
   it('em caso de 401, expõe SessionExpiredError e limpa a authStore', async () => {
-    server.use(http.get(EXPENSES_URL, () => new HttpResponse(null, { status: 401 })))
+    server.use(http.get(TRANSACTIONS_URL, () => new HttpResponse(null, { status: 401 })))
 
-    const { result } = renderHook(() => useExpensesQuery())
+    const { result } = renderHook(() => useTransactionsQuery())
 
     await waitFor(() => expect(result.current.error).toBeInstanceOf(SessionExpiredError))
     expect(useAuthStore.getState().token).toBeNull()
   })
 
   it('lista vazia quando nenhum item corresponde aos filtros', async () => {
-    server.use(http.get(EXPENSES_URL, () => HttpResponse.json({ items: [], nextCursor: null })))
+    server.use(http.get(TRANSACTIONS_URL, () => HttpResponse.json({ items: [], nextCursor: null })))
 
-    const { result } = renderHook(() => useExpensesQuery())
+    const { result } = renderHook(() => useTransactionsQuery())
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.items).toEqual([])
@@ -128,15 +131,15 @@ describe('useExpensesQuery', () => {
 
   it('refetch reexecuta a busca com os filtros atuais, voltando para a primeira página', async () => {
     server.use(
-      http.get(EXPENSES_URL, () =>
+      http.get(TRANSACTIONS_URL, () =>
         HttpResponse.json({ items: [item('1')], nextCursor: 'cursor-1' }),
       ),
     )
 
-    const { result } = renderHook(() => useExpensesQuery())
+    const { result } = renderHook(() => useTransactionsQuery())
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    const filters: ExpenseFilterOutput = {
+    const filters: TransactionFilterOutput = {
       yearMonth: undefined,
       categoryId: 'cat-2',
       dateFrom: undefined,
@@ -151,7 +154,7 @@ describe('useExpensesQuery', () => {
 
     let requestedCategoryId: string | null = null
     server.use(
-      http.get(EXPENSES_URL, ({ request }) => {
+      http.get(TRANSACTIONS_URL, ({ request }) => {
         requestedCategoryId = new URL(request.url).searchParams.get('categoryId')
         return HttpResponse.json({ items: [item('3')], nextCursor: null })
       }),
@@ -169,12 +172,12 @@ describe('useExpensesQuery', () => {
 
   it('removeItem remove só o item do id informado, mantendo os demais', async () => {
     server.use(
-      http.get(EXPENSES_URL, () =>
+      http.get(TRANSACTIONS_URL, () =>
         HttpResponse.json({ items: [item('1'), item('2')], nextCursor: null }),
       ),
     )
 
-    const { result } = renderHook(() => useExpensesQuery())
+    const { result } = renderHook(() => useTransactionsQuery())
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     act(() => {

@@ -4,38 +4,41 @@ import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import type { ExpenseQueryItem } from '../api/transactionsApi'
-import { ExpenseDetailDialog } from './TransactionDetailDialog'
+import type { TransactionQueryItem } from '../api/transactionsApi'
+import { TransactionDetailDialog } from './TransactionDetailDialog'
 
 const CATEGORIES_URL = 'http://localhost:5049/categories'
 
 const category = {
   id: 'cat-1',
   nome: 'Alimentação',
-  cor: '#F97316',
-  icone: 'utensils',
+  tipo: 'despesa',
+  orcamentoMensalCents: null,
   createdAt: '2025-06-15T12:00:00Z',
 }
 
-const expense: ExpenseQueryItem = {
-  id: 'exp-1',
+const transaction: TransactionQueryItem = {
+  id: 'tx-1',
   description: 'Almoço no restaurante',
   amountInCents: 4590,
   categoryId: 'cat-1',
-  expenseDate: '2025-06-15',
+  tipo: 'despesa',
+  date: '2025-06-15',
+  createdByUserId: 'user-1',
+  createdByLabel: 'Você',
   createdAt: '2025-06-15T12:00:00Z',
 }
 
-describe('ExpenseDetailDialog', () => {
+describe('TransactionDetailDialog', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
     server.use(http.get(CATEGORIES_URL, () => HttpResponse.json({ items: [category] })))
   })
 
-  it('fica fechado quando expense é null', () => {
+  it('fica fechado quando transaction é null', () => {
     render(
-      <ExpenseDetailDialog expense={null} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+      <TransactionDetailDialog transaction={null} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
     )
 
     expect(screen.queryByText('Detalhe da despesa')).not.toBeInTheDocument()
@@ -43,7 +46,7 @@ describe('ExpenseDetailDialog', () => {
 
   it('aberto exibe valor, data, categoria e descrição', async () => {
     render(
-      <ExpenseDetailDialog expense={expense} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+      <TransactionDetailDialog transaction={transaction} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
     )
 
     expect(screen.getByText('Detalhe da despesa')).toBeInTheDocument()
@@ -53,31 +56,60 @@ describe('ExpenseDetailDialog', () => {
     expect(screen.getByText('Almoço no restaurante')).toBeInTheDocument()
   })
 
-  it('"Editar" chama onEdit com a despesa e fecha o popup', async () => {
+  it('mostra "Lançado por: Você" quando o autor é o próprio usuário logado', () => {
+    render(
+      <TransactionDetailDialog transaction={transaction} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+    )
+
+    expect(screen.getByText('Lançado por')).toBeInTheDocument()
+    expect(screen.getByText('Você')).toBeInTheDocument()
+  })
+
+  it('mostra o e-mail do autor quando a transação foi lançada por outro membro', () => {
+    const otherMemberTransaction: TransactionQueryItem = {
+      ...transaction,
+      createdByUserId: 'user-2',
+      createdByLabel: 'outro@exemplo.com',
+    }
+
+    render(
+      <TransactionDetailDialog
+        transaction={otherMemberTransaction}
+        onOpenChange={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Lançado por')).toBeInTheDocument()
+    expect(screen.getByText('outro@exemplo.com')).toBeInTheDocument()
+  })
+
+  it('"Editar" chama onEdit com a transação e fecha o popup', async () => {
     const user = userEvent.setup()
     const onEdit = vi.fn()
     const onOpenChange = vi.fn()
 
     render(
-      <ExpenseDetailDialog expense={expense} onOpenChange={onOpenChange} onEdit={onEdit} onDelete={vi.fn()} />,
+      <TransactionDetailDialog transaction={transaction} onOpenChange={onOpenChange} onEdit={onEdit} onDelete={vi.fn()} />,
     )
     await user.click(screen.getByRole('button', { name: /^editar$/i }))
 
-    expect(onEdit).toHaveBeenCalledWith(expense)
+    expect(onEdit).toHaveBeenCalledWith(transaction)
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  it('"Excluir" chama onDelete com a despesa e fecha o popup', async () => {
+  it('"Excluir" chama onDelete com a transação e fecha o popup', async () => {
     const user = userEvent.setup()
     const onDelete = vi.fn()
     const onOpenChange = vi.fn()
 
     render(
-      <ExpenseDetailDialog expense={expense} onOpenChange={onOpenChange} onEdit={vi.fn()} onDelete={onDelete} />,
+      <TransactionDetailDialog transaction={transaction} onOpenChange={onOpenChange} onEdit={vi.fn()} onDelete={onDelete} />,
     )
     await user.click(screen.getByRole('button', { name: /^excluir$/i }))
 
-    expect(onDelete).toHaveBeenCalledWith(expense)
+    expect(onDelete).toHaveBeenCalledWith(transaction)
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
@@ -88,7 +120,7 @@ describe('ExpenseDetailDialog', () => {
     const onOpenChange = vi.fn()
 
     render(
-      <ExpenseDetailDialog expense={expense} onOpenChange={onOpenChange} onEdit={onEdit} onDelete={onDelete} />,
+      <TransactionDetailDialog transaction={transaction} onOpenChange={onOpenChange} onEdit={onEdit} onDelete={onDelete} />,
     )
     await user.click(screen.getByRole('button', { name: /^fechar$/i }))
 
@@ -102,7 +134,7 @@ describe('ExpenseDetailDialog', () => {
     const onOpenChange = vi.fn()
 
     render(
-      <ExpenseDetailDialog expense={expense} onOpenChange={onOpenChange} onEdit={vi.fn()} onDelete={vi.fn()} />,
+      <TransactionDetailDialog transaction={transaction} onOpenChange={onOpenChange} onEdit={vi.fn()} onDelete={vi.fn()} />,
     )
     await user.keyboard('{Escape}')
 
@@ -114,7 +146,7 @@ describe('ExpenseDetailDialog', () => {
     const onOpenChange = vi.fn()
 
     render(
-      <ExpenseDetailDialog expense={expense} onOpenChange={onOpenChange} onEdit={vi.fn()} onDelete={vi.fn()} />,
+      <TransactionDetailDialog transaction={transaction} onOpenChange={onOpenChange} onEdit={vi.fn()} onDelete={vi.fn()} />,
     )
     await user.click(screen.getByRole('dialog').parentElement as HTMLElement)
 

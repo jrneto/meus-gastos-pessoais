@@ -1,11 +1,11 @@
 import { useEffect } from 'react'
 import '@/styles/modernist/modernist.css'
-import type { ExpenseQueryItem } from '../api/transactionsApi'
+import type { TransactionQueryItem } from '../api/transactionsApi'
 import { NotFoundError } from '../errors/transactionErrors'
-import { useDeleteExpense } from '../hooks/useDeleteTransaction'
+import { useDeleteTransaction } from '../hooks/useDeleteTransaction'
 
-interface ExpenseDeleteDialogProps {
-  expense: ExpenseQueryItem | null
+interface TransactionDeleteDialogProps {
+  transaction: TransactionQueryItem | null
   onOpenChange: (open: boolean) => void
   onDeleted: (id: string) => void
 }
@@ -13,21 +13,21 @@ interface ExpenseDeleteDialogProps {
 // Painel próprio (`.dialog-backdrop`/`.dialog` do Modernist) no lugar do
 // `AlertDialog` do shadcn/ui — mesmo padrão do `NavMoreSheet` (FEAT-15),
 // com `role="alertdialog"` por se tratar de confirmação destrutiva.
-export function ExpenseDeleteDialog({ expense, onOpenChange, onDeleted }: ExpenseDeleteDialogProps) {
-  const { deleteExpense, isLoading, error, success } = useDeleteExpense()
-  const open = expense !== null
+export function TransactionDeleteDialog({ transaction, onOpenChange, onDeleted }: TransactionDeleteDialogProps) {
+  const { deleteTransaction, isLoading, error, success } = useDeleteTransaction()
+  const open = transaction !== null
 
   useEffect(() => {
-    if (success && expense) {
-      onDeleted(expense.id)
+    if (success && transaction) {
+      onDeleted(transaction.id)
     }
-  }, [success, expense, onDeleted])
+  }, [success, transaction, onDeleted])
 
   useEffect(() => {
-    if (error instanceof NotFoundError && expense) {
-      onDeleted(expense.id)
+    if (error instanceof NotFoundError && transaction) {
+      onDeleted(transaction.id)
     }
-  }, [error, expense, onDeleted])
+  }, [error, transaction, onDeleted])
 
   useEffect(() => {
     if (!open) return undefined
@@ -54,15 +54,15 @@ export function ExpenseDeleteDialog({ expense, onOpenChange, onDeleted }: Expens
         className="dialog"
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="delete-expense-title"
-        aria-describedby="delete-expense-description"
+        aria-labelledby="delete-transaction-title"
+        aria-describedby="delete-transaction-description"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="dialog-title" id="delete-expense-title">
+        <div className="dialog-title" id="delete-transaction-title">
           Excluir despesa
         </div>
-        <p className="dialog-body" id="delete-expense-description">
-          Tem certeza que deseja excluir "{expense?.description}"? Essa ação não pode ser
+        <p className="dialog-body" id="delete-transaction-description">
+          Tem certeza que deseja excluir "{transaction?.description}"? Essa ação não pode ser
           desfeita.
         </p>
 
@@ -81,7 +81,7 @@ export function ExpenseDeleteDialog({ expense, onOpenChange, onDeleted }: Expens
             type="button"
             className="btn btn-primary"
             disabled={isLoading}
-            onClick={() => expense && deleteExpense(expense.id)}
+            onClick={() => transaction && deleteTransaction(transaction.id)}
           >
             {isLoading ? 'Excluindo...' : 'Excluir'}
           </button>

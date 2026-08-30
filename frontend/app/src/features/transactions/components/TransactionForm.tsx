@@ -5,45 +5,52 @@ import { Link } from 'react-router-dom'
 import '@/styles/modernist/modernist.css'
 import { useCategories } from '@/lib/categories/useCategories'
 import { NotFoundError } from '../errors/transactionErrors'
-import { useRegisterExpense } from '../hooks/useRegisterTransaction'
-import { useUpdateExpense } from '../hooks/useUpdateTransaction'
+import { useRegisterTransaction } from '../hooks/useRegisterTransaction'
+import { useUpdateTransaction } from '../hooks/useUpdateTransaction'
 import {
-  expenseSchema,
-  type ExpenseFormInput,
-  type ExpenseFormOutput,
+  transactionSchema,
+  type TransactionFormInput,
+  type TransactionFormOutput,
 } from '../schemas/transactionSchema'
 
-interface ExpenseFormProps {
+interface TransactionFormProps {
   mode?: 'create' | 'edit'
-  expenseId?: string
-  initialValues?: ExpenseFormInput
+  transactionId?: string
+  initialValues?: TransactionFormInput
   onSuccess?: () => void
   onCancel?: () => void
 }
 
 // Popup único de cadastro/edição de despesa (FEAT-17/FEAT-18), com
 // campos próprios do Modernist — `ExpenseFormFields`/`EditExpenseForm`
-// (shadcn/ui) foram removidos, sem mais consumidores.
-export function ExpenseForm({
+// (shadcn/ui) foram removidos, sem mais consumidores. Nesta feature
+// (FEAT-23) o cadastro/edição continua restrito a despesa — o
+// seletor de tipo entra na FEAT-24.
+export function TransactionForm({
   mode = 'create',
-  expenseId,
+  transactionId,
   initialValues,
   onSuccess,
   onCancel,
-}: ExpenseFormProps) {
-  const registerHook = useRegisterExpense()
-  const updateHook = useUpdateExpense(expenseId ?? '')
+}: TransactionFormProps) {
+  const registerHook = useRegisterTransaction()
+  const updateHook = useUpdateTransaction(transactionId ?? '')
   const { isLoading, error, success } = mode === 'edit' ? updateHook : registerHook
-  const submit = mode === 'edit' ? updateHook.updateExpense : registerHook.registerExpense
+  const submit = mode === 'edit' ? updateHook.updateTransaction : registerHook.registerTransaction
   const { items: categories, isLoading: categoriesLoading } = useCategories()
+  // Nesta feature só é possível lançar/editar despesa — o dropdown
+  // não pode oferecer categoria de receita, já que o backend rejeita
+  // (400) uma transação cujo tipo diverge do tipo da categoria (FEAT-22
+  // do backend).
+  const expenseCategories = categories.filter((category) => category.tipo === 'despesa')
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<ExpenseFormInput, unknown, ExpenseFormOutput>({
-    resolver: zodResolver(expenseSchema),
-    defaultValues: initialValues ?? { description: '', amount: '', categoryId: '', expenseDate: '' },
+  } = useForm<TransactionFormInput, unknown, TransactionFormOutput>({
+    resolver: zodResolver(transactionSchema),
+    defaultValues: initialValues ?? { description: '', amount: '', categoryId: '', date: '' },
   })
 
   useEffect(() => {
@@ -57,10 +64,10 @@ export function ExpenseForm({
   }, [success])
 
   useEffect(() => {
-    // A despesa já não existe mais (excluída por outra sessão entre
+    // A transação já não existe mais (excluída por outra sessão entre
     // abrir o popup e salvar) — trata como sucesso silencioso, sem
     // exibir erro (mesmo espírito do tratamento já usado em
-    // ExpenseDeleteDialog para NotFoundError).
+    // TransactionDeleteDialog para NotFoundError).
     if (mode === 'edit' && error instanceof NotFoundError) {
       onSuccess?.()
     }
@@ -80,7 +87,7 @@ export function ExpenseForm({
     )
   }
 
-  if (categories.length === 0) {
+  if (expenseCategories.length === 0) {
     return (
       <div
         className="ds-modernist"
@@ -94,7 +101,7 @@ export function ExpenseForm({
         }}
       >
         <p style={{ opacity: 0.7, fontSize: '14px' }}>
-          Você ainda não tem nenhuma categoria cadastrada.
+          Você ainda não tem nenhuma categoria de despesa cadastrada.
         </p>
         <Link to="/categories" className="btn btn-primary">
           Criar categoria
@@ -149,7 +156,7 @@ export function ExpenseForm({
         <span>Categoria</span>
         <select className="input" aria-invalid={!!errors.categoryId} {...register('categoryId')}>
           <option value="">Selecione uma categoria</option>
-          {categories.map((category) => (
+          {expenseCategories.map((category) => (
             <option key={category.id} value={category.id}>
               {category.nome}
             </option>
@@ -164,10 +171,10 @@ export function ExpenseForm({
 
       <label className="field">
         <span>Data</span>
-        <input className="input" type="date" aria-invalid={!!errors.expenseDate} {...register('expenseDate')} />
-        {errors.expenseDate && (
+        <input className="input" type="date" aria-invalid={!!errors.date} {...register('date')} />
+        {errors.date && (
           <p role="alert" style={{ color: 'var(--color-accent-700)', fontSize: '12px', margin: '4px 0 0' }}>
-            {errors.expenseDate.message}
+            {errors.date.message}
           </p>
         )}
       </label>
