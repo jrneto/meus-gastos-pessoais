@@ -10,7 +10,6 @@
 <helmet>
 <link rel="stylesheet" href="_ds/modernist-a01587a5-394c-4dcb-a692-c51267a2ceac/styles.css">
 <script src="_ds/modernist-a01587a5-394c-4dcb-a692-c51267a2ceac/_ds_bundle.js"></script>
-<script src="./image-slot.js"></script>
 <style>
   body{margin:0}
   .je-track{height:6px;background:var(--color-neutral-300);position:relative;overflow:hidden}
@@ -187,14 +186,17 @@
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:40px">
-      <div>
-        <h2 style="font-size:15px;margin:0 0 14px">Por categoria</h2>
+      <div style="min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px">
+          <h2 style="font-size:15px;margin:0">Onde o dinheiro foi este mês</h2>
+          <button onClick="{{ goToCategories }}" class="btn btn-ghost" style="padding-right:0;font-size:12px;flex:none;white-space:nowrap">{{ categoryCountLabel }}</button>
+        </div>
         <div style="display:flex;flex-direction:column;gap:16px">
-          <sc-for list="{{ categoriesComputed }}" as="c" hint-placeholder-count="6">
+          <sc-for list="{{ topCategories }}" as="c" hint-placeholder-count="5">
             <div>
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:5px">
                 <div style="display:flex;align-items:center;gap:8px;min-width:0">
-                  <div style="width:22px;height:22px;border:1px solid var(--color-divider);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;font-family:var(--font-heading);flex:none">{{ c.letter }}</div>
+                  <div style="width:24px;height:24px;border:1px solid var(--color-divider);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;font-family:var(--font-heading);flex:none">{{ c.letter }}</div>
                   <span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
                 </div>
                 <span style="font-size:12px;color:{{ c.textColor }};white-space:nowrap;flex:none">{{ c.spentFmt }} / {{ c.budgetFmt }}</span>
@@ -204,10 +206,10 @@
           </sc-for>
         </div>
       </div>
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">
+      <div style="min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px">
           <h2 style="font-size:15px;margin:0">Últimos lançamentos</h2>
-          <button onClick="{{ goToTransactions }}" class="btn btn-ghost" style="padding-right:0;font-size:12px">Ver todas →</button>
+          <button onClick="{{ goToTransactions }}" class="btn btn-ghost" style="padding-right:0;font-size:12px;flex:none;white-space:nowrap">Ver todas →</button>
         </div>
         <div style="display:flex;flex-direction:column">
           <sc-for list="{{ recentTx }}" as="t" hint-placeholder-count="5">
@@ -320,38 +322,85 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-end">
       <h1 style="font-size:30px;margin:0">Categorias e orçamentos</h1>
       <sc-if value="{{ !showNewCategory }}" hint-placeholder-val="{{ true }}">
-        <button onClick="{{ toggleNewCategory }}" class="btn btn-primary">+ Nova categoria</button>
+        <button onClick="{{ toggleNewCategory }}" class="btn btn-primary" style="flex:none;white-space:nowrap">+ Nova categoria</button>
       </sc-if>
     </div>
     <sc-if value="{{ showNewCategory }}" hint-placeholder-val="{{ false }}">
-      <div style="border:1px solid var(--color-divider);padding:16px;display:flex;gap:12px;align-items:flex-end">
-        <label class="field" style="flex:1"><span style="font-size:12px;opacity:.7">Nome da categoria</span><input class="input" type="text" placeholder="Ex: Educação" value="{{ newCatName }}" onChange="{{ setNewCatName }}"/></label>
-        <label class="field" style="flex:1"><span style="font-size:12px;opacity:.7">Orçamento mensal (R$)</span><input class="input" type="number" placeholder="0,00" value="{{ newCatBudget }}" onChange="{{ setNewCatBudget }}"/></label>
-        <button onClick="{{ toggleNewCategory }}" class="btn btn-secondary">Cancelar</button>
-        <button onClick="{{ addCategory }}" class="btn btn-primary">Adicionar</button>
+      <div style="border:1px solid var(--color-divider);padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;gap:12px;align-items:flex-end">
+          <label class="field" style="flex:1"><span style="font-size:12px;opacity:.7">Nome da categoria</span><input class="input" type="text" placeholder="Ex: Assinaturas" value="{{ newCatName }}" onChange="{{ setNewCatName }}"/></label>
+          <sc-if value="{{ isNewCatExpense }}" hint-placeholder-val="{{ true }}">
+            <label class="field" style="flex:1"><span style="font-size:12px;opacity:.7">Teto mensal (R$)</span><input class="input" type="number" placeholder="0,00" value="{{ newCatBudget }}" onChange="{{ setNewCatBudget }}"/></label>
+          </sc-if>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
+          <div>
+            <div style="font-size:12px;opacity:.7;margin-bottom:6px">Tipo da categoria</div>
+            <div class="seg">
+              <label class="seg-opt"><input type="radio" name="newcattype" checked="{{ isNewCatExpense }}" onChange="{{ setNewCatExpense }}" style="display:none"/>Despesa</label>
+              <label class="seg-opt"><input type="radio" name="newcattype" checked="{{ isNewCatIncome }}" onChange="{{ setNewCatIncome }}" style="display:none"/>Receita</label>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px">
+            <button onClick="{{ toggleNewCategory }}" class="btn btn-secondary">Cancelar</button>
+            <button onClick="{{ addCategory }}" class="btn btn-primary">Adicionar</button>
+          </div>
+        </div>
       </div>
     </sc-if>
-    <sc-for list="{{ categoriesOverlayView }}" as="c" hint-placeholder-count="6">
-      <div style="border-bottom:1px solid var(--color-divider);padding-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:7px">
-          <div style="display:flex;align-items:center;gap:8px;min-width:0">
-            <div style="width:24px;height:24px;border:1px solid var(--color-divider);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;font-family:var(--font-heading);flex:none">{{ c.letter }}</div>
-            <span style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
-          </div>
-          <span style="font-size:13px;color:{{ c.textColor }};white-space:nowrap;flex:none">{{ c.spentFmt }} / {{ c.budgetFmt }}</span>
-        </div>
-        <div class="je-track" style="margin-bottom:9px"><div class="je-fill" style="width:{{ c.barWidth }};background:{{ c.barColor }}"></div></div>
-        <sc-if value="{{ c.isEditing }}" hint-placeholder-val="{{ false }}">
-          <div style="display:flex;gap:8px;max-width:260px">
-            <input class="input" type="number" value="{{ c.editValue }}" onChange="{{ c.setEditValue }}" style="flex:1"/>
-            <button onClick="{{ c.saveEdit }}" class="btn btn-primary">Salvar</button>
-          </div>
-        </sc-if>
-        <sc-if value="{{ !c.isEditing }}" hint-placeholder-val="{{ true }}">
-          <button onClick="{{ c.startEdit }}" class="btn btn-ghost" style="padding-left:0;font-size:12px">Editar orçamento</button>
-        </sc-if>
+
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:8px;border-bottom:2px solid var(--color-divider)">
+        <h2 style="font-size:13px;margin:0;letter-spacing:.08em;text-transform:uppercase">Categorias de despesa</h2>
+        <span style="font-size:11.5px;opacity:.55">{{ expenseCountLabel }}</span>
       </div>
-    </sc-for>
+      <sc-for list="{{ expenseRows }}" as="c" hint-placeholder-count="7">
+        <div style="border-bottom:1px solid var(--color-divider);padding:14px 0">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:7px">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+              <div style="width:26px;height:26px;border:2px solid var(--color-accent);background:var(--color-accent-100);color:var(--color-accent-700);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;font-family:var(--font-heading);flex:none">{{ c.letter }}</div>
+              <span style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
+              <span style="flex:none;font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border:1px solid var(--color-accent);color:var(--color-accent-700)">Despesa</span>
+            </div>
+            <span style="font-size:13px;color:{{ c.textColor }};white-space:nowrap;flex:none">{{ c.spentFmt }} / {{ c.budgetFmt }}</span>
+          </div>
+          <div class="je-track" style="margin-bottom:9px"><div class="je-fill" style="width:{{ c.barWidth }};background:{{ c.barColor }}"></div></div>
+          <sc-if value="{{ c.isEditing }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:8px;max-width:260px">
+              <input class="input" type="number" value="{{ c.editValue }}" onChange="{{ c.setEditValue }}" style="flex:1"/>
+              <button onClick="{{ c.saveEdit }}" class="btn btn-primary">Salvar</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ !c.isEditing }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:16px;align-items:center">
+              <button onClick="{{ c.startEdit }}" class="btn btn-ghost" style="padding-left:0;font-size:12px">Editar teto</button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:8px;border-bottom:2px solid var(--color-divider)">
+        <h2 style="font-size:13px;margin:0;letter-spacing:.08em;text-transform:uppercase">Categorias de receita</h2>
+        <span style="font-size:11.5px;opacity:.55">{{ incomeCountLabel }}</span>
+      </div>
+      <sc-for list="{{ incomeRows }}" as="c" hint-placeholder-count="5">
+        <div style="border-bottom:1px solid var(--color-divider);padding:14px 0">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:7px">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+              <div style="width:26px;height:26px;border:2px solid oklch(45% 0.13 150);background:oklch(95% 0.04 150);color:oklch(38% 0.12 150);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;font-family:var(--font-heading);flex:none">{{ c.letter }}</div>
+              <span style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
+              <span style="flex:none;font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border:1px solid oklch(45% 0.13 150);color:oklch(38% 0.12 150)">Receita</span>
+            </div>
+            <div style="text-align:right;flex:none">
+              <div style="font-size:13px;font-weight:600;color:oklch(45% 0.13 150);white-space:nowrap">+ {{ c.spentFmt }}</div>
+              <div style="font-size:11px;opacity:.55;white-space:nowrap">{{ c.incomeMetaLabel }}</div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
   </div>
   </sc-if>
 
@@ -414,7 +463,7 @@
 
 <sc-if value="{{ showAdd }}" hint-placeholder-val="{{ false }}">
 <div class="dialog-backdrop" style="overflow-y:auto;align-items:flex-start;padding:24px 0">
-  <div class="dialog" style="width:520px;margin:auto;position:relative">
+  <div class="dialog" style="width:700px;margin:auto;position:relative">
     <sc-if value="{{ isSavingTx }}" hint-placeholder-val="{{ false }}">
       <div style="position:absolute;inset:0;z-index:5;background:color-mix(in oklch, var(--color-bg) 86%, transparent);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
         <div class="je-spin"></div>
@@ -425,33 +474,57 @@
     <div class="dialog-title">{{ addFormTitle }}</div>
     <input class="input" type="text" inputMode="decimal" placeholder="R$ 0,00" value="{{ newAmount }}" onChange="{{ setNewAmount }}" style="font-size:28px;font-weight:800;font-family:var(--font-heading);border:none;border-bottom:2px solid var(--color-divider);padding:6px 0;background:transparent"/>
     <div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-        <span style="font-size:12px;opacity:.7">Categoria</span>
-        <span style="font-size:12px;font-weight:700;color:var(--color-accent-700)">{{ selectedCategoryName }}</span>
-      </div>
-      <input class="input" type="text" placeholder="Buscar categoria" value="{{ categorySearch }}" onChange="{{ setCategorySearch }}" style="margin-bottom:8px"/>
-      <div style="border:2px solid var(--color-divider);max-height:200px;overflow-y:auto">
-        <sc-for list="{{ addCategories }}" as="c" hint-placeholder-count="6">
-          <button onClick="{{ c.select }}" style="display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:9px 12px;border:none;border-bottom:1px solid var(--color-divider);background:{{ c.rowBg }};cursor:pointer;text-align:left">
-            <span style="width:22px;height:22px;flex:none;display:flex;align-items:center;justify-content:center;border:2px solid {{ c.tileBorder }};background:{{ c.tileBg }};font-weight:800;font-family:var(--font-heading);font-size:11px">{{ c.letter }}</span>
-            <span style="flex:1;font-size:13px">{{ c.name }}</span>
-            <sc-if value="{{ c.isSelected }}" hint-placeholder-val="{{ false }}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="var(--color-accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div style="font-size:12px;opacity:.7;margin-bottom:8px">Categoria</div>
+      <div style="display:grid;grid-template-columns:1fr 232px;border:2px solid var(--color-divider)">
+        <div style="border-right:2px solid var(--color-divider);min-width:0">
+          <input class="input" type="text" placeholder="Buscar categoria" value="{{ categorySearch }}" onChange="{{ setCategorySearch }}" style="border:none;border-bottom:1px solid var(--color-divider);width:100%;box-sizing:border-box"/>
+          <div style="max-height:252px;overflow-y:auto">
+            <div>
+              <sc-for list="{{ addCategories }}" as="c" hint-placeholder-count="7">
+                <button onClick="{{ c.select }}" style="display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:9px 12px;border:none;border-bottom:1px solid var(--color-divider);background:{{ c.rowBg }};cursor:pointer;text-align:left">
+                  <span style="width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;border:2px solid {{ c.tileBorder }};background:{{ c.tileBg }};font-weight:800;font-family:var(--font-heading);font-size:10px">{{ c.letter }}</span>
+                  <span style="flex:1;font-size:13px;min-width:0">{{ c.name }}</span>
+                  <sc-if value="{{ c.isSelected }}" hint-placeholder-val="{{ false }}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex:none"><polyline points="20 6 9 17 4 12" stroke="var(--color-accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </sc-if>
+                </button>
+              </sc-for>
+            </div>
+            <sc-if value="{{ noCategoryMatch }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:12px;opacity:.6;padding:14px 12px">Nenhuma categoria encontrada.</div>
             </sc-if>
-          </button>
-        </sc-for>
+          </div>
+        </div>
+        <div style="padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--color-neutral-100)">
+          <sc-if value="{{ hasPickerDetail }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:34px;height:34px;border:2px solid var(--color-accent);background:var(--color-accent-100);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;font-family:var(--font-heading);flex:none">{{ pickerDetail.letter }}</div>
+              <div style="min-width:0">
+                <div style="font-size:13px;font-weight:700;font-family:var(--font-heading);text-wrap:pretty">{{ pickerDetail.name }}</div>
+                <sc-if value="{{ pickerDetail.hasNature }}" hint-placeholder-val="{{ true }}">
+                  <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.5">{{ pickerDetail.natureLabel }}</div>
+                </sc-if>
+              </div>
+            </div>
+            <sc-if value="{{ pickerDetail.hasBudget }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:6px;padding-top:10px;border-top:1px solid var(--color-divider)">
+                <div style="display:flex;justify-content:space-between;font-size:11.5px"><span style="opacity:.6">Teto do mês</span><span style="font-weight:600">{{ pickerDetail.budgetFmt }}</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:11.5px"><span style="opacity:.6">Já gasto</span><span style="font-weight:600;color:{{ pickerDetail.textColor }}">{{ pickerDetail.spentFmt }} ({{ pickerDetail.pctLabel }})</span></div>
+                <div class="je-track"><div class="je-fill" style="width:{{ pickerDetail.barWidth }};background:{{ pickerDetail.barColor }}"></div></div>
+                <div style="font-size:11px;opacity:.6;margin-top:2px">{{ pickerDetail.remainingLabel }}</div>
+                <div style="font-size:16px;font-weight:800;font-family:var(--font-heading);color:{{ pickerDetail.textColor }}">{{ pickerDetail.remainingFmt }}</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ !pickerDetail.hasBudget }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:11.5px;opacity:.6;padding-top:10px;border-top:1px solid var(--color-divider);text-wrap:pretty">Receitas não têm teto — entram direto no saldo do mês.</div>
+            </sc-if>
+          </sc-if>
+        </div>
       </div>
-      <sc-if value="{{ noCategoryMatch }}" hint-placeholder-val="{{ false }}">
-        <div style="font-size:12px;opacity:.6;padding:8px 0">Nenhuma categoria encontrada.</div>
-      </sc-if>
     </div>
     <div style="display:flex;gap:12px">
       <label class="field" style="flex:1"><span style="font-size:12px;opacity:.7">Data</span><input class="input" type="date" value="{{ newDate }}" onChange="{{ setNewDate }}"/></label>
       <label class="field" style="flex:1"><span style="font-size:12px;opacity:.7">Observação</span><input class="input" type="text" placeholder="Ex: Mercado, Uber…" value="{{ newNote }}" onChange="{{ setNewNote }}"/></label>
-    </div>
-    <div>
-      <div style="font-size:12px;opacity:.7;margin-bottom:8px">{{ receiptFieldLabel }}</div>
-      <image-slot id="receipt-new-web" shape="rect" placeholder="Anexar comprovante" style="width:100%;height:120px"></image-slot>
     </div>
     <div class="dialog-actions">
       <button onClick="{{ closeAdd }}" disabled="{{ isSavingTx }}" class="btn btn-secondary">Cancelar</button>
@@ -481,10 +554,6 @@
     <div>
       <div style="font-size:12px;opacity:.6;margin-bottom:4px">Observação</div>
       <div style="font-size:14px">{{ txDetailNote }}</div>
-    </div>
-    <div>
-      <div style="font-size:12px;opacity:.6;margin-bottom:8px">Comprovante</div>
-      <image-slot id="{{ txDetailReceiptId }}" shape="rect" placeholder="Sem comprovante" style="width:100%;height:140px"></image-slot>
     </div>
     <div class="dialog-actions">
       <button onClick="{{ deleteTxFn }}" class="btn btn-ghost" style="color:var(--color-accent-700)">Excluir</button>
@@ -563,14 +632,22 @@ class Component extends DCLogic {
     notifPush: true,
     notifEmail: false,
     newAmount: '', newCategoryId: 'alimentacao', newDate: '2026-08-21', newNote: '', newTxType: 'expense',
-    nextId: 14,
+    nextId: 24,
     categories: [
-      { id: 'alimentacao', name: 'Alimentação', letter: 'A', budget: 800, type: 'expense' },
-      { id: 'transporte', name: 'Transporte', letter: 'T', budget: 300, type: 'expense' },
-      { id: 'moradia', name: 'Moradia', letter: 'M', budget: 1200, type: 'expense' },
-      { id: 'lazer', name: 'Lazer', letter: 'L', budget: 90, type: 'expense' },
-      { id: 'saude', name: 'Saúde', letter: 'S', budget: 200, type: 'expense' },
-      { id: 'compras', name: 'Compras', letter: 'C', budget: 400, type: 'expense' },
+      { id: 'moradia', name: 'Moradia', letter: 'MO', budget: 1500, type: 'expense' },
+      { id: 'alimentacao', name: 'Alimentação', letter: 'AL', budget: 950, type: 'expense' },
+      { id: 'transporte', name: 'Transporte', letter: 'TR', budget: 450, type: 'expense' },
+      { id: 'saude', name: 'Saúde', letter: 'SA', budget: 350, type: 'expense' },
+      { id: 'educacao', name: 'Educação', letter: 'ED', budget: 280, type: 'expense' },
+      { id: 'filhos', name: 'Filhos e dependentes', letter: 'FD', budget: 480, type: 'expense' },
+      { id: 'lazer', name: 'Lazer e entretenimento', letter: 'LZ', budget: 250, type: 'expense' },
+      { id: 'vestuario', name: 'Vestuário e cuidados pessoais', letter: 'VC', budget: 180, type: 'expense' },
+      { id: 'pets', name: 'Pets', letter: 'PT', budget: 130, type: 'expense' },
+      { id: 'dividas', name: 'Dívidas e financiamentos', letter: 'DF', budget: 620, type: 'expense' },
+      { id: 'impostos', name: 'Impostos, taxas e seguros', letter: 'IT', budget: 200, type: 'expense' },
+      { id: 'doacoes', name: 'Doações e presentes', letter: 'DP', budget: 80, type: 'expense' },
+      { id: 'investimentos', name: 'Investimentos e poupança', letter: 'IP', budget: 400, type: 'expense' },
+      { id: 'outros', name: 'Outros', letter: 'OU', budget: 80, type: 'expense' },
       { id: 'salario', name: 'Salário', letter: 'SL', budget: 0, type: 'income' },
       { id: 'restituicao-ir', name: 'Restituição de IR', letter: 'IR', budget: 0, type: 'income' },
       { id: 'resgate-investimento', name: 'Resgate de investimento', letter: 'RI', budget: 0, type: 'income' },
@@ -583,14 +660,24 @@ class Component extends DCLogic {
       { id: 't3', date: '2026-08-18', categoryId: 'lazer', note: 'Cinema', amount: 58.00, createdBy: 'm1', type: 'expense' },
       { id: 't4', date: '2026-08-17', categoryId: 'alimentacao', note: 'Restaurante', amount: 96.50, createdBy: 'owner', type: 'expense' },
       { id: 't5', date: '2026-08-15', categoryId: 'moradia', note: 'Conta de luz', amount: 210.30, createdBy: 'owner', type: 'expense' },
-      { id: 't6', date: '2026-08-14', categoryId: 'compras', note: 'Farmácia', amount: 45.20, createdBy: 'm1', type: 'expense' },
+      { id: 't6', date: '2026-08-14', categoryId: 'saude', note: 'Farmácia', amount: 45.20, createdBy: 'm1', type: 'expense' },
       { id: 't7', date: '2026-08-12', categoryId: 'saude', note: 'Consulta médica', amount: 150.00, createdBy: 'owner', type: 'expense' },
       { id: 't8', date: '2026-08-10', categoryId: 'transporte', note: 'Combustível', amount: 120.00, createdBy: 'owner', type: 'expense' },
       { id: 't9', date: '2026-08-08', categoryId: 'alimentacao', note: 'Padaria', amount: 22.80, createdBy: 'owner', type: 'expense' },
-      { id: 't10', date: '2026-08-05', categoryId: 'compras', note: 'Loja de roupas', amount: 189.90, createdBy: 'owner', type: 'expense' },
+      { id: 't10', date: '2026-08-05', categoryId: 'vestuario', note: 'Loja de roupas', amount: 189.90, createdBy: 'owner', type: 'expense' },
       { id: 't11', date: '2026-08-03', categoryId: 'moradia', note: 'Internet', amount: 99.90, createdBy: 'owner', type: 'expense' },
       { id: 't12', date: '2026-08-01', categoryId: 'lazer', note: 'Streaming (assinatura)', amount: 39.90, createdBy: 'owner', type: 'expense' },
       { id: 't13', date: '2026-08-05', categoryId: 'salario', note: 'Salário', amount: 5200.00, createdBy: 'owner', type: 'income' },
+      { id: 't14', date: '2026-08-05', categoryId: 'moradia', note: 'Aluguel', amount: 1200.00, createdBy: 'owner', type: 'expense' },
+      { id: 't15', date: '2026-08-07', categoryId: 'filhos', note: 'Escola das crianças', amount: 480.00, createdBy: 'owner', type: 'expense' },
+      { id: 't16', date: '2026-08-06', categoryId: 'dividas', note: 'Fatura do cartão', amount: 620.00, createdBy: 'owner', type: 'expense' },
+      { id: 't17', date: '2026-08-11', categoryId: 'educacao', note: 'Curso de inglês', amount: 280.00, createdBy: 'm1', type: 'expense' },
+      { id: 't18', date: '2026-08-13', categoryId: 'pets', note: 'Ração e veterinário', amount: 118.00, createdBy: 'm1', type: 'expense' },
+      { id: 't19', date: '2026-08-09', categoryId: 'impostos', note: 'IPVA (parcela)', amount: 186.40, createdBy: 'owner', type: 'expense' },
+      { id: 't20', date: '2026-08-16', categoryId: 'doacoes', note: 'Presente de aniversário', amount: 90.00, createdBy: 'owner', type: 'expense' },
+      { id: 't21', date: '2026-08-05', categoryId: 'investimentos', note: 'Aporte mensal CDB', amount: 400.00, createdBy: 'owner', type: 'expense' },
+      { id: 't22', date: '2026-08-21', categoryId: 'alimentacao', note: 'Delivery', amount: 74.30, createdBy: 'm1', type: 'expense' },
+      { id: 't23', date: '2026-08-14', categoryId: 'receita-extra', note: 'Freelance de design', amount: 900.00, createdBy: 'owner', type: 'income' },
     ],
   };
 
@@ -616,10 +703,16 @@ class Component extends DCLogic {
       return {
         ...c, spent,
         spentFmt: this.formatCurrency(spent), budgetFmt: this.formatCurrency(c.budget),
-        realPct, barWidth: Math.min(100, realPct) + '%',
+        remainingFmt: this.formatCurrency(Math.abs(c.budget - spent)),
+        realPct, pctLabel: realPct + '%', barWidth: Math.min(100, realPct) + '%',
         barColor: over ? 'var(--color-accent)' : 'var(--color-neutral-800)',
         textColor: over ? 'var(--color-accent-700)' : 'var(--color-text)',
         over,
+        hasNature: true,
+        natureLabel: c.type === 'income' ? 'Receita' : 'Despesa',
+        isIncomeCat: c.type === 'income',
+        incomeMetaLabel: 'Recebido neste mês',
+        remainingLabel: over ? 'Acima do teto em' : 'Ainda pode gastar',
       };
     });
   }
@@ -708,10 +801,11 @@ class Component extends DCLogic {
   addCategory() {
     const name = (this.state.newCatName || '').trim();
     if (!name) return;
-    const letter = name.charAt(0).toUpperCase();
+    const letter = name.replace(/\s+/g, ' ').split(' ').slice(0, 2).map(w => w.charAt(0).toUpperCase()).join('') || name.charAt(0).toUpperCase();
     const budget = parseFloat((this.state.newCatBudget || '0').replace(',', '.')) || 0;
     const id = 'cat_' + Date.now();
-    this.setState(s => ({ categories: [...s.categories, { id, name, letter, budget, type: 'expense' }], showNewCategory: false, newCatName: '', newCatBudget: '' }));
+    const type = this.state.newCatType || 'expense';
+    this.setState(s => ({ categories: [...s.categories, { id, name, letter, budget, type }], showNewCategory: false, newCatName: '', newCatBudget: '', newCatType: 'expense' }));
   }
   toggleInviteDialog() { this.setState(s => ({ showInviteDialog: !s.showInviteDialog, inviteEmail: '', inviteRole: 'lancamento' })); }
   setInviteRole(r) { this.setState({ inviteRole: r }); }
@@ -782,9 +876,26 @@ class Component extends DCLogic {
         rowBg: s.newCategoryId === c.id ? 'var(--color-accent-100)' : 'transparent',
       }));
     const noCategoryMatch = addCategories.length === 0;
-    const selectedCategoryName = (catsComputed.find(c => c.id === s.newCategoryId) || {}).name || '';
+    const selectedCat = catsComputed.find(c => c.id === s.newCategoryId) || null;
+    const selectedCategoryName = selectedCat ? selectedCat.name : '';
+    const isExpenseForm = (s.newTxType || 'expense') === 'expense';
+    const pickerDetail = selectedCat ? {
+      letter: selectedCat.letter, name: selectedCat.name,
+      natureLabel: selectedCat.natureLabel || '',
+      hasNature: !!selectedCat.hasNature,
+      hasBudget: selectedCat.budget > 0,
+      budgetFmt: selectedCat.budgetFmt, spentFmt: selectedCat.spentFmt,
+      remainingFmt: selectedCat.remainingFmt, remainingLabel: selectedCat.remainingLabel,
+      pctLabel: selectedCat.pctLabel, barWidth: selectedCat.barWidth, barColor: selectedCat.barColor,
+      textColor: selectedCat.textColor,
+    } : null;
 
-    const categoriesOverlayView = expenseCats.map(c => ({
+    const topCategories = expenseCats.slice().sort((a, b) => b.spent - a.spent).slice(0, 5);
+    const incomeCatsList = catsComputed.filter(c => c.type === 'income');
+    const expenseBudgetTotal = expenseCats.reduce((sum, c) => sum + c.budget, 0);
+    const incomeExpectedTotal = incomeCatsList.reduce((sum, c) => sum + c.budget, 0);
+
+    const categoriesRows = catsComputed.map(c => ({
       ...c,
       isEditing: s.editingCatId === c.id,
       editValue: s.editingCatId === c.id ? s.editBudgetValue : String(c.budget),
@@ -798,6 +909,9 @@ class Component extends DCLogic {
         }));
       },
     }));
+    const categoriesOverlayView = categoriesRows.filter(c => c.type === 'expense');
+    const expenseRows = categoriesOverlayView;
+    const incomeRows = categoriesRows.filter(c => c.type === 'income');
 
     const viewingTx = s.viewingTxId ? s.transactions.find(t => t.id === s.viewingTxId) : null;
     const viewingCat = viewingTx ? s.categories.find(c => c.id === viewingTx.categoryId) : null;
@@ -829,6 +943,10 @@ class Component extends DCLogic {
       totalSpentFmt: this.formatCurrency(totalSpent), totalBudgetFmt: this.formatCurrency(totalBudget),
       overallPctStr: overallPct + '%', remainingFmt: this.formatCurrency(Math.max(0, totalBudget - totalSpent)),
       categoriesComputed: expenseCats, recentTx: allTxView.slice(0, 5),
+      topCategories, categoryCountLabel: 'Ver todas (' + expenseCats.length + ') →',
+      expenseRows, incomeRows,
+      expenseCountLabel: expenseCats.length + ' categorias · teto de ' + this.formatCurrency(expenseBudgetTotal),
+      incomeCountLabel: incomeCatsList.length + ' categorias · recebido de ' + this.formatCurrency(totalIncome),
       totalIncomeFmt: this.formatCurrency(totalIncome),
       saldoFmt: (saldo < 0 ? '- ' : '') + this.formatCurrency(Math.abs(saldo)),
       saldoColor: saldo >= 0 ? 'oklch(45% 0.13 150)' : 'var(--color-accent-700)',
@@ -857,11 +975,11 @@ class Component extends DCLogic {
 
       showAdd: s.showAdd, closeAdd: () => this.closeAdd(), openAdd: () => this.openAdd(s.newTxType),
       openAddExpense: () => this.openAdd('expense'), openAddIncome: () => this.openAdd('income'),
-      receiptFieldLabel: s.newTxType === 'income' ? 'Comprovante de recebimento (opcional)' : 'Comprovante (opcional)',
       addFormTitle: s.editingTxId ? (s.newTxType === 'income' ? 'Editar receita' : 'Editar despesa') : (s.newTxType === 'income' ? 'Nova receita' : 'Nova despesa'),
       addFormSaveLabel: s.savingTx ? 'Salvando…' : (s.editingTxId ? 'Salvar alterações' : (s.newTxType === 'income' ? 'Salvar receita' : 'Salvar despesa')),
       editTxFn: () => this.editTx(s.viewingTxId),
       addCategories, noCategoryMatch, selectedCategoryName, categorySearch: s.categorySearch || '',
+      isExpenseForm, pickerDetail, hasPickerDetail: !!pickerDetail,
       setCategorySearch: (e) => this.setState({ categorySearch: e.target.value }),
       newAmount: s.newAmount, newDate: s.newDate, newNote: s.newNote,
       setNewAmount: (e) => this.setState({ newAmount: e.target.value }),
@@ -878,11 +996,14 @@ class Component extends DCLogic {
       txDetailCatName: viewingCat ? viewingCat.name : '',
       txDetailNote: viewingTx ? (viewingTx.note || 'Sem observação') : '',
       txDetailCreatedBy: viewingTx ? this.getMemberName(viewingTx.createdBy) : '',
-      txDetailReceiptId: viewingTx ? ('receipt-web-' + viewingTx.id) : 'receipt-web-none',
 
       categoriesOverlayView,
       showNewCategory: s.showNewCategory, toggleNewCategory: () => this.toggleNewCategory(),
       newCatName: s.newCatName, newCatBudget: s.newCatBudget,
+      isNewCatExpense: (s.newCatType || 'expense') === 'expense',
+      isNewCatIncome: (s.newCatType || 'expense') === 'income',
+      setNewCatExpense: () => this.setState({ newCatType: 'expense' }),
+      setNewCatIncome: () => this.setState({ newCatType: 'income' }),
       setNewCatName: (e) => this.setState({ newCatName: e.target.value }),
       setNewCatBudget: (e) => this.setState({ newCatBudget: e.target.value }),
       addCategory: () => this.addCategory(),

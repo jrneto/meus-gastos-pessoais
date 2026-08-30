@@ -46,6 +46,14 @@
   --color-neutral-800: #444141;
   --color-neutral-900: #2d2b2b;
 
+  /* Verde usado só para diferenciar categorias de receita (FEAT-22) —
+   * valores copiados do `.dc.html` de referência (`oklch(45% 0.13 150)`
+   * / `oklch(95% 0.04 150)` / `oklch(38% 0.12 150)`), mesma lógica de
+   * "vendorizar só o que é usado" das outras cores acima. */
+  --color-positive: oklch(45% 0.13 150);
+  --color-positive-100: oklch(95% 0.04 150);
+  --color-positive-700: oklch(38% 0.12 150);
+
   --font-heading: 'Archivo Variable', system-ui, sans-serif;
   --font-heading-weight: 800;
   --font-body: 'Archivo Variable', system-ui, sans-serif;

@@ -12,8 +12,8 @@ const CATEGORY_URL = 'http://localhost:5049/categories/cat-1'
 const category: CategoryItem = {
   id: 'cat-1',
   nome: 'Alimentação',
-  cor: '#f97316',
-  icone: 'utensils',
+  tipo: 'despesa',
+  orcamentoMensalCents: 80000,
   createdAt: '2025-06-15T12:00:00Z',
 }
 

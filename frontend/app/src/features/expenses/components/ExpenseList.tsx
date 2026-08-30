@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import '@/styles/modernist/modernist.css'
 import { useCategories } from '@/lib/categories/useCategories'
 import type { ExpenseQueryItem } from '../api/expensesApi'
-import { formatCentsToCurrency } from '../utils/currency'
+import { formatCentsToCurrency } from '@/lib/currency'
 
 interface ExpenseListProps {
   items: ExpenseQueryItem[]

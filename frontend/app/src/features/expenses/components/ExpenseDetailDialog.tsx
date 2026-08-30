@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { CategoryLetterTile } from '@/lib/categories/CategoryLetterTile'
 import { useCategories } from '@/lib/categories/useCategories'
 import type { ExpenseQueryItem } from '../api/expensesApi'
-import { formatCentsToCurrency } from '../utils/currency'
+import { formatCentsToCurrency } from '@/lib/currency'
 
 interface ExpenseDetailDialogProps {
   expense: ExpenseQueryItem | null
