@@ -3,9 +3,9 @@ import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { NetworkError, SessionExpiredError, ValidationError } from '../errors/expenseErrors'
-import type { ExpenseFormOutput } from '../schemas/expenseSchema'
-import { useRegisterExpense } from './useRegisterExpense'
+import { NetworkError, SessionExpiredError, ValidationError } from '../errors/transactionErrors'
+import type { ExpenseFormOutput } from '../schemas/transactionSchema'
+import { useRegisterExpense } from './useRegisterTransaction'
 
 const EXPENSES_URL = 'http://localhost:5049/expenses'
 

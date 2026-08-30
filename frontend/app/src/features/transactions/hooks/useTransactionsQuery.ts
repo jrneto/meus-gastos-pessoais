@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/features/auth/store/authStore'
-import { expensesApi, type ExpenseQueryItem, type GetExpensesParams } from '../api/expensesApi'
-import { SessionExpiredError } from '../errors/expenseErrors'
-import type { ExpenseFilterOutput } from '../schemas/expenseFilterSchema'
+import { expensesApi, type ExpenseQueryItem, type GetExpensesParams } from '../api/transactionsApi'
+import { SessionExpiredError } from '../errors/transactionErrors'
+import type { ExpenseFilterOutput } from '../schemas/transactionFilterSchema'
 
 interface UseExpensesQueryResult {
   items: ExpenseQueryItem[]

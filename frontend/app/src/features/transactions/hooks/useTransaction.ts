@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/features/auth/store/authStore'
-import { expensesApi, type ExpenseDetail } from '../api/expensesApi'
-import { SessionExpiredError } from '../errors/expenseErrors'
+import { expensesApi, type ExpenseDetail } from '../api/transactionsApi'
+import { SessionExpiredError } from '../errors/transactionErrors'
 
 interface UseExpenseResult {
   data: ExpenseDetail | null

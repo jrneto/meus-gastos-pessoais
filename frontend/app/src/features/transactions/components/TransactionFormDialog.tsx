@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
 import '@/styles/modernist/modernist.css'
-import { NotFoundError } from '../errors/expenseErrors'
-import { useExpense } from '../hooks/useExpense'
+import { NotFoundError } from '../errors/transactionErrors'
+import { useExpense } from '../hooks/useTransaction'
 import { centsToAmountInput } from '@/lib/currency'
-import { ExpenseForm } from './ExpenseForm'
+import { ExpenseForm } from './TransactionForm'
 
 interface ExpenseFormDialogProps {
   open: boolean

@@ -7,7 +7,7 @@ import {
   expenseFilterSchema,
   type ExpenseFilterInput,
   type ExpenseFilterOutput,
-} from '../schemas/expenseFilterSchema'
+} from '../schemas/transactionFilterSchema'
 
 interface ExpenseFiltersProps {
   onApply: (filters: ExpenseFilterOutput) => void

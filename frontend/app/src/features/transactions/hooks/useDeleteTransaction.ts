@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuthStore } from '@/features/auth/store/authStore'
-import { expensesApi } from '../api/expensesApi'
-import { SessionExpiredError } from '../errors/expenseErrors'
+import { expensesApi } from '../api/transactionsApi'
+import { SessionExpiredError } from '../errors/transactionErrors'
 
 interface UseDeleteExpenseResult {
   deleteExpense: (id: string) => Promise<void>

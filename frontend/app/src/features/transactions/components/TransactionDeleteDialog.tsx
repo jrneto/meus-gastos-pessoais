@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import '@/styles/modernist/modernist.css'
-import type { ExpenseQueryItem } from '../api/expensesApi'
-import { NotFoundError } from '../errors/expenseErrors'
-import { useDeleteExpense } from '../hooks/useDeleteExpense'
+import type { ExpenseQueryItem } from '../api/transactionsApi'
+import { NotFoundError } from '../errors/transactionErrors'
+import { useDeleteExpense } from '../hooks/useDeleteTransaction'
 
 interface ExpenseDeleteDialogProps {
   expense: ExpenseQueryItem | null

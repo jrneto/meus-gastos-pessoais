@@ -4,8 +4,8 @@ import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import type { ExpenseQueryItem } from '../api/expensesApi'
-import { ExpenseDeleteDialog } from './ExpenseDeleteDialog'
+import type { ExpenseQueryItem } from '../api/transactionsApi'
+import { ExpenseDeleteDialog } from './TransactionDeleteDialog'
 
 const EXPENSE_URL = 'http://localhost:5049/expenses/exp-1'
 

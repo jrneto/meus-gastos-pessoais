@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { expenseFilterSchema } from './expenseFilterSchema'
+import { expenseFilterSchema } from './transactionFilterSchema'
 
 describe('expenseFilterSchema', () => {
   it('aceita todos os campos vazios/ausentes', () => {

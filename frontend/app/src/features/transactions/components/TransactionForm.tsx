@@ -4,14 +4,14 @@ import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
 import '@/styles/modernist/modernist.css'
 import { useCategories } from '@/lib/categories/useCategories'
-import { NotFoundError } from '../errors/expenseErrors'
-import { useRegisterExpense } from '../hooks/useRegisterExpense'
-import { useUpdateExpense } from '../hooks/useUpdateExpense'
+import { NotFoundError } from '../errors/transactionErrors'
+import { useRegisterExpense } from '../hooks/useRegisterTransaction'
+import { useUpdateExpense } from '../hooks/useUpdateTransaction'
 import {
   expenseSchema,
   type ExpenseFormInput,
   type ExpenseFormOutput,
-} from '../schemas/expenseSchema'
+} from '../schemas/transactionSchema'
 
 interface ExpenseFormProps {
   mode?: 'create' | 'edit'

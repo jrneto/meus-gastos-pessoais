@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { ExpenseForm } from './ExpenseForm'
+import { ExpenseForm } from './TransactionForm'
 
 const EXPENSES_URL = 'http://localhost:5049/expenses'
 const CATEGORIES_URL = 'http://localhost:5049/categories'

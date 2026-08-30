@@ -1,28 +1,28 @@
 import { useState } from 'react'
 import { useAuthStore } from '@/features/auth/store/authStore'
-import { expensesApi } from '../api/expensesApi'
-import { SessionExpiredError } from '../errors/expenseErrors'
-import type { ExpenseFormOutput } from '../schemas/expenseSchema'
+import { expensesApi } from '../api/transactionsApi'
+import { SessionExpiredError } from '../errors/transactionErrors'
+import type { ExpenseFormOutput } from '../schemas/transactionSchema'
 
-interface UseUpdateExpenseResult {
-  updateExpense: (data: ExpenseFormOutput) => Promise<void>
+interface UseRegisterExpenseResult {
+  registerExpense: (data: ExpenseFormOutput) => Promise<void>
   isLoading: boolean
   error: Error | null
   success: boolean
 }
 
-export function useUpdateExpense(id: string): UseUpdateExpenseResult {
+export function useRegisterExpense(): UseRegisterExpenseResult {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const [success, setSuccess] = useState(false)
   const token = useAuthStore((state) => state.token)
 
-  async function updateExpense(data: ExpenseFormOutput): Promise<void> {
+  async function registerExpense(data: ExpenseFormOutput): Promise<void> {
     setIsLoading(true)
     setError(null)
     setSuccess(false)
     try {
-      await expensesApi.updateExpense(token ?? '', id, {
+      await expensesApi.registerExpense(token ?? '', {
         description: data.description,
         amountInCents: data.amount,
         categoryId: data.categoryId,
@@ -39,5 +39,5 @@ export function useUpdateExpense(id: string): UseUpdateExpenseResult {
     }
   }
 
-  return { updateExpense, isLoading, error, success }
+  return { registerExpense, isLoading, error, success }
 }

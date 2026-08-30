@@ -8,7 +8,7 @@ import {
   UnknownExpenseQueryError,
   UpdateValidationError,
   ValidationError,
-} from '../errors/expenseErrors'
+} from '../errors/transactionErrors'
 
 interface RegisterExpensePayload {
   description: string

@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import '@/styles/modernist/modernist.css'
-import { ExpenseDeleteDialog } from '@/features/expenses/components/ExpenseDeleteDialog'
-import { ExpenseDetailDialog } from '@/features/expenses/components/ExpenseDetailDialog'
-import { ExpenseFilters } from '@/features/expenses/components/ExpenseFilters'
-import { ExpenseFormDialog } from '@/features/expenses/components/ExpenseFormDialog'
-import { ExpenseList } from '@/features/expenses/components/ExpenseList'
-import type { ExpenseQueryItem } from '@/features/expenses/api/expensesApi'
-import { useExpensesQuery } from '@/features/expenses/hooks/useExpensesQuery'
+import { ExpenseDeleteDialog } from '@/features/transactions/components/TransactionDeleteDialog'
+import { ExpenseDetailDialog } from '@/features/transactions/components/TransactionDetailDialog'
+import { ExpenseFilters } from '@/features/transactions/components/TransactionFilters'
+import { ExpenseFormDialog } from '@/features/transactions/components/TransactionFormDialog'
+import { ExpenseList } from '@/features/transactions/components/TransactionList'
+import type { ExpenseQueryItem } from '@/features/transactions/api/transactionsApi'
+import { useExpensesQuery } from '@/features/transactions/hooks/useTransactionsQuery'
 
 type ExpenseFormTarget = { mode: 'create' } | { mode: 'edit'; id: string } | null
 

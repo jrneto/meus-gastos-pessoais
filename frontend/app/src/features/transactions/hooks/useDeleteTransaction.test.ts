@@ -3,8 +3,8 @@ import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { NetworkError, NotFoundError, SessionExpiredError } from '../errors/expenseErrors'
-import { useDeleteExpense } from './useDeleteExpense'
+import { NetworkError, NotFoundError, SessionExpiredError } from '../errors/transactionErrors'
+import { useDeleteExpense } from './useDeleteTransaction'
 
 const EXPENSE_URL = 'http://localhost:5049/expenses/exp-1'
 

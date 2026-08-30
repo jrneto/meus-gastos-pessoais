@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { expenseSchema } from './expenseSchema'
+import { expenseSchema } from './transactionSchema'
 
 const validInput = {
   description: 'Almoço no restaurante',

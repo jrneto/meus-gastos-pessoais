@@ -2,7 +2,7 @@ import '@/styles/modernist/modernist.css'
 import { useEffect } from 'react'
 import { CategoryLetterTile } from '@/lib/categories/CategoryLetterTile'
 import { useCategories } from '@/lib/categories/useCategories'
-import type { ExpenseQueryItem } from '../api/expensesApi'
+import type { ExpenseQueryItem } from '../api/transactionsApi'
 import { formatCentsToCurrency } from '@/lib/currency'
 
 interface ExpenseDetailDialogProps {

@@ -3,9 +3,9 @@ import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { NotFoundError, SessionExpiredError, UpdateValidationError } from '../errors/expenseErrors'
-import type { ExpenseFormOutput } from '../schemas/expenseSchema'
-import { useUpdateExpense } from './useUpdateExpense'
+import { NotFoundError, SessionExpiredError, UpdateValidationError } from '../errors/transactionErrors'
+import type { ExpenseFormOutput } from '../schemas/transactionSchema'
+import { useUpdateExpense } from './useUpdateTransaction'
 
 const EXPENSE_URL = 'http://localhost:5049/expenses/exp-1'
 

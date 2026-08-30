@@ -3,9 +3,9 @@ import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { InvalidFilterError, SessionExpiredError } from '../errors/expenseErrors'
-import type { ExpenseFilterOutput } from '../schemas/expenseFilterSchema'
-import { useExpensesQuery } from './useExpensesQuery'
+import { InvalidFilterError, SessionExpiredError } from '../errors/transactionErrors'
+import type { ExpenseFilterOutput } from '../schemas/transactionFilterSchema'
+import { useExpensesQuery } from './useTransactionsQuery'
 
 const EXPENSES_URL = 'http://localhost:5049/expenses'
 

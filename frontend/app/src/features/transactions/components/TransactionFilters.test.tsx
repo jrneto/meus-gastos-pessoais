@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { vi } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { ExpenseFilters } from './ExpenseFilters'
+import { ExpenseFilters } from './TransactionFilters'
 
 const CATEGORIES_URL = 'http://localhost:5049/categories'
 
