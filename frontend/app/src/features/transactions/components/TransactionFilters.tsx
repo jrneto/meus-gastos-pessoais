@@ -11,13 +11,16 @@ import {
 
 interface TransactionFiltersProps {
   onApply: (filters: TransactionFilterOutput) => void
+  /** Só reflete visualmente um filtro já aplicado por fora (ex.: `yearMonth`
+   * vindo da URL, FEAT-26) — não dispara `onApply` sozinho. */
+  initialValues?: Partial<TransactionFilterInput>
 }
 
 const ADVANCED_FIELD_NAMES = ['yearMonth', 'dateFrom', 'dateTo', 'minAmount', 'maxAmount'] as const
 
-export function TransactionFilters({ onApply }: TransactionFiltersProps) {
+export function TransactionFilters({ onApply, initialValues }: TransactionFiltersProps) {
   const { items: categories } = useCategories()
-  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [advancedOpen, setAdvancedOpen] = useState(!!initialValues?.yearMonth)
   const {
     register,
     handleSubmit,
@@ -34,6 +37,7 @@ export function TransactionFilters({ onApply }: TransactionFiltersProps) {
       dateTo: '',
       minAmount: '',
       maxAmount: '',
+      ...initialValues,
     },
   })
 

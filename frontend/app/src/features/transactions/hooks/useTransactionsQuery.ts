@@ -16,10 +16,12 @@ interface UseTransactionsQueryResult {
   refetch: () => void
 }
 
-export function useTransactionsQuery(): UseTransactionsQueryResult {
+export function useTransactionsQuery(
+  initialFilters: GetTransactionsParams = {},
+): UseTransactionsQueryResult {
   const [items, setItems] = useState<TransactionQueryItem[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
-  const [filters, setFilters] = useState<GetTransactionsParams>({})
+  const [filters, setFilters] = useState<GetTransactionsParams>(initialFilters)
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<Error | null>(null)
@@ -58,7 +60,8 @@ export function useTransactionsQuery(): UseTransactionsQueryResult {
   }
 
   useEffect(() => {
-    fetchPage({}, null, false)
+    fetchPage(initialFilters, null, false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function applyFilters(newFilters: TransactionFilterOutput): void {

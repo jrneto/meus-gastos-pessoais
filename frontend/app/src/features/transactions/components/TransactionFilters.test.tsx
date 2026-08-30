@@ -144,6 +144,21 @@ describe('TransactionFilters', () => {
     expect(onApply).not.toHaveBeenCalled()
   })
 
+  it('initialValues com yearMonth abre o painel já expandido e preenchido (FEAT-26)', () => {
+    render(<TransactionFilters onApply={vi.fn()} initialValues={{ yearMonth: '2026-08' }} />)
+
+    expect(screen.getByLabelText('Mês')).toHaveValue('2026-08')
+    const toggle = screen.getByRole('button', { name: /filtros avançados/i })
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('sem initialValues, o painel continua fechado por padrão', () => {
+    render(<TransactionFilters onApply={vi.fn()} />)
+
+    const toggle = screen.getByRole('button', { name: /filtros avançados/i })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  })
+
   it('"Limpar filtros" zera os campos avançados e reaplica a busca, preservando a categoria selecionada', async () => {
     const onApply = vi.fn()
     const user = userEvent.setup()
