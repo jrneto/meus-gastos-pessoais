@@ -84,7 +84,7 @@
 - [x] 16. Rodar a suíte completa (`npm test`), `tsc -b`, `oxlint` e
       `npm run build`; confirmar 100% dos testes passando, sem erro de
       tipo e sem warning novo de lint
-- [ ] 17. Revisão manual/visual: no app real (backend local +
+- [x] 17. Revisão manual/visual: no app real (backend local +
       LocalStack/cognito-local), conferir a tela "Início" com dados
       reais (transações e categorias com orçamento seedadas via API) —
       os 5 cartões, a barra do Restante (inclusive um cenário de
@@ -93,5 +93,5 @@
       atualizando o resumo ao salvar, e os dois links "Ver todas" —
       contra `frontend/design-system/web/jrnexpenses-web.dc.html`
       (bloco `isDash`)
-- [ ] 18. Atualizar `spec.md` marcando todos os critérios de aceite
+- [x] 18. Atualizar `spec.md` marcando todos os critérios de aceite
       concluídos (`- [x]`)

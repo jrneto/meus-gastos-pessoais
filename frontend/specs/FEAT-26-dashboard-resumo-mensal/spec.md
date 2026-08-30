@@ -257,31 +257,31 @@ categoria dos itens de "Últimos lançamentos" (mesmo padrão de
 
 ## Critérios de aceite
 
-- [ ] Tela "Início" busca `GET /summary?month=<mês corrente>` ao
+- [x] Tela "Início" busca `GET /summary?month=<mês corrente>` ao
       carregar, sem nenhum controle de navegação de mês
-- [ ] Os cinco cartões (Saldo, Receitas, Gasto, Orçamento total,
+- [x] Os cinco cartões (Saldo, Receitas, Gasto, Orçamento total,
       Restante) mostram os valores corretos, formatados em reais
-- [ ] Saldo negativo aparece com sinal `-` e cor accent
-- [ ] Restante negativo aparece com o valor real (não zerado), cor
+- [x] Saldo negativo aparece com sinal `-` e cor accent
+- [x] Restante negativo aparece com o valor real (não zerado), cor
       accent, e a barra de progresso travada em 100%
-- [ ] "Onde o dinheiro foi este mês" lista as categorias de
+- [x] "Onde o dinheiro foi este mês" lista as categorias de
       `porCategoria` na ordem recebida, com gasto/orçamento formatado e
       barra de progresso; categoria acima do orçamento aparece
       destacada (texto e barra na cor de destaque)
-- [ ] Sem categoria com orçamento definido, a seção mostra estado
+- [x] Sem categoria com orçamento definido, a seção mostra estado
       vazio
-- [ ] "Últimos lançamentos" lista os itens de `ultimosLancamentos` com
+- [x] "Últimos lançamentos" lista os itens de `ultimosLancamentos` com
       categoria, descrição, data, e valor com sinal/cor por tipo
-- [ ] Sem transação no mês, a seção mostra estado vazio
-- [ ] "+ Nova despesa"/"+ Nova receita" abrem o popup já existente
+- [x] Sem transação no mês, a seção mostra estado vazio
+- [x] "+ Nova despesa"/"+ Nova receita" abrem o popup já existente
       (fixo no tipo do botão clicado) e, ao salvar, o resumo é
       recarregado refletindo a nova transação
-- [ ] "Ver todas" de últimos lançamentos navega para
+- [x] "Ver todas" de últimos lançamentos navega para
       `/transactions?yearMonth=<mês corrente>`
-- [ ] "Ver todas" de categorias navega para `/categories`
-- [ ] Sessão expirada ao carregar o resumo segue o comportamento já
+- [x] "Ver todas" de categorias navega para `/categories`
+- [x] Sessão expirada ao carregar o resumo segue o comportamento já
       existente nas demais telas
-- [ ] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima,
+- [x] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima,
       100% dos testes passando
 
 ## Fora do escopo
