@@ -46,7 +46,7 @@ backend correspondente, já pronto) conforme a coluna "Depende de".
   backend). Remove `SignupComingSoonPage`.
   Depende de: backend FEAT-26 (perfil no cadastro) — já pronto.
 
-- [ ] **FEAT-22 — Categorias: tipo (despesa/receita) e orçamento mensal**
+- [x] **FEAT-22 — Categorias: tipo (despesa/receita) e orçamento mensal**
   Estende o CRUD de categorias (`13-categorias-orcamentos.png`) com
   campo obrigatório `tipo` e campo opcional de orçamento mensal;
   listagem/filtro por tipo; exibição do orçamento e indicador de
