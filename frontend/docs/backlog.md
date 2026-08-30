@@ -53,7 +53,7 @@ backend correspondente, já pronto) conforme a coluna "Depende de".
   consumo por categoria como no design.
   Depende de: backend FEAT-21 (categoria tipo/orçamento) — já pronto.
 
-- [ ] **FEAT-23 — Transações: generalizar despesa para receita/despesa**
+- [x] **FEAT-23 — Transações: generalizar despesa para receita/despesa**
   Renomeia a feature `expenses` → `transactions` (rota `/transactions`
   no lugar de `/expenses`, filtro `?tipo=`), atualiza listagem/popups
   existentes pra trabalhar com os dois tipos e exibir "Lançado por:
