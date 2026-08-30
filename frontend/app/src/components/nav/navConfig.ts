@@ -22,10 +22,10 @@ export interface NavItem {
 export const NAV_TREE: NavItem[] = [
   { id: 'home', label: 'Início', icon: Home, to: '/', status: 'placeholder', mobilePrimary: true },
   {
-    id: 'expenses',
+    id: 'transactions',
     label: 'Transações',
     icon: ListFilter,
-    to: '/expenses',
+    to: '/transactions',
     status: 'active',
     mobilePrimary: true,
   },

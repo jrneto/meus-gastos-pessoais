@@ -1,33 +1,33 @@
 import { useEffect } from 'react'
 import '@/styles/modernist/modernist.css'
-import type { CategoryItem } from '@/lib/categories/types'
-import { NotFoundError } from '../errors/categoryErrors'
-import { useDeleteCategory } from '../hooks/useDeleteCategory'
+import type { TransactionQueryItem } from '../api/transactionsApi'
+import { NotFoundError } from '../errors/transactionErrors'
+import { useDeleteTransaction } from '../hooks/useDeleteTransaction'
 
-interface CategoryDeleteDialogProps {
-  category: CategoryItem | null
+interface TransactionDeleteDialogProps {
+  transaction: TransactionQueryItem | null
   onOpenChange: (open: boolean) => void
   onDeleted: (id: string) => void
 }
 
-// Painel próprio (`.dialog-backdrop`/`.dialog` do Modernist), mesmo
-// padrão de `TransactionDeleteDialog` (FEAT-16), no lugar do
-// `AlertDialog` do shadcn/ui.
-export function CategoryDeleteDialog({ category, onOpenChange, onDeleted }: CategoryDeleteDialogProps) {
-  const { deleteCategory, isLoading, error, success } = useDeleteCategory()
-  const open = category !== null
+// Painel próprio (`.dialog-backdrop`/`.dialog` do Modernist) no lugar do
+// `AlertDialog` do shadcn/ui — mesmo padrão do `NavMoreSheet` (FEAT-15),
+// com `role="alertdialog"` por se tratar de confirmação destrutiva.
+export function TransactionDeleteDialog({ transaction, onOpenChange, onDeleted }: TransactionDeleteDialogProps) {
+  const { deleteTransaction, isLoading, error, success } = useDeleteTransaction()
+  const open = transaction !== null
 
   useEffect(() => {
-    if (success && category) {
-      onDeleted(category.id)
+    if (success && transaction) {
+      onDeleted(transaction.id)
     }
-  }, [success, category, onDeleted])
+  }, [success, transaction, onDeleted])
 
   useEffect(() => {
-    if (error instanceof NotFoundError && category) {
-      onDeleted(category.id)
+    if (error instanceof NotFoundError && transaction) {
+      onDeleted(transaction.id)
     }
-  }, [error, category, onDeleted])
+  }, [error, transaction, onDeleted])
 
   useEffect(() => {
     if (!open) return undefined
@@ -54,15 +54,16 @@ export function CategoryDeleteDialog({ category, onOpenChange, onDeleted }: Cate
         className="dialog"
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="delete-category-title"
-        aria-describedby="delete-category-description"
+        aria-labelledby="delete-transaction-title"
+        aria-describedby="delete-transaction-description"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="dialog-title" id="delete-category-title">
-          Excluir categoria
+        <div className="dialog-title" id="delete-transaction-title">
+          Excluir despesa
         </div>
-        <p className="dialog-body" id="delete-category-description">
-          Tem certeza que deseja excluir "{category?.nome}"? Essa ação não pode ser desfeita.
+        <p className="dialog-body" id="delete-transaction-description">
+          Tem certeza que deseja excluir "{transaction?.description}"? Essa ação não pode ser
+          desfeita.
         </p>
 
         {otherError && (
@@ -80,7 +81,7 @@ export function CategoryDeleteDialog({ category, onOpenChange, onDeleted }: Cate
             type="button"
             className="btn btn-primary"
             disabled={isLoading}
-            onClick={() => category && deleteCategory(category.id)}
+            onClick={() => transaction && deleteTransaction(transaction.id)}
           >
             {isLoading ? 'Excluindo...' : 'Excluir'}
           </button>

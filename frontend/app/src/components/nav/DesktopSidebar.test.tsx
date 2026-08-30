@@ -36,7 +36,7 @@ describe('DesktopSidebar', () => {
   })
 
   it('destaca o item correspondente à rota atual', () => {
-    renderSidebar('/expenses')
+    renderSidebar('/transactions')
 
     const transacoes = screen.getByRole('link', { name: /transações/i })
     expect(transacoes).toHaveAttribute('aria-current', 'page')

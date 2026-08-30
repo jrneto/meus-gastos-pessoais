@@ -18,10 +18,10 @@ const TIPO_STYLE: Record<'despesa' | 'receita', { border: string; background: st
 
 // Tile decorativo (inicial do nome, sem cor/ícone real) — fiel ao
 // design de referência, que usa {{ c.letter }} como avatar puramente
-// visual. Compartilhado entre `CategoryList` e `ExpenseDetailDialog`.
+// visual. Compartilhado entre `CategoryList` e `TransactionDetailDialog`.
 // A prop `tipo` (FEAT-22) colore o tile conforme despesa/receita, como
 // no `.dc.html`; sem ela, mantém o estilo neutro original (usado hoje
-// por `ExpenseDetailDialog`, fora do escopo da FEAT-22).
+// por `TransactionDetailDialog`, fora do escopo da FEAT-22).
 export function CategoryLetterTile({ name, tipo }: CategoryLetterTileProps) {
   const style = tipo ? TIPO_STYLE[tipo] : null
 

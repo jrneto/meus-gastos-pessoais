@@ -9,22 +9,22 @@ describe('flattenNavItems', () => {
     expect(flat.map((item) => item.id)).toEqual(NAV_TREE.map((item) => item.id))
   })
 
-  it('inclui os 5 itens folha esperados (Início, Despesas, Relatórios, Categorias, Configurações)', () => {
+  it('inclui os 5 itens folha esperados (Início, Transações, Relatórios, Categorias, Configurações)', () => {
     const ids = flattenNavItems().map((item) => item.id)
 
-    expect(ids).toEqual(['home', 'expenses', 'reports', 'categories', 'settings'])
+    expect(ids).toEqual(['home', 'transactions', 'reports', 'categories', 'settings'])
   })
 
   it('retorna exatamente 5 itens no total', () => {
     expect(flattenNavItems()).toHaveLength(5)
   })
 
-  it('itens mobilePrimary são exatamente os 3 destinos esperados (Início, Despesas, Configurações)', () => {
+  it('itens mobilePrimary são exatamente os 3 destinos esperados (Início, Transações, Configurações)', () => {
     const mobilePrimaryIds = flattenNavItems()
       .filter((item) => item.mobilePrimary)
       .map((item) => item.id)
 
-    expect(mobilePrimaryIds).toEqual(['home', 'expenses', 'settings'])
+    expect(mobilePrimaryIds).toEqual(['home', 'transactions', 'settings'])
   })
 
   it('nenhum item fica sem rota — toda funcionalidade "não existente" navega para uma página fake', () => {
@@ -49,11 +49,11 @@ describe('flattenNavItems', () => {
     expect(categories?.mobilePrimary).toBeFalsy()
   })
 
-  it('"Transações" é um único item apontando para a listagem de despesas (FEAT-16)', () => {
-    const expenses = flattenNavItems().find((item) => item.id === 'expenses')
+  it('"Transações" é um único item apontando para a listagem de transações (FEAT-16)', () => {
+    const transactions = flattenNavItems().find((item) => item.id === 'transactions')
 
-    expect(expenses?.label).toBe('Transações')
-    expect(expenses?.to).toBe('/expenses')
-    expect(expenses?.children).toBeUndefined()
+    expect(transactions?.label).toBe('Transações')
+    expect(transactions?.to).toBe('/transactions')
+    expect(transactions?.children).toBeUndefined()
   })
 })
