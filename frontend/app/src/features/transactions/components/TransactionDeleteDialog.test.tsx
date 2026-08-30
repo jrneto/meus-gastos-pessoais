@@ -44,6 +44,16 @@ describe('TransactionDeleteDialog', () => {
     expect(screen.getByText(/Almoço no restaurante/)).toBeInTheDocument()
   })
 
+  it('receita mostra "Excluir receita" no título (FEAT-24)', () => {
+    const incomeTransaction: TransactionQueryItem = { ...transaction, tipo: 'receita' }
+
+    render(
+      <TransactionDeleteDialog transaction={incomeTransaction} onOpenChange={vi.fn()} onDeleted={vi.fn()} />,
+    )
+
+    expect(screen.getByText('Excluir receita')).toBeInTheDocument()
+  })
+
   it('cancelar não chama a API', async () => {
     const user = userEvent.setup()
     let apiCalled = false

@@ -8,13 +8,11 @@ import { TransactionList } from '@/features/transactions/components/TransactionL
 import type { TransactionQueryItem } from '@/features/transactions/api/transactionsApi'
 import { useTransactionsQuery } from '@/features/transactions/hooks/useTransactionsQuery'
 
-type TransactionFormTarget = { mode: 'create' } | { mode: 'edit'; id: string } | null
+type TransactionFormTarget =
+  | { mode: 'create'; tipo: 'despesa' | 'receita' }
+  | { mode: 'edit'; id: string }
+  | null
 
-// Nesta feature (FEAT-23) só existe o botão "+ Nova despesa" — o
-// design (`jrnexpenses-web.dc.html`) já mostra "+ Nova receita" ao
-// lado, mas ligá-lo (seletor de tipo no popup, fluxo completo de
-// receita) é escopo da FEAT-24, que reaproveita o popup unificado
-// desta feature.
 export function TransactionsListPage() {
   const query = useTransactionsQuery()
   const [formTarget, setFormTarget] = useState<TransactionFormTarget>(null)
@@ -46,9 +44,22 @@ export function TransactionsListPage() {
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <h1 style={{ fontSize: '30px', margin: 0 }}>Transações</h1>
-        <button type="button" className="btn btn-primary" onClick={() => setFormTarget({ mode: 'create' })}>
-          + Nova despesa
-        </button>
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setFormTarget({ mode: 'create', tipo: 'receita' })}
+          >
+            + Nova receita
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setFormTarget({ mode: 'create', tipo: 'despesa' })}
+          >
+            + Nova despesa
+          </button>
+        </div>
       </div>
       <TransactionFilters onApply={query.applyFilters} />
       <TransactionList
@@ -61,9 +72,10 @@ export function TransactionsListPage() {
         onRowClick={setDetailTarget}
       />
       <TransactionFormDialog
-        key={formTarget ? (formTarget.mode === 'edit' ? formTarget.id : 'create') : 'closed'}
+        key={formTarget ? (formTarget.mode === 'edit' ? formTarget.id : `create-${formTarget.tipo}`) : 'closed'}
         open={formTarget !== null}
         transactionId={formTarget?.mode === 'edit' ? formTarget.id : undefined}
+        tipo={formTarget?.mode === 'create' ? formTarget.tipo : undefined}
         onOpenChange={(open) => !open && setFormTarget(null)}
         onSaved={query.refetch}
       />

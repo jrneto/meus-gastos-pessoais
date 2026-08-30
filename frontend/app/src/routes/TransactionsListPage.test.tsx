@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router-dom'
@@ -51,10 +51,11 @@ describe('TransactionsListPage', () => {
     expect(screen.getByRole('heading', { name: 'Transações' })).toBeInTheDocument()
   })
 
-  it('não exibe o botão "+ Nova receita" nesta feature (FEAT-23)', () => {
+  it('exibe o botão "+ Nova receita" ao lado do "+ Nova despesa" (FEAT-24)', () => {
     renderPage()
 
-    expect(screen.queryByRole('button', { name: /nova receita/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /nova receita/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /nova despesa/i })).toBeInTheDocument()
   })
 
   it('clicar em "+ Nova despesa" abre o popup de cadastro (FEAT-17)', async () => {
@@ -80,6 +81,72 @@ describe('TransactionsListPage', () => {
     await user.click(await screen.findByText('Almoço no restaurante'))
 
     expect(await screen.findByText('Detalhe da despesa')).toBeInTheDocument()
+  })
+
+  it('clicar em "+ Nova receita", preencher e submeter cria a receita e ela aparece na listagem (FEAT-24)', async () => {
+    const user = userEvent.setup()
+    const incomeCategory = {
+      id: 'cat-2',
+      nome: 'Salário',
+      tipo: 'receita',
+      orcamentoMensalCents: null,
+      createdAt: '2025-06-15T12:00:00Z',
+    }
+    server.use(http.get(CATEGORIES_URL, () => HttpResponse.json({ items: [incomeCategory] })))
+
+    let posted: unknown = null
+    server.use(
+      http.post(TRANSACTIONS_URL, async ({ request }) => {
+        posted = await request.json()
+        return HttpResponse.json({
+          id: 'tx-2',
+          description: 'Salário mensal',
+          amountInCents: 500000,
+          categoryId: 'cat-2',
+          tipo: 'receita',
+          date: '2025-06-05',
+          createdByUserId: 'user-1',
+          createdByLabel: 'Você',
+          createdAt: '2025-06-05T12:00:00Z',
+        })
+      }),
+    )
+    server.use(
+      http.get(
+        TRANSACTIONS_URL,
+        () => HttpResponse.json({
+          items: [
+            {
+              id: 'tx-2',
+              description: 'Salário mensal',
+              amountInCents: 500000,
+              categoryId: 'cat-2',
+              tipo: 'receita',
+              date: '2025-06-05',
+              createdByUserId: 'user-1',
+              createdByLabel: 'Você',
+              createdAt: '2025-06-05T12:00:00Z',
+            },
+          ],
+          nextCursor: null,
+        }),
+        { once: false },
+      ),
+    )
+
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: /nova receita/i }))
+
+    expect(await screen.findByText('Nova receita')).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Descrição'), 'Salário mensal')
+    await user.type(screen.getByLabelText('Valor'), '5000,00')
+    await user.selectOptions(screen.getByLabelText('Categoria'), 'cat-2')
+    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2025-06-05' } })
+    await user.click(screen.getByRole('button', { name: /registrar receita/i }))
+
+    await waitFor(() => expect(posted).toMatchObject({ tipo: 'receita' }))
+    expect(await screen.findByText('Salário mensal')).toBeInTheDocument()
   })
 
   it('"Editar" no detalhe abre o popup de edição pré-preenchido (FEAT-20)', async () => {

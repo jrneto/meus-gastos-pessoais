@@ -47,6 +47,7 @@ export function TransactionDeleteDialog({ transaction, onOpenChange, onDeleted }
   }
 
   const otherError = error && !(error instanceof NotFoundError) ? error : null
+  const title = transaction?.tipo === 'receita' ? 'Excluir receita' : 'Excluir despesa'
 
   return (
     <div className="ds-modernist dialog-backdrop" onClick={() => onOpenChange(false)}>
@@ -59,7 +60,7 @@ export function TransactionDeleteDialog({ transaction, onOpenChange, onDeleted }
         onClick={(event) => event.stopPropagation()}
       >
         <div className="dialog-title" id="delete-transaction-title">
-          Excluir despesa
+          {title}
         </div>
         <p className="dialog-body" id="delete-transaction-description">
           Tem certeza que deseja excluir "{transaction?.description}"? Essa ação não pode ser

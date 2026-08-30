@@ -33,7 +33,7 @@ function mockCategories(items: unknown[] = [expenseCategory]) {
 function renderForm(props: Partial<React.ComponentProps<typeof TransactionForm>> = {}) {
   return render(
     <MemoryRouter>
-      <TransactionForm {...props} />
+      <TransactionForm tipo="despesa" {...props} />
     </MemoryRouter>,
   )
 }
@@ -167,6 +167,114 @@ describe('TransactionForm', () => {
 
     await user.click(screen.getByRole('button', { name: /cancelar/i }))
     expect(onCancel).toHaveBeenCalled()
+  })
+
+  describe('tipo="receita" (FEAT-24)', () => {
+    it('usuário sem nenhuma categoria de receita cadastrada é orientado a criar uma', async () => {
+      mockCategories([expenseCategory])
+
+      renderForm({ tipo: 'receita' })
+
+      expect(
+        await screen.findByText('Você ainda não tem nenhuma categoria de receita cadastrada.'),
+      ).toBeInTheDocument()
+    })
+
+    it('dropdown de categoria não lista categoria de despesa', async () => {
+      mockCategories([expenseCategory, incomeCategory])
+
+      renderForm({ tipo: 'receita' })
+      await screen.findByLabelText('Descrição')
+      await screen.findByRole('option', { name: 'Salário' })
+
+      expect(screen.queryByRole('option', { name: 'Alimentação' })).not.toBeInTheDocument()
+    })
+
+    it('botão de submit mostra "Registrar receita"', async () => {
+      mockCategories([incomeCategory])
+
+      renderForm({ tipo: 'receita' })
+      await screen.findByLabelText('Descrição')
+
+      expect(screen.getByRole('button', { name: /registrar receita/i })).toBeInTheDocument()
+    })
+
+    it('submit com sucesso chama POST /transactions com tipo "receita"', async () => {
+      mockCategories([incomeCategory])
+      const user = userEvent.setup()
+      const onSuccess = vi.fn()
+      let receivedBody: unknown = null
+      server.use(
+        http.post(TRANSACTIONS_URL, async ({ request }) => {
+          receivedBody = await request.json()
+          return HttpResponse.json({
+            id: 'tx-2',
+            description: 'Salário mensal',
+            amountInCents: 500000,
+            categoryId: 'cat-2',
+            tipo: 'receita',
+            date: '2025-06-05',
+            createdByUserId: 'user-1',
+            createdByLabel: 'Você',
+            createdAt: '2025-06-05T12:00:00Z',
+          })
+        }),
+      )
+
+      renderForm({ tipo: 'receita', onSuccess })
+      await screen.findByLabelText('Descrição')
+      await user.type(screen.getByLabelText('Descrição'), 'Salário mensal')
+      await user.type(screen.getByLabelText('Valor'), '5000,00')
+      await user.selectOptions(screen.getByLabelText('Categoria'), 'cat-2')
+      fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2025-06-05' } })
+
+      await user.click(screen.getByRole('button', { name: /registrar receita/i }))
+
+      await waitFor(() => expect(onSuccess).toHaveBeenCalled())
+      expect(receivedBody).toMatchObject({ tipo: 'receita', categoryId: 'cat-2' })
+    })
+
+    it('editar receita existente chama PUT /transactions/{id} preservando tipo "receita"', async () => {
+      mockCategories([incomeCategory])
+      const user = userEvent.setup()
+      const onSuccess = vi.fn()
+      let receivedBody: unknown = null
+      server.use(
+        http.put('http://localhost:5049/transactions/tx-2', async ({ request }) => {
+          receivedBody = await request.json()
+          return HttpResponse.json({
+            id: 'tx-2',
+            description: 'Salário mensal',
+            amountInCents: 500000,
+            categoryId: 'cat-2',
+            tipo: 'receita',
+            date: '2025-06-05',
+            createdByUserId: 'user-1',
+            createdByLabel: 'Você',
+            createdAt: '2025-06-05T12:00:00Z',
+          })
+        }),
+      )
+
+      renderForm({
+        tipo: 'receita',
+        mode: 'edit',
+        transactionId: 'tx-2',
+        initialValues: {
+          description: 'Salário mensal',
+          amount: '5000,00',
+          categoryId: 'cat-2',
+          date: '2025-06-05',
+        },
+        onSuccess,
+      })
+      await screen.findByLabelText('Descrição')
+
+      await user.click(screen.getByRole('button', { name: /salvar alterações/i }))
+
+      await waitFor(() => expect(onSuccess).toHaveBeenCalled())
+      expect(receivedBody).toMatchObject({ tipo: 'receita' })
+    })
   })
 
   describe('mode="edit" (FEAT-18)', () => {

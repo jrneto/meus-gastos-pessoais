@@ -39,7 +39,7 @@ describe('useRegisterTransaction', () => {
       ),
     )
 
-    const { result } = renderHook(() => useRegisterTransaction())
+    const { result } = renderHook(() => useRegisterTransaction('despesa'))
 
     await act(async () => {
       await result.current.registerTransaction(validTransaction)
@@ -49,7 +49,7 @@ describe('useRegisterTransaction', () => {
     expect(result.current.error).toBeNull()
   })
 
-  it('envia tipo "despesa" fixo no payload', async () => {
+  it('envia o tipo recebido pelo hook (despesa) no payload', async () => {
     let receivedBody: unknown = null
     server.use(
       http.post(TRANSACTIONS_URL, async ({ request }) => {
@@ -68,7 +68,7 @@ describe('useRegisterTransaction', () => {
       }),
     )
 
-    const { result } = renderHook(() => useRegisterTransaction())
+    const { result } = renderHook(() => useRegisterTransaction('despesa'))
 
     await act(async () => {
       await result.current.registerTransaction(validTransaction)
@@ -77,10 +77,38 @@ describe('useRegisterTransaction', () => {
     expect(receivedBody).toMatchObject({ tipo: 'despesa', date: validTransaction.date })
   })
 
+  it('envia o tipo recebido pelo hook (receita) no payload', async () => {
+    let receivedBody: unknown = null
+    server.use(
+      http.post(TRANSACTIONS_URL, async ({ request }) => {
+        receivedBody = await request.json()
+        return HttpResponse.json({
+          id: 'tx-2',
+          description: validTransaction.description,
+          amountInCents: validTransaction.amount,
+          categoryId: validTransaction.categoryId,
+          tipo: 'receita',
+          date: validTransaction.date,
+          createdByUserId: 'user-1',
+          createdByLabel: 'Você',
+          createdAt: '2025-06-15T12:00:00Z',
+        })
+      }),
+    )
+
+    const { result } = renderHook(() => useRegisterTransaction('receita'))
+
+    await act(async () => {
+      await result.current.registerTransaction(validTransaction)
+    })
+
+    expect(receivedBody).toMatchObject({ tipo: 'receita', date: validTransaction.date })
+  })
+
   it('em caso de 400, expõe ValidationError e success permanece false', async () => {
     server.use(http.post(TRANSACTIONS_URL, () => new HttpResponse(null, { status: 400 })))
 
-    const { result } = renderHook(() => useRegisterTransaction())
+    const { result } = renderHook(() => useRegisterTransaction('despesa'))
 
     await act(async () => {
       await result.current.registerTransaction(validTransaction)
@@ -93,7 +121,7 @@ describe('useRegisterTransaction', () => {
   it('em caso de 401, expõe SessionExpiredError e limpa a authStore', async () => {
     server.use(http.post(TRANSACTIONS_URL, () => new HttpResponse(null, { status: 401 })))
 
-    const { result } = renderHook(() => useRegisterTransaction())
+    const { result } = renderHook(() => useRegisterTransaction('despesa'))
 
     expect(useAuthStore.getState().token).toBe('tok-123')
 
@@ -108,7 +136,7 @@ describe('useRegisterTransaction', () => {
   it('em caso de falha de rede, expõe NetworkError', async () => {
     server.use(http.post(TRANSACTIONS_URL, () => HttpResponse.error()))
 
-    const { result } = renderHook(() => useRegisterTransaction())
+    const { result } = renderHook(() => useRegisterTransaction('despesa'))
 
     await act(async () => {
       await result.current.registerTransaction(validTransaction)

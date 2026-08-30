@@ -15,34 +15,37 @@ import {
 
 interface TransactionFormProps {
   mode?: 'create' | 'edit'
+  tipo: 'despesa' | 'receita'
   transactionId?: string
   initialValues?: TransactionFormInput
   onSuccess?: () => void
   onCancel?: () => void
 }
 
-// Popup único de cadastro/edição de despesa (FEAT-17/FEAT-18), com
+// Popup único de cadastro/edição de transação (FEAT-17/FEAT-18), com
 // campos próprios do Modernist — `ExpenseFormFields`/`EditExpenseForm`
-// (shadcn/ui) foram removidos, sem mais consumidores. Nesta feature
-// (FEAT-23) o cadastro/edição continua restrito a despesa — o
-// seletor de tipo entra na FEAT-24.
+// (shadcn/ui) foram removidos, sem mais consumidores. `tipo` nunca é
+// um campo do formulário (FEAT-24): ao criar, vem de qual botão abriu
+// o popup; ao editar, vem da transação já existente — sem seletor
+// nem forma de trocar o tipo depois de criada.
 export function TransactionForm({
   mode = 'create',
+  tipo,
   transactionId,
   initialValues,
   onSuccess,
   onCancel,
 }: TransactionFormProps) {
-  const registerHook = useRegisterTransaction()
-  const updateHook = useUpdateTransaction(transactionId ?? '')
+  const registerHook = useRegisterTransaction(tipo)
+  const updateHook = useUpdateTransaction(transactionId ?? '', tipo)
   const { isLoading, error, success } = mode === 'edit' ? updateHook : registerHook
   const submit = mode === 'edit' ? updateHook.updateTransaction : registerHook.registerTransaction
   const { items: categories, isLoading: categoriesLoading } = useCategories()
-  // Nesta feature só é possível lançar/editar despesa — o dropdown
-  // não pode oferecer categoria de receita, já que o backend rejeita
-  // (400) uma transação cujo tipo diverge do tipo da categoria (FEAT-22
-  // do backend).
-  const expenseCategories = categories.filter((category) => category.tipo === 'despesa')
+  // O dropdown só pode oferecer categoria do mesmo tipo da transação
+  // sendo lançada/editada, já que o backend rejeita (400) uma
+  // transação cujo tipo diverge do tipo da categoria (FEAT-22 do
+  // backend).
+  const categoriesForTipo = categories.filter((category) => category.tipo === tipo)
   const {
     register,
     handleSubmit,
@@ -87,7 +90,7 @@ export function TransactionForm({
     )
   }
 
-  if (expenseCategories.length === 0) {
+  if (categoriesForTipo.length === 0) {
     return (
       <div
         className="ds-modernist"
@@ -101,7 +104,7 @@ export function TransactionForm({
         }}
       >
         <p style={{ opacity: 0.7, fontSize: '14px' }}>
-          Você ainda não tem nenhuma categoria de despesa cadastrada.
+          Você ainda não tem nenhuma categoria de {tipo} cadastrada.
         </p>
         <Link to="/categories" className="btn btn-primary">
           Criar categoria
@@ -156,7 +159,7 @@ export function TransactionForm({
         <span>Categoria</span>
         <select className="input" aria-invalid={!!errors.categoryId} {...register('categoryId')}>
           <option value="">Selecione uma categoria</option>
-          {expenseCategories.map((category) => (
+          {categoriesForTipo.map((category) => (
             <option key={category.id} value={category.id}>
               {category.nome}
             </option>
@@ -186,7 +189,7 @@ export function TransactionForm({
           </button>
         )}
         <button type="submit" className="btn btn-primary" disabled={isLoading}>
-          {isLoading ? 'Salvando...' : mode === 'edit' ? 'Salvar alterações' : 'Registrar despesa'}
+          {isLoading ? 'Salvando...' : mode === 'edit' ? 'Salvar alterações' : `Registrar ${tipo}`}
         </button>
       </div>
     </form>

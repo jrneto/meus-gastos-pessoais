@@ -50,7 +50,7 @@ describe('TransactionDetailDialog', () => {
     )
 
     expect(screen.getByText('Detalhe da despesa')).toBeInTheDocument()
-    expect(screen.getByText('R$ 45,90')).toBeInTheDocument()
+    expect(screen.getByText('- R$ 45,90')).toBeInTheDocument()
     expect(screen.getByText('2025-06-15')).toBeInTheDocument()
     expect(await screen.findByText('Alimentação')).toBeInTheDocument()
     expect(screen.getByText('Almoço no restaurante')).toBeInTheDocument()
@@ -83,6 +83,33 @@ describe('TransactionDetailDialog', () => {
 
     expect(screen.getByText('Lançado por')).toBeInTheDocument()
     expect(screen.getByText('outro@exemplo.com')).toBeInTheDocument()
+  })
+
+  it('receita mostra título "Detalhe da receita", cor positive e sinal "+" no valor (FEAT-24)', async () => {
+    const incomeTransaction: TransactionQueryItem = {
+      ...transaction,
+      id: 'tx-2',
+      tipo: 'receita',
+      amountInCents: 500000,
+    }
+
+    render(
+      <TransactionDetailDialog transaction={incomeTransaction} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+    )
+
+    expect(screen.getByText('Detalhe da receita')).toBeInTheDocument()
+    const amount = screen.getByText('+ R$ 5.000,00')
+    expect(amount).toBeInTheDocument()
+    expect(amount.style.color).toBe('var(--color-positive-700)')
+  })
+
+  it('despesa mostra cor accent no valor, sem regressão (FEAT-24)', () => {
+    render(
+      <TransactionDetailDialog transaction={transaction} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+    )
+
+    const amount = screen.getByText('- R$ 45,90')
+    expect(amount.style.color).toBe('var(--color-accent-700)')
   })
 
   it('"Editar" chama onEdit com a transação e fecha o popup', async () => {

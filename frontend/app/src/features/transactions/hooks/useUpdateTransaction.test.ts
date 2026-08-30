@@ -39,7 +39,7 @@ describe('useUpdateTransaction', () => {
       ),
     )
 
-    const { result } = renderHook(() => useUpdateTransaction('tx-1'))
+    const { result } = renderHook(() => useUpdateTransaction('tx-1', 'despesa'))
 
     await act(async () => {
       await result.current.updateTransaction(validTransaction)
@@ -49,7 +49,7 @@ describe('useUpdateTransaction', () => {
     expect(result.current.error).toBeNull()
   })
 
-  it('envia tipo "despesa" fixo no payload', async () => {
+  it('envia o tipo recebido pelo hook (despesa) no payload', async () => {
     let receivedBody: unknown = null
     server.use(
       http.put(TRANSACTION_URL, async ({ request }) => {
@@ -68,7 +68,7 @@ describe('useUpdateTransaction', () => {
       }),
     )
 
-    const { result } = renderHook(() => useUpdateTransaction('tx-1'))
+    const { result } = renderHook(() => useUpdateTransaction('tx-1', 'despesa'))
 
     await act(async () => {
       await result.current.updateTransaction(validTransaction)
@@ -77,10 +77,38 @@ describe('useUpdateTransaction', () => {
     expect(receivedBody).toMatchObject({ tipo: 'despesa', date: validTransaction.date })
   })
 
+  it('envia o tipo recebido pelo hook (receita) no payload', async () => {
+    let receivedBody: unknown = null
+    server.use(
+      http.put(TRANSACTION_URL, async ({ request }) => {
+        receivedBody = await request.json()
+        return HttpResponse.json({
+          id: 'tx-1',
+          description: validTransaction.description,
+          amountInCents: validTransaction.amount,
+          categoryId: validTransaction.categoryId,
+          tipo: 'receita',
+          date: validTransaction.date,
+          createdByUserId: 'user-1',
+          createdByLabel: 'Você',
+          createdAt: '2025-06-15T12:00:00Z',
+        })
+      }),
+    )
+
+    const { result } = renderHook(() => useUpdateTransaction('tx-1', 'receita'))
+
+    await act(async () => {
+      await result.current.updateTransaction(validTransaction)
+    })
+
+    expect(receivedBody).toMatchObject({ tipo: 'receita', date: validTransaction.date })
+  })
+
   it('em caso de 400, expõe UpdateValidationError', async () => {
     server.use(http.put(TRANSACTION_URL, () => new HttpResponse(null, { status: 400 })))
 
-    const { result } = renderHook(() => useUpdateTransaction('tx-1'))
+    const { result } = renderHook(() => useUpdateTransaction('tx-1', 'despesa'))
 
     await act(async () => {
       await result.current.updateTransaction(validTransaction)
@@ -93,7 +121,7 @@ describe('useUpdateTransaction', () => {
   it('em caso de 404, expõe NotFoundError', async () => {
     server.use(http.put(TRANSACTION_URL, () => new HttpResponse(null, { status: 404 })))
 
-    const { result } = renderHook(() => useUpdateTransaction('tx-1'))
+    const { result } = renderHook(() => useUpdateTransaction('tx-1', 'despesa'))
 
     await act(async () => {
       await result.current.updateTransaction(validTransaction)
@@ -105,7 +133,7 @@ describe('useUpdateTransaction', () => {
   it('em caso de 401, expõe SessionExpiredError e limpa a authStore', async () => {
     server.use(http.put(TRANSACTION_URL, () => new HttpResponse(null, { status: 401 })))
 
-    const { result } = renderHook(() => useUpdateTransaction('tx-1'))
+    const { result } = renderHook(() => useUpdateTransaction('tx-1', 'despesa'))
 
     await act(async () => {
       await result.current.updateTransaction(validTransaction)
