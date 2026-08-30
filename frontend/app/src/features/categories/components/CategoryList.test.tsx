@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,11 +7,27 @@ import { server } from '@/test/msw/server'
 import type { CategoryItem } from '@/lib/categories/types'
 import { CategoryList } from './CategoryList'
 
-const item: CategoryItem = {
+const expenseWithBudget: CategoryItem = {
   id: 'cat-1',
   nome: 'Alimentação',
-  cor: '#f97316',
-  icone: 'utensils',
+  tipo: 'despesa',
+  orcamentoMensalCents: 80000,
+  createdAt: '2025-06-15T12:00:00Z',
+}
+
+const expenseWithoutBudget: CategoryItem = {
+  id: 'cat-2',
+  nome: 'Assinaturas',
+  tipo: 'despesa',
+  orcamentoMensalCents: null,
+  createdAt: '2025-06-15T12:00:00Z',
+}
+
+const income: CategoryItem = {
+  id: 'cat-3',
+  nome: 'Salário',
+  tipo: 'receita',
+  orcamentoMensalCents: null,
   createdAt: '2025-06-15T12:00:00Z',
 }
 
@@ -37,35 +53,63 @@ describe('CategoryList', () => {
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
   })
 
-  it('renderiza os itens só com o nome (sem cor/ícone)', () => {
-    renderCategoryList({ items: [item] })
-
-    expect(screen.getByText('Alimentação')).toBeInTheDocument()
-  })
-
-  it('exibe estado vazio sem CTA (a ação já vive no botão da página)', () => {
+  it('exibe estado vazio sem seções quando não há categorias', () => {
     renderCategoryList()
 
     expect(
       screen.getByText('Você ainda não tem nenhuma categoria cadastrada.'),
     ).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /criar categoria/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /categorias de despesa/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /categorias de receita/i })).not.toBeInTheDocument()
+  })
+
+  it('agrupa categorias de despesa e receita nas seções correspondentes', () => {
+    renderCategoryList({ items: [expenseWithBudget, income] })
+
+    const expenseSection = screen.getByRole('heading', { name: /categorias de despesa/i }).closest('section')!
+    const incomeSection = screen.getByRole('heading', { name: /categorias de receita/i }).closest('section')!
+
+    expect(within(expenseSection).getByText('Alimentação')).toBeInTheDocument()
+    expect(within(incomeSection).getByText('Salário')).toBeInTheDocument()
+    expect(within(incomeSection).queryByText('Alimentação')).not.toBeInTheDocument()
+    expect(within(expenseSection).queryByText('Salário')).not.toBeInTheDocument()
+  })
+
+  it('categoria de despesa com teto exibe o valor formatado', () => {
+    renderCategoryList({ items: [expenseWithBudget] })
+
+    expect(screen.getByText('R$ 800,00')).toBeInTheDocument()
+  })
+
+  it('categoria de despesa sem teto exibe "Sem teto definido"', () => {
+    renderCategoryList({ items: [expenseWithoutBudget] })
+
+    expect(screen.getByText('Sem teto definido')).toBeInTheDocument()
+  })
+
+  it('categoria de receita não exibe nenhum valor monetário', () => {
+    renderCategoryList({ items: [income] })
+
+    expect(screen.queryByText('Sem teto definido')).not.toBeInTheDocument()
+    expect(screen.queryByText(/^R\$/)).not.toBeInTheDocument()
   })
 
   it('clicar em editar chama onEditToggle com o id do item', async () => {
     const user = userEvent.setup()
     const onEditToggle = vi.fn()
-    renderCategoryList({ items: [item], onEditToggle })
+    renderCategoryList({ items: [expenseWithBudget], onEditToggle })
 
     await user.click(screen.getByRole('button', { name: /editar categoria/i }))
 
     expect(onEditToggle).toHaveBeenCalledWith('cat-1')
   })
 
-  it('quando editingId corresponde ao item, mostra o CategoryForm pré-preenchido', () => {
-    renderCategoryList({ items: [item], editingId: 'cat-1' })
+  it('quando editingId corresponde ao item, mostra o CategoryForm pré-preenchido com tipo e teto', () => {
+    renderCategoryList({ items: [expenseWithBudget], editingId: 'cat-1' })
 
     expect(screen.getByLabelText('Nome')).toHaveValue('Alimentação')
+    expect(screen.getByRole('radio', { name: 'Despesa' })).toBeChecked()
+    expect(screen.getByLabelText('Teto mensal (R$)')).toHaveValue('800,00')
   })
 
   it('confirmar a exclusão chama a API e onDeleted com o id correto', async () => {
@@ -75,7 +119,7 @@ describe('CategoryList', () => {
     )
     const onDeleted = vi.fn()
 
-    renderCategoryList({ items: [item], onDeleted })
+    renderCategoryList({ items: [expenseWithBudget], onDeleted })
 
     await user.click(screen.getByRole('button', { name: /excluir categoria/i }))
     await user.click(screen.getByRole('button', { name: /^excluir$/i }))
@@ -100,7 +144,7 @@ describe('CategoryList', () => {
     )
     const onDeleted = vi.fn()
 
-    renderCategoryList({ items: [item], onDeleted })
+    renderCategoryList({ items: [expenseWithBudget], onDeleted })
 
     await user.click(screen.getByRole('button', { name: /excluir categoria/i }))
     await user.click(screen.getByRole('button', { name: /^excluir$/i }))

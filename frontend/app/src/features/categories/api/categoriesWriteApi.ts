@@ -12,8 +12,8 @@ import {
 
 export interface CategoryPayload {
   nome: string
-  cor: string
-  icone: string
+  tipo: 'despesa' | 'receita'
+  orcamentoMensalCents?: number
 }
 
 async function safeFetch(fn: () => Promise<Response>): Promise<Response> {

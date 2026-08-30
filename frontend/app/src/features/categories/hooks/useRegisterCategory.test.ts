@@ -7,7 +7,7 @@ import { NameConflictError, SessionExpiredError, ValidationError } from '../erro
 import { useRegisterCategory } from './useRegisterCategory'
 
 const CATEGORIES_URL = 'http://localhost:5049/categories'
-const payload = { nome: 'Viagem', cor: '#0EA5E9', icone: 'plane' }
+const payload = { nome: 'Viagem', tipo: 'despesa' as const, orcamentoMensalCents: 50000 }
 
 function problem(type: string) {
   return HttpResponse.json(

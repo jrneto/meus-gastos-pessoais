@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import '@/styles/modernist/modernist.css'
 import { NotFoundError } from '../errors/expenseErrors'
 import { useExpense } from '../hooks/useExpense'
-import { centsToAmountInput } from '../utils/currency'
+import { centsToAmountInput } from '@/lib/currency'
 import { ExpenseForm } from './ExpenseForm'
 
 interface ExpenseFormDialogProps {

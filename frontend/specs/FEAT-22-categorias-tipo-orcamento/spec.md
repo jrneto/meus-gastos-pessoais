@@ -220,33 +220,33 @@ Sem mudança nesta feature — `403` (`insufficient-permission`), `404`
 
 ## Critérios de aceite
 
-- [ ] Formulário de nova categoria pede nome, tipo (Despesa/Receita) e,
+- [x] Formulário de nova categoria pede nome, tipo (Despesa/Receita) e,
       só quando tipo = Despesa, teto mensal opcional
-- [ ] Trocar o tipo para Receita no formulário esconde e descarta o
+- [x] Trocar o tipo para Receita no formulário esconde e descarta o
       valor do teto mensal
-- [ ] Criar categoria de despesa sem teto envia `orcamentoMensalCents`
+- [x] Criar categoria de despesa sem teto envia `orcamentoMensalCents`
       omitido e a categoria aparece na seção correta sem teto
-- [ ] Criar categoria de despesa com teto válido envia o valor em
+- [x] Criar categoria de despesa com teto válido envia o valor em
       centavos e a categoria aparece com o teto formatado
-- [ ] Criar categoria de receita envia `tipo: "receita"` sem campo de
+- [x] Criar categoria de receita envia `tipo: "receita"` sem campo de
       teto
-- [ ] Teto mensal igual a zero, negativo ou em formato inválido é
+- [x] Teto mensal igual a zero, negativo ou em formato inválido é
       bloqueado no client, sem chamar a API
-- [ ] Editar categoria permite trocar o tipo, e a categoria passa a
+- [x] Editar categoria permite trocar o tipo, e a categoria passa a
       aparecer na seção correspondente ao novo tipo
-- [ ] Editar categoria de despesa permite definir, atualizar ou remover
+- [x] Editar categoria de despesa permite definir, atualizar ou remover
       o teto mensal (remover = enviar omitido/`null`)
-- [ ] Lista de categorias é dividida em "Categorias de despesa" e
+- [x] Lista de categorias é dividida em "Categorias de despesa" e
       "Categorias de receita", cada uma só com os itens do tipo
       correspondente
-- [ ] Categorias de despesa mostram o teto mensal formatado (ou
+- [x] Categorias de despesa mostram o teto mensal formatado (ou
       indicação de "sem teto"); categorias de receita não mostram
       nenhum valor monetário
-- [ ] Exclusão de categoria continua funcionando para os dois tipos,
+- [x] Exclusão de categoria continua funcionando para os dois tipos,
       sem regressão
-- [ ] `cor`/`icone` removidos de `CategoryItem`, do payload de escrita
+- [x] `cor`/`icone` removidos de `CategoryItem`, do payload de escrita
       e do formulário — nada no código os referencia mais
-- [ ] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima
+- [x] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima
 
 ## Fora do escopo
 

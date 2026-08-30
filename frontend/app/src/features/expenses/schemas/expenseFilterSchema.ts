@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { parseCurrencyToCents } from '../utils/currency'
+import { parseCurrencyToCents } from '@/lib/currency'
 
 const CURRENCY_REGEX = /^\d+(\.\d{3})*(,\d{2})?$/
 

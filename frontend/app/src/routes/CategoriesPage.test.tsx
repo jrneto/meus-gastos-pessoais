@@ -23,6 +23,14 @@ describe('CategoriesPage', () => {
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
   })
 
+  it('exibe o título "Categorias e orçamentos"', () => {
+    server.use(http.get(CATEGORIES_URL, () => HttpResponse.json({ items: [] })))
+
+    renderPage()
+
+    expect(screen.getByRole('heading', { name: 'Categorias e orçamentos', level: 1 })).toBeInTheDocument()
+  })
+
   it('carrega e lista as categorias do usuário', async () => {
     server.use(
       http.get(CATEGORIES_URL, () =>
@@ -31,8 +39,8 @@ describe('CategoriesPage', () => {
             {
               id: 'cat-1',
               nome: 'Alimentação',
-              cor: '#f97316',
-              icone: 'utensils',
+              tipo: 'despesa',
+              orcamentoMensalCents: 80000,
               createdAt: '2025-06-15T12:00:00Z',
             },
           ],
@@ -53,8 +61,8 @@ describe('CategoriesPage', () => {
         HttpResponse.json({
           id: 'cat-1',
           nome: 'Viagem',
-          cor: '#0ea5e9',
-          icone: 'plane',
+          tipo: 'despesa',
+          orcamentoMensalCents: null,
           createdAt: '2025-06-15T12:00:00Z',
         }),
       ),
@@ -77,8 +85,8 @@ describe('CategoriesPage', () => {
     const category = {
       id: 'cat-1',
       nome: 'Alimentação',
-      cor: '#f97316',
-      icone: 'utensils',
+      tipo: 'despesa' as const,
+      orcamentoMensalCents: 80000,
       createdAt: '2025-06-15T12:00:00Z',
     }
     server.use(

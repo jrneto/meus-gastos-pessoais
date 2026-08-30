@@ -43,7 +43,7 @@ export function CategoriesPage() {
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <h1 style={{ fontSize: '30px', margin: 0 }}>Categorias</h1>
+        <h1 style={{ fontSize: '30px', margin: 0 }}>Categorias e orçamentos</h1>
         <button
           type="button"
           className="btn btn-primary"
