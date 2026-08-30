@@ -284,29 +284,29 @@ Erros: `401`, `403` (`insufficient-permission`), `404` (`not-found`).
 
 ## Critérios de aceite
 
-- [ ] Todas as chamadas desta feature usam `/transactions` — nenhuma
+- [x] Todas as chamadas desta feature usam `/transactions` — nenhuma
       chamada a `/expenses` permanece no código
-- [ ] Registrar despesa envia `tipo: "despesa"` implicitamente (sem
+- [x] Registrar despesa envia `tipo: "despesa"` implicitamente (sem
       campo correspondente no formulário) e continua funcionando (201)
-- [ ] Editar despesa envia `tipo: "despesa"` e continua funcionando
+- [x] Editar despesa envia `tipo: "despesa"` e continua funcionando
       (200), preservando os dados retornados pela API
-- [ ] Excluir despesa continua funcionando (204)
-- [ ] Dropdown de categoria do formulário mostra somente categorias de
+- [x] Excluir despesa continua funcionando (204)
+- [x] Dropdown de categoria do formulário mostra somente categorias de
       tipo despesa
-- [ ] Listagem exibe despesas e receitas (quando existirem) misturadas,
+- [x] Listagem exibe despesas e receitas (quando existirem) misturadas,
       ordenadas por data, cada uma com sinal (`-`/`+`) e cor conforme o
       tipo
-- [ ] Filtro por chip de categoria funciona para categoria de despesa e
+- [x] Filtro por chip de categoria funciona para categoria de despesa e
       de receita
-- [ ] Filtros avançados (mês, intervalo de data, intervalo de valor)
+- [x] Filtros avançados (mês, intervalo de data, intervalo de valor)
       continuam funcionando sobre a lista mista
-- [ ] Popup de detalhe mostra a seção "Lançado por" com "Você" (autor é
+- [x] Popup de detalhe mostra a seção "Lançado por" com "Você" (autor é
       o próprio usuário) ou o e-mail do autor (outro membro)
-- [ ] Erros 400/401/404 continuam tratados com as mensagens já
+- [x] Erros 400/401/404 continuam tratados com as mensagens já
       existentes (classes renomeadas de `Expense*` para `Transaction*`)
-- [ ] Rota da SPA é `/transactions` (não mais `/expenses`); o item
+- [x] Rota da SPA é `/transactions` (não mais `/expenses`); o item
       "Transações" do menu aponta para ela
-- [ ] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima,
+- [x] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima,
       100% dos testes passando
 
 ## Fora do escopo

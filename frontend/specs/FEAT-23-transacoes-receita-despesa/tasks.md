@@ -111,11 +111,11 @@
 - [x] 20. Rodar a suíte completa (`npm test`), `tsc -b`, `oxlint` e
       `npm run build`; confirmar 100% dos testes passando, sem erro de
       tipo e sem warning novo de lint
-- [ ] 21. Revisão manual/visual: conferir a tela de Transações (criar
+- [x] 21. Revisão manual/visual: conferir a tela de Transações (criar
       despesa, dropdown de categoria só com despesa, editar, excluir,
       abrir detalhe mostrando "Lançado por: Você") contra
       `frontend/design-system/web/jrnexpenses-web.dc.html` (tela
       "Transações") — se possível, seedar também uma receita via API
       diretamente para conferir sinal/cor `+`/verde na listagem
-- [ ] 22. Atualizar `spec.md` marcando todos os critérios de aceite
+- [x] 22. Atualizar `spec.md` marcando todos os critérios de aceite
       concluídos (`- [x]`)
