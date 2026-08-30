@@ -227,27 +227,31 @@ endpoint, executados com sucesso localmente antes do merge
       Emulator — sem exigir credencial/rede AWS real (`run-local.sh`,
       validado ao vivo de ponta a ponta: os 3 testes de Auth passando
       contra o container)
-- [ ] `backend-deploy-hom.yml` roda a suíte contra
+- [x] `backend-deploy-hom.yml` roda a suíte contra
       `https://api-hom.jrnexpenses.com` depois do deploy e antes do
       rascunho de release; falha no teste impede novo rascunho —
-      **job implementado, não validado ao vivo ainda** (depende de
-      push real em `develop` após merge do PR desta feature e da
-      permissão IAM da Fase 5 estar aplicada)
+      **validado ao vivo**: PR #65 mergeado em `develop`,
+      `integration-tests` passou contra hom real, gerou o rascunho que
+      virou a release `backend-v0.0.10`
 - [ ] `backend-deploy-prod.yml` verifica, antes de buildar/deployar,
       que o teste integrado de hom passou para o commit da release
       sendo publicada; falha a verificação impede build/deploy —
-      **job implementado, não validado ao vivo ainda** (mesma
-      dependência acima)
+      **job existe e rodou** na publicação de `backend-v0.0.10`, mas
+      como essa release não mudou nenhuma camada da Api,
+      `check-changes` deu `changed=false` e a cadeia até `deploy` foi
+      pulada de propósito — falta uma release com mudança real de
+      camada Api pra validar o caminho "gate passa e libera o deploy"
+      de fato (ver `tasks.md`, Fase 7, item 22)
 - [ ] Workflow novo `backend-integration-tests-prod.yml`
       (`workflow_dispatch`) roda a suíte contra
       `https://api.jrnexpenses.com` isoladamente, sem build/deploy —
-      **workflow criado, não disparado ainda**
-- [ ] Toda execução da suíte contra hom/prod cria uma conta de teste
+      **workflow criado, ainda não disparado**
+- [x] Toda execução da suíte contra hom cria uma conta de teste
       dedicada (confirmada via `AdminConfirmSignUp`) e a remove ao
       final (Cognito + DynamoDB), mesmo em caso de falha nos testes —
-      **implementado e validado contra o ambiente local (LocalStack +
-      cognito-local); ainda não validado contra Cognito/DynamoDB reais
-      de hom/prod**, que dependem da permissão IAM da Fase 5
+      **validado contra o ambiente local e contra hom real** (job
+      `integration-tests` de `backend-deploy-hom.yml`); ainda não
+      validado contra prod (depende do item acima)
 - [x] Permissões IAM novas na role `gastosapp-backend-cicd`
       (`AdminConfirmSignUp`, `AdminDeleteUser`, exclusão de itens
       DynamoDB, leitura do Parameter Store) aplicadas via Terraform só

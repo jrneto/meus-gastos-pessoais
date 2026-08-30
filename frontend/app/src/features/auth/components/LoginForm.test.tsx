@@ -2,25 +2,30 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { server } from '@/test/msw/server'
 import { useAuthStore } from '../store/authStore'
 import { LoginForm } from './LoginForm'
 
 const LOGIN_URL = 'http://localhost:5049/auth/login'
+const REGISTER_URL = 'http://localhost:5049/auth/register'
 
 function renderLoginForm() {
-  return render(
-    <MemoryRouter initialEntries={['/login']}>
-      <Routes>
-        <Route path="/login" element={<LoginForm />} />
-        <Route path="/cadastro-em-breve" element={<div>Página de cadastro fake</div>} />
-      </Routes>
-    </MemoryRouter>,
-  )
+  return render(<LoginForm />)
 }
 
-describe('LoginForm', () => {
+function problem(status: number, type: string) {
+  return HttpResponse.json({ status, title: '...', detail: '...', type: `https://gastosapp.dev/errors/${type}` }, { status })
+}
+
+async function fillValidSignupForm(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText('Nome'), 'Fulano da Silva')
+  await user.type(screen.getByLabelText('CPF'), '12345678909')
+  await user.type(screen.getByLabelText('Telefone'), '11999998888')
+  await user.type(screen.getByLabelText('Email'), 'fulano@email.com')
+  await user.type(screen.getByLabelText('Senha'), 'Senha123')
+}
+
+describe('LoginForm — modo Entrar', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
   })
@@ -64,7 +69,7 @@ describe('LoginForm', () => {
     expect(screen.queryByText(/não foi possível entrar/i)).not.toBeInTheDocument()
   })
 
-  it('exibe alerta de credenciais inválidas em caso de 401 e não popula a store', async () => {
+  it('exibe alerta de credenciais inválidas em caso de 401 sem type e não popula a store', async () => {
     const user = userEvent.setup()
     server.use(http.post(LOGIN_URL, () => new HttpResponse(null, { status: 401 })))
 
@@ -78,12 +83,34 @@ describe('LoginForm', () => {
     expect(useAuthStore.getState().token).toBeNull()
   })
 
-  it('alternar para "Criar conta" exibe o campo Nome e troca o rótulo do botão, sem chamar a API', async () => {
+  it('exibe alerta de conta pendente de aprovação em caso de 401 user-not-confirmed', async () => {
     const user = userEvent.setup()
-    let apiCalled = false
+    server.use(http.post(LOGIN_URL, () => problem(401, 'user-not-confirmed')))
+
+    renderLoginForm()
+
+    await user.type(screen.getByLabelText('Email'), 'neto@email.com')
+    await user.type(screen.getByLabelText('Senha'), 'Senha123')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(
+      await screen.findByText('Sua conta ainda não foi aprovada. Aguarde a confirmação do administrador e tente novamente.'),
+    ).toBeInTheDocument()
+    expect(useAuthStore.getState().token).toBeNull()
+  })
+})
+
+describe('LoginForm — modo Criar conta', () => {
+  beforeEach(() => {
+    useAuthStore.getState().clearSession()
+  })
+
+  it('alternar para "Criar conta" exibe os campos do cadastro e troca o rótulo do botão, sem chamar a API de login', async () => {
+    const user = userEvent.setup()
+    let loginCalled = false
     server.use(
       http.post(LOGIN_URL, () => {
-        apiCalled = true
+        loginCalled = true
         return HttpResponse.json({ accessToken: 't', expiresIn: 3600, userId: 'u' })
       }),
     )
@@ -93,29 +120,131 @@ describe('LoginForm', () => {
     await user.click(screen.getByRole('radio', { name: 'Criar conta' }))
 
     expect(screen.getByLabelText('Nome')).toBeInTheDocument()
+    expect(screen.getByLabelText('CPF')).toBeInTheDocument()
+    expect(screen.getByLabelText('Telefone')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Criar conta' })).toBeInTheDocument()
-    expect(apiCalled).toBe(false)
+    expect(loginCalled).toBe(false)
   })
 
-  it('submeter o modo "Criar conta" não chama a API de login e navega para a página fake', async () => {
+  it('aplica máscara progressiva em CPF e Telefone durante a digitação', async () => {
+    const user = userEvent.setup()
+    renderLoginForm()
+    await user.click(screen.getByRole('radio', { name: 'Criar conta' }))
+
+    await user.type(screen.getByLabelText('CPF'), '12345678909')
+    await user.type(screen.getByLabelText('Telefone'), '11999998888')
+
+    expect(screen.getByLabelText('CPF')).toHaveValue('123.456.789-09')
+    expect(screen.getByLabelText('Telefone')).toHaveValue('(11) 99999-8888')
+  })
+
+  it('cadastro com sucesso exibe confirmação e não chama a API de login', async () => {
+    const user = userEvent.setup()
+    let loginCalled = false
+    server.use(
+      http.post(LOGIN_URL, () => {
+        loginCalled = true
+        return HttpResponse.json({ accessToken: 't', expiresIn: 3600, userId: 'u' })
+      }),
+      http.post(REGISTER_URL, () =>
+        HttpResponse.json(
+          { userId: 'uuid-1', email: 'fulano@email.com', name: 'Fulano da Silva', phoneNumber: '11999998888', cpf: '12345678909' },
+          { status: 201 },
+        ),
+      ),
+    )
+
+    renderLoginForm()
+    await user.click(screen.getByRole('radio', { name: 'Criar conta' }))
+    await fillValidSignupForm(user)
+    await user.click(screen.getByRole('button', { name: 'Criar conta' }))
+
+    expect(
+      await screen.findByText('Conta criada! Aguarde a aprovação do administrador para poder entrar.'),
+    ).toBeInTheDocument()
+    expect(loginCalled).toBe(false)
+    expect(useAuthStore.getState().token).toBeNull()
+  })
+
+  it('voltar da confirmação de cadastro retorna ao modo "Entrar"', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.post(REGISTER_URL, () =>
+        HttpResponse.json(
+          { userId: 'uuid-1', email: 'fulano@email.com', name: 'Fulano da Silva', phoneNumber: '11999998888', cpf: '12345678909' },
+          { status: 201 },
+        ),
+      ),
+    )
+
+    renderLoginForm()
+    await user.click(screen.getByRole('radio', { name: 'Criar conta' }))
+    await fillValidSignupForm(user)
+    await user.click(screen.getByRole('button', { name: 'Criar conta' }))
+    await screen.findByText('Conta criada! Aguarde a aprovação do administrador para poder entrar.')
+
+    await user.click(screen.getByRole('button', { name: 'Voltar para o login' }))
+
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeInTheDocument()
+  })
+
+  it('em 409 email-already-exists, exibe mensagem específica', async () => {
+    const user = userEvent.setup()
+    server.use(http.post(REGISTER_URL, () => problem(409, 'email-already-exists')))
+
+    renderLoginForm()
+    await user.click(screen.getByRole('radio', { name: 'Criar conta' }))
+    await fillValidSignupForm(user)
+    await user.click(screen.getByRole('button', { name: 'Criar conta' }))
+
+    expect(await screen.findByText('Este email já está cadastrado.')).toBeInTheDocument()
+  })
+
+  it('em 409 cpf-already-exists, exibe mensagem específica', async () => {
+    const user = userEvent.setup()
+    server.use(http.post(REGISTER_URL, () => problem(409, 'cpf-already-exists')))
+
+    renderLoginForm()
+    await user.click(screen.getByRole('radio', { name: 'Criar conta' }))
+    await fillValidSignupForm(user)
+    await user.click(screen.getByRole('button', { name: 'Criar conta' }))
+
+    expect(await screen.findByText('Este CPF já está cadastrado.')).toBeInTheDocument()
+  })
+
+  it('em erro de rede, exibe mensagem de rede e mantém os campos preenchidos', async () => {
+    const user = userEvent.setup()
+    server.use(http.post(REGISTER_URL, () => HttpResponse.error()))
+
+    renderLoginForm()
+    await user.click(screen.getByRole('radio', { name: 'Criar conta' }))
+    await fillValidSignupForm(user)
+    await user.click(screen.getByRole('button', { name: 'Criar conta' }))
+
+    expect(await screen.findByText('Não foi possível conectar à API. Verifique sua conexão.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Nome')).toHaveValue('Fulano da Silva')
+  })
+
+  it('bloqueia submit com CPF inválido, sem chamar a API', async () => {
     const user = userEvent.setup()
     let apiCalled = false
     server.use(
-      http.post(LOGIN_URL, () => {
+      http.post(REGISTER_URL, () => {
         apiCalled = true
-        return HttpResponse.json({ accessToken: 't', expiresIn: 3600, userId: 'u' })
+        return HttpResponse.json({}, { status: 201 })
       }),
     )
 
     renderLoginForm()
-
     await user.click(screen.getByRole('radio', { name: 'Criar conta' }))
-    await user.type(screen.getByLabelText('Nome'), 'Neto')
-    await user.type(screen.getByLabelText('Email'), 'neto@email.com')
+    await user.type(screen.getByLabelText('Nome'), 'Fulano da Silva')
+    await user.type(screen.getByLabelText('CPF'), '11111111111')
+    await user.type(screen.getByLabelText('Telefone'), '11999998888')
+    await user.type(screen.getByLabelText('Email'), 'fulano@email.com')
     await user.type(screen.getByLabelText('Senha'), 'Senha123')
     await user.click(screen.getByRole('button', { name: 'Criar conta' }))
 
-    expect(await screen.findByText('Página de cadastro fake')).toBeInTheDocument()
+    expect(await screen.findByText('CPF inválido.')).toBeInTheDocument()
     expect(apiCalled).toBe(false)
   })
 })
