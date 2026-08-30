@@ -63,7 +63,7 @@ backend correspondente, já pronto) conforme a coluna "Depende de".
   Depende de: backend FEAT-22 (transações) — já pronto; frontend
   FEAT-22 (categoria com tipo, usada no formulário).
 
-- [ ] **FEAT-24 — Popup de nova receita**
+- [x] **FEAT-24 — Popup de nova receita**
   Adiciona o fluxo de lançar receita (`10-nova-receita.png`),
   reaproveitando o popup unificado de nova transação da FEAT-23 com o
   seletor de tipo já visível no design.
