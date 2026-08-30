@@ -12,15 +12,15 @@ interface TransactionDetailDialogProps {
   onDelete: (transaction: TransactionQueryItem) => void
 }
 
-// Popup "Detalhe da despesa" (FEAT-20) — sem chamada à API, usa o item
-// já carregado na listagem. Só orquestra os popups de editar
-// (`TransactionFormDialog`) e excluir (`TransactionDeleteDialog`) já
-// existentes, sem duplicar lógica de formulário/exclusão. Ganhou a
-// seção "Lançado por" na FEAT-23, mas título e cor do valor continuam
-// fixos como despesa (mesmo que a transação clicada seja uma receita —
-// só pode acontecer com dado inserido fora da UI, já que criar/editar
-// continua restrito a despesa nesta feature); generalizar de fato é
-// escopo da FEAT-25.
+// Popup "Detalhe da despesa/receita" (FEAT-20) — sem chamada à API,
+// usa o item já carregado na listagem. Só orquestra os popups de
+// editar (`TransactionFormDialog`) e excluir (`TransactionDeleteDialog`)
+// já existentes, sem duplicar lógica de formulário/exclusão. Ganhou a
+// seção "Lançado por" na FEAT-23. Título, cor e sinal do valor
+// alternam por tipo desde a FEAT-24 (mesmo padrão de
+// `TransactionList`) — qualquer generalização visual além disso
+// (ícone, demais ajustes finos de `19-detalhe-transacao.png`) continua
+// sendo escopo da FEAT-25.
 export function TransactionDetailDialog({ transaction, onOpenChange, onEdit, onDelete }: TransactionDetailDialogProps) {
   const { items: categories } = useCategories()
   const open = transaction !== null
@@ -43,6 +43,10 @@ export function TransactionDetailDialog({ transaction, onOpenChange, onEdit, onD
   }
 
   const category = categories.find((c) => c.id === transaction.categoryId)
+  const isIncome = transaction.tipo === 'receita'
+  const amountColor = isIncome ? 'var(--color-positive-700)' : 'var(--color-accent-700)'
+  const amountSign = isIncome ? '+ ' : '- '
+  const title = isIncome ? 'Detalhe da receita' : 'Detalhe da despesa'
 
   return (
     <div className="ds-modernist dialog-backdrop" onClick={() => onOpenChange(false)}>
@@ -54,11 +58,12 @@ export function TransactionDetailDialog({ transaction, onOpenChange, onEdit, onD
         onClick={(event) => event.stopPropagation()}
       >
         <div className="dialog-title" id="transaction-detail-title">
-          Detalhe da despesa
+          {title}
         </div>
 
         <div>
-          <div style={{ fontSize: '30px', fontWeight: 800, fontFamily: 'var(--font-heading)', color: 'var(--color-accent-700)' }}>
+          <div style={{ fontSize: '30px', fontWeight: 800, fontFamily: 'var(--font-heading)', color: amountColor }}>
+            {amountSign}
             {formatCentsToCurrency(transaction.amountInCents)}
           </div>
           <div style={{ fontSize: '13px', opacity: 0.6 }}>{transaction.date}</div>

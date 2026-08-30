@@ -18,6 +18,14 @@ const category = {
   createdAt: '2025-06-15T12:00:00Z',
 }
 
+const incomeCategory = {
+  id: 'cat-2',
+  nome: 'Salário',
+  tipo: 'receita',
+  orcamentoMensalCents: null,
+  createdAt: '2025-06-15T12:00:00Z',
+}
+
 const transactionDetail = {
   id: 'tx-1',
   description: 'Almoço no restaurante',
@@ -28,6 +36,18 @@ const transactionDetail = {
   createdByUserId: 'user-1',
   createdByLabel: 'Você',
   createdAt: '2025-06-15T12:00:00Z',
+}
+
+const incomeTransactionDetail = {
+  id: 'tx-2',
+  description: 'Salário mensal',
+  amountInCents: 500000,
+  categoryId: 'cat-2',
+  tipo: 'receita',
+  date: '2025-06-05',
+  createdByUserId: 'user-1',
+  createdByLabel: 'Você',
+  createdAt: '2025-06-05T12:00:00Z',
 }
 
 function renderDialog(props: Partial<React.ComponentProps<typeof TransactionFormDialog>> = {}) {
@@ -47,7 +67,7 @@ describe('TransactionFormDialog', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
-    server.use(http.get(CATEGORIES_URL, () => HttpResponse.json({ items: [category] })))
+    server.use(http.get(CATEGORIES_URL, () => HttpResponse.json({ items: [category, incomeCategory] })))
   })
 
   it('fica fechado quando open é false', () => {
@@ -123,6 +143,40 @@ describe('TransactionFormDialog', () => {
 
     await waitFor(() => expect(onSaved).toHaveBeenCalled())
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  describe('tipo="receita" (FEAT-24)', () => {
+    it('criar com tipo="receita" mostra título "Nova receita" e salva com sucesso', async () => {
+      const user = userEvent.setup()
+      server.use(http.post(TRANSACTIONS_URL, () => HttpResponse.json(incomeTransactionDetail)))
+      const onSaved = vi.fn()
+      const onOpenChange = vi.fn()
+
+      renderDialog({ tipo: 'receita', onSaved, onOpenChange })
+
+      expect(screen.getByText('Nova receita')).toBeInTheDocument()
+      await screen.findByLabelText('Descrição')
+
+      await user.type(screen.getByLabelText('Descrição'), 'Salário mensal')
+      await user.type(screen.getByLabelText('Valor'), '5000,00')
+      await user.selectOptions(screen.getByLabelText('Categoria'), 'cat-2')
+      fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2025-06-05' } })
+
+      await user.click(screen.getByRole('button', { name: /registrar receita/i }))
+
+      await waitFor(() => expect(onSaved).toHaveBeenCalled())
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
+
+    it('editar uma receita mostra título "Editar receita", sem precisar passar tipo por fora', async () => {
+      const TRANSACTION_URL = 'http://localhost:5049/transactions/tx-2'
+      server.use(http.get(TRANSACTION_URL, () => HttpResponse.json(incomeTransactionDetail)))
+
+      renderDialog({ transactionId: 'tx-2' })
+
+      expect(await screen.findByText('Editar receita')).toBeInTheDocument()
+      expect(await screen.findByLabelText('Descrição')).toHaveValue('Salário mensal')
+    })
   })
 
   describe('com transactionId (modo edição, FEAT-18)', () => {

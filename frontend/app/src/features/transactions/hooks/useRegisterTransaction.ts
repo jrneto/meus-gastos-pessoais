@@ -11,7 +11,7 @@ interface UseRegisterTransactionResult {
   success: boolean
 }
 
-export function useRegisterTransaction(): UseRegisterTransactionResult {
+export function useRegisterTransaction(tipo: 'despesa' | 'receita'): UseRegisterTransactionResult {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const [success, setSuccess] = useState(false)
@@ -26,7 +26,7 @@ export function useRegisterTransaction(): UseRegisterTransactionResult {
         description: data.description,
         amountInCents: data.amount,
         categoryId: data.categoryId,
-        tipo: 'despesa', // fixo nesta feature — sem campo correspondente no formulário (FEAT-23)
+        tipo,
         date: data.date,
       })
       setSuccess(true)
