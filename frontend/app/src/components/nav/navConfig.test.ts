@@ -9,14 +9,14 @@ describe('flattenNavItems', () => {
     expect(flat.map((item) => item.id)).toEqual(NAV_TREE.map((item) => item.id))
   })
 
-  it('inclui os 5 itens folha esperados (Início, Transações, Relatórios, Categorias, Configurações)', () => {
+  it('inclui os 6 itens folha esperados (Início, Transações, Relatórios, Categorias, Membros, Configurações)', () => {
     const ids = flattenNavItems().map((item) => item.id)
 
-    expect(ids).toEqual(['home', 'transactions', 'reports', 'categories', 'settings'])
+    expect(ids).toEqual(['home', 'transactions', 'reports', 'categories', 'members', 'settings'])
   })
 
-  it('retorna exatamente 5 itens no total', () => {
-    expect(flattenNavItems()).toHaveLength(5)
+  it('retorna exatamente 6 itens no total', () => {
+    expect(flattenNavItems()).toHaveLength(6)
   })
 
   it('itens mobilePrimary são exatamente os 3 destinos esperados (Início, Transações, Configurações)', () => {
@@ -47,6 +47,14 @@ describe('flattenNavItems', () => {
     expect(categories?.status).toBe('active')
     expect(categories?.to).toBe('/categories')
     expect(categories?.mobilePrimary).toBeFalsy()
+  })
+
+  it('"Membros" está ativo, navegável e fora do mobilePrimary (FEAT-28)', () => {
+    const members = flattenNavItems().find((item) => item.id === 'members')
+
+    expect(members?.status).toBe('active')
+    expect(members?.to).toBe('/members')
+    expect(members?.mobilePrimary).toBeFalsy()
   })
 
   it('"Transações" é um único item apontando para a listagem de transações (FEAT-16)', () => {
