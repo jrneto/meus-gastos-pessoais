@@ -1,16 +1,23 @@
-# Backlog — Backend para o Design System (Modernist)
+# Backlog — Backend
 
 Sequência combinada em 2026-08-22 para o backend alcançar tudo que o
 design system (`frontend/design-system/screenshots/`) já assume, com
-todas as rotas prontas pro frontend consumir. Cada linha vira uma
-`spec.md` própria em `backend/specs/{FEAT-XX-nome}/` via `/specify`,
-seguindo o fluxo normal (`/specify` → `/plan` → `/tasks` → implementar →
-`/review`). Ver `backend/docs/README.md` para o processo.
+todas as rotas prontas pro frontend consumir. Cada linha da seção
+**Features** vira uma `spec.md` própria em
+`backend/specs/{FEAT-XX-nome}/` via `/specify`, seguindo o fluxo normal
+(`/specify` → `/plan` → `/tasks` → implementar → `/review`). Ver
+`backend/docs/README.md` para o processo.
 
-**Como usar este arquivo:** ao terminar uma FEAT (implementada, testada
-100% e revisada), marcar o checkbox correspondente antes de seguir pra
-próxima. Não pular a ordem — cada uma depende da anterior conforme a
-coluna "Depende de".
+**Como usar este arquivo:** o backlog é dividido em 4 seções —
+**Features**, **Bugs**, **Débitos técnicos e melhorias futuras** e
+**Compliance (LGPD)**. Todo item leva um checkbox: `- [x]` quando já
+implementado/testado/revisado, `- [ ]` enquanto pendente. Ao terminar um
+item, marcar o checkbox antes de seguir pro próximo. Na seção
+**Features**, não pular a ordem — cada uma depende da anterior conforme
+a coluna "Depende de". Ao priorizar um item de Bug/Débito/Compliance,
+ele sai da lista de pendências e vira trabalho normal (spec nova via
+`/specify` ou Modo Leve, conforme o caso — ver critério no `/CLAUDE.md`
+raiz).
 
 ## Decisões de modelagem já fechadas (contexto para o `/plan` de cada FEAT)
 
@@ -33,7 +40,7 @@ coluna "Depende de".
   2026-08-22; será formalizado em `backend/docs/data-model.md` conforme
   cada FEAT abaixo for implementada (mesmo padrão já usado pra FEAT-16)
 
-## Sequência
+## Features
 
 - [x] **FEAT-19 — Conta (fundação multi-tenant)**
   Cria `Account` + `Membership` (titular) via trigger `Post
@@ -112,47 +119,49 @@ coluna "Depende de".
   original desta lista, a pedido do usuário, antes da FEAT-27.
   Depende de: FEAT-19, FEAT-16.
 
-## Backlog de compliance (LGPD) — sem previsão de execução
+- [x] **FEAT-30 — Categoria: escopar busca por ID (GSI2) por conta**
+  *(inserida fora da ordem original desta lista — nasceu de um bug
+  encontrado em 2026-08-31 e registrado no backlog, corrigido pelo
+  schema em vez de correção rápida)*
+  Corrige `GSI2PK` de `Category`, que usava só `ID#<categoryId>` e
+  colidia entre contas nas 13 categorias padrão (mesmos ids literais
+  hardcoded pela FEAT-28 em toda conta nova). Passa a
+  `ID#<accountId>#<categoryId>`, alinhado ao mesmo padrão de escopo por
+  conta já usado no resto do modelo. Ver
+  `backend/specs/FEAT-30-categoria-gsi2-escopo-conta/`.
+  Depende de: FEAT-19, FEAT-28.
 
-Levantado durante o `/specify` da FEAT-26 (coleta de CPF no cadastro).
-Sem timeline — só entram na `## Sequência` quando o usuário decidir
-priorizar, ex.: se o projeto deixar de ser uso pessoal.
+## Bugs
 
-- **Direito de exclusão/anonimização** (`Art. 16` LGPD): hoje não existe
-  fluxo de encerramento de conta; ao existir, precisa apagar ou
-  anonimizar nome/telefone/CPF, não reter indefinidamente
-- **Direito de retificação** (`Art. 18` LGPD): edição do próprio perfil
-  (nome/telefone/CPF) pelo usuário — hoje fora do escopo da FEAT-26
-  de propósito
-- **Base legal e consentimento explícito** (`Art. 7º`/`Art. 9º` LGPD):
-  tela de cadastro sem Termos de Uso/Política de Privacidade hoje —
-  necessário formalizar a finalidade da coleta de CPF antes de
-  qualquer uso além de identificação da conta
-- **Transferência internacional de dados** (`Art. 33` LGPD): infra de
-  produção roda em `us-east-1` (`backend/infra/terraform/environments/
-  prod/variables.tf`) — reavaliar migração para `sa-east-1` (São Paulo)
-  se o volume de dados pessoais justificar simplificar essa exigência
-- **Encarregado (DPO) e plano de resposta a incidente**: não
-  obrigatório no porte atual, mas necessário antes de qualquer escala
-  maior, dado que CPF é alvo preferencial de fraude
+- [x] **BUG — Login não exige perfil completo quando o usuário é criado
+  diretamente no Cognito** (levantado em 2026-08-31, fora do escopo de
+  qualquer FEAT em andamento) *(resolvido, ver
+  `backend/specs/FEAT-31-login-perfil-incompleto/`)*: o fluxo normal
+  (`POST /auth/register`, FEAT-26) exige `name`, `phoneNumber` e `cpf`
+  antes de criar o perfil no DynamoDB. Mas se um administrador cadastra
+  o usuário proativamente no Cognito (fora do `/auth/register`) e já
+  confirma o acesso, `LoginUserCommandHandler` autenticava via
+  `IAuthService.LoginAsync` sem checar se existe perfil com os campos
+  obrigatórios preenchidos — o usuário logava normalmente mesmo sem
+  nome/CPF/telefone cadastrados. FEAT-31 bloqueou o login (403
+  `profile-incomplete`) nesse caso.
 
 ## Débitos técnicos e melhorias futuras
 
 Itens levantados durante specify/plan/tasks/implementação/review ou
 Modo Leve, fora do escopo do que estava sendo feito no momento — ver
 "Débitos técnicos e oportunidades de melhoria" no `/CLAUDE.md` raiz do
-monorepo. Ao priorizar um item, ele vira `spec.md` própria (Fluxo
-Completo) ou é resolvido direto (Modo Leve) e sai desta lista.
+monorepo.
 
-- **Módulos sem teste integrado ainda** (levantado na FEAT-29 —
-  `backend/specs/FEAT-29-testes-integrados/`): a infraestrutura de
-  testes integrados (suíte multiambiente, execução local via Docker/
-  Native AOT/Runtime Interface Emulator, gates de CI/CD em hom/prod)
-  foi entregue cobrindo só o módulo Auth como prova de conceito — os
-  demais módulos existentes continuam sem teste integrado, cobertos só
-  por teste de componente (mocks). Preencher incrementalmente, seguindo
-  o padrão já estabelecido (`TestAccountFixture` +
-  `<Modulo>/<Modulo>FlowTests.cs`, ver
+- [ ] **DÉBITO — Módulos sem teste integrado ainda** (levantado na
+  FEAT-29 — `backend/specs/FEAT-29-testes-integrados/`): a
+  infraestrutura de testes integrados (suíte multiambiente, execução
+  local via Docker/Native AOT/Runtime Interface Emulator, gates de
+  CI/CD em hom/prod) foi entregue cobrindo só o módulo Auth como prova
+  de conceito — os demais módulos existentes continuam sem teste
+  integrado, cobertos só por teste de componente (mocks). Preencher
+  incrementalmente, seguindo o padrão já estabelecido
+  (`TestAccountFixture` + `<Modulo>/<Modulo>FlowTests.cs`, ver
   `backend/specs/FEAT-29-testes-integrados/plan.md`):
   - Categorias (`FEAT-16-crud-categorias`, `FEAT-21-categoria-tipo-orcamento`)
   - Transações (`FEAT-22-transacoes-receita-despesa`)
@@ -161,31 +170,52 @@ Completo) ou é resolvido direto (Modo Leve) e sai desta lista.
   - Relatórios por período (`FEAT-24-relatorios-por-periodo`)
   - Exportação CSV (`FEAT-25-exportacao-csv-transacoes`)
   - Perfil do usuário (`FEAT-26-perfil-usuario-cadastro`)
-- **Login não exige perfil completo quando o usuário é criado
-  diretamente no Cognito** (levantado em 2026-08-31, fora do escopo de
-  qualquer FEAT em andamento): o fluxo normal (`POST /auth/register`,
-  FEAT-26) exige `name`, `phoneNumber` e `cpf` antes de criar o
-  perfil no DynamoDB. Mas se um administrador cadastra o usuário
-  proativamente no Cognito (fora do `/auth/register`) e já confirma o
-  acesso, `LoginUserCommandHandler`
-  (`backend/src/GastosApp.Application/Auth/Commands/Login/LoginUserCommand.cs`)
-  autentica via `IAuthService.LoginAsync` sem checar se existe perfil
-  com os campos obrigatórios preenchidos — o usuário loga normalmente
-  mesmo sem nome/CPF/telefone cadastrados. Precisa: no login, validar
-  se o perfil obrigatório existe e está completo; se não, bloquear o
-  login (ou redirecionar para completar cadastro) mesmo que o acesso já
-  esteja confirmado/aprovado no Cognito.
-- **`DELETE /members` remove o membro em vez de inativá-lo** (confirmado
-  com o usuário durante a FEAT-22): deveria bloquear a remoção de um
-  membro que já lançou transações, transformando-o em `Inativo` (novo
-  `Status` de `Membership`) em vez de removê-lo de fato — um membro
-  `Inativo` continuaria aparecendo como `createdByLabel` nas transações
-  que já criou. Hoje (FEAT-20/FEAT-22) `DELETE /members` remove o
-  `Membership` incondicionalmente; transações de um membro removido
-  caem no fallback `createdByLabel="Ex-membro"` (ver
-  `backend/specs/FEAT-22-transacoes-receita-despesa/`)
+
+- [ ] **DÉBITO — `DELETE /members` remove o membro em vez de
+  inativá-lo** (confirmado com o usuário durante a FEAT-22): deveria
+  bloquear a remoção de um membro que já lançou transações,
+  transformando-o em `Inativo` (novo `Status` de `Membership`) em vez
+  de removê-lo de fato — um membro `Inativo` continuaria aparecendo
+  como `createdByLabel` nas transações que já criou. Hoje
+  (FEAT-20/FEAT-22) `DELETE /members` remove o `Membership`
+  incondicionalmente; transações de um membro removido caem no
+  fallback `createdByLabel="Ex-membro"` (ver
+  `backend/specs/FEAT-22-transacoes-receita-despesa/`).
+
+## Compliance (LGPD)
+
+Levantado durante o `/specify` da FEAT-26 (coleta de CPF no cadastro).
+Sem timeline — só entram na seção **Features** quando o usuário decidir
+priorizar, ex.: se o projeto deixar de ser uso pessoal.
+
+- [ ] **LGPD — Direito de exclusão/anonimização** (`Art. 16` LGPD): hoje
+  não existe fluxo de encerramento de conta; ao existir, precisa apagar
+  ou anonimizar nome/telefone/CPF, não reter indefinidamente.
+
+- [ ] **LGPD — Direito de retificação** (`Art. 18` LGPD): edição do
+  próprio perfil (nome/telefone/CPF) pelo usuário — hoje fora do escopo
+  da FEAT-26 de propósito.
+
+- [ ] **LGPD — Base legal e consentimento explícito** (`Art. 7º`/`Art.
+  9º` LGPD): tela de cadastro sem Termos de Uso/Política de Privacidade
+  hoje — necessário formalizar a finalidade da coleta de CPF antes de
+  qualquer uso além de identificação da conta.
+
+- [ ] **LGPD — Transferência internacional de dados** (`Art. 33` LGPD):
+  infra de produção roda em `us-east-1`
+  (`backend/infra/terraform/environments/prod/variables.tf`) —
+  reavaliar migração para `sa-east-1` (São Paulo) se o volume de dados
+  pessoais justificar simplificar essa exigência.
+
+- [ ] **LGPD — Encarregado (DPO) e plano de resposta a incidente**: não
+  obrigatório no porte atual, mas necessário antes de qualquer escala
+  maior, dado que CPF é alvo preferencial de fraude.
 
 ## Fora desta leva, de propósito
+
+Itens deliberadamente fora de escopo — não são pendências, não entram
+como checkbox. Só migram pra uma das seções acima se houver decisão
+explícita de priorizar.
 
 - Comprovante/anexo real (upload S3)
 - Agregação materializada / DynamoDB Streams
