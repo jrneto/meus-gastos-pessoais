@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { BarChart3, Home, ListFilter, Settings, Tag } from 'lucide-react'
+import { BarChart3, Home, ListFilter, Settings, Tag, Users } from 'lucide-react'
 
 export type NavItemStatus = 'active' | 'placeholder'
 
@@ -31,6 +31,7 @@ export const NAV_TREE: NavItem[] = [
   },
   { id: 'reports', label: 'Relatórios', icon: BarChart3, to: '/reports', status: 'active' },
   { id: 'categories', label: 'Categorias', icon: Tag, to: '/categories', status: 'active' },
+  { id: 'members', label: 'Membros', icon: Users, to: '/members', status: 'active' },
   {
     id: 'settings',
     label: 'Configurações',
