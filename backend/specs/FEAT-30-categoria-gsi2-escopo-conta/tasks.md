@@ -16,13 +16,13 @@
 
 - [x] 8. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~DynamoDbCategoryRepositoryTests` e confirmar tudo passando
 
-- [ ] 9. Atualizar `CreateAsync_ShouldWriteAccountPointerAccountAndMembership_WhenNoConflict...` (ou nome atual do teste, `backend/tests/GastosApp.UnitTests/Infrastructure/DynamoDbAccountRepositoryTests.cs`, linha ~110) — assert de cada uma das 13 categorias padrão passa de `Put.Item["GSI2PK"].S == $"ID#{id}"` para `== $"ID#{accountId}#{id}"`
+- [x] 9. Atualizar `CreateAsync_ShouldWriteAccountPointerAccountAndMembership_WhenNoConflict...` (ou nome atual do teste, `backend/tests/GastosApp.UnitTests/Infrastructure/DynamoDbAccountRepositoryTests.cs`, linha ~110) — assert de cada uma das 13 categorias padrão passa de `Put.Item["GSI2PK"].S == $"ID#{id}"` para `== $"ID#{accountId}#{id}"`
 
-- [ ] 10. Atualizar `backend/docs/data-model.md` — seção `Category`: linha do `GSI2PK` (`ID#<id>` → `ID#<accountId>#<categoryId>`) e a frase que descreve o mecanismo de busca; seção "Espaço de chave compartilhado entre tipos de item de uma conta": ajustar para refletir que `Category` e `Transaction` não compartilham mais o mesmo formato de `GSI2PK` (ver `plan.md`, seção 5, para o texto orientador)
+- [x] 10. Atualizar `backend/docs/data-model.md` — seção `Category`: linha do `GSI2PK` (`ID#<id>` → `ID#<accountId>#<categoryId>`) e a frase que descreve o mecanismo de busca; seção "Espaço de chave compartilhado entre tipos de item de uma conta": ajustar para refletir que `Category` e `Transaction` não compartilham mais o mesmo formato de `GSI2PK` (ver `plan.md`, seção 5, para o texto orientador)
 
-- [ ] 11. Rodar `dotnet build backend/GastosApp.sln` e `dotnet test backend/GastosApp.sln` (suíte completa unit + componente) — sem regressão, incluindo `CategoryEndpointsTests`/`TransactionEndpointsTests` (mockam `ICategoryRepository`, não `DynamoDbCategoryRepository` real — não devem precisar de ajuste)
+- [x] 11. Rodar `dotnet build backend/GastosApp.sln` e `dotnet test backend/GastosApp.sln` (suíte completa unit + componente) — sem regressão, incluindo `CategoryEndpointsTests`/`TransactionEndpointsTests` (mockam `ICategoryRepository`, não `DynamoDbCategoryRepository` real — não devem precisar de ajuste)
 
-- [ ] 12. Rodar `./scripts/export-openapi.sh` e conferir via `git diff` que `backend/docs/openapi.json` não tem nenhuma diferença de contrato
+- [x] 12. Rodar `./scripts/export-openapi.sh` e conferir via `git diff` que `backend/docs/openapi.json` não tem nenhuma diferença de contrato
 
 - [ ] 13. Marcar os critérios de aceite concluídos em `backend/specs/FEAT-30-categoria-gsi2-escopo-conta/spec.md` e preencher a seção "Status" (nova), resumindo o que foi implementado — inclui registrar explicitamente que não houve teste integrado nesta feature, por decisão do usuário
 

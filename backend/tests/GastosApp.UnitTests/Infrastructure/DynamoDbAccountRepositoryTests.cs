@@ -107,7 +107,7 @@ public class DynamoDbAccountRepositoryTests
 
             categoryItem.Item["PK"].S.Should().Be($"ACCOUNT#{result.AccountId}");
             categoryItem.Item["SK"].S.Should().Be($"CAT#{CategorySlug.From(nome)}");
-            categoryItem.Item["GSI2PK"].S.Should().Be($"ID#{id}");
+            categoryItem.Item["GSI2PK"].S.Should().Be($"ID#{result.AccountId}#{id}");
             categoryItem.Item["Nome"].S.Should().Be(nome);
             categoryItem.Item["Tipo"].S.Should().Be("categoria");
             categoryItem.Item["TipoLancamento"].S.Should().Be("despesa");
