@@ -107,8 +107,9 @@ enviado para {email}.".
 - Ao confirmar o convite, `POST /members` é chamado; enquanto pendente,
   o popup mostra o overlay de processamento (decisão 2), com os botões
   "Cancelar"/"Enviar convite" desabilitados; ao suceder, o popup fecha,
-  a lista é recarregada e um toast "Convite enviado para {email}."
-  aparece (decisão 2)
+  a lista passa a incluir o novo convite (via estado local, sem um novo
+  `GET /members` — ver plan.md) e um toast "Convite enviado para
+  {email}." aparece (decisão 2)
 - Convite pra e-mail já membro da conta (pendente ou ativo) retorna 409
   — o popup permanece aberto com uma mensagem de erro inline (o toast é
   só pra sucesso)
@@ -116,12 +117,13 @@ enviado para {email}.".
   falha (rede, erro inesperado) reverte visualmente o seletor pro papel
   anterior e mostra uma mensagem de erro inline na linha do membro
 - Remover um membro exige confirmar num diálogo (decisão 4); ao
-  confirmar, `DELETE /members/{id}` é chamado e a lista é recarregada
+  confirmar, `DELETE /members/{id}` é chamado e o membro sai da lista
+  (via estado local, sem um novo `GET /members` — ver plan.md)
 - Erros de API mapeados em classes tipadas próprias desta feature
   (`SessionExpiredError`, `NetworkError`, `ValidationError`,
   `ConflictError`, `NotFoundError`, `ForbiddenError`,
   `CannotModifyTitularError`, `CannotRemoveTitularError`,
-  `UnknownMembersError`) — os três últimos (`Forbidden`,
+  `UnknownMemberError`) — os três últimos (`Forbidden`,
   `CannotModifyTitular`, `CannotRemoveTitular`) não são alcançáveis em
   uso normal dado o comportamento da UI (decisões 1 e 4), mas são
   tratados defensivamente (ex.: outra sessão do Titular removeu o
@@ -264,31 +266,31 @@ Response 422: `{ "type": "https://gastosapp.dev/errors/cannot-remove-titular", "
 
 ## Critérios de aceite
 
-- [ ] Tela "Membros da conta" acessível por um novo item de menu,
+- [x] Tela "Membros da conta" acessível por um novo item de menu,
       buscando `GET /members` e `GET /auth/me` ao carregar
-- [ ] Linha do Titular sempre destacada separadamente, com tag
+- [x] Linha do Titular sempre destacada separadamente, com tag
       "Titular" e descrição "Acesso total · gerencia membros"
-- [ ] Titular vê seletor de papel e ícone de remover em cada membro
+- [x] Titular vê seletor de papel e ícone de remover em cada membro
       (exceto na própria linha), e o botão "+ Convidar pessoa"
-- [ ] Não-Titular vê a lista completa, mas sem seletor de papel, sem
+- [x] Não-Titular vê a lista completa, mas sem seletor de papel, sem
       ícone de remover e sem o botão "+ Convidar pessoa"
-- [ ] Linha do usuário logado (Titular ou não) mostra o indicador
+- [x] Linha do usuário logado (Titular ou não) mostra o indicador
       "(você)"
-- [ ] Convite com sucesso mostra overlay de processamento, fecha o
+- [x] Convite com sucesso mostra overlay de processamento, fecha o
       popup, recarrega a lista e mostra toast de confirmação
-- [ ] Convite para e-mail já membro mostra erro inline no popup, sem
+- [x] Convite para e-mail já membro mostra erro inline no popup, sem
       toast
-- [ ] Trocar o papel de um membro chama `PUT` imediatamente e reflete
+- [x] Trocar o papel de um membro chama `PUT` imediatamente e reflete
       no seletor
-- [ ] Falha ao trocar o papel reverte o seletor e mostra erro inline
-- [ ] Remover um membro exige confirmação; confirmar chama `DELETE` e
+- [x] Falha ao trocar o papel reverte o seletor e mostra erro inline
+- [x] Remover um membro exige confirmação; confirmar chama `DELETE` e
       atualiza a lista; cancelar não chama a API
-- [ ] Sessão expirada ao carregar segue o comportamento já existente
+- [x] Sessão expirada ao carregar segue o comportamento já existente
       nas demais telas
-- [ ] Componentes de toast e overlay de processamento são genéricos
+- [x] Componentes de toast e overlay de processamento são genéricos
       (reutilizáveis por outras features no futuro), documentados como
       tal no `plan.md`
-- [ ] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima,
+- [x] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima,
       100% dos testes passando
 
 ## Fora do escopo
