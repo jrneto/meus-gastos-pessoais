@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
@@ -76,6 +76,24 @@ describe('RecentTransactionsList', () => {
     render(<RecentTransactionsList items={[{ ...expenseItem, categoryId: 'inexistente' }]} />)
 
     expect(await screen.findByText('Categoria não encontrada · 2026-08-24')).toBeInTheDocument()
+  })
+
+  it('não mostra "Categoria não encontrada" enquanto useCategories ainda carrega', async () => {
+    server.use(
+      http.get(CATEGORIES_URL, async () => {
+        await delay(50)
+        return HttpResponse.json({ items: [category, incomeCategory] })
+      }),
+    )
+
+    render(<RecentTransactionsList items={[expenseItem]} />)
+
+    // No instante inicial (categorias ainda carregando), a categoria
+    // real não pode aparecer como "não encontrada" — só um flash de
+    // timing, não um dado ausente de verdade.
+    expect(screen.queryByText(/Categoria não encontrada/)).not.toBeInTheDocument()
+
+    expect(await screen.findByText('Alimentação · 2026-08-24')).toBeInTheDocument()
   })
 
   it('lista vazia mostra estado vazio', () => {

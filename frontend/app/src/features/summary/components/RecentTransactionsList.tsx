@@ -14,7 +14,7 @@ interface RecentTransactionsListProps {
 // `TransactionList`/`TransactionDetailDialog` (features/transactions),
 // já que uma feature nunca importa de dentro de outra (constitution).
 export function RecentTransactionsList({ items }: RecentTransactionsListProps) {
-  const { items: categories } = useCategories()
+  const { items: categories, isLoading: categoriesLoading } = useCategories()
 
   if (items.length === 0) {
     return (
@@ -28,6 +28,12 @@ export function RecentTransactionsList({ items }: RecentTransactionsListProps) {
     <div className="ds-modernist" style={{ display: 'flex', flexDirection: 'column' }}>
       {items.map((item) => {
         const category = categories.find((c) => c.id === item.categoryId)
+        // Enquanto `useCategories` ainda carrega, `category` vem
+        // undefined mesmo pra uma categoria que existe de verdade —
+        // evita o flash de "Categoria não encontrada" nesse instante
+        // (a categoria some de fato só quando `categoriesLoading` já
+        // terminou e ainda assim não é encontrada).
+        const categoryLabel = category ? category.nome : categoriesLoading ? '' : 'Categoria não encontrada'
         const isIncome = item.tipo === 'receita'
         const amountColor = isIncome ? 'var(--color-positive-700)' : 'var(--color-accent-700)'
         const amountSign = isIncome ? '+ ' : '- '
@@ -43,13 +49,13 @@ export function RecentTransactionsList({ items }: RecentTransactionsListProps) {
               borderBottom: '1px solid var(--color-divider)',
             }}
           >
-            <CategoryLetterTile name={category?.nome ?? '?'} />
+            <CategoryLetterTile name={category?.nome ?? (categoriesLoading ? '' : '?')} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {item.description}
               </div>
               <div style={{ fontSize: '11px', opacity: 0.55 }}>
-                {category ? category.nome : 'Categoria não encontrada'} · {item.date}
+                {categoryLabel} · {item.date}
               </div>
             </div>
             <div style={{ fontSize: '13px', fontWeight: 600, color: amountColor, whiteSpace: 'nowrap' }}>
