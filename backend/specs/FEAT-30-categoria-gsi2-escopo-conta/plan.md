@@ -175,9 +175,18 @@ categoria existe de fato na conta do chamador.
 - Testes de componente (`CategoryEndpointsTests`,
   `TransactionEndpointsTests` para a validação de `categoryId`): sem
   mudança de contrato esperada, só confirmar ausência de regressão.
-- Novo teste integrado cobrindo o repro exato da US1 do `spec.md`
-  (duas contas, categoria padrão de mesmo id, `POST /transactions` na
-  segunda conta não retorna mais 400) — API real, sem dublês.
+- **Sem teste integrado nesta feature** (decisão do usuário): hoje só
+  `AuthFlowTests` existe em `GastosApp.IntegrationTests` — categorias,
+  transações e membros/convites ainda não têm nenhuma infraestrutura
+  de teste integrado (débito técnico já registrado,
+  `backend/specs/FEAT-29-testes-integrados/spec.md`). Reproduzir a
+  US1 via teste integrado exigiria construir do zero a infra de
+  `POST /members`/aceite de convite só para esta correção — fora de
+  proporção para um bugfix. A cobertura de unit + componente já
+  garante a query correta ao `GSI2` e a ausência de regressão de
+  contrato; a lacuna de teste integrado do módulo `categories`/
+  `transactions` continua coberta pelo débito técnico já existente,
+  sem crescer nem encolher por causa desta feature.
 - Regenerar `backend/docs/openapi.json`: sem diff esperado (confirma o
   "Contratos da API" do `spec.md`).
 

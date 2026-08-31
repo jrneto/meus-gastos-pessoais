@@ -178,8 +178,11 @@ mudança, dado que é uma correção interna.
       regenerado sem diffs de contrato
 - [ ] `backend/docs/data-model.md` (seção `Category`) atualizado com o
       novo formato de `GSI2PK`
-- [ ] Suíte de testes (unitário/componente, e integrado cobrindo pelo
-      menos o cenário de colisão entre contas) passando
+- [ ] Suíte de testes (unitário/componente) passando — sem teste
+      integrado nesta feature, por decisão do usuário (ver "Fora do
+      escopo": lacuna de teste integrado de `categories`/
+      `transactions` continua coberta pelo débito técnico já
+      registrado na FEAT-29)
 - [ ] Tabelas `GastosApp`/`GastosApp-Hom`/`GastosApp-Local` zeradas
       pelo usuário em todos os ambientes antes do deploy desta
       correção (pré-condição, fora do escopo de implementação desta
@@ -202,3 +205,8 @@ mudança, dado que é uma correção interna.
 - Migração/backfill de dado de categoria já gravado — não é
   necessário: o usuário garantirá as tabelas zeradas em todos os
   ambientes antes do deploy desta correção (ver "Contexto")
+- Teste integrado do repro (US1) ou de qualquer outro cenário desta
+  feature — decisão do usuário, por não existir ainda infraestrutura
+  de teste integrado para `categories`/`transactions`/`members`
+  (débito técnico já registrado, `backend/specs/FEAT-29-testes-integrados/spec.md`);
+  cobertura fica em unit + componente
