@@ -186,10 +186,10 @@ mudança, dado que é uma correção interna.
       escopo": lacuna de teste integrado de `categories`/
       `transactions` continua coberta pelo débito técnico já
       registrado na FEAT-29)
-- [ ] Tabelas `GastosApp`/`GastosApp-Hom`/`GastosApp-Local` zeradas
+- [x] Tabelas `GastosApp`/`GastosApp-Hom`/`GastosApp-Local` zeradas
       pelo usuário em todos os ambientes antes do deploy desta
       correção (pré-condição, fora do escopo de implementação desta
-      feature — pendente do lado do usuário, ver "Status")
+      feature — confirmado pelo usuário, ver "Status")
 
 ## Status
 
@@ -230,10 +230,12 @@ Teste de integração (`AuthFlowTests`, não relacionado a esta mudança)
 não rodou nesta sessão por falta da API local ativa no momento da
 execução — fora do escopo desta feature de qualquer forma (ver acima).
 
-**Pendência antes do deploy**: o usuário ainda precisa zerar as
-tabelas `GastosApp`/`GastosApp-Hom`/`GastosApp-Local` em todos os
-ambientes — pré-condição desta correção, fora do que a implementação
-em si garante.
+**Tabelas zeradas e validação manual**: o usuário confirmou as tabelas
+`GastosApp`/`GastosApp-Hom`/`GastosApp-Local` zeradas em todos os
+ambientes e testou manualmente em local — funcionou, sem 400
+`"Categoria inválida."` no cenário de repro. Sem validação manual
+registrada em hom/prod nesta sessão (fora do escopo desta spec — fica
+a critério do usuário antes/depois do deploy em cada ambiente).
 
 ## Fora do escopo
 
