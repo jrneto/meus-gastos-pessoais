@@ -161,6 +161,20 @@ Completo) ou é resolvido direto (Modo Leve) e sai desta lista.
   - Relatórios por período (`FEAT-24-relatorios-por-periodo`)
   - Exportação CSV (`FEAT-25-exportacao-csv-transacoes`)
   - Perfil do usuário (`FEAT-26-perfil-usuario-cadastro`)
+- **Login não exige perfil completo quando o usuário é criado
+  diretamente no Cognito** (levantado em 2026-08-31, fora do escopo de
+  qualquer FEAT em andamento): o fluxo normal (`POST /auth/register`,
+  FEAT-26) exige `name`, `phoneNumber` e `cpf` antes de criar o
+  perfil no DynamoDB. Mas se um administrador cadastra o usuário
+  proativamente no Cognito (fora do `/auth/register`) e já confirma o
+  acesso, `LoginUserCommandHandler`
+  (`backend/src/GastosApp.Application/Auth/Commands/Login/LoginUserCommand.cs`)
+  autentica via `IAuthService.LoginAsync` sem checar se existe perfil
+  com os campos obrigatórios preenchidos — o usuário loga normalmente
+  mesmo sem nome/CPF/telefone cadastrados. Precisa: no login, validar
+  se o perfil obrigatório existe e está completo; se não, bloquear o
+  login (ou redirecionar para completar cadastro) mesmo que o acesso já
+  esteja confirmado/aprovado no Cognito.
 - **`DELETE /members` remove o membro em vez de inativá-lo** (confirmado
   com o usuário durante a FEAT-22): deveria bloquear a remoção de um
   membro que já lançou transações, transformando-o em `Inativo` (novo
