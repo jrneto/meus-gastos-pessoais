@@ -94,10 +94,15 @@ backend correspondente, já pronto) conforme a coluna "Depende de".
   Substitui `ReportsComingSoonPage` pela tela de relatórios por período
   (`12-relatorios.png`): gasto por categoria, total do período,
   variação vs período anterior, maior gasto — consumindo `GET
-  /reports?period=`. Primeira feature do frontend a precisar de
-  gráfico — introduzir Tremor aqui (ver `constitution.md`).
+  /reports?period=`.
   Depende de: backend FEAT-24 (relatórios) — já pronto; frontend
   FEAT-23.
+  **Decisão tomada no `/specify` (2026-08-31): não introduz Tremor.**
+  O `.dc.html` (fonte de verdade) mostra a tela só com barras
+  proporcionais simples (`.je-track`/`.je-fill`), mesmo padrão sem lib
+  externa já usado nas FEAT-22/FEAT-26 — nenhum gráfico de linha/pizza
+  aparece no protótipo. A introdução do Tremor fica adiada pra quando
+  uma tela realmente exigir esse tipo de visualização.
 
 - [ ] **FEAT-28 — Membros da conta e convites**
   Nova feature `members`: listagem de membros (`14-membros.png`),
