@@ -7,8 +7,9 @@ escopada por conta: quando duas contas têm categorias com o mesmo
 `id` — hoje sempre verdade para as 13 categorias padrão (FEAT-28),
 que usam os mesmos ids literais em toda conta nova — a busca pode
 devolver o item da conta errada, e o código atual trata isso como
-"não encontrado". Inclui o backfill dos itens de categoria já
-gravados em homologação/produção, exigido pela mudança de chave.
+"não encontrado". Inclui a atualização da documentação de dados
+(`backend/docs/data-model.md`) para refletir o novo formato de
+`GSI2PK` de `Category`.
 
 ## Contexto
 
@@ -51,17 +52,21 @@ resolve a causa). O `GSI2PK` de categoria passa a incluir o
 `accountId`: `ID#<accountId>#<categoryId>` em vez de só
 `ID#<categoryId>` — busca passa a ser precisa por conta+id, sem
 colisão possível, já que quem chama sempre conhece o `accountId` do
-requisitante (extraído do JWT, como em todo o resto da API). Essa
-mudança de chave exige **migração/backfill dos itens de categoria já
-gravados** em qualquer ambiente com dado real (homologação/produção;
-local também se o ambiente Docker tiver dado persistido) — o `GSI2PK`
-atual desses itens não muda sozinho.
+requisitante (extraído do JWT, como em todo o resto da API).
 
 `GSI2` já é uma GSI só com hash key (`GSI2PK`, `Projection:
 KEYS_ONLY`, ver `backend/infra/scripts/init-dynamodb.sh` e o
 Terraform equivalente de hom/prod) — mudar o **formato do valor**
 gravado em `GSI2PK` não exige alterar a definição da tabela/GSI no
 Terraform, só o dado em si.
+
+**Sem necessidade de backfill:** o usuário confirmou que garantirá as
+tabelas `GastosApp`/`GastosApp-Hom`/`GastosApp-Local` zeradas (sem
+dado de categoria pré-existente) em todos os ambientes antes do
+deploy desta correção — por conta disso, esta feature não precisa de
+migração/backfill de dado já gravado, nem de nenhuma estratégia de
+leitura dupla/transição para não quebrar categorias existentes. A
+correção de schema é aplicada diretamente, como cutover simples.
 
 **Fora de escopo desta spec, por decisão consciente:** aplicar o
 mesmo tratamento ao `GSI2` de `Transação`
@@ -91,20 +96,12 @@ ganhar ids compartilhados entre contas (não é o caso hoje).
   /transactions` continuam retornando 404 (ou 400
   `"Categoria inválida."`, conforme já documentado) quando o id não
   existe **na conta do chamador** — mesmo que exista em outra conta.
-- Todo item de categoria gravado antes desta correção (qualquer
-  ambiente com dado real) precisa ser corrigido para o novo formato
-  de `GSI2PK` — sem perda de dado, sem downtime perceptível para
-  quem estiver usando o sistema durante a migração, e sem exigir
-  recriação da tabela (dado real já existe em hom/prod desde a
-  FEAT-19, diferente da decisão "tabela pode ser recriada do zero"
-  que só valia até então).
-- Depois do backfill, toda categoria (seedada ou criada por usuário,
-  de antes ou depois desta correção) é buscável, editável e excluível
-  normalmente pelo novo formato de `GSI2PK` — nenhuma categoria fica
-  "órfã" (inacessível por id) como efeito colateral da migração.
 - Nenhum contrato de API observável muda nesta feature (mesmos
   endpoints, mesmo request/response, mesmos status codes) — é
   correção interna de chave de acesso ao dado.
+- `backend/docs/data-model.md` (seção `Category`) passa a documentar
+  o novo formato de `GSI2PK` — a documentação de dados nunca fica
+  divergente do que o código realmente grava.
 
 ## User Stories
 
@@ -148,14 +145,6 @@ ganhar ids compartilhados entre contas (não é o caso hoje).
 - Then a API retorna 404 `not-found` — o item de mesmo id em outra
   conta nunca "vaza" como resultado
 
-**US6 — Categoria gravada antes da correção continua acessível após o backfill**
-- Given uma categoria criada antes desta correção (com o `GSI2PK`
-  antigo, sem `accountId`), já corrigida pelo processo de backfill
-- When o dono chama `GET`/`PUT`/`DELETE /categories/{id}` ou
-  referencia essa categoria num `POST`/`PUT /transactions`
-- Then o comportamento é idêntico ao de uma categoria criada depois
-  da correção — sem diferença perceptível pro usuário
-
 ## Contratos da API
 
 Esta feature **não introduz nem altera nenhum endpoint, campo ou
@@ -185,17 +174,16 @@ mudança, dado que é uma correção interna.
       com o mesmo id (US2, US3, US4)
 - [ ] Id inexistente na própria conta continua retornando 404, mesmo
       existindo em outra conta (US5)
-- [ ] Processo de backfill definido e executado com sucesso sobre os
-      itens de categoria já gravados em local (se houver dado
-      persistido), homologação e produção — sem perda de dado e sem
-      downtime perceptível
-- [ ] Categoria gravada antes da correção continua acessível
-      (get/update/delete, e referenciável em transações) normalmente
-      depois do backfill (US6)
 - [ ] Nenhum contrato de API muda — `backend/docs/openapi.json`
       regenerado sem diffs de contrato
+- [ ] `backend/docs/data-model.md` (seção `Category`) atualizado com o
+      novo formato de `GSI2PK`
 - [ ] Suíte de testes (unitário/componente, e integrado cobrindo pelo
       menos o cenário de colisão entre contas) passando
+- [ ] Tabelas `GastosApp`/`GastosApp-Hom`/`GastosApp-Local` zeradas
+      pelo usuário em todos os ambientes antes do deploy desta
+      correção (pré-condição, fora do escopo de implementação desta
+      feature)
 
 ## Fora do escopo
 
@@ -211,3 +199,6 @@ mudança, dado que é uma correção interna.
 - Login não exigir perfil completo quando o usuário é criado
   diretamente no Cognito — outro item separado do backlog, sem
   relação
+- Migração/backfill de dado de categoria já gravado — não é
+  necessário: o usuário garantirá as tabelas zeradas em todos os
+  ambientes antes do deploy desta correção (ver "Contexto")
