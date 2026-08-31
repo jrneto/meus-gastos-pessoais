@@ -21,8 +21,8 @@
  * migração (`.btn`, `.field`/`.input`, `.seg`/`.seg-opt` na FEAT-14;
  * `.dialog-backdrop`/`.dialog` na FEAT-15; `.tag`/`.table` na FEAT-16;
  * `.card`/`.elev-sm` e a barra de progresso `.je-track`/`.je-fill` na
- * FEAT-26). O restante do sistema entra quando a tela que o usa for
- * migrada.
+ * FEAT-26; `.card-title` na FEAT-27). O restante do sistema entra
+ * quando a tela que o usa for migrada.
  */
 @import '@fontsource-variable/archivo';
 
@@ -376,6 +376,12 @@
 }
 .ds-modernist .elev-sm {
   box-shadow: var(--shadow-sm);
+}
+.ds-modernist .card-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 17px;
+  line-height: 1.2;
 }
 
 /* — barra de progresso (dashboard, FEAT-26) — classes do próprio

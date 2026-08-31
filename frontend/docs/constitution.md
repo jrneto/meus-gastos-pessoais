@@ -73,12 +73,12 @@ seção de infraestrutura).
   originais; a stylesheet de produção fica vendorizada e escopada em
   `frontend/app/src/styles/modernist/`, sob a classe `.ds-modernist` —
   ver `frontend/specs/FEAT-14-design-system-modernist-login/plan.md`
-  para o racional do escopo). Migrado (FEAT-14 a FEAT-20): login, menu/
+  para o racional do escopo). Migrado (FEAT-14 a FEAT-27): login, menu/
   navegação, transações (listagem, filtros, popups de nova/editar
-  despesa, detalhe), categorias (CRUD). Ainda em shadcn/ui + Tailwind ou
-  placeholder: Início (dashboard, "Em breve"), Ajustes, Relatórios
-  ("Em breve") — shadcn/ui só é removido quando toda a superfície
-  estiver migrada
+  despesa, detalhe), categorias (CRUD), Início (dashboard, resumo
+  mensal), Relatórios (por período). Ainda em shadcn/ui + Tailwind:
+  Ajustes — shadcn/ui só é removido quando toda a superfície estiver
+  migrada
 - **Toda feature nova que envolve layout/UI (tela nova ou alteração
   visual de tela existente) segue o Modernist como referência
   obrigatória de layout** — antes de desenhar ou implementar, leia
