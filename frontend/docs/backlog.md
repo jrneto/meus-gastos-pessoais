@@ -90,7 +90,7 @@ backend correspondente, já pronto) conforme a coluna "Depende de".
   Depende de: backend FEAT-23 (resumo mensal) — já pronto; frontend
   FEAT-23.
 
-- [ ] **FEAT-27 — Relatórios**
+- [x] **FEAT-27 — Relatórios**
   Substitui `ReportsComingSoonPage` pela tela de relatórios por período
   (`12-relatorios.png`): gasto por categoria, total do período,
   variação vs período anterior, maior gasto — consumindo `GET
