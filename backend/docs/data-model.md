@@ -95,10 +95,16 @@ base.
   acento, sem caractere especial, espaços colapsados em `-`), garante
   unicidade de nome por conta via `ConditionExpression:
   attribute_not_exists(PK)` no `PutItem`
-- `GSI2PK`: `ID#<id>` — resolve `GET`/`PUT`/`DELETE /categories/{id}`
-  a partir só do `id` (sem depender de conhecer o `slug` atual pra
-  montar a `SK`), combinado com um `GetItem` seguinte (`GSI2` só
-  projeta `PK`/`SK`/`GSI2PK`)
+- `GSI2PK`: `ID#<accountId>#<id>` — resolve `GET`/`PUT`/`DELETE
+  /categories/{id}` a partir de `accountId` (do chamador, extraído do
+  JWT) + `id` (sem depender de conhecer o `slug` atual pra montar a
+  `SK`), combinado com um `GetItem` seguinte (`GSI2` só projeta
+  `PK`/`SK`/`GSI2PK`). Escopado por conta desde a FEAT-30 — antes era
+  só `ID#<id>`, o que colidia entre contas sempre que o mesmo `id`
+  existia em mais de uma (caso das 13 categorias padrão, que usam os
+  mesmos ids literais em toda conta nova): a `Query` podia devolver o
+  item de **qualquer** conta que tivesse aquele id, sem
+  `Limit`/ordenação determinística resolver isso sozinho
 - Atributos (formato gravado por `CategoryItemMapper`, fonte única do
   shape do item — usada tanto por `DynamoDbCategoryRepository` quanto
   por `DynamoDbAccountRepository` ao semear as categorias padrão):
@@ -138,9 +144,9 @@ que cria `Account`/`Membership` (ver seção `Account` acima).
   transações associadas)
 - `GSI1SK`: `<YYYY-MM-DD>#<id>`
 - `GSI2PK`: `ID#<id>` — resolve `GET`/`PUT`/`DELETE /transactions/{id}`
-  a partir só do `id`, mesmo mecanismo de `Category` (**mesmo índice,
-  mesmo formato de chave** — ver "Espaço de chave compartilhado"
-  abaixo)
+  a partir só do `id`, mesmo índice de `Category` (**mas formato de
+  chave diferente desde a FEAT-30** — ver "Espaço de chave
+  compartilhado" abaixo)
 - Atributos: `Description` (string), `AmountInCents` (long, centavos),
   `CategoryId` (string, referência a uma `Category` cadastrada —
   **não é mais um enum fechado desde a FEAT-17**), `Date` (string,
@@ -162,13 +168,21 @@ simples sobrescrevendo o item).
 ## Espaço de chave compartilhado entre tipos de item de uma conta
 
 `Category` e `Transaction` compartilham a mesma partição
-(`PK=ACCOUNT#<accountId>`) e o mesmo formato de `GSI2PK`
-(`ID#<id>`) — o discriminador entre os dois é a `SK` (`CAT#<slug>` vs.
-`TXN#<data>#<id>`) na tabela base, mas **no `GSI2` os dois tipos
-colidem no mesmo espaço de busca por id**. Os dois repositórios se
-defendem disso conferindo o atributo `Tipo` depois do `GetItem`
-(`IsTransactionItem`/`IsCategoriaItem`) antes de aceitar o item como o
-tipo esperado:
+(`PK=ACCOUNT#<accountId>`) — o discriminador entre os dois é a `SK`
+(`CAT#<slug>` vs. `TXN#<data>#<id>`) na tabela base. **No `GSI2`,
+porém, deixaram de compartilhar o mesmo formato de chave desde a
+FEAT-30**: `Category` passou a usar `GSI2PK = ID#<accountId>#<id>`,
+enquanto `Transaction` continua com `GSI2PK = ID#<id>` (sem
+`accountId` — nunca precisou, já que o `id` de toda `Transação` é um
+Guid gerado individualmente na criação, nunca um valor literal
+compartilhado entre contas como as 13 categorias padrão de
+`Category`). Como um Guid nunca contém `#`, as duas strings de
+`GSI2PK` nunca colidem entre si na prática — a colisão de **id entre
+tipos** que motivava a checagem abaixo é hoje só teórica para
+`Category`, mas os dois repositórios mantêm a defesa (custo zero,
+robustez contra qualquer mudança futura de formato) conferindo o
+atributo `Tipo` depois do `GetItem` (`IsTransactionItem`/
+`IsCategoriaItem`) antes de aceitar o item como o tipo esperado:
 
 - `DynamoDbTransactionRepository` exige `Tipo <> "categoria"` (aceita
   `"despesa"` **e** `"receita"` sem enumerar os dois — qualquer valor

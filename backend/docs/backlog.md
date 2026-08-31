@@ -184,58 +184,6 @@ Completo) ou é resolvido direto (Modo Leve) e sai desta lista.
   `Membership` incondicionalmente; transações de um membro removido
   caem no fallback `createdByLabel="Ex-membro"` (ver
   `backend/specs/FEAT-22-transacoes-receita-despesa/`)
-- **BUG: busca de categoria por ID (`GSI2`) não é escopada por conta —
-  colide entre contas nas 13 categorias padrão** (encontrado em
-  2026-08-31, testando a FEAT-29 do frontend em ambiente local, ao
-  criar uma despesa como membro convidado: `POST /transactions`
-  retornou 400 `"Categoria inválida."` para uma categoria que
-  claramente existia e era válida).
-  - **Causa raiz**: `DefaultCategorySeed.cs` (FEAT-28) usa **os mesmos
-    13 IDs literais hardcoded em toda conta nova**, de propósito
-    ("fácil rastrear a mesma categoria entre ambientes"). Mas
-    `DynamoDbCategoryRepository.LookupByIdAsync`
-    (`backend/src/GastosApp.Infrastructure/Categories/
-    DynamoDbCategoryRepository.cs`) — usada por `GetByIdAsync`
-    (validação de `POST`/`PUT /transactions`), `UpdateAsync` e
-    `DeleteAsync` de categoria — faz `Query` no `GSI2` só por
-    `GSI2PK = "ID#<categoryId>"`, **sem filtrar por conta**, com
-    `Limit = 1`. Como o mesmo ID existe em várias contas (uma cópia por
-    conta que tem aquela categoria padrão), o DynamoDB pode devolver o
-    item de **qualquer uma delas** (sem `ORDER BY`/sort determinístico
-    nessa query) — o código só descobre depois, comparando
-    `pk != "ACCOUNT#<accountId esperado>"`, e trata como "não
-    encontrado" quando o item de outra conta veio primeiro. Afeta
-    qualquer uma das 13 categorias padrão, em qualquer conta, assim que
-    existe mais de uma conta no ambiente (comum a partir da FEAT-20 —
-    convites — e sempre verdadeiro em produção com mais de um usuário).
-  - **Repro**: conta A convida usuário B (`FEAT-20`); B se cadastra
-    (ganha conta própria + 13 categorias padrão via `EnsureAccount`,
-    `FEAT-28`) e aceita o convite no login (`AcceptPendingInvites`,
-    troca a conta ativa pra conta de A); B tenta lançar uma despesa
-    numa das 13 categorias padrão (ex.: "Vestuário e Cuidados
-    Pessoais", id `0af4581d-37bf-4636-9805-ce2302403330`) — `POST
-    /transactions` retorna 400 `validation-error`/"Categoria
-    inválida." mesmo a categoria existindo (idêntica) na conta ativa.
-  - **Trade-off discutido com o usuário, decisão: corrigir pelo schema**
-    (não pela correção rápida de tirar o `Limit=1` e filtrar em
-    memória, que teria custo de Query crescente por conta e não resolve
-    a causa). Corrigir incluindo `accountId` na chave do `GSI2` (ex.:
-    `GSI2PK = "ID#<accountId>#<categoryId>"` em vez de só
-    `"ID#<categoryId>"`), em `CategoryItemMapper.BuildItem` — passa a
-    ser uma busca precisa por conta+id, sem colisão possível. **Exige
-    migração/backfill dos itens de categoria já gravados em
-    homologação/produção** (o `GSI2PK` atual desses itens não muda
-    sozinho) antes ou junto do deploy dessa mudança — dado real já
-    existe lá (constitution: sem migração de dados só valia pra
-    recriação inicial da tabela, FEAT-19 em diante já é dado real).
-  - Vale conferir se `DynamoDbExpenseRepository`/transações usam o
-    mesmo padrão de `GSI2` por ID sem escopo de conta (o comentário em
-    `DynamoDbCategoryRepository.cs` linha ~17-21 menciona um bug
-    parecido "já corrigido do lado de Expense" — mas era outro
-    problema, tipo de item colidindo na mesma SK, não confundir com
-    este; ainda assim vale checar se o `GSI2` de transação tem o mesmo
-    risco de ID não-único entre contas, mesmo que hoje `Transaction`
-    não tenha IDs hardcoded compartilhados como `Category`).
 
 ## Fora desta leva, de propósito
 

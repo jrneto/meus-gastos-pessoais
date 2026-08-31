@@ -12,18 +12,24 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
 {
     private const string Gsi2Index = "GSI2";
 
-    // GSI2 (GSI2PK = "ID#{id}") é compartilhado com Expense (mesmo formato de
-    // chave) — sem esse discriminador, um id de despesa passado por engano a
-    // um endpoint de categoria encontraria o item errado: GetByIdAsync
-    // quebraria lendo Nome/Cor/Icone (que despesa não tem), e pior,
-    // UpdateAsync/DeleteAsync operariam sobre o item de despesa (apagando-o
-    // de verdade). Mesmo bug já corrigido do lado de Expense (ver
-    // DynamoDbExpenseRepository), agora espelhado aqui. "Tipo" não existia em
-    // itens de categoria antes desta correção — por isso a ausência do
-    // atributo também é aceita como categoria (compatibilidade com dado já
-    // gravado em hom/prod), só a presença de um "Tipo" diferente rejeita.
-    // Constantes movidas pra CategoryItemMapper (FEAT-28) — fonte única do
-    // shape do item, compartilhada com DynamoDbAccountRepository.
+    // GSI2PK de categoria é "ID#{accountId}#{id}" (FEAT-30) — escopado por
+    // conta desde a origem, sem ambiguidade possível entre contas mesmo
+    // quando o id colide (caso das 13 categorias padrão, FEAT-28, que usam
+    // os mesmos ids literais em toda conta nova).
+    //
+    // Já Transaction usa só "ID#{id}" (sem accountId) — os dois tipos, então,
+    // não compartilham mais o mesmo espaço de busca por id no GSI2 quanto a
+    // colisão *entre contas*. Ainda compartilham a mesma partição da tabela
+    // base (PK=ACCOUNT#<accountId>) e, em tese, o GSI2 poderia devolver um
+    // item de Transaction se algum dia os formatos voltassem a coincidir —
+    // por isso a checagem de "Tipo" abaixo (IsCategoriaItem) continua: sem
+    // ela, um id de transação passado por engano a um endpoint de categoria
+    // encontraria o item errado. "Tipo" não existia em itens de categoria
+    // antes da FEAT-21 — por isso a ausência do atributo também é aceita
+    // como categoria (compatibilidade com dado já gravado), só a presença de
+    // um "Tipo" diferente rejeita. Constantes movidas pra CategoryItemMapper
+    // (FEAT-28) — fonte única do shape do item, compartilhada com
+    // DynamoDbAccountRepository.
 
     private readonly IAmazonDynamoDB _dynamoDbClient;
     private readonly DynamoDbOptions _options;
@@ -77,13 +83,11 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
 
     public async Task<Category?> GetByIdAsync(string accountId, string categoryId, CancellationToken cancellationToken = default)
     {
-        var lookup = await LookupByIdAsync(categoryId, cancellationToken);
+        var lookup = await LookupByIdAsync(accountId, categoryId, cancellationToken);
         if (lookup is null)
             return null;
 
         var (pk, sk) = lookup.Value;
-        if (pk != $"ACCOUNT#{accountId}")
-            return null;
 
         var current = await _dynamoDbClient.GetItemAsync(new GetItemRequest
         {
@@ -106,13 +110,11 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
         long? orcamentoMensalCents,
         CancellationToken cancellationToken = default)
     {
-        var lookup = await LookupByIdAsync(categoryId, cancellationToken);
+        var lookup = await LookupByIdAsync(accountId, categoryId, cancellationToken);
         if (lookup is null)
             return CategoryWriteResult.NotFound();
 
         var (pk, oldSk) = lookup.Value;
-        if (pk != $"ACCOUNT#{accountId}")
-            return CategoryWriteResult.NotFound();
 
         var current = await _dynamoDbClient.GetItemAsync(new GetItemRequest
         {
@@ -196,13 +198,11 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
 
     public async Task<bool> DeleteAsync(string accountId, string categoryId, CancellationToken cancellationToken = default)
     {
-        var lookup = await LookupByIdAsync(categoryId, cancellationToken);
+        var lookup = await LookupByIdAsync(accountId, categoryId, cancellationToken);
         if (lookup is null)
             return false;
 
         var (pk, sk) = lookup.Value;
-        if (pk != $"ACCOUNT#{accountId}")
-            return false;
 
         try
         {
@@ -235,7 +235,7 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
         }
     }
 
-    private async Task<(string Pk, string Sk)?> LookupByIdAsync(string categoryId, CancellationToken cancellationToken)
+    private async Task<(string Pk, string Sk)?> LookupByIdAsync(string accountId, string categoryId, CancellationToken cancellationToken)
     {
         var lookup = await _dynamoDbClient.QueryAsync(new QueryRequest
         {
@@ -244,7 +244,7 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
             KeyConditionExpression = "GSI2PK = :gsi2pk",
             ExpressionAttributeValues = new Dictionary<string, AttributeValue>
             {
-                [":gsi2pk"] = new AttributeValue { S = $"ID#{categoryId}" }
+                [":gsi2pk"] = new AttributeValue { S = $"ID#{accountId}#{categoryId}" }
             },
             Limit = 1
         }, cancellationToken);
@@ -266,7 +266,7 @@ public sealed class DynamoDbCategoryRepository : ICategoryRepository
         var pk = item["PK"].S;
         var accountId = pk[(pk.IndexOf('#') + 1)..];
         var gsi2pk = item["GSI2PK"].S;
-        var id = gsi2pk[(gsi2pk.IndexOf('#') + 1)..];
+        var id = gsi2pk[(gsi2pk.LastIndexOf('#') + 1)..];
         var createdAt = DateTimeOffset.Parse(
             item["CreatedAt"].S, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
 
