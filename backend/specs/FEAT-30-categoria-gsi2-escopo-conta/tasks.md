@@ -24,6 +24,6 @@
 
 - [x] 12. Rodar `./scripts/export-openapi.sh` e conferir via `git diff` que `backend/docs/openapi.json` não tem nenhuma diferença de contrato
 
-- [ ] 13. Marcar os critérios de aceite concluídos em `backend/specs/FEAT-30-categoria-gsi2-escopo-conta/spec.md` e preencher a seção "Status" (nova), resumindo o que foi implementado — inclui registrar explicitamente que não houve teste integrado nesta feature, por decisão do usuário
+- [x] 13. Marcar os critérios de aceite concluídos em `backend/specs/FEAT-30-categoria-gsi2-escopo-conta/spec.md` e preencher a seção "Status" (nova), resumindo o que foi implementado — inclui registrar explicitamente que não houve teste integrado nesta feature, por decisão do usuário
 
-- [ ] 14. Remover a entrada "**BUG: busca de categoria por ID (`GSI2`) não é escopada por conta...**" de `backend/docs/backlog.md` (seção "Débitos técnicos e melhorias futuras") — bug resolvido, sai da lista
+- [x] 14. Remover a entrada "**BUG: busca de categoria por ID (`GSI2`) não é escopada por conta...**" de `backend/docs/backlog.md` (seção "Débitos técnicos e melhorias futuras") — bug resolvido, sai da lista
