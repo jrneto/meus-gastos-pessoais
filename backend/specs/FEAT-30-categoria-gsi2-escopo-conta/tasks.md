@@ -10,11 +10,11 @@
 
 - [x] 5. Atualizar o comentário de cabeçalho de `DynamoDbCategoryRepository` (linhas ~15-26) — hoje descreve `GSI2PK = "ID#{id}"` compartilhado com `Transaction`; ajustar para deixar claro que `Category` passou a usar `ID#<accountId>#<categoryId>` (colisão de conta não é mais possível), mantendo só a explicação da colisão de **tipo** (`Category` vs. `Transaction`, resolvida pelo atributo `Tipo`)
 
-- [ ] 6. Atualizar o helper `BuildItem` de teste e todos os itens simulados com `GSI2PK` em `DynamoDbCategoryRepositoryTests.cs` (`backend/tests/GastosApp.UnitTests/Infrastructure/`) para o formato novo (`$"ID#{accountId}#{id}"`), incluindo o assert de `CreateAsync_ShouldReturnSuccess_WhenPutItemSucceeds`
+- [x] 6. Atualizar o helper `BuildItem` de teste e todos os itens simulados com `GSI2PK` em `DynamoDbCategoryRepositoryTests.cs` (`backend/tests/GastosApp.UnitTests/Infrastructure/`) para o formato novo (`$"ID#{accountId}#{id}"`), incluindo o assert de `CreateAsync_ShouldReturnSuccess_WhenPutItemSucceeds`
 
-- [ ] 7. Substituir `GetByIdAsync_ShouldReturnNull_WhenCategoryBelongsToAnotherUser`, `UpdateAsync_ShouldReturnNotFound_WhenCategoryBelongsToAnotherUser` e `DeleteAsync_ShouldReturnFalse_WhenCategoryBelongsToAnotherUser` (mesmo arquivo) — o cenário que simulavam (`Query` devolvendo item de outra conta) deixa de ser representativo, já que a `Query` real agora nunca devolveria isso; trocar por testes que capturam o `QueryRequest` enviado (`Arg.Is<QueryRequest>`) e confirmam `ExpressionAttributeValues[":gsi2pk"].S == $"ID#{accountId}#{categoryId}"` para os três métodos — é o teste de regressão do bug em si
+- [x] 7. Substituir `GetByIdAsync_ShouldReturnNull_WhenCategoryBelongsToAnotherUser`, `UpdateAsync_ShouldReturnNotFound_WhenCategoryBelongsToAnotherUser` e `DeleteAsync_ShouldReturnFalse_WhenCategoryBelongsToAnotherUser` (mesmo arquivo) — o cenário que simulavam (`Query` devolvendo item de outra conta) deixa de ser representativo, já que a `Query` real agora nunca devolveria isso; trocar por testes que capturam o `QueryRequest` enviado (`Arg.Is<QueryRequest>`) e confirmam `ExpressionAttributeValues[":gsi2pk"].S == $"ID#{accountId}#{categoryId}"` para os três métodos — é o teste de regressão do bug em si
 
-- [ ] 8. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~DynamoDbCategoryRepositoryTests` e confirmar tudo passando
+- [x] 8. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~DynamoDbCategoryRepositoryTests` e confirmar tudo passando
 
 - [ ] 9. Atualizar `CreateAsync_ShouldWriteAccountPointerAccountAndMembership_WhenNoConflict...` (ou nome atual do teste, `backend/tests/GastosApp.UnitTests/Infrastructure/DynamoDbAccountRepositoryTests.cs`, linha ~110) — assert de cada uma das 13 categorias padrão passa de `Put.Item["GSI2PK"].S == $"ID#{id}"` para `== $"ID#{accountId}#{id}"`
 
