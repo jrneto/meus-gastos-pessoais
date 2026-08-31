@@ -133,20 +133,18 @@ raiz).
 
 ## Bugs
 
-- [ ] **BUG — Login não exige perfil completo quando o usuário é criado
+- [x] **BUG — Login não exige perfil completo quando o usuário é criado
   diretamente no Cognito** (levantado em 2026-08-31, fora do escopo de
-  qualquer FEAT em andamento): o fluxo normal (`POST /auth/register`,
-  FEAT-26) exige `name`, `phoneNumber` e `cpf` antes de criar o perfil
-  no DynamoDB. Mas se um administrador cadastra o usuário proativamente
-  no Cognito (fora do `/auth/register`) e já confirma o acesso,
-  `LoginUserCommandHandler`
-  (`backend/src/GastosApp.Application/Auth/Commands/Login/LoginUserCommand.cs`)
-  autentica via `IAuthService.LoginAsync` sem checar se existe perfil
-  com os campos obrigatórios preenchidos — o usuário loga normalmente
-  mesmo sem nome/CPF/telefone cadastrados. Precisa: no login, validar se
-  o perfil obrigatório existe e está completo; se não, bloquear o login
-  (ou redirecionar para completar cadastro) mesmo que o acesso já esteja
-  confirmado/aprovado no Cognito.
+  qualquer FEAT em andamento) *(resolvido, ver
+  `backend/specs/FEAT-31-login-perfil-incompleto/`)*: o fluxo normal
+  (`POST /auth/register`, FEAT-26) exige `name`, `phoneNumber` e `cpf`
+  antes de criar o perfil no DynamoDB. Mas se um administrador cadastra
+  o usuário proativamente no Cognito (fora do `/auth/register`) e já
+  confirma o acesso, `LoginUserCommandHandler` autenticava via
+  `IAuthService.LoginAsync` sem checar se existe perfil com os campos
+  obrigatórios preenchidos — o usuário logava normalmente mesmo sem
+  nome/CPF/telefone cadastrados. FEAT-31 bloqueou o login (403
+  `profile-incomplete`) nesse caso.
 
 ## Débitos técnicos e melhorias futuras
 

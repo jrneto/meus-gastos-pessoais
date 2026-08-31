@@ -16,5 +16,7 @@ public static class AuthErrors
 
     public static Error UserNotConfirmed => Error.Unauthorized("user-not-confirmed", "Usuário não confirmado. Por favor, confirme seu email antes de fazer login.");
 
+    public static Error ProfileIncomplete => Error.Forbidden("profile-incomplete", "Cadastro incompleto. Este usuário não possui perfil (nome, telefone e CPF) cadastrado.");
+
     public static Error Validation(string message) => Error.Validation("bad-request", message);
 }

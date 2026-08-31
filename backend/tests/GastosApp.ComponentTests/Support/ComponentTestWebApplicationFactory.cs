@@ -61,14 +61,17 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
     // Default "esperto" (mesmo espírito do AccountRepositoryMock/MembershipRepositoryMock
     // acima, FEAT-26): CreateAsync sempre "sucesso, sem CPF duplicado" — testes que
     // precisam simular CPF já cadastrado sobrescrevem isso explicitamente.
-    // FindByUserIdAsync sem configuração retorna null (sem perfil), o próprio
-    // default do NSubstitute pra um retorno de referência — comportamento válido
-    // (spec.md: perfil ausente não é erro).
+    // FindByUserIdAsync sempre retorna um UserProfile completo por padrão (FEAT-31:
+    // POST /auth/login passou a bloquear o login quando o perfil não existe) — testes
+    // que precisam simular perfil ausente (ex.: usuário criado direto no Cognito,
+    // ou usuário anterior à FEAT-26) sobrescrevem isso explicitamente para null.
     private static IUserProfileRepository BuildDefaultUserProfileRepositoryMock()
     {
         var mock = Substitute.For<IUserProfileRepository>();
         mock.CreateAsync(Arg.Any<UserProfile>(), Arg.Any<CancellationToken>())
             .Returns(new CreateUserProfileResult(CpfAlreadyExists: false));
+        mock.FindByUserIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserProfile.Restore(call.Arg<string>(), "Fulano da Silva", "11999998888", "11144477735", DateTimeOffset.UtcNow));
         return mock;
     }
 

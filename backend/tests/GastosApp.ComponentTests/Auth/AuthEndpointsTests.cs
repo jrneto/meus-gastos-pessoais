@@ -276,6 +276,46 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
             .SetActiveAccountAsync(default!, default!, default);
     }
 
+    // FEAT-31: login não pode mais autenticar um usuário sem perfil completo
+    // (ex.: criado direto no Cognito, fora de POST /auth/register).
+    [Fact]
+    public async Task Login_ComUsuarioSemPerfil_Retorna403ComProfileIncomplete()
+    {
+        _factory.AuthServiceMock
+            .LoginAsync("neto@email.com", "Senha123", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Success(new LoginResult("eyJ...", 3600, "uuid-sem-perfil", "refresh-token-abc"))));
+        _factory.UserProfileRepositoryMock
+            .FindByUserIdAsync("uuid-sem-perfil", Arg.Any<CancellationToken>())
+            .Returns((UserProfile?)null);
+
+        var response = await _client.PostAsJsonAsync("/auth/login", new { email = "neto@email.com", password = "Senha123" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/profile-incomplete");
+
+        response.Headers.TryGetValues("Set-Cookie", out _).Should().BeFalse("login bloqueado não deve emitir cookie de refresh token");
+    }
+
+    [Fact]
+    public async Task Login_ComUsuarioSemPerfil_NaoCriaAccountNemAceitaConvite()
+    {
+        _factory.AuthServiceMock
+            .LoginAsync("neto@email.com", "Senha123", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Success(new LoginResult("eyJ...", 3600, "uuid-sem-perfil", "refresh-token-abc"))));
+        _factory.UserProfileRepositoryMock
+            .FindByUserIdAsync("uuid-sem-perfil", Arg.Any<CancellationToken>())
+            .Returns((UserProfile?)null);
+
+        var response = await _client.PostAsJsonAsync("/auth/login", new { email = "neto@email.com", password = "Senha123" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        await _factory.AccountRepositoryMock.DidNotReceiveWithAnyArgs().FindAccountIdByUserIdAsync(default!, default);
+        await _factory.AccountRepositoryMock.DidNotReceiveWithAnyArgs().CreateAsync(default!, default!, default);
+        await _factory.MembershipRepositoryMock.DidNotReceiveWithAnyArgs().AcceptPendingInvitesByEmailAsync(default!, default!, default);
+    }
+
     [Fact]
     public async Task Refresh_ComCookieValido_Retorna200()
     {
@@ -378,9 +418,13 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
     public async Task Me_SemPerfilCadastrado_Retorna200ComCamposNulos()
     {
         // Usuário cadastrado antes desta feature (sem migração de dados, backlog.md) —
-        // FindByUserIdAsync sem configuração já retorna null (default do mock).
+        // desde a FEAT-31 o default do mock é "perfil completo", então este cenário
+        // precisa sobrescrever FindByUserIdAsync explicitamente para null.
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(TestAuthHandler.SchemeName, "uuid-123|neto@email.com|Neto");
+        _factory.UserProfileRepositoryMock
+            .FindByUserIdAsync("uuid-123", Arg.Any<CancellationToken>())
+            .Returns((UserProfile?)null);
 
         var response = await _client.GetAsync("/auth/me");
 
