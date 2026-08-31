@@ -236,28 +236,28 @@ vem de um seletor fechado e `date` é sempre calculada pelo client),
 
 ## Critérios de aceite
 
-- [ ] Tela "Relatórios" busca `GET /reports?period=month&date=<data
+- [x] Tela "Relatórios" busca `GET /reports?period=month&date=<data
       atual>` ao carregar
-- [ ] Seletor Semana/Mês/Ano troca o `period` da consulta, mantendo a
+- [x] Seletor Semana/Mês/Ano troca o `period` da consulta, mantendo a
       data atual
-- [ ] "Gasto por categoria" lista os itens de `porCategoria` na ordem
+- [x] "Gasto por categoria" lista os itens de `porCategoria` na ordem
       recebida, com valor formatado e barra proporcional ao maior gasto
       da lista, sempre na cor neutra
-- [ ] Sem despesa no período, "Gasto por categoria" mostra estado vazio
-- [ ] Card "Total no período" mostra o valor total formatado
-- [ ] Comparação com período anterior aparece com sinal e rótulo
+- [x] Sem despesa no período, "Gasto por categoria" mostra estado vazio
+- [x] Card "Total no período" mostra o valor total formatado
+- [x] Comparação com período anterior aparece com sinal e rótulo
       corretos (`+`/`-`X% vs semana/mês/ano passado) quando
       `variacaoPercentual` não é `null`
-- [ ] Comparação some quando `variacaoPercentual` é `null`
-- [ ] Card "Maior gasto" mostra categoria, valor e "X% do orçamento"
+- [x] Comparação some quando `variacaoPercentual` é `null`
+- [x] Card "Maior gasto" mostra categoria, valor e "X% do orçamento"
       quando `percentualOrcamento` não é `null`
-- [ ] Card "Maior gasto" mostra categoria e valor sem percentual quando
+- [x] Card "Maior gasto" mostra categoria e valor sem percentual quando
       `percentualOrcamento` é `null`
-- [ ] Card "Maior gasto" mostra estado vazio quando `maiorGasto` é
+- [x] Card "Maior gasto" mostra estado vazio quando `maiorGasto` é
       `null`
-- [ ] Sessão expirada ao carregar o relatório segue o comportamento já
+- [x] Sessão expirada ao carregar o relatório segue o comportamento já
       existente nas demais telas
-- [ ] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima,
+- [x] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima,
       100% dos testes passando
 
 ## Fora do escopo
