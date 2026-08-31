@@ -23,7 +23,7 @@ internal static class CategoryItemMapper
         {
             ["PK"] = new AttributeValue { S = $"ACCOUNT#{category.AccountId}" },
             ["SK"] = new AttributeValue { S = sk },
-            ["GSI2PK"] = new AttributeValue { S = $"ID#{category.Id}" },
+            ["GSI2PK"] = new AttributeValue { S = $"ID#{category.AccountId}#{category.Id}" },
             ["Nome"] = new AttributeValue { S = category.Nome },
             [TipoAttribute] = new AttributeValue { S = TipoCategoria },
             ["TipoLancamento"] = new AttributeValue { S = category.Tipo },
