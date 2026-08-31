@@ -44,6 +44,21 @@ describe('useTransactionsQuery', () => {
     expect(result.current.hasMore).toBe(false)
   })
 
+  it('busca a primeira página já com initialFilters, quando informado (FEAT-26)', async () => {
+    let requestedYearMonth: string | null = null
+    server.use(
+      http.get(TRANSACTIONS_URL, ({ request }) => {
+        requestedYearMonth = new URL(request.url).searchParams.get('yearMonth')
+        return HttpResponse.json({ items: [item('1')], nextCursor: null })
+      }),
+    )
+
+    const { result } = renderHook(() => useTransactionsQuery({ yearMonth: '2026-08' }))
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(requestedYearMonth).toBe('2026-08')
+  })
+
   it('applyFilters reinicia items/cursor antes de buscar a nova página', async () => {
     server.use(
       http.get(TRANSACTIONS_URL, () =>

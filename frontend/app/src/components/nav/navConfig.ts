@@ -20,7 +20,7 @@ export interface NavItem {
 // existe de verdade, mas agora navega para uma página fake em vez de
 // ficar cinza e sem ação.
 export const NAV_TREE: NavItem[] = [
-  { id: 'home', label: 'Início', icon: Home, to: '/', status: 'placeholder', mobilePrimary: true },
+  { id: 'home', label: 'Início', icon: Home, to: '/', status: 'active', mobilePrimary: true },
   {
     id: 'transactions',
     label: 'Transações',

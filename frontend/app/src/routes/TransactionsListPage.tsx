@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import '@/styles/modernist/modernist.css'
 import { TransactionDeleteDialog } from '@/features/transactions/components/TransactionDeleteDialog'
 import { TransactionDetailDialog } from '@/features/transactions/components/TransactionDetailDialog'
@@ -14,7 +15,14 @@ type TransactionFormTarget =
   | null
 
 export function TransactionsListPage() {
-  const query = useTransactionsQuery()
+  const [searchParams] = useSearchParams()
+  // "Ver todas" do dashboard (FEAT-26) chega com `?yearMonth=` — usado
+  // como filtro inicial tanto na busca quanto no formulário de
+  // filtros, pra manter coerência entre o que o usuário viu no resumo
+  // e o que vê aqui.
+  const initialYearMonth = searchParams.get('yearMonth') ?? undefined
+  const initialFilters = initialYearMonth ? { yearMonth: initialYearMonth } : undefined
+  const query = useTransactionsQuery(initialFilters)
   const [formTarget, setFormTarget] = useState<TransactionFormTarget>(null)
   const [detailTarget, setDetailTarget] = useState<TransactionQueryItem | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<TransactionQueryItem | null>(null)
@@ -61,7 +69,7 @@ export function TransactionsListPage() {
           </button>
         </div>
       </div>
-      <TransactionFilters onApply={query.applyFilters} />
+      <TransactionFilters onApply={query.applyFilters} initialValues={initialFilters} />
       <TransactionList
         items={query.items}
         isLoading={query.isLoading}

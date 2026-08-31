@@ -19,8 +19,9 @@
  *
  * Só as classes de componente realmente usadas são portadas a cada
  * migração (`.btn`, `.field`/`.input`, `.seg`/`.seg-opt` na FEAT-14;
- * `.dialog-backdrop`/`.dialog` na FEAT-15). O restante do sistema
- * (`.card`, `.tag`, `.table`, `.nav`) entra quando a tela que o usa for
+ * `.dialog-backdrop`/`.dialog` na FEAT-15; `.tag`/`.table` na FEAT-16;
+ * `.card`/`.elev-sm` e a barra de progresso `.je-track`/`.je-fill` na
+ * FEAT-26). O restante do sistema entra quando a tela que o usa for
  * migrada.
  */
 @import '@fontsource-variable/archivo';
@@ -68,6 +69,7 @@
   --radius-md: 0px;
   --radius-lg: 0px;
 
+  --shadow-sm: 0 1px 2px color-mix(in srgb, var(--color-neutral-900) 14%, transparent);
   --shadow-lg: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
 
   color: var(--color-text);
@@ -355,4 +357,36 @@
   justify-content: flex-end;
   gap: var(--space-2);
   margin-top: var(--space-2);
+}
+
+/* — cards (dashboard, FEAT-26) — */
+.ds-modernist .card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.ds-modernist .card-kicker {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+.ds-modernist .elev-sm {
+  box-shadow: var(--shadow-sm);
+}
+
+/* — barra de progresso (dashboard, FEAT-26) — classes do próprio
+   `.dc.html` (não do bundle base do design system), mesmo racional de
+   "vendorizar só o que é usado" das outras classes acima. */
+.ds-modernist .je-track {
+  height: 6px;
+  background: var(--color-neutral-300);
+  position: relative;
+  overflow: hidden;
+}
+.ds-modernist .je-fill {
+  height: 100%;
 }

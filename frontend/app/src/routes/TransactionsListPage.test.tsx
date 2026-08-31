@@ -30,9 +30,9 @@ const item = {
   createdAt: '2025-06-15T12:00:00Z',
 }
 
-function renderPage() {
+function renderPage(initialEntries: string[] = ['/']) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={initialEntries}>
       <TransactionsListPage />
     </MemoryRouter>,
   )
@@ -81,6 +81,27 @@ describe('TransactionsListPage', () => {
     await user.click(await screen.findByText('Almoço no restaurante'))
 
     expect(await screen.findByText('Detalhe da despesa')).toBeInTheDocument()
+  })
+
+  it('chega com ?yearMonth= já filtrada, e com o painel de filtros avançados aberto (FEAT-26)', async () => {
+    let requestedYearMonth: string | null = null
+    server.use(
+      http.get(TRANSACTIONS_URL, ({ request }) => {
+        requestedYearMonth = new URL(request.url).searchParams.get('yearMonth')
+        return HttpResponse.json({ items: [item], nextCursor: null })
+      }),
+      http.get(CATEGORIES_URL, () => HttpResponse.json({ items: [category] })),
+    )
+
+    renderPage(['/transactions?yearMonth=2026-08'])
+
+    await screen.findByText('Almoço no restaurante')
+    expect(requestedYearMonth).toBe('2026-08')
+    expect(screen.getByLabelText('Mês')).toHaveValue('2026-08')
+    expect(screen.getByRole('button', { name: /filtros avançados/i })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
   })
 
   it('clicar em "+ Nova receita", preencher e submeter cria a receita e ela aparece na listagem (FEAT-24)', async () => {
