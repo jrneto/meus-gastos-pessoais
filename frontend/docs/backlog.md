@@ -83,7 +83,7 @@ backend correspondente, já pronto) conforme a coluna "Depende de".
   "Observação"/fallback, divisor) não têm relação com despesa/receita
   — registrados como débito técnico separado, abaixo.
 
-- [ ] **FEAT-26 — Dashboard (Início)**
+- [x] **FEAT-26 — Dashboard (Início)**
   Substitui `HomePage` pela tela de resumo mensal (`05-dashboard.png`):
   saldo, receitas, gastos, orçamento total, restante, gasto por
   categoria, últimos lançamentos — consumindo `GET /summary?month=`.
