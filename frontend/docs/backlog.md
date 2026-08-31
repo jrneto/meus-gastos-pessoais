@@ -104,7 +104,7 @@ backend correspondente, já pronto) conforme a coluna "Depende de".
   aparece no protótipo. A introdução do Tremor fica adiada pra quando
   uma tela realmente exigir esse tipo de visualização.
 
-- [ ] **FEAT-28 — Membros da conta e convites**
+- [x] **FEAT-28 — Membros da conta e convites**
   Nova feature `members`: listagem de membros (`14-membros.png`),
   convite por e-mail (`15-convidar-pessoa.png`, com loading
   `16-enviando-convite-loading.png` e toast de sucesso
