@@ -6,7 +6,7 @@ import { PeriodToggle } from '@/features/reports/components/PeriodToggle'
 import { TopCategoryCard } from '@/features/reports/components/TopCategoryCard'
 import { TotalPeriodCard } from '@/features/reports/components/TotalPeriodCard'
 import { useReports } from '@/features/reports/hooks/useReports'
-import { getCurrentDate } from '@/features/reports/utils/period'
+import { getCurrentDate } from '@/lib/date'
 
 // Tela "Relatórios" (FEAT-27) — substitui o placeholder de
 // ReportsComingSoonPage. Sempre a data corrente, sem seletor de data

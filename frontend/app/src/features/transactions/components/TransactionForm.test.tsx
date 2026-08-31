@@ -106,8 +106,37 @@ describe('TransactionForm', () => {
 
     expect(await screen.findByText('Informe a descrição.')).toBeInTheDocument()
     expect(screen.getByText('Informe o valor.')).toBeInTheDocument()
-    expect(screen.getByText('Informe a data.')).toBeInTheDocument()
     expect(apiCalled).toBe(false)
+  })
+
+  it('data vem pré-preenchida com a data atual ao criar', async () => {
+    // shouldAdvanceTime: true é obrigatório aqui — sem isso, o
+    // polling interno (setTimeout) do findByLabelText trava e o teste
+    // estoura o timeout, sem nunca chegar ao useRealTimers() abaixo.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 7, 30)) // 30 de agosto de 2026
+    mockCategories()
+
+    try {
+      renderForm()
+
+      expect(await screen.findByLabelText('Data')).toHaveValue('2026-08-30')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('limpar a data pré-preenchida e submeter exibe "Informe a data."', async () => {
+    mockCategories()
+    const user = userEvent.setup()
+
+    renderForm()
+    await screen.findByLabelText('Descrição')
+    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '' } })
+
+    await user.click(screen.getByRole('button', { name: /registrar despesa/i }))
+
+    expect(await screen.findByText('Informe a data.')).toBeInTheDocument()
   })
 
   it('erro 400 da API exibe alerta genérico e mantém os dados preenchidos', async () => {

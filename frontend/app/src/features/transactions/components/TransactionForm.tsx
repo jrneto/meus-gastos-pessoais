@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
 import '@/styles/modernist/modernist.css'
 import { useCategories } from '@/lib/categories/useCategories'
+import { getCurrentDate } from '@/lib/date'
 import { NotFoundError } from '../errors/transactionErrors'
 import { useRegisterTransaction } from '../hooks/useRegisterTransaction'
 import { useUpdateTransaction } from '../hooks/useUpdateTransaction'
@@ -53,7 +54,10 @@ export function TransactionForm({
     formState: { errors },
   } = useForm<TransactionFormInput, unknown, TransactionFormOutput>({
     resolver: zodResolver(transactionSchema),
-    defaultValues: initialValues ?? { description: '', amount: '', categoryId: '', date: '' },
+    // `date` pré-preenchida com a data atual só ao criar (sem
+    // `initialValues`) — ao editar, `initialValues.date` já vem da
+    // própria transação carregada, nunca sobrescrita aqui.
+    defaultValues: initialValues ?? { description: '', amount: '', categoryId: '', date: getCurrentDate() },
   })
 
   useEffect(() => {
