@@ -252,10 +252,14 @@ IndexName=GSI1, GSI1PK=USER#<userId>`, isolando e apagando só a conta
 pessoal da segunda identidade — a `Membership` dela na conta que
 convidou já é limpa pela conta principal).
 
-Suíte local validada de ponta a ponta via `run-local.sh`: 25/25 testes
-passando (os 3 já existentes de Auth + os 22 novos). `dotnet test
-GastosApp.sln --filter "Category!=Integration"` (unitário + componente)
-segue passando sem regressão: 473 unitários + 207 de componente.
+Suíte local validada de ponta a ponta via `run-local.sh`: 26/26 testes
+passando (os 3 já existentes de Auth + os 23 novos — inclui
+`GetCategories_ComFiltroTipo_RetornaSomenteDoTipoFiltrado`, adicionado
+no `/review` pra fechar uma divergência entre a prosa de "Cobertura por
+módulo" acima, que já prometia testar `?tipo=`, e o que tinha sido
+implementado). `dotnet test GastosApp.sln --filter
+"Category!=Integration"` (unitário + componente) segue passando sem
+regressão: 473 unitários + 207 de componente.
 
 **Três achados reais durante a implementação**, todos em infraestrutura
 de teste (nenhum em código de produção), documentados em detalhe no

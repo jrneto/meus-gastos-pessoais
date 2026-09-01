@@ -63,6 +63,49 @@ public sealed class CategoriesFlowTests
     }
 
     [Fact]
+    public async Task GetCategories_ComFiltroTipo_RetornaSomenteDoTipoFiltrado()
+    {
+        await using var account = await TestAccountFixture.CreateAsync();
+
+        var despesaResponse = await account.Transport.SendAsync(
+            HttpMethod.Post, "/categories",
+            new CategoryRequestDto("Categoria Filtro Despesa", "despesa", null),
+            bearerToken: account.AccessToken);
+        var categoriaDespesa = despesaResponse.Deserialize<CategoryResponseDto>();
+
+        var receitaResponse = await account.Transport.SendAsync(
+            HttpMethod.Post, "/categories",
+            new CategoryRequestDto("Categoria Filtro Receita", "receita", null),
+            bearerToken: account.AccessToken);
+        var categoriaReceita = receitaResponse.Deserialize<CategoryResponseDto>();
+
+        var listDespesaResponse = await account.Transport.SendAsync(
+            HttpMethod.Get, "/categories?tipo=despesa", bearerToken: account.AccessToken);
+        listDespesaResponse.StatusCode.Should().Be(200);
+        var listDespesa = listDespesaResponse.Deserialize<CategoryListResponseDto>();
+        listDespesa.Items.Should().Contain(c => c.Id == categoriaDespesa.Id);
+        listDespesa.Items.Should().NotContain(c => c.Id == categoriaReceita.Id);
+        listDespesa.Items.Should().OnlyContain(c => c.Tipo == "despesa");
+
+        var listReceitaResponse = await account.Transport.SendAsync(
+            HttpMethod.Get, "/categories?tipo=receita", bearerToken: account.AccessToken);
+        listReceitaResponse.StatusCode.Should().Be(200);
+        var listReceita = listReceitaResponse.Deserialize<CategoryListResponseDto>();
+        listReceita.Items.Should().Contain(c => c.Id == categoriaReceita.Id);
+        listReceita.Items.Should().NotContain(c => c.Id == categoriaDespesa.Id);
+        listReceita.Items.Should().OnlyContain(c => c.Tipo == "receita");
+
+        // Sem filtro, continua retornando os dois tipos (comportamento já
+        // coberto por PostGetPutDelete_FluxoCompleto_FuncionaContraApiReal,
+        // reafirmado aqui pelo contraste direto com os filtros acima).
+        var listSemFiltroResponse = await account.Transport.SendAsync(
+            HttpMethod.Get, "/categories", bearerToken: account.AccessToken);
+        var listSemFiltro = listSemFiltroResponse.Deserialize<CategoryListResponseDto>();
+        listSemFiltro.Items.Should().Contain(c => c.Id == categoriaDespesa.Id);
+        listSemFiltro.Items.Should().Contain(c => c.Id == categoriaReceita.Id);
+    }
+
+    [Fact]
     public async Task Categories_ChamadoPorLeitura_Retorna403EmEscrita()
     {
         await using var titular = await TestAccountFixture.CreateAsync();
