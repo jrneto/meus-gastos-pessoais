@@ -8,26 +8,26 @@ validação em hom).
 
 ## `name` como atributo do Cognito (`RegisterAsync`)
 
-- [ ] 1. Atualizar `IAuthService.RegisterAsync`
+- [x] 1. Atualizar `IAuthService.RegisterAsync`
       (`GastosApp.Application/Common/Interfaces/IAuthService.cs`):
       assinatura ganha o parâmetro `string name` (entre `password` e
       `cancellationToken`).
-- [ ] 2. Atualizar `CognitoAuthService.RegisterAsync`
+- [x] 2. Atualizar `CognitoAuthService.RegisterAsync`
       (`GastosApp.Infrastructure/Auth/CognitoAuthService.cs`): recebe
       `name` e inclui `new AttributeType { Name = "name", Value = name }`
       em `SignUpRequest.UserAttributes`, ao lado do `email` já existente.
-- [ ] 3. Atualizar `RegisterUserCommandHandler.Handle`
+- [x] 3. Atualizar `RegisterUserCommandHandler.Handle`
       (`GastosApp.Application/Auth/Commands/Register/RegisterUserCommand.cs`):
       chamada a `_authService.RegisterAsync(...)` passa também
       `command.Name.Trim()`.
-- [ ] 4. Atualizar `UnitTests/Infrastructure/CognitoAuthServiceTests.cs`:
+- [x] 4. Atualizar `UnitTests/Infrastructure/CognitoAuthServiceTests.cs`:
       teste de `RegisterAsync` cobre que `UserAttributes` inclui `name`
       além de `email`.
-- [ ] 5. Atualizar `UnitTests/Application/RegisterUserCommandHandlerTests.cs`:
+- [x] 5. Atualizar `UnitTests/Application/RegisterUserCommandHandlerTests.cs`:
       ajustar assinatura do mock de `IAuthService.RegisterAsync` (novo
       parâmetro `name`) nas chamadas existentes, sem mudança de
       comportamento esperado.
-- [ ] 6. Atualizar `ComponentTests/Auth/AuthEndpointsTests.cs`: mesma
+- [x] 6. Atualizar `ComponentTests/Auth/AuthEndpointsTests.cs`: mesma
       atualização de assinatura do mock de `IAuthService`, confirmando
       que o contrato HTTP de `POST /auth/register` continua idêntico.
 

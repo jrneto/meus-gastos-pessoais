@@ -36,12 +36,20 @@ public class CognitoAuthServiceTests
             .Returns(new SignUpResponse { UserSub = "sub-123" });
 
         // Act
-        var result = await service.RegisterAsync("neto@email.com", "Senha123");
+        var result = await service.RegisterAsync("neto@email.com", "Senha123", "Neto");
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.UserId.Should().Be("sub-123");
         result.Value.Email.Should().Be("neto@email.com");
+
+        // FEAT-34: "name" precisa ir junto de "email" pro CustomMessage
+        // trigger conseguir personalizar o e-mail com o nome do usuário.
+        await _cognitoMock.Received(1).SignUpAsync(
+            Arg.Is<SignUpRequest>(r =>
+                r.UserAttributes.Any(a => a.Name == "email" && a.Value == "neto@email.com") &&
+                r.UserAttributes.Any(a => a.Name == "name" && a.Value == "Neto")),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -54,7 +62,7 @@ public class CognitoAuthServiceTests
             .Returns(Task.FromException<SignUpResponse>(new UsernameExistsException("User already exists")));
 
         // Act
-        var result = await service.RegisterAsync("neto@email.com", "Senha123");
+        var result = await service.RegisterAsync("neto@email.com", "Senha123", "Neto");
 
         // Assert
         result.IsFailure.Should().BeTrue();
