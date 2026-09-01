@@ -33,7 +33,7 @@ validação em hom).
 
 ## Novo projeto — `GastosApp.CognitoTriggers.CustomMessage`
 
-- [ ] 7. Criar o projeto `GastosApp.CognitoTriggers.CustomMessage`
+- [x] 7. Criar o projeto `GastosApp.CognitoTriggers.CustomMessage`
       (`net10.0`, `PublishAot=true`, `InvariantGlobalization=true`,
       `OutputType=Exe`, `AWSProjectType=Lambda`; pacotes
       `Amazon.Lambda.Core`/`Amazon.Lambda.RuntimeSupport`/
@@ -41,26 +41,26 @@ validação em hom).
       `Microsoft.Extensions.Logging.Console`; **sem** `ProjectReference`
       para `Application`/`Infrastructure`) e adicioná-lo à
       `GastosApp.sln`.
-- [ ] 8. Criar `CognitoCustomMessageEvent.cs`
+- [x] 8. Criar `CognitoCustomMessageEvent.cs`
       (`CognitoCustomMessageEvent`/`CallerContext`/`Request`/`Response`,
       POCO próprio — ver `plan.md` seção 1), com
       `[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]`
       nos campos opcionais (`ClientId`, `UsernameParameter`,
       `ClientMetadata`, `SmsMessage`).
-- [ ] 9. Criar `CognitoCustomMessageJsonSerializerContext.cs`
+- [x] 9. Criar `CognitoCustomMessageJsonSerializerContext.cs`
       (`JsonSourceGenerationOptions(PropertyNamingPolicy = CamelCase)`,
       `[JsonSerializable(typeof(CognitoCustomMessageEvent))]`).
-- [ ] 10. Copiar `frontend/design-system/emails/01-confirmacao-cadastro.html`
+- [x] 10. Copiar `frontend/design-system/emails/01-confirmacao-cadastro.html`
       e `02-recuperacao-senha.html` para
       `GastosApp.CognitoTriggers.CustomMessage/Templates/`, corrigindo
       nos dois as URLs de `app.jrnexpenses.com.br` para `jrnexpenses.com`
       (requisito de negócio do `spec.md`), e marcá-los como
       `EmbeddedResource` no `.csproj`.
-- [ ] 11. Criar `EmailTemplateProvider.cs`: carrega os dois HTMLs
+- [x] 11. Criar `EmailTemplateProvider.cs`: carrega os dois HTMLs
       embutidos uma vez (`static readonly string`, via
       `Assembly.GetManifestResourceStream`), expondo `SignUpTemplate` e
       `ForgotPasswordTemplate`.
-- [ ] 12. Criar `CustomMessageTriggerHandler.HandleAsync(...)`: mapeia
+- [x] 12. Criar `CustomMessageTriggerHandler.HandleAsync(...)`: mapeia
       `TriggerSource` → template/assunto (`CustomMessage_SignUp`/
       `CustomMessage_ResendCode` → template de cadastro,
       `CustomMessage_ForgotPassword` → template de recuperação, outros
@@ -69,7 +69,7 @@ validação em hom).
       fallback textual se ausente) e `{{email}}` no corpo e no assunto,
       envolto em `try/catch` que só loga e sempre retorna o evento
       (nunca propaga — ver decisão técnica 2 do `plan.md`).
-- [ ] 13. Criar `Function.cs`: composition root sem `ServiceCollection`
+- [x] 13. Criar `Function.cs`: composition root sem `ServiceCollection`
       (só `ILoggerFactory` avulso), chama
       `CustomMessageTriggerHandler.HandleAsync` e sobe via
       `LambdaBootstrapBuilder` com

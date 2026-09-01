@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net10.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<PublishAot>true</PublishAot>
+		<InvariantGlobalization>true</InvariantGlobalization>
+		<AWSProjectType>Lambda</AWSProjectType>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Amazon.Lambda.Core" Version="2.6.0" />
+		<PackageReference Include="Amazon.Lambda.RuntimeSupport" Version="1.13.1" />
+		<PackageReference Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.4" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.9" />
+	</ItemGroup>
+
+	<!-- Templates de e-mail copiados de frontend/design-system/emails/ (FEAT-34,
+	     decisão confirmada com o usuário: duplicar em vez de referenciar por
+	     caminho relativo, pra não fazer o build do backend depender da árvore
+	     do frontend — ver plan.md, decisão técnica 3). Embarcados no binário
+	     pra estarem disponíveis no cold start do Lambda sem I/O externo. -->
+	<ItemGroup>
+		<EmbeddedResource Include="Templates\01-confirmacao-cadastro.html" />
+		<EmbeddedResource Include="Templates\02-recuperacao-senha.html" />
+	</ItemGroup>
+
+</Project>
