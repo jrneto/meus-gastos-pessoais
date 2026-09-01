@@ -53,6 +53,50 @@ Leve vs Fluxo Completo e a regra de organização de specs, e
   LocalStack). `scripts/local-init.sh` faz o seed idempotente. Passo a
   passo: `backend/infra/README.md`.
 
+## E-mail transacional (SES, FEAT-33)
+
+Cognito (cadastro, recuperação de senha) e as Lambdas do backend que
+precisarem enviar e-mail diretamente (trigger de conta, API principal)
+enviam via **Amazon SES**, com identidade de domínio própria por
+ambiente — não mais o envio padrão do Cognito (sem marca própria e
+limitado a 50 e-mails/dia por conta, compartilhado entre hom e prod,
+ver "Testes integrados" abaixo).
+
+- **Identidade verificada por ambiente**, com DKIM habilitado
+  (`ses.tf` em cada `environments/{prod,hom}/`): prod verifica o
+  domínio raiz `jrnexpenses.com`, hom verifica o subdomínio
+  `hom.jrnexpenses.com` — mesmo padrão de separação por subdomínio já
+  usado por `api.jrnexpenses.com`/`api-hom.jrnexpenses.com`. Os
+  records DNS de verificação/DKIM vivem em `dns.tf` de cada ambiente,
+  na hosted zone `jrnexpenses.com.` (gerenciada pelo frontend, lida
+  só por `data "aws_route53_zone"`, mesmo mecanismo da FEAT-12).
+- **`email_configuration` do `aws_cognito_user_pool`**
+  (`email_sending_account = "DEVELOPER"`) aponta pra identidade do
+  próprio ambiente. Remetente: `jrn.expenses <no-reply@jrnexpenses.com>`
+  em prod, `jrn.expenses (homologação) <no-reply@hom.jrnexpenses.com>`
+  em hom (nome de exibição com sufixo pra nunca confundir com prod
+  durante teste manual).
+- **IAM `ses:SendEmail`/`ses:SendRawEmail`** concedido só às duas
+  Lambdas do backend (`lambda.tf` e `lambda-account-trigger.tf` de
+  cada ambiente), escopado à identidade de domínio do próprio ambiente
+  — nenhuma outra função ganha essa permissão.
+- **Sandbox do SES**: a conta nasceu no sandbox (`ProductionAccessEnabled:
+  false`, teto de 200 e-mails/dia, 1/s, só destinatários verificados
+  manualmente). Pedido de saída enviado em 2026-09-01 via
+  `aws sesv2 put-account-details` (`mail-type=TRANSACTIONAL`,
+  `website-url=https://jrnexpenses.com`) — status na conclusão da
+  FEAT-33: `ReviewDetails.Status = "PENDING"`. Conferir
+  `aws sesv2 get-account --region us-east-1` antes de assumir que já
+  saiu; enquanto pendente, e-mail pra um destinatário real (não
+  verificado manualmente no SES) não é entregue, mesmo com o resto da
+  infra correta.
+- **Gotcha de deliverability**: validado manualmente em hom que o
+  e-mail de confirmação chega, mas caiu na caixa de spam do Gmail —
+  só DKIM foi configurado, sem MAIL FROM customizado (SPF) nem DMARC;
+  ver débito técnico correspondente em `backend/docs/backlog.md`.
+- Ver `backend/specs/FEAT-33-infra-email-transacional-ses/` para a
+  spec/plano completos.
+
 ## CI/CD (GitHub Actions)
 
 `backend-feature-pr.yml` (PR automático branch→develop),
@@ -109,6 +153,20 @@ parte desses dois pipelines — ver bullet abaixo.
 - **Perfil `agent-toolkit` provavelmente sem `iam:CreateRole`/`PutRolePolicy`**
   — se `terraform apply` do OIDC Provider/Role falhar com `AccessDenied`,
   criar manualmente no console e conferir contra os `.tf`.
+- **Mesmo guardrail de IAM também bloqueia leitura de role já existente**
+  (achado na FEAT-33): `terraform plan`/`apply` com o perfil
+  `agent-toolkit` falha com `AccessDenied` em `iam:GetRole`/
+  `iam:GetRolePolicy` sobre `jrnexpenses-account-trigger-lambda-exec`
+  (role criada pelo próprio Terraform na FEAT-19, não é o caso do OIDC
+  acima) — não é só sobre criação/OIDC, é uma restrição mais ampla de
+  leitura de IAM para essa role específica com esse perfil. Contorno
+  pra `plan`/`apply` que não mexem em IAM: `-refresh=false` +
+  `-target=<recursos não-IAM>`. Para `apply` que precisa criar/alterar
+  IAM (ex.: `aws_iam_role_policy`), rodar localmente com um profile com
+  permissão de IAM de fato (não `agent-toolkit`) — conferir o resultado
+  aplicado via `terraform state show <recurso>` (não depende de
+  `iam:Get*`) quando a leitura via AWS CLI/console também estiver
+  bloqueada.
 
 ## Specs
 
