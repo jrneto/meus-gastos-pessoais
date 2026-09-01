@@ -179,6 +179,19 @@ monorepo.
   fallback `createdByLabel="Ex-membro"` (ver
   `backend/specs/FEAT-22-transacoes-receita-despesa/`).
 
+- [ ] **DÉBITO — `backend-feature-pr.yml` não dispara para mudanças só
+  em `backend/infra/terraform/**`** (percebido num fix pontual pós
+  FEAT-32, PR #86): o filtro `paths` do workflow cobre
+  `backend/src/**`, `backend/tests/**`, `backend/infra/lambda/**`,
+  `backend/GastosApp.sln` e `.github/workflows/backend-*.yml`, mas não
+  `backend/infra/terraform/**` — uma branch `fix/*`/`FEAT-*` que só
+  altera Terraform (ex.: ajuste de IAM policy da role de CI/CD) nunca
+  abre PR automático pra `develop`, exigindo `gh pr create` manual.
+  Decidir se `backend/infra/terraform/**` deve entrar nesse filtro
+  (ou se mudanças de Terraform devem mesmo ficar fora do PR
+  automático, por não passarem pelo gate de build/teste de código) —
+  ver `backend/infra/CLAUDE.md`.
+
 ## Compliance (LGPD)
 
 Levantado durante o `/specify` da FEAT-26 (coleta de CPF no cadastro).
