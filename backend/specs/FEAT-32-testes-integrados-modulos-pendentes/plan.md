@@ -236,6 +236,28 @@ com a ARN do índice — não criar recurso novo, e ainda assim exige
 aprovação explícita antes de qualquer `terraform apply` (mesma regra
 já vigente).
 
+## Achados reais durante a implementação
+
+- **Paralelismo do xUnit derruba o container RIE** — descoberto ao rodar
+  `run-local.sh` com a primeira segunda classe de teste
+  (`MembersFlowTests`, além de `AuthFlowTests` já existente): por
+  padrão o xUnit roda classes de teste diferentes em paralelo (só
+  serializa métodos dentro da mesma classe), e isso nunca foi um
+  problema enquanto só existia uma classe (FEAT-29). Contra o modo
+  local (`LambdaRieTransport`), duas classes disparando requisições
+  simultâneas contra o mesmo container do Runtime Interface Emulator
+  derrubam a conexão (`HttpIOException: The response ended
+  prematurely`) — o RIE emula o modelo de execução do Lambda real (uma
+  invocação de cada vez), sem suportar concorrência. **Fix**: novo
+  `Support/AssemblyInfo.cs` com
+  `[assembly: CollectionBehavior(DisableTestParallelization = true)]`,
+  desabilitando paralelismo pra todo o assembly — resolve pra este e
+  qualquer módulo futuro, e é consistente com o alvo real da suíte
+  (API real compartilhada, hom/prod incluídos, também não desenhada
+  pra concorrência de uma mesma execução de teste). Efeito colateral
+  aceito: a suíte roda sequencialmente (mais lenta conforme mais
+  módulos entrarem) — irrelevante no volume atual.
+
 ## Pontos que precisam de confirmação antes do `/tasks`
 
 1. **Nome do arquivo `Transactions/ExportFlowTests.cs` vs.
