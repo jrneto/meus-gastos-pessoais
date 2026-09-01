@@ -1,0 +1,156 @@
+name: Backend — Deploy Trigger CustomMessage (Produção)
+
+# Espelha backend-deploy-account-trigger-prod.yml, mas para o Lambda do
+# trigger CustomMessage do Cognito (FEAT-34). Mesmo padrão de
+# check-changes calculado via git diff entre releases publicadas (release
+# não suporta filtro `paths:` nativo) — path filter mais estreito, já que
+# este Lambda não referencia Application/Domain/Infrastructure.
+on:
+  release:
+    types: [published]
+  # Escape hatch pra recuperar um deploy que ficou pra trás sem esperar
+  # outra release — mesmo raciocínio de backend-deploy-account-trigger-prod.yml.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag da release a deployar (ex.: backend-v0.0.9) — força o deploy, ignorando o check-changes"
+        required: true
+
+permissions:
+  id-token: write # necessário para autenticação AWS via OIDC (sem access key fixa)
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+env:
+  RELEASE_TAG: ${{ github.event.inputs.tag || github.event.release.tag_name }}
+
+jobs:
+  check-changes:
+    if: startsWith(github.event.inputs.tag || github.event.release.tag_name, 'backend-v')
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # histórico completo — necessário pro git diff entre tags
+
+      - name: Verificar se algo relevante ao trigger CustomMessage mudou desde a última release
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Disparado manualmente via workflow_dispatch — pula a verificação de mudanças e força o deploy de $RELEASE_TAG."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          previous_tag=$(gh release list --exclude-drafts --json tagName,publishedAt \
+            --jq '[.[] | select(.tagName | startswith("backend-v")) | select(.tagName != "${{ github.event.release.tag_name }}")] | sort_by(.publishedAt) | last | .tagName // ""')
+
+          if [ -z "$previous_tag" ]; then
+            echo "Nenhuma release anterior do backend publicada — primeiro deploy deste Lambda, considera mudou."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Comparando $previous_tag..${{ github.event.release.tag_name }}"
+
+          # Paths relativos a backend/ (não repo-root) — ver achado
+          # documentado em backend-deploy-account-trigger-prod.yml
+          # (backend-v0.0.7).
+          changed_paths=$(git diff --name-only "$previous_tag" "${{ github.event.release.tag_name }}" -- \
+            src/GastosApp.CognitoTriggers.CustomMessage \
+            infra/lambda/Dockerfile.build-custom-message-trigger \
+            infra/lambda/build-custom-message-trigger.sh \
+            GastosApp.sln || true)
+
+          if [ -n "$changed_paths" ]; then
+            echo "Mudanças relevantes encontradas:"
+            echo "$changed_paths"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Nenhuma mudança relevante a este Lambda desde $previous_tag."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  quality:
+    needs: check-changes
+    if: needs.check-changes.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - run: dotnet build GastosApp.sln -c Release
+      # --filter exclui GastosApp.IntegrationTests (FEAT-29) — exige
+      # Docker/rede real, não roda nos gates de qualidade padrão.
+      - run: dotnet test GastosApp.sln -c Release --filter "Category!=Integration"
+
+  deploy:
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: backend-prod
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Build do artefato (Native AOT)
+        run: bash infra/lambda/build-custom-message-trigger.sh
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CICD_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Publicar código na Lambda (trigger CustomMessage, prod)
+        run: |
+          aws lambda update-function-code \
+            --function-name "${{ vars.CUSTOM_MESSAGE_TRIGGER_FUNCTION_NAME }}" \
+            --zip-file fileb://infra/lambda/custom-message-trigger-function.zip \
+            --publish
+          aws lambda wait function-updated --function-name "${{ vars.CUSTOM_MESSAGE_TRIGGER_FUNCTION_NAME }}"
+
+  # Mantém main sempre refletindo o que está de fato em produção — mesmo
+  # job (copiado, não referenciado) de backend-deploy-account-trigger-prod.yml.
+  open-pr-main:
+    needs: [check-changes, deploy]
+    if: always() && needs.check-changes.result == 'success' && (needs.check-changes.outputs.changed != 'true' || needs.deploy.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Abrir PR develop → main (se ainda não existir)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ahead=$(gh api "repos/${{ github.repository }}/compare/main...develop" --jq '.ahead_by')
+          if [ "$ahead" -eq 0 ]; then
+            echo "main já reflete develop (nenhum commit novo), nada a fazer."
+            exit 0
+          fi
+
+          existing=$(gh pr list --head develop --base main \
+            --state open --json number --jq 'length')
+          if [ "$existing" -eq 0 ]; then
+            gh pr create --base main --head develop \
+              --title "Release $RELEASE_TAG → main" \
+              --body "Aberto automaticamente após deploy de produção do trigger CustomMessage (release \`$RELEASE_TAG\`)."
+          else
+            echo "PR develop → main já existe, nada a fazer."
+          fi

@@ -82,30 +82,30 @@ validação em hom).
       `build-custom-message-trigger.sh`, mesmo padrão AOT/Amazon Linux
       2023 do account-trigger, publicando
       `src/GastosApp.CognitoTriggers.CustomMessage/GastosApp.CognitoTriggers.CustomMessage.csproj`.
-- [ ] 15. Criar `environments/hom/lambda-custom-message-trigger.tf`: IAM
+- [x] 15. Criar `environments/hom/lambda-custom-message-trigger.tf`: IAM
       Role `jrnexpenses-custom-message-trigger-lambda-exec-hom` (só
       `logs:CreateLogStream`/`PutLogEvents` no próprio log group — sem
       `dynamodb:*`/`cognito-idp:*`/`ses:*`), CloudWatch Log Group,
       `aws_lambda_function.custom_message_trigger`.
-- [ ] 16. Repetir a task 15 em
+- [x] 16. Repetir a task 15 em
       `environments/prod/lambda-custom-message-trigger.tf`
       (`jrnexpenses-custom-message-trigger-lambda-exec`).
-- [ ] 17. Adicionar `aws_lambda_permission` (hom e prod) liberando
+- [x] 17. Adicionar `aws_lambda_permission` (hom e prod) liberando
       `lambda:InvokeFunction` pro principal `cognito-idp.amazonaws.com`,
       `source_arn = aws_cognito_user_pool.main.arn`,
       `statement_id = "AllowCognitoInvokeCustomMessage"`.
-- [ ] 18. Adicionar `custom_message = aws_lambda_function.custom_message_trigger.arn`
+- [x] 18. Adicionar `custom_message = aws_lambda_function.custom_message_trigger.arn`
       ao bloco `lambda_config` já existente em
       `aws_cognito_user_pool.main` (`cognito.tf`, hom e prod), ao lado
       de `post_confirmation`.
-- [ ] 19. Ampliar a política da IAM Role `gastosapp-backend-cicd`
+- [x] 19. Ampliar a política da IAM Role `gastosapp-backend-cicd`
       (`infra/terraform/cicd/`) para
       `lambda:UpdateFunctionCode`/`UpdateFunctionConfiguration` também
       nos dois `jrnexpenses-custom-message-trigger{-hom}`.
 
 ## CI/CD
 
-- [ ] 20. Criar `backend-deploy-custom-message-trigger-hom.yml`:
+- [x] 20. Criar `backend-deploy-custom-message-trigger-hom.yml`:
       path-filtrado só em
       `backend/src/GastosApp.CognitoTriggers.CustomMessage/**` +
       `backend/infra/lambda/Dockerfile.build-custom-message-trigger`/
@@ -114,7 +114,7 @@ validação em hom).
       `Application`/`Domain`/`Infrastructure`); gate de qualidade +
       build do artefato + `aws lambda update-function-code`, mesmo
       padrão de `backend-deploy-account-trigger-hom.yml`.
-- [ ] 21. Criar `backend-deploy-custom-message-trigger-prod.yml`:
+- [x] 21. Criar `backend-deploy-custom-message-trigger-prod.yml`:
       disparado por Release `backend-v*`, mesmo padrão de
       `backend-deploy-account-trigger-prod.yml`.
 - [ ] 22. **(Ação manual, fora do código)** Adicionar a variável
@@ -158,9 +158,9 @@ validação em hom).
 
 ## Testes automatizados
 
-- [ ] 30. Adicionar `GastosApp.CognitoTriggers.CustomMessage` como
+- [x] 30. Adicionar `GastosApp.CognitoTriggers.CustomMessage` como
       `ProjectReference` em `GastosApp.UnitTests.csproj`.
-- [ ] 31. `UnitTests/CognitoTriggers/CustomMessageTriggerHandlerTests.cs`:
+- [x] 31. `UnitTests/CognitoTriggers/CustomMessageTriggerHandlerTests.cs`:
       `CustomMessage_SignUp` e `CustomMessage_ResendCode` resolvem
       `{{codigo}}`/`{{nome}}`/`{{email}}` corretamente no corpo e no
       assunto usando o template de cadastro; `CustomMessage_ForgotPassword`

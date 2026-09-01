@@ -17,6 +17,8 @@ data "aws_iam_policy_document" "backend_cicd" {
       "arn:aws:lambda:${var.aws_region}:${var.aws_account_id}:function:${var.prod_function_name}",
       "arn:aws:lambda:${var.aws_region}:${var.aws_account_id}:function:${var.hom_account_trigger_function_name}",
       "arn:aws:lambda:${var.aws_region}:${var.aws_account_id}:function:${var.prod_account_trigger_function_name}",
+      "arn:aws:lambda:${var.aws_region}:${var.aws_account_id}:function:${var.hom_custom_message_trigger_function_name}",
+      "arn:aws:lambda:${var.aws_region}:${var.aws_account_id}:function:${var.prod_custom_message_trigger_function_name}",
     ]
   }
 
