@@ -310,6 +310,26 @@ monorepo.
   zone) e um record TXT de DMARC (`_dmarc.jrnexpenses.com`, política
   inicial `p=none` pra só monitorar antes de enforçar).
 
+- [ ] **MELHORIA — `terraform apply` via esteira de CI/CD** (levantado
+  no `/plan` da FEAT-34 —
+  `backend/specs/FEAT-34-custom-message-emails-auth/`): hoje todo
+  `terraform apply` é manual, rodado localmente por alguém com
+  credenciais AWS de fato — a esteira (`backend-deploy-*.yml`) só
+  publica código (`aws lambda update-function-code`/
+  `update-function-configuration`), nunca toca infraestrutura. A ideia
+  de automatizar o `apply` via GitHub Actions é tecnicamente viável (o
+  state dos ambientes já é remoto — S3 + `use_lockfile`, seguro de
+  rodar de qualquer máquina), mas exige desenho próprio antes de valer
+  a pena: a role `gastosapp-backend-cicd` precisaria ganhar permissões
+  bem mais amplas que as de hoje (`iam:CreateRole`/`PutRolePolicy`,
+  `lambda:CreateFunction`/`AddPermission`, `cognito-idp:UpdateUserPool`,
+  `logs:CreateLogGroup` etc. — dependendo de quais `.tf` o workflow
+  puder tocar), e um gate de aprovação manual antes do `apply` rodar de
+  fato (auto-apply a cada push seria arriscado pra infra, diferente de
+  deploy de código). Cross-cutting — beneficiaria qualquer feature
+  futura que precise provisionar recurso novo, não só a FEAT-34, que
+  seguiu com `apply` manual (decisão confirmada com o usuário).
+
 ## Compliance (LGPD)
 
 Levantado durante o `/specify` da FEAT-26 (coleta de CPF no cadastro).

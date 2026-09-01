@@ -7,9 +7,13 @@ só tem um `Main`/handler, e os dois eventos têm formato diferente), **sem
 referenciar `Application`/`Infrastructure`** (este trigger só formata
 texto a partir do que o próprio evento do Cognito já traz — não lê
 DynamoDB, não chama a API do Cognito, não usa Mediator); templates HTML
-carregados como `EmbeddedResource` referenciando diretamente os arquivos
-de `frontend/design-system/emails/` (sem duplicar conteúdo — ver ponto a
-confirmar 1); `IAuthService.RegisterAsync` ganha o parâmetro `name`.
+**copiados** para dentro do próprio projeto e carregados como
+`EmbeddedResource` (decisão confirmada com o usuário — ver decisão
+técnica 3); `IAuthService.RegisterAsync` ganha o parâmetro `name`;
+`terraform apply` desta feature continua **manual**, mesmo padrão de
+toda feature anterior (decisão confirmada com o usuário — a ideia de
+aplicar via esteira de CI/CD vira item de backlog, fora do escopo desta
+feature, ver `backend/docs/backlog.md`).
 
 ## 1. Camadas afetadas
 
@@ -82,6 +86,13 @@ confirmar 1); `IAuthService.RegisterAsync` ganha o parâmetro `name`.
 - `CognitoCustomMessageJsonSerializerContext.cs` — mesmo padrão de
   `CognitoTriggerJsonSerializerContext` (camelCase obrigatório,
   `[JsonSerializable(typeof(CognitoCustomMessageEvent))]`).
+- `Templates/01-confirmacao-cadastro.html` e
+  `Templates/02-recuperacao-senha.html` — **cópia** do conteúdo atual
+  de `frontend/design-system/emails/` (decisão confirmada com o
+  usuário: duplicar em vez de referenciar por caminho relativo — ver
+  decisão técnica 3), já com as URLs corrigidas de
+  `app.jrnexpenses.com.br` para `jrnexpenses.com` (Requisitos de
+  negócio do spec.md).
 - `EmailTemplateProvider.cs` — classe estática, carrega os dois HTMLs
   como `EmbeddedResource` uma vez (campos `static readonly string`,
   lidos via `Assembly.GetManifestResourceStream` + `StreamReader` no
@@ -205,15 +216,16 @@ próprio `SignUp`/reenvio/recuperação de senha falhar pro usuário só
 porque o e-mail não pôde ser formatado — sempre preferível cair no
 texto padrão do Cognito.
 
-**3. Templates carregados como `EmbeddedResource` apontando direto
-para `frontend/design-system/emails/*.html` (caminho relativo no
-`.csproj`), não copiados para dentro de `backend/`.** Fonte única de
-verdade, sem risco de os dois arquivos divergirem com o tempo — mas é
-uma referência de build cruzando a fronteira `backend`/`frontend` (ver
-ponto a confirmar 1, porque o `/CLAUDE.md` raiz diz "não existe
-infraestrutura compartilhada entre contextos"; entendo que um asset de
-design referenciado no build não é a mesma coisa que infraestrutura
-compartilhada, mas é uma leitura, não um fato já decidido).
+**3. Templates copiados para dentro de
+`GastosApp.CognitoTriggers.CustomMessage/Templates/` e carregados como
+`EmbeddedResource` — não referenciados por caminho relativo em
+`frontend/design-system/emails/`.** Decisão confirmada com o usuário:
+evita que o build do backend dependa da árvore do frontend (mais
+alinhado com "não existe infraestrutura compartilhada entre
+contextos", `/CLAUDE.md` raiz), ao custo de precisar manter os dois
+HTMLs em sync manualmente se o design-system mudar o layout depois —
+risco aceito, sem mecanismo automático de detecção de divergência
+nesta feature.
 
 **4. Nenhum motor de template (Scriban/Razor/Handlebars) — só
 `string.Replace` para as 3 variáveis usadas por estes dois templates
@@ -238,9 +250,13 @@ evento — um `ILoggerFactory` avulso é suficiente, sem
 
 ## 4. Recursos AWS usados ou afetados
 
-**Recursos novos** (sujeitos a aprovação explícita do usuário antes do
-`terraform apply`, hom primeiro e depois prod — nenhum `apply` roda
-durante a implementação sem essa aprovação):
+**Recursos novos** (`terraform apply` **manual**, feito pelo usuário/com
+credenciais AWS de fato — mesmo padrão de toda feature anterior; a
+esteira de CI/CD desta feature continua só publicando código via `aws
+lambda update-function-code`, nunca `terraform apply`. Confirmado com o
+usuário: aplicar via esteira ficou fora do escopo, ver
+`backend/docs/backlog.md`. Hom primeiro, depois prod, nenhum `apply`
+roda sem aprovação explícita do usuário no momento):
 - 1 função Lambda por ambiente:
   `jrnexpenses-custom-message-trigger-{hom|}`, `provided.al2023`,
   artefato próprio (`infra/lambda/custom-message-trigger-function.zip`
@@ -330,26 +346,15 @@ não muda.
 - `backend/docs/openapi.json`: regenerar só para confirmar ausência de
   diff (constitution) — não é esperada mudança de contrato.
 
-## Pontos a confirmar antes do `/tasks`
+## Pontos confirmados com o usuário
 
-1. **Templates via `EmbeddedResource` apontando pra
-   `frontend/design-system/emails/*.html` (caminho relativo,
-   cross-context) vs. copiar os 2 HTMLs para dentro do
-   `GastosApp.CognitoTriggers.CustomMessage` e manter em sync
-   manualmente.** Recomendo a primeira opção (fonte única de verdade,
-   sem risco de divergência), mas é uma leitura de "referência de
-   design ≠ infraestrutura compartilhada" que vale confirmar
-   explicitamente, já que o `/CLAUDE.md` raiz é enfático sobre não
-   misturar os dois contextos.
-2. **Nome dos recursos Terraform novos** — segue o mesmo prefixo
-   `jrnexpenses-` já usado pelo account-trigger (não `gastos-app`)?
-   Assumido que sim por consistência, mas nunca foi decidido
-   explicitamente para este recurso específico.
-3. **Timing do `terraform apply`** — como o e-mail de cadastro (`POST
-   /auth/register`) já funciona hoje em hom (sem HTML de marca própria,
-   texto padrão do Cognito), o `apply` desta feature pode esperar todo
-   o código estar pronto e testado via ComponentTest antes de tocar
-   infraestrutura real, ou você prefere aplicar em hom mais cedo (Lambda
-   "vazio"/sem `lambda_config` ligado ainda) para reduzir o tamanho do
-   `apply` final? Sem urgência — só documentando que a ordem não foi
-   combinada.
+1. **Templates copiados** para dentro do projeto (não referenciados por
+   caminho relativo em `frontend/design-system/`) — ver decisão técnica 3.
+2. **Prefixo `jrnexpenses-`** para os recursos Terraform novos,
+   consistente com o account-trigger (FEAT-19) — confirmado.
+3. **`terraform apply` manual**, mesmo padrão de toda feature anterior
+   — "terraform apply via esteira de CI/CD" fica registrado como item de
+   backlog (infra transversal, não específico desta feature), fora do
+   escopo do FEAT-34.
+
+Sem pontos em aberto — pode seguir para o `/tasks`.
