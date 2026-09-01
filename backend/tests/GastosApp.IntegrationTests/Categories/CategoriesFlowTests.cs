@@ -113,4 +113,35 @@ public sealed class CategoriesFlowTests
             HttpMethod.Get, $"/categories/{categoriaId}", bearerToken: contaB.AccessToken);
         getContaBResponse.StatusCode.Should().Be(404);
     }
+
+    [Fact]
+    public async Task DeleteCategories_ComTransacaoAssociada_Retorna422()
+    {
+        await using var account = await TestAccountFixture.CreateAsync();
+
+        // Nome deliberadamente distinto do catálogo de 13 categorias
+        // padrão semeadas em toda conta nova (FEAT-28, DefaultCategorySeed)
+        // — usar um nome coincidente (ex.: "Alimentação"/"Transporte")
+        // colide (422 name-conflict) com a categoria já seedada.
+        var categoriaResponse = await account.Transport.SendAsync(
+            HttpMethod.Post, "/categories",
+            new CategoryRequestDto("Categoria de Teste com Transação", "despesa", null),
+            bearerToken: account.AccessToken);
+        categoriaResponse.StatusCode.Should().Be(201);
+        var categoria = categoriaResponse.Deserialize<CategoryResponseDto>();
+
+        var transacaoResponse = await account.Transport.SendAsync(
+            HttpMethod.Post, "/transactions",
+            new TransactionRequestDto("Almoço", 4590, categoria.Id, "despesa", "2026-08-15"),
+            bearerToken: account.AccessToken);
+        transacaoResponse.StatusCode.Should().Be(201);
+
+        var deleteResponse = await account.Transport.SendAsync(
+            HttpMethod.Delete, $"/categories/{categoria.Id}", bearerToken: account.AccessToken);
+        deleteResponse.StatusCode.Should().Be(422);
+
+        var getAfterFailedDeleteResponse = await account.Transport.SendAsync(
+            HttpMethod.Get, $"/categories/{categoria.Id}", bearerToken: account.AccessToken);
+        getAfterFailedDeleteResponse.StatusCode.Should().Be(200);
+    }
 }

@@ -27,3 +27,8 @@ public sealed record MemberListResponseDto(List<MemberResponseDto> Items);
 public sealed record CategoryRequestDto(string Nome, string Tipo, long? OrcamentoMensalCents);
 public sealed record CategoryResponseDto(string Id, string Nome, string Tipo, long? OrcamentoMensalCents, string CreatedAt);
 public sealed record CategoryListResponseDto(List<CategoryResponseDto> Items);
+
+// Transações (FEAT-22) — ver backend/specs/FEAT-22-transacoes-receita-despesa/spec.md
+public sealed record TransactionRequestDto(string Description, long AmountInCents, string CategoryId, string Tipo, string Date);
+public sealed record TransactionResponseDto(string Id, string Description, long AmountInCents, string CategoryId, string Tipo, string Date, string CreatedByUserId, string CreatedByLabel, string CreatedAt);
+public sealed record TransactionListResponseDto(List<TransactionResponseDto> Items, string? NextCursor);
