@@ -190,48 +190,105 @@ ser exercitado contra a API real**.
 
 ## Critérios de aceite
 
-- [ ] `Categories/CategoriesFlowTests.cs`: fluxo de sucesso
+- [x] `Categories/CategoriesFlowTests.cs`: fluxo de sucesso
       (criar/listar/editar/excluir), bloqueio de exclusão com
       transação associada (422), 403 para papel `Leitura` em
       escrita, isolamento entre contas — todos passando localmente
       via `run-local.sh`
-- [ ] `Transactions/TransactionsFlowTests.cs`: fluxo de sucesso
+- [x] `Transactions/TransactionsFlowTests.cs`: fluxo de sucesso
       (registrar despesa e receita/listar/consultar por id/
       editar/excluir), 400 para `tipo` divergente da categoria, 403
       para papel `Lancar` em transação de outro membro, isolamento
       entre contas — todos passando localmente
-- [ ] `Members/MembersFlowTests.cs`: fluxo de sucesso
+- [x] `Members/MembersFlowTests.cs`: fluxo de sucesso
       (convidar/listar/trocar papel/remover), convite aceito de
       verdade no login de uma segunda conta de teste
       (`Status=Ativo`, troca de conta ativa), 403 para papel
       não-Titular — todos passando localmente
-- [ ] `Summary/SummaryFlowTests.cs`: fluxo de sucesso com dados reais,
+- [x] `Summary/SummaryFlowTests.cs`: fluxo de sucesso com dados reais,
       mês sem dados retorna 200 zerado, 200 para papel `Leitura`,
       isolamento entre contas — todos passando localmente
-- [ ] `Reports/ReportsFlowTests.cs`: fluxo de sucesso com dados reais
+- [x] `Reports/ReportsFlowTests.cs`: fluxo de sucesso com dados reais
       para ao menos um `period`, 200 para papel `Leitura`, isolamento
       entre contas — todos passando localmente
-- [ ] `Transactions/ExportFlowTests.cs` (ou equivalente): exportação
+- [x] `Transactions/ExportFlowTests.cs` (ou equivalente): exportação
       com dados retorna CSV com linhas corretas, filtro sem resultado
       retorna CSV só de cabeçalho, 200 para papel `Leitura` — todos
       passando localmente
-- [ ] `Auth/AuthFlowTests.cs` ganha asserção de que `GET /auth/me`
+- [x] `Auth/AuthFlowTests.cs` ganha asserção de que `GET /auth/me`
       retorna `name`/`phoneNumber`/`cpf` idênticos aos enviados no
       registro, e um novo teste de CPF duplicado (409) — passando
       localmente
-- [ ] `TestAccountFixture` (ou uma extensão dela) suporta criar uma
+- [x] `TestAccountFixture` (ou uma extensão dela) suporta criar uma
       segunda conta de teste vinculada, usada pelos módulos Membros e
       Transações (autorização por papel `Lancar`)
-- [ ] Todos os testes novos rodam com sucesso localmente via
+- [x] Todos os testes novos rodam com sucesso localmente via
       `backend/infra/lambda/run-local.sh` (binário Native AOT via RIE)
-- [ ] `dotnet test GastosApp.sln` continua passando (unitário +
+- [x] `dotnet test GastosApp.sln` continua passando (unitário +
       componente), sem exigir Docker/rede, sem regressão de contagem
-- [ ] Nenhum arquivo fora de `backend/tests/GastosApp.IntegrationTests/`
+- [x] Nenhum arquivo fora de `backend/tests/GastosApp.IntegrationTests/`
       foi alterado, exceto `backend/docs/backlog.md` (item de débito
-      marcado como concluído/apontando para esta FEAT)
-- [ ] `backend/docs/backlog.md`: item "DÉBITO — Módulos sem teste
+      marcado como concluído/apontando para esta FEAT) — ver "Status"
+      abaixo sobre o fix em `LambdaRieTransport.cs` (dentro do próprio
+      `GastosApp.IntegrationTests/`, portanto ainda dentro deste
+      critério)
+- [x] `backend/docs/backlog.md`: item "DÉBITO — Módulos sem teste
       integrado ainda" sai da seção "Débitos técnicos e melhorias
       futuras" e passa a apontar para esta FEAT
+
+## Status
+
+Implementado conforme `plan.md`/`tasks.md`. Sete arquivos de
+`FlowTests` novos (`Categories/`, `Transactions/` — incluindo
+`ExportFlowTests.cs`, `Members/`, `Summary/`, `Reports/`) mais a
+extensão de `Auth/AuthFlowTests.cs` (módulo Perfil), todos exercitando
+a API real via `IApiTransport` (Cognito/DynamoDB reais em hom/prod, o
+binário Native AOT publicado via Runtime Interface Emulator em local),
+sem referenciar código de produção. `TestAccountFixture` ganhou
+`InviteAndAcceptAsync` (convida → registra/confirma/loga uma segunda
+identidade real, disparando o aceite automático do convite no login) e
+o novo tipo `SecondaryTestAccount` (limpeza própria via `Query
+IndexName=GSI1, GSI1PK=USER#<userId>`, isolando e apagando só a conta
+pessoal da segunda identidade — a `Membership` dela na conta que
+convidou já é limpa pela conta principal).
+
+Suíte local validada de ponta a ponta via `run-local.sh`: 25/25 testes
+passando (os 3 já existentes de Auth + os 22 novos). `dotnet test
+GastosApp.sln --filter "Category!=Integration"` (unitário + componente)
+segue passando sem regressão: 473 unitários + 207 de componente.
+
+**Três achados reais durante a implementação**, todos em infraestrutura
+de teste (nenhum em código de produção), documentados em detalhe no
+`plan.md`:
+
+1. **Paralelismo do xUnit derrubava o container RIE local** — primeira
+   vez que a suíte tem mais de uma classe de teste; classes diferentes
+   rodam em paralelo por padrão, disparando requisições concorrentes
+   contra um emulador que só suporta uma invocação por vez. Corrigido
+   com `[assembly: CollectionBehavior(DisableTestParallelization =
+   true)]` (novo `Support/AssemblyInfo.cs`).
+2. **`LambdaRieTransport` nunca separava query string do path** — bug
+   pré-existente da FEAT-29, nunca exercitado porque o único módulo
+   anterior (Auth) nunca usava `GET` com query string. Toda chamada
+   com `?...` virava 404 em modo local. Corrigido separando `path` em
+   `rawPath`/`rawQueryString` antes de montar o evento do API Gateway
+   v2 (`Support/LambdaRieTransport.cs`) — sem efeito em hom/prod
+   (`DirectHttpTransport` já funcionava).
+3. **Nomes de categoria usados nos testes colidiam com o catálogo de
+   13 categorias padrão** (FEAT-28, `DefaultCategorySeed` — inclui
+   "Transporte", "Alimentação" etc., semeadas automaticamente em toda
+   conta nova) — `POST /categories` com nome coincidente retorna 422
+   (`name-conflict`, comportamento correto da API). Corrigido trocando
+   os nomes usados em `CategoriesFlowTests.cs`/`TransactionsFlowTests.cs`
+   por strings que não colidem com o seed, com comentário explicativo
+   nos dois arquivos.
+
+Os dois primeiros achados foram confirmados com o usuário antes de
+alterar arquivos fora do escopo original do `plan.md`
+(`Support/AssemblyInfo.cs` é novo; `LambdaRieTransport.cs` já existia
+desde a FEAT-29) — ambos dentro de
+`backend/tests/GastosApp.IntegrationTests/`, então não violam o
+critério de aceite "nenhum arquivo fora desta pasta foi alterado".
 
 ## Fora do escopo
 
