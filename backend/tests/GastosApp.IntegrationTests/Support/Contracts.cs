@@ -22,3 +22,8 @@ public sealed record MemberRequestDto(string Email, string Role);
 public sealed record MemberRoleRequestDto(string Role);
 public sealed record MemberResponseDto(string Id, string Email, string Role, string Status, string CreatedAt);
 public sealed record MemberListResponseDto(List<MemberResponseDto> Items);
+
+// Categorias (FEAT-16 + FEAT-21) — ver backend/specs/FEAT-21-categoria-tipo-orcamento/spec.md
+public sealed record CategoryRequestDto(string Nome, string Tipo, long? OrcamentoMensalCents);
+public sealed record CategoryResponseDto(string Id, string Nome, string Tipo, long? OrcamentoMensalCents, string CreatedAt);
+public sealed record CategoryListResponseDto(List<CategoryResponseDto> Items);
