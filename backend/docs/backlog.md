@@ -105,7 +105,10 @@ raiz).
   três campos.
   Depende de: FEAT-01 (auth).
 
-- [ ] **FEAT-27 — E-mail de boas-vindas**
+- [ ] **FEAT-27 — E-mail de boas-vindas** *(substituída por FEAT-37,
+  abaixo — a leva "Autenticação — área não logada" de 2026-09-01
+  formalizou a infra de e-mail que este item deixava em aberto. Mantido
+  aqui só como histórico; não implementar isoladamente.)*
   Envia e-mail de boas-vindas quando a conta é criada (mesmo trigger
   `Post Confirmation` da FEAT-19). Exige decidir/provisionar
   infraestrutura de e-mail (SES ou similar) — inexistente no projeto
@@ -130,6 +133,108 @@ raiz).
   conta já usado no resto do modelo. Ver
   `backend/specs/FEAT-30-categoria-gsi2-escopo-conta/`.
   Depende de: FEAT-19, FEAT-28.
+
+## Autenticação — área não logada (2026-09-01)
+
+Sequência combinada em 2026-09-01 a partir da atualização do design
+system (`frontend/design-system/web/screenshots/2{0..7}-*.png`,
+`frontend/design-system/mobile/screenshots/2{0..7}-*.png` e
+`frontend/design-system/emails/`), que passou a assumir confirmação de
+cadastro por OTP, recuperação de senha em 3 passos e 4 e-mails
+transacionais com HTML próprio (confirmação, recuperação, senha
+alterada, boas-vindas). Segue a mesma mecânica das demais linhas deste
+arquivo — cada item vira `spec.md` própria via `/specify`.
+
+**Decisões já confirmadas com o usuário (2026-09-01):**
+- **E-mail com marca própria desde já, via SES** (não o e-mail padrão,
+  sem estilo, do Cognito) — FEAT-33 provisiona a infra antes de
+  qualquer um dos outros itens depender dela. Como qualquer recurso AWS
+  novo, **exige aprovação explícita do usuário antes do `terraform
+  apply`** (ver `backend/infra/CLAUDE.md`, seção de custo/segurança).
+- **O timer de 60s do protótipo (`otpSeconds`) vira só um cooldown de
+  reenvio no frontend, não uma expiração real de código.** O backend
+  usa os fluxos nativos do Cognito (`ConfirmSignUp`/`ForgotPassword`,
+  TTL padrão deles) — sem tabela própria de OTP, sem novo mecanismo de
+  rate limit/brute force pra manter. Copy dos e-mails ("expira em 1
+  minuto") deve ser revisada nas specs de FEAT-35/36 pra não prometer
+  algo que o backend não cumpre.
+- **Motivação extra pra sair do e-mail padrão do Cognito:** o teto de
+  50 e-mails/dia (sem SES) já é a razão documentada de
+  `GastosApp.IntegrationTests` ter sido tirado dos pipelines de
+  hom/prod em 2026-09-01 (ver `backend/infra/CLAUDE.md`). FEAT-33
+  resolve isso como efeito colateral — reavaliar naquele momento se dá
+  pra devolver os testes integrados aos workflows.
+
+- [ ] **FEAT-33 — Infraestrutura de e-mail transacional (SES)**
+  Provisiona Amazon SES para hom e prod: identidade de e-mail/domínio
+  verificada (`ses.tf` por ambiente, mesmo padrão de `lambda-account-
+  trigger.tf`), IAM policy `ses:SendEmail`/`ses:SendRawEmail` pras
+  Lambdas que vão precisar (trigger de Custom Message da FEAT-34, e a
+  API/trigger que disparam e-mail direto nas FEAT-36/37). Definir
+  também `email_configuration` do `aws_cognito_user_pool` apontando pro
+  SES (hoje usa o envio padrão do Cognito). Investigar se a conta AWS
+  já está fora do sandbox do SES (sandbox limita destinatários a
+  endereços verificados manualmente — pode bloquear teste com contas de
+  usuário reais até sair dele).
+  **Exige aprovação explícita do usuário antes de qualquer `terraform
+  apply`.**
+  Depende de: nenhuma — pré-requisito de FEAT-34, FEAT-36, FEAT-37.
+
+- [ ] **FEAT-34 — Custom Message trigger do Cognito (e-mails de auth com HTML)**
+  Novo handler em `GastosApp.CognitoTriggers` (ao lado do
+  `AccountTriggerHandler` já existente) pro trigger `CustomMessage` do
+  Cognito, cobrindo os `TriggerSource` `CustomMessage_SignUp`,
+  `CustomMessage_ResendCode` e `CustomMessage_ForgotPassword`: troca o
+  corpo padrão pelo HTML de `frontend/design-system/emails/
+  01-confirmacao-cadastro.html` (cadastro/reenvio) e
+  `02-recuperacao-senha.html` (recuperação), substituindo o
+  `{{codigo}}` do template pelo `codeParameter` que o próprio evento
+  do Cognito já injeta. O envio em si continua sendo feito pelo
+  Cognito (via SES configurado na FEAT-33) — este trigger só formata,
+  não chama `ses:SendEmail` diretamente.
+  Depende de: FEAT-33.
+
+- [ ] **FEAT-35 — Confirmação de cadastro via código (OTP)**
+  `POST /auth/confirm` (`ConfirmSignUpAsync`) e `POST /auth/resend-
+  confirmation` (`ResendConfirmationCodeAsync`). Novos erros em
+  `AuthErrors` (`invalid-confirmation-code` ← `CodeMismatchException`,
+  `expired-confirmation-code` ← `ExpiredCodeException`) — reaproveita
+  `AuthErrors.UserNotConfirmed`, já usado pelo login (`CognitoAuthService.
+  LoginAsync`) desde antes desta leva. Nenhuma mudança de TTL no
+  Cognito (ver decisão acima).
+  Depende de: FEAT-01 (auth) — já pronto. Recomendado depois de FEAT-34
+  pra já nascer com e-mail com marca própria, mas não é bloqueio
+  técnico (funciona com o e-mail padrão do Cognito também).
+
+- [ ] **FEAT-36 — Recuperação de senha (esqueci minha senha)**
+  `POST /auth/forgot-password` (`ForgotPasswordAsync`) e `POST /auth/
+  reset-password` (`ConfirmForgotPasswordAsync`), com erros
+  `invalid-reset-code`/`expired-reset-code` (`CodeMismatchException`/
+  `ExpiredCodeException`) e reaproveitando `AuthErrors.Validation` pra
+  senha fora da política (`InvalidPasswordException` — política real do
+  Cognito exige maiúscula+minúscula+número+símbolo, não só "mín. 8
+  caracteres" como o texto do protótipo sugere; frontend precisa
+  espelhar isso, ver backlog do frontend). Após
+  `ConfirmForgotPasswordAsync` bem-sucedido, dispara na hora o e-mail
+  de "senha alterada" (`03-senha-alterada.html`) via `ses:SendEmail`
+  direto do backend (não passa pelo Custom Message trigger — não é
+  código do Cognito) com `{{data}}` da própria request;
+  `{{dispositivo}}` pode ficar com o `User-Agent` cru como fallback (sem
+  parsing de dispositivo no projeto hoje — refinar como débito futuro
+  se o usuário quiser).
+  Depende de: FEAT-33 (SES). Não depende de FEAT-34/35.
+
+- [ ] **FEAT-37 — E-mail de boas-vindas** *(substitui a antiga FEAT-27
+  deste arquivo)*
+  O trigger `Post Confirmation` já existente (`AccountTriggerHandler`,
+  FEAT-19) passa a também enviar `04-boas-vindas.html` via
+  `ses:SendEmail` direto (mesmo padrão da FEAT-36), depois de
+  `EnsureAccountCommand` ter sucesso — precisa acrescentar
+  `ses:SendEmail` na IAM role já existente do Lambda de trigger
+  (`lambda-account-trigger.tf`). Falha no envio do e-mail não pode
+  bloquear a criação da conta (mesma filosofia defensiva já aplicada ao
+  `EnsureAccountCommand` no `AccountTriggerHandler` — só loga).
+  Depende de: FEAT-33, FEAT-19 (já pronto).
 
 ## Bugs
 

@@ -129,6 +129,58 @@ backend correspondente, já pronto) conforme a coluna "Depende de".
   Depende de: backend FEAT-25 (exportação CSV) — já pronto; frontend
   FEAT-23.
 
+## Sequência — Autenticação: área não logada (2026-09-01)
+
+Combinada em 2026-09-01 a partir da atualização do design system
+(`web/screenshots/2{0..7}-*.png`, `mobile/screenshots/2{0..7}-*.png` e
+`web/README.md`, seção "Autenticação (atualizado)"): senha visível
+opcional, confirmação de cadastro por OTP e recuperação de senha em 3
+passos. Os quatro e-mails transacionais (`design-system/emails/`) não
+geram tela nova aqui — `01`/`02` (código de confirmação/recuperação)
+são disparados pelo backend e só aparecem na caixa de entrada do
+usuário; `03`/`04` (senha alterada, boas-vindas) não têm nenhuma
+contrapartida de tela. Mesma mecânica das demais seções: cada linha
+vira `spec.md` própria via `/specify`.
+
+- [ ] **FEAT-31 — Cadastro: confirmação por OTP**
+  Depois de `POST /auth/register` (FEAT-21, já pronto) ter sucesso, em
+  vez de ir direto pro login exibe a tela de código
+  (`21-otp-cadastro.png`): 6 campos de dígito, contador de 60s
+  (cooldown de reenvio — não expiração real de código, decisão tomada
+  no backlog do backend), campos desabilitados + botão "Reenviar
+  e-mail" ao zerar (`22-otp-expirado.png`). Código válido chama `POST
+  /auth/confirm` e volta ao login com aviso "E-mail confirmado"
+  (`23-login-email-confirmado.png`); código inválido mostra erro
+  inline sem resetar o contador. Vale tanto pra web quanto mobile — os
+  dois `.dc.html` foram atualizados juntos.
+  Depende de: backend FEAT-35 (confirmação de cadastro via OTP).
+
+- [ ] **FEAT-32 — Recuperação de senha (fluxo completo)**
+  Novo fluxo "Esqueci minha senha" a partir do link já existente na
+  tela de login: passo 1/3 pede e-mail (`24-recuperar-senha.png`) e
+  chama `POST /auth/forgot-password`; passo 2/3 reaproveita o
+  componente de OTP da FEAT-31 com `purpose=reset`
+  (`25-otp-recuperacao.png`) e chama `POST /auth/reset-password`
+  (código); passo 3/3 pede nova senha com confirmação
+  (`26-nova-senha.png`) — mínimo 8 caracteres é só o piso visual do
+  protótipo, a validação client-side real deve espelhar a política
+  completa do Cognito (maiúscula + minúscula + número + símbolo,
+  mesma regra já aplicada no cadastro) pra não deixar o usuário
+  descobrir a regra só pelo erro 400 da API. Sucesso volta ao login com
+  aviso "Senha redefinida" (`27-login-senha-redefinida.png`).
+  Depende de: backend FEAT-36 (recuperação de senha); frontend FEAT-31
+  (componente de OTP compartilhado).
+
+- [ ] **FEAT-33 — Senha visível (mostrar/ocultar)**
+  Botão "Mostrar/Ocultar" nos campos de senha de login, cadastro e nova
+  senha (`20-cadastro-senha-visivel.png`) — toggle local de
+  `type="password"`/`type="text"`, sem chamada de API nem novo estado
+  de servidor. *Candidato a Modo Leve* (ajuste de UI pontual, sem
+  mudança de contrato) — confirmar classificação no `/specify` em vez
+  de assumir de antemão. Pode ser feito antes ou em paralelo às
+  FEAT-31/32, já que não depende delas.
+  Depende de: nenhuma.
+
 ## Débitos técnicos e melhorias futuras
 
 - **Componente de toast genérico (Modernist)** — levantado durante o

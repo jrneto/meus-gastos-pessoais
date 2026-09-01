@@ -40,6 +40,18 @@
       <div style="font:800 32px var(--font-heading);letter-spacing:-.02em">jrn<span style="color:var(--color-accent)">.</span></div>
       <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6">expenses · web</div>
     </div>
+    <sc-if value="{{ justVerified }}" hint-placeholder-val="{{ false }}">
+      <div style="border:2px solid var(--color-accent);background:var(--color-accent-100);padding:12px 14px;display:flex;gap:10px;align-items:flex-start">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:1px"><polyline points="20 6 9 17 4 12" stroke="var(--color-accent-700)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:12.5px;line-height:1.45;color:var(--color-accent-700)">E-mail confirmado. Sua conta está ativa — entre com seus dados.</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ justReset }}" hint-placeholder-val="{{ false }}">
+      <div style="border:2px solid var(--color-accent);background:var(--color-accent-100);padding:12px 14px;display:flex;gap:10px;align-items:flex-start">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:1px"><polyline points="20 6 9 17 4 12" stroke="var(--color-accent-700)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:12.5px;line-height:1.45;color:var(--color-accent-700)">Senha redefinida. Entre com a nova senha.</span>
+      </div>
+    </sc-if>
     <div class="seg" style="align-self:flex-start">
       <label class="seg-opt"><input type="radio" name="authmode" checked="{{ isLoginMode }}" onChange="{{ setLoginMode }}" style="display:none"/>Entrar</label>
       <label class="seg-opt"><input type="radio" name="authmode" checked="{{ isSignupMode }}" onChange="{{ setSignupMode }}" style="display:none"/>Criar conta</label>
@@ -53,9 +65,101 @@
         </div>
       </sc-if>
       <label class="field"><span style="font-size:12px;opacity:.7">E-mail</span><input class="input" type="email" placeholder="voce@email.com" value="{{ authEmail }}" onChange="{{ setAuthEmail }}"/></label>
-      <label class="field"><span style="font-size:12px;opacity:.7">Senha</span><input class="input" type="password" placeholder="••••••••" value="{{ authPassword }}" onChange="{{ setAuthPassword }}"/></label>
+      <label class="field"><span style="font-size:12px;opacity:.7">Senha</span>
+        <span style="position:relative;display:block">
+          <input class="input" type="{{ passwordInputType }}" placeholder="••••••••" value="{{ authPassword }}" onChange="{{ setAuthPassword }}" style="width:100%;box-sizing:border-box;padding-right:86px"/>
+          <button type="button" onClick="{{ togglePassword }}" class="btn btn-ghost" style="position:absolute;right:0;top:0;height:100%;padding:0 12px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase">{{ passwordToggleLabel }}</button>
+        </span>
+      </label>
     </div>
+    <sc-if value="{{ isLoginMode }}" hint-placeholder-val="{{ true }}">
+      <button onClick="{{ goForgot }}" class="btn btn-ghost" style="align-self:flex-start;padding-left:0">Esqueci minha senha</button>
+    </sc-if>
     <button onClick="{{ submitAuth }}" disabled="{{ isAuthing }}" class="btn btn-primary btn-block" style="display:flex;align-items:center;gap:10px"><sc-if value="{{ isAuthing }}" hint-placeholder-val="{{ false }}"><span class="je-spin-sm"></span></sc-if>{{ authButtonLabel }}</button>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isOtp }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;display:flex;align-items:center;justify-content:center">
+  <div style="width:420px;display:flex;flex-direction:column;gap:22px">
+    <button onClick="{{ otpBack }}" class="btn btn-ghost" style="align-self:flex-start;padding-left:0;font-size:12px">← Voltar</button>
+    <div>
+      <sc-if value="{{ isOtpSignup }}" hint-placeholder-val="{{ true }}">
+        <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6;margin-bottom:8px">Passo 2 de 2 · Confirmação</div>
+        <h1 style="font:800 28px var(--font-heading);margin:0 0 10px;letter-spacing:-.01em;line-height:1.15">Confirme seu e-mail</h1>
+      </sc-if>
+      <sc-if value="{{ isOtpReset }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6;margin-bottom:8px">Passo 2 de 3 · Recuperação</div>
+        <h1 style="font:800 28px var(--font-heading);margin:0 0 10px;letter-spacing:-.01em;line-height:1.15">Verifique o código</h1>
+      </sc-if>
+      <p style="font-size:13.5px;line-height:1.55;opacity:.7;margin:0;text-wrap:pretty">Enviamos um código de 6 dígitos para <span style="opacity:1;font-weight:600">{{ authEmailDisplay }}</span>. Ele vale por 1 minuto.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px">
+      <sc-for list="{{ otpCells }}" as="d" hint-placeholder-count="6">
+        <input class="input" ref="{{ d.ref }}" type="text" inputmode="numeric" maxlength="6" disabled="{{ d.disabled }}" value="{{ d.value }}" onChange="{{ d.onChange }}" onKeyDown="{{ d.onKeyDown }}" style="text-align:center;font:700 22px var(--font-heading);height:60px;padding:0;box-sizing:border-box"/>
+      </sc-for>
+    </div>
+    <sc-if value="{{ hasOtpError }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:12.5px;color:var(--color-accent-700);line-height:1.45">{{ otpError }}</div>
+    </sc-if>
+    <sc-if value="{{ otpActive }}" hint-placeholder-val="{{ true }}">
+      <div style="border-top:2px solid var(--color-divider);padding-top:14px;display:flex;align-items:baseline;gap:10px">
+        <span style="font:800 26px var(--font-heading);color:var(--color-accent);font-variant-numeric:tabular-nums">{{ otpTimerLabel }}</span>
+        <span style="font-size:12px;opacity:.6">até o código expirar</span>
+      </div>
+      <button onClick="{{ submitOtp }}" disabled="{{ isOtpVerifying }}" class="btn btn-primary btn-block" style="display:flex;align-items:center;gap:10px"><sc-if value="{{ isOtpVerifying }}" hint-placeholder-val="{{ false }}"><span class="je-spin-sm"></span></sc-if>{{ otpButtonLabel }}</button>
+    </sc-if>
+    <sc-if value="{{ otpExpired }}" hint-placeholder-val="{{ false }}">
+      <div style="border-top:2px solid var(--color-divider);padding-top:14px;display:flex;flex-direction:column;gap:12px;align-items:flex-start">
+        <span style="font-size:12.5px;line-height:1.5;opacity:.7">O código expirou. Solicite um novo para concluir o cadastro.</span>
+        <button onClick="{{ resendOtp }}" class="btn btn-primary btn-block">Reenviar e-mail</button>
+      </div>
+    </sc-if>
+    <p style="font-size:11px;opacity:.5;margin:0">Protótipo: use o código 123456.</p>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isForgot }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;display:flex;align-items:center;justify-content:center">
+  <div style="width:420px;display:flex;flex-direction:column;gap:22px">
+    <button onClick="{{ backToLogin }}" class="btn btn-ghost" style="align-self:flex-start;padding-left:0;font-size:12px">← Voltar ao login</button>
+    <div>
+      <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6;margin-bottom:8px">Passo 1 de 3 · Recuperação</div>
+      <h1 style="font:800 28px var(--font-heading);margin:0 0 10px;letter-spacing:-.01em;line-height:1.15">Recuperar senha</h1>
+      <p style="font-size:13.5px;line-height:1.55;opacity:.7;margin:0;text-wrap:pretty">Informe o e-mail da sua conta. Enviaremos um código de 6 dígitos para confirmar que é você.</p>
+    </div>
+    <label class="field"><span style="font-size:12px;opacity:.7">E-mail</span><input class="input" type="email" placeholder="voce@email.com" value="{{ authEmail }}" onChange="{{ setAuthEmail }}"/></label>
+    <sc-if value="{{ hasForgotError }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:12.5px;color:var(--color-accent-700);line-height:1.45">{{ forgotError }}</div>
+    </sc-if>
+    <button onClick="{{ submitForgot }}" class="btn btn-primary btn-block">Enviar código</button>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isReset }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;display:flex;align-items:center;justify-content:center">
+  <div style="width:420px;display:flex;flex-direction:column;gap:22px">
+    <div>
+      <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6;margin-bottom:8px">Passo 3 de 3 · Recuperação</div>
+      <h1 style="font:800 28px var(--font-heading);margin:0 0 10px;letter-spacing:-.01em;line-height:1.15">Nova senha</h1>
+      <p style="font-size:13.5px;line-height:1.55;opacity:.7;margin:0;text-wrap:pretty">Escolha uma senha com pelo menos 8 caracteres.</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <label class="field"><span style="font-size:12px;opacity:.7">Nova senha</span>
+        <span style="position:relative;display:block">
+          <input class="input" type="{{ newPasswordInputType }}" placeholder="••••••••" value="{{ newPassword }}" onChange="{{ setNewPassword }}" style="width:100%;box-sizing:border-box;padding-right:86px"/>
+          <button type="button" onClick="{{ toggleNewPassword }}" class="btn btn-ghost" style="position:absolute;right:0;top:0;height:100%;padding:0 12px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase">{{ newPasswordToggleLabel }}</button>
+        </span>
+      </label>
+      <label class="field"><span style="font-size:12px;opacity:.7">Confirmar nova senha</span><input class="input" type="{{ newPasswordInputType }}" placeholder="••••••••" value="{{ newPassword2 }}" onChange="{{ setNewPassword2 }}"/></label>
+    </div>
+    <sc-if value="{{ hasResetError }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:12.5px;color:var(--color-accent-700);line-height:1.45">{{ resetError }}</div>
+    </sc-if>
+    <button onClick="{{ submitReset }}" class="btn btn-primary btn-block">Salvar nova senha</button>
   </div>
 </div>
 </sc-if>
@@ -611,6 +715,9 @@ class Component extends DCLogic {
   state = {
     screen: 'login',
     authMode: 'login',
+    otpCode: ['', '', '', '', '', ''], otpSeconds: 60, otpError: '', otpVerifying: false, justVerified: false,
+    otpPurpose: 'signup', showPassword: false, showNewPassword: false,
+    newPassword: '', newPassword2: '', resetError: '', forgotError: '', justReset: false,
     authName: '', authEmail: '', authPassword: '', authCpf: '', authPhone: '',
     tab: 'dashboard',
     showAdd: false,
@@ -744,19 +851,100 @@ class Component extends DCLogic {
     if (d.length <= 10) return '(' + d.slice(0, 2) + ') ' + d.slice(2, 6) + '-' + d.slice(6);
     return '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7);
   }
+  _otpRefs = [];
   setLoginMode() { this.setState({ authMode: 'login' }); }
   setSignupMode() { this.setState({ authMode: 'signup' }); }
   submitAuth() {
     if (this.state.authing) return;
-    this.setState({ authing: true });
-    this._authT = setTimeout(() => this.setState({ authing: false, screen: 'app', tab: 'dashboard' }), 1700);
+    this.setState({ authing: true, justVerified: false });
+    this._authT = setTimeout(() => {
+      if (this.state.authMode === 'signup') {
+        this.setState({ authing: false });
+        this.startOtp('signup');
+        this.showToast('Código enviado para ' + (this.state.authEmail || 'seu e-mail'));
+      } else {
+        this.setState({ authing: false, screen: 'app', tab: 'dashboard' });
+      }
+    }, 1700);
+  }
+  startOtp(purpose) {
+    clearInterval(this._otpI);
+    this._otpRefs = [];
+    this.setState(s => ({ screen: 'otp', otpPurpose: purpose || s.otpPurpose || 'signup', otpCode: ['', '', '', '', '', ''], otpSeconds: 60, otpError: '', otpVerifying: false }));
+    this._otpI = setInterval(() => this.setState(s => {
+      if (s.otpSeconds <= 1) { clearInterval(this._otpI); return { otpSeconds: 0 }; }
+      return { otpSeconds: s.otpSeconds - 1 };
+    }), 1000);
+  }
+  resendOtp() {
+    this.startOtp(this.state.otpPurpose || 'signup');
+    this.showToast('Novo código enviado para ' + (this.state.authEmail || 'seu e-mail'));
+  }
+  setOtpDigit(i, raw) {
+    const v = (raw || '').replace(/\D/g, '');
+    this.setState(s => {
+      const code = [...(s.otpCode || ['', '', '', '', '', ''])];
+      if (v.length > 1) v.split('').slice(0, 6 - i).forEach((ch, k) => { code[i + k] = ch; });
+      else code[i] = v;
+      return { otpCode: code, otpError: '' };
+    }, () => {
+      if (!v) return;
+      const next = Math.min(5, i + Math.max(1, v.length));
+      if (this._otpRefs[next]) this._otpRefs[next].focus();
+    });
+  }
+  otpKeyDown(i, e) {
+    if (e.key === 'Backspace' && !(this.state.otpCode || [])[i] && this._otpRefs[i - 1]) this._otpRefs[i - 1].focus();
+  }
+  submitOtp() {
+    const s = this.state;
+    if (s.otpVerifying || s.otpSeconds === 0) return;
+    const code = (s.otpCode || []).join('');
+    if (code.length < 6) { this.setState({ otpError: 'Digite os 6 dígitos do código.' }); return; }
+    if (code !== '123456') { this.setState({ otpError: 'Código inválido. Confira o e-mail e tente novamente.' }); return; }
+    this.setState({ otpVerifying: true });
+    this._otpT = setTimeout(() => {
+      clearInterval(this._otpI);
+      if ((this.state.otpPurpose || 'signup') === 'reset') {
+        this.setState({ otpVerifying: false, screen: 'reset', newPassword: '', newPassword2: '', resetError: '' });
+      } else {
+        this.setState({ otpVerifying: false, screen: 'login', authMode: 'login', authPassword: '', justVerified: true });
+      }
+    }, 1200);
+  }
+  otpBack() {
+    clearInterval(this._otpI);
+    if ((this.state.otpPurpose || 'signup') === 'reset') this.setState({ screen: 'forgot', otpError: '' });
+    else this.setState({ screen: 'login', authMode: 'signup', otpError: '' });
+  }
+  backToLogin() {
+    clearInterval(this._otpI);
+    this.setState({ screen: 'login', authMode: 'login', otpError: '', forgotError: '' });
+  }
+  goForgot() {
+    this.setState({ screen: 'forgot', forgotError: '', justVerified: false, justReset: false, authPassword: '' });
+  }
+  submitForgot() {
+    const email = (this.state.authEmail || '').trim();
+    if (!email || email.indexOf('@') < 1) { this.setState({ forgotError: 'Informe um e-mail válido.' }); return; }
+    this.setState({ forgotError: '' });
+    this.startOtp('reset');
+    this.showToast('Código enviado para ' + email);
+  }
+  submitReset() {
+    const s = this.state;
+    const p = s.newPassword || '', p2 = s.newPassword2 || '';
+    if (p.length < 8) { this.setState({ resetError: 'A senha precisa ter pelo menos 8 caracteres.' }); return; }
+    if (p !== p2) { this.setState({ resetError: 'As senhas não coincidem.' }); return; }
+    this.setState({ screen: 'login', authMode: 'login', authPassword: '', newPassword: '', newPassword2: '', resetError: '', justReset: true, justVerified: false });
+    this.showToast('Senha redefinida com sucesso.');
   }
   showToast(text) {
     clearTimeout(this._toastT);
     this.setState({ toast: text });
     this._toastT = setTimeout(() => this.setState({ toast: null }), 3200);
   }
-  componentWillUnmount() { clearTimeout(this._authT); clearTimeout(this._toastT); clearTimeout(this._saveT); clearTimeout(this._inviteT); }
+  componentWillUnmount() { clearTimeout(this._authT); clearTimeout(this._toastT); clearTimeout(this._saveT); clearTimeout(this._inviteT); clearTimeout(this._otpT); clearInterval(this._otpI); }
   setTab(t) { this.setState({ tab: t }); }
   openAdd(type) {
     const t = type || 'expense';
@@ -917,8 +1105,43 @@ class Component extends DCLogic {
     const viewingCat = viewingTx ? s.categories.find(c => c.id === viewingTx.categoryId) : null;
     const topCategory = reportsSorted[0] || { name: '', spentFmt: '', realPct: 0 };
 
+    const otpDigits = s.otpCode || ['', '', '', '', '', ''];
+    const otpExpired = s.otpSeconds === 0;
+    const otpSecs = s.otpSeconds == null ? 60 : s.otpSeconds;
+    const otpTimerLabel = Math.floor(otpSecs / 60) + ':' + String(otpSecs % 60).padStart(2, '0');
+    const otpCells = otpDigits.map((d, i) => ({
+      value: d,
+      disabled: otpExpired || !!s.otpVerifying,
+      ref: (el) => { this._otpRefs[i] = el; },
+      onChange: (e) => this.setOtpDigit(i, e.target.value),
+      onKeyDown: (e) => this.otpKeyDown(i, e),
+    }));
+
     return {
       isLogin: s.screen === 'login', isApp: s.screen === 'app',
+      isOtp: s.screen === 'otp', justVerified: !!s.justVerified,
+      authEmailDisplay: s.authEmail || 'usuario@email.com',
+      otpCells, otpTimerLabel, otpExpired, otpActive: !otpExpired,
+      otpError: s.otpError || '', hasOtpError: !!s.otpError,
+      isOtpVerifying: !!s.otpVerifying,
+      otpButtonLabel: s.otpVerifying ? 'Confirmando…' : 'Confirmar código',
+      submitOtp: () => this.submitOtp(), resendOtp: () => this.resendOtp(),
+      otpBack: () => this.otpBack(), backToLogin: () => this.backToLogin(), goForgot: () => this.goForgot(),
+      isOtpSignup: (s.otpPurpose || 'signup') === 'signup', isOtpReset: (s.otpPurpose || 'signup') === 'reset',
+      isForgot: s.screen === 'forgot', isReset: s.screen === 'reset',
+      forgotError: s.forgotError || '', hasForgotError: !!s.forgotError,
+      submitForgot: () => this.submitForgot(), submitReset: () => this.submitReset(),
+      justReset: !!s.justReset,
+      passwordInputType: s.showPassword ? 'text' : 'password',
+      passwordToggleLabel: s.showPassword ? 'Ocultar' : 'Mostrar',
+      togglePassword: () => this.setState(st => ({ showPassword: !st.showPassword })),
+      newPassword: s.newPassword || '', newPassword2: s.newPassword2 || '',
+      setNewPassword: (e) => this.setState({ newPassword: e.target.value, resetError: '' }),
+      setNewPassword2: (e) => this.setState({ newPassword2: e.target.value, resetError: '' }),
+      newPasswordInputType: s.showNewPassword ? 'text' : 'password',
+      newPasswordToggleLabel: s.showNewPassword ? 'Ocultar' : 'Mostrar',
+      toggleNewPassword: () => this.setState(st => ({ showNewPassword: !st.showNewPassword })),
+      resetError: s.resetError || '', hasResetError: !!s.resetError,
       authMode: s.authMode, isLoginMode: s.authMode === 'login', isSignupMode: s.authMode === 'signup',
       setLoginMode: () => this.setLoginMode(), setSignupMode: () => this.setSignupMode(),
       authName: s.authName, authEmail: s.authEmail, authPassword: s.authPassword,

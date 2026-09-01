@@ -38,3 +38,16 @@ Receitas e despesas vivem na mesma lista (`transactions`) com campo `type: 'inco
 Categorias de receita não têm teto nem valor previsto — mostram apenas o realizado do mês. O campo de anexar comprovante foi removido de despesa, receita e do detalhe do lançamento.
 
 > Nota: alguns screenshots ainda refletem versões anteriores dessas telas; os arquivos `.dc.html` estão sempre na versão atual.
+
+
+## Autenticação (atualizado)
+
+- **Senha visível opcional** — botão Mostrar/Ocultar no campo de senha do login, do cadastro e da nova senha.
+- **Cadastro com confirmação de e-mail** — após "Criar conta" o app envia um código OTP de 6 dígitos; contador de 1 minuto na tela, expiração desabilita os campos e revela "Reenviar e-mail", que reinicia o minuto. Com o código válido a conta é ativada e o usuário volta ao login com aviso de confirmação.
+- **Recuperação de senha em 3 passos** — "Esqueci minha senha" → e-mail → mesmo OTP de 1 minuto → nova senha (mín. 8 caracteres, com confirmação) → volta ao login com aviso de senha redefinida.
+- Código do protótipo: **123456**.
+
+
+## E-mails
+
+`emails/` traz os quatro modelos transacionais em HTML autocontido (confirmação de cadastro, recuperação de senha, aviso de senha alterada e boas-vindas), com README próprio de variáveis e assuntos.
