@@ -46,10 +46,16 @@ data "aws_iam_policy_document" "backend_cicd" {
   # endpoint de exclusão de conta na API. Sem "Scan" nas ações
   # concedidas, coerente com a regra imutável de
   # backend/docs/constitution.md ("Sem Scan no DynamoDB").
+  # FEAT-32 — GetItem incluído porque TestAccountFixture.SetupAsync passou
+  # a resolver o AccountId com um GetItem direto no AccountPointer
+  # (mesmo access pattern, mais barato que a Query já usada na limpeza),
+  # reaproveitado tanto pela limpeza quanto pelo módulo Membros
+  # (InviteAndAcceptAsync).
   statement {
-    sid    = "CleanupIntegrationTestDynamoDbItems"
+    sid    = "ManageIntegrationTestDynamoDbItems"
     effect = "Allow"
     actions = [
+      "dynamodb:GetItem",
       "dynamodb:Query",
       "dynamodb:DeleteItem",
       "dynamodb:BatchWriteItem",
