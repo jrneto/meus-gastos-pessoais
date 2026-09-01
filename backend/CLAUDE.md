@@ -81,9 +81,13 @@ interfaces definidas em Application). `Domain` não depende de nada.
   menos o fluxo de sucesso, ver
   `backend/specs/FEAT-29-testes-integrados/spec.md`. Roda localmente
   via `backend/infra/lambda/run-local.sh` (binário Native AOT publicado,
-  via Runtime Interface Emulator — pega erro de AOT antes do deploy);
-  em CI, roda contra hom/prod (`--filter Category=Integration`), fora
-  do `dotnet test GastosApp.sln` padrão
+  via Runtime Interface Emulator — pega erro de AOT antes do deploy) —
+  **obrigatório rodar e passar localmente antes de dar a feature por
+  concluída**. Fora do `dotnet test GastosApp.sln` padrão
+  (`--filter Category=Integration`) e **não roda mais em CI** a cada
+  push/release (limite de e-mail do Cognito, ver
+  `backend/infra/CLAUDE.md`) — disponível sob demanda contra hom/prod
+  via `backend-integration-tests-{hom,prod}.yml` na aba Actions
 
 ## Comandos úteis
 

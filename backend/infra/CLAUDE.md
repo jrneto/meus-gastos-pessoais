@@ -56,10 +56,10 @@ Leve vs Fluxo Completo e a regra de organização de specs, e
 ## CI/CD (GitHub Actions)
 
 `backend-feature-pr.yml` (PR automático branch→develop),
-`backend-deploy-hom.yml` (deploy a cada push em `develop` + testes
-integrados + rascunho de release) e `backend-deploy-prod.yml` (checagem
-do teste integrado de hom + deploy disparado por GitHub Release + PR
-automático develop→main).
+`backend-deploy-hom.yml` (deploy a cada push em `develop` + rascunho de
+release) e `backend-deploy-prod.yml` (deploy disparado por GitHub
+Release + PR automático develop→main). Testes integrados **não** fazem
+parte desses dois pipelines — ver bullet abaixo.
 
 - **Deploy fora do Terraform**: os workflows publicam via
   `aws lambda update-function-code`/`update-function-configuration`
@@ -73,22 +73,26 @@ automático develop→main).
   nos workflows de deploy/rascunho de release do outro contexto.
 - **GitHub Environments** `backend-hom`/`backend-prod` (distintos de
   `hom`/`prod`, do frontend), variáveis `CICD_ROLE_ARN`/`FUNCTION_NAME`.
-- **Testes integrados no pipeline (FEAT-29)**: `backend-deploy-hom.yml`
-  ganha o job `integration-tests` (roda `GastosApp.IntegrationTests`
-  contra `https://api-hom.jrnexpenses.com` logo após o deploy) — o
-  rascunho de release só é criado/atualizado se esse job passar.
-  `backend-deploy-prod.yml` ganha o job `check-hom-integration-tests`
-  (via `gh run list`, confirma que `backend-deploy-hom.yml` passou —
-  teste integrado incluso — para o commit exato da release/tag), rodando
-  **antes** de `quality`/`deploy` — nenhum deploy de produção acontece
-  sem essa confirmação. Workflow avulso
-  `backend-integration-tests-prod.yml` (só `workflow_dispatch`) roda a
-  suíte isolada contra produção, sem tocar build/deploy. A role
-  `gastosapp-backend-cicd` ganhou permissão adicional pra isso —
+- **Testes integrados são sob demanda, não gate de pipeline (FEAT-29/32,
+  revisto em 2026-09-01)**: `backend-deploy-hom.yml` e
+  `backend-deploy-prod.yml` **não** rodam `GastosApp.IntegrationTests` —
+  até 2026-09-01 rodavam (job `integration-tests` em hom bloqueando o
+  rascunho de release, job `check-hom-integration-tests` em prod
+  bloqueando o deploy), mas o volume de `SignUp` no Cognito que a suíte
+  inteira faz por execução (~35, um por teste + convite) estourava o
+  limite de e-mail padrão do Cognito (50/dia por conta AWS, sem SES
+  configurado — compartilhado entre hom e prod), quebrando pipelines
+  sem nenhum bug de verdade. Continuam **obrigatórios localmente**
+  antes de dar uma feature por concluída (ver `backend/CLAUDE.md`), e
+  disponíveis sob demanda, isolados por ambiente, via
+  `workflow_dispatch`: `backend-integration-tests-hom.yml` e
+  `backend-integration-tests-prod.yml` (aba Actions do GitHub, sem
+  tocar build/deploy). A role `gastosapp-backend-cicd` mantém a
+  permissão adicional que esses dois workflows usam —
   `cognito-idp:AdminConfirmSignUp`/`AdminDeleteUser` (User Pools hom/
-  prod), `dynamodb:Query`/`DeleteItem`/`BatchWriteItem` (tabelas hom/
-  prod) e `ssm:GetParametersByPath` (prefixo `/GastosApp`) — usada só
-  pelos jobs de teste integrado, nunca pela Lambda da aplicação. Ver
+  prod), `dynamodb:GetItem`/`Query`/`DeleteItem`/`BatchWriteItem`
+  (tabelas hom/prod) e `ssm:GetParametersByPath` (prefixo
+  `/GastosApp`) — nunca usada pela Lambda da aplicação. Ver
   `backend/specs/FEAT-29-testes-integrados/`.
 
 ## Gotchas conhecidos
