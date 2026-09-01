@@ -78,7 +78,7 @@ validação em hom).
 
 ## Infraestrutura (Terraform) — hom e prod
 
-- [ ] 14. Criar `infra/lambda/Dockerfile.build-custom-message-trigger` +
+- [x] 14. Criar `infra/lambda/Dockerfile.build-custom-message-trigger` +
       `build-custom-message-trigger.sh`, mesmo padrão AOT/Amazon Linux
       2023 do account-trigger, publicando
       `src/GastosApp.CognitoTriggers.CustomMessage/GastosApp.CognitoTriggers.CustomMessage.csproj`.
