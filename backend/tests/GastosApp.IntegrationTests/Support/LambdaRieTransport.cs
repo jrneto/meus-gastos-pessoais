@@ -44,17 +44,28 @@ public sealed class LambdaRieTransport : IApiTransport, IDisposable
 
         string? requestBody = body is null ? null : JsonSerializer.Serialize(body, JsonDefaults.Options);
 
+        // Achado real (FEAT-32): "path" pode conter query string (ex.:
+        // "/summary?month=2026-08") — precisa ser separado em rawPath +
+        // rawQueryString antes de montar o evento do API Gateway v2,
+        // senão o roteamento da Api recebe o "?..." como parte literal do
+        // path e nunca casa nenhuma rota (404). Nunca apareceu antes
+        // porque nenhum teste do módulo Auth (único coberto até a
+        // FEAT-29) usava query string em modo local.
+        var queryStringIndex = path.IndexOf('?', StringComparison.Ordinal);
+        var rawPath = queryStringIndex >= 0 ? path[..queryStringIndex] : path;
+        var rawQueryString = queryStringIndex >= 0 ? path[(queryStringIndex + 1)..] : "";
+
         var httpMethod = method.Method;
         var evt = new ApiGatewayV2Request
         {
             Version = "2.0",
             RouteKey = "$default",
-            RawPath = path,
-            RawQueryString = "",
+            RawPath = rawPath,
+            RawQueryString = rawQueryString,
             Headers = headers,
             RequestContext = new ApiGatewayV2RequestContext
             {
-                Http = new ApiGatewayV2Http { Method = httpMethod, Path = path }
+                Http = new ApiGatewayV2Http { Method = httpMethod, Path = rawPath }
             },
             Body = requestBody,
             IsBase64Encoded = false

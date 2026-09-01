@@ -258,6 +258,22 @@ já vigente).
   aceito: a suíte roda sequencialmente (mais lenta conforme mais
   módulos entrarem) — irrelevante no volume atual.
 
+- **`LambdaRieTransport` nunca separava query string do path** —
+  descoberto ao rodar os módulos Resumo/Relatórios/Exportação (os
+  primeiros a exercitar `GET` com query string em modo local — o único
+  módulo anterior, Auth, nunca usava). `SendAsync` recebia `path` (ex.:
+  `/summary?month=2026-08`) e usava a string inteira como `RawPath`/
+  `Http.Path` do evento do API Gateway v2, com `RawQueryString` sempre
+  `""` — o roteamento da Api recebia o `?...` como parte literal do
+  path e nunca casava nenhuma rota (404 em toda chamada com query
+  string). **Fix**: `SendAsync` agora separa `path` em `rawPath` +
+  `rawQueryString` (no primeiro `?`) antes de montar o evento —
+  `DirectHttpTransport` (hom/prod) nunca teve esse problema, já que usa
+  `HttpClient` com a URL completa. Efeito colateral: nenhum — é
+  correção de um bug latente da infraestrutura de teste da FEAT-29,
+  sem mudar contrato nem comportamento observável de nenhum teste já
+  existente (Auth/Membros/Categorias/Transações não usam query string).
+
 ## Pontos que precisam de confirmação antes do `/tasks`
 
 1. **Nome do arquivo `Transactions/ExportFlowTests.cs` vs.

@@ -32,3 +32,12 @@ public sealed record CategoryListResponseDto(List<CategoryResponseDto> Items);
 public sealed record TransactionRequestDto(string Description, long AmountInCents, string CategoryId, string Tipo, string Date);
 public sealed record TransactionResponseDto(string Id, string Description, long AmountInCents, string CategoryId, string Tipo, string Date, string CreatedByUserId, string CreatedByLabel, string CreatedAt);
 public sealed record TransactionListResponseDto(List<TransactionResponseDto> Items, string? NextCursor);
+
+// Resumo mensal (FEAT-23) — ver backend/specs/FEAT-23-resumo-mensal-dashboard/spec.md
+public sealed record CategorySummaryItemDto(string CategoryId, string Nome, long GastoCents, long? OrcamentoMensalCents);
+public sealed record SummaryResponseDto(string Month, long SaldoCents, long ReceitasCents, long GastoCents, long OrcamentoTotalCents, long RestanteCents, List<CategorySummaryItemDto> PorCategoria, List<TransactionResponseDto> UltimosLancamentos);
+
+// Relatórios (FEAT-24) — ver backend/specs/FEAT-24-relatorios-por-periodo/spec.md
+public sealed record ReportCategoryItemDto(string CategoryId, string Nome, long GastoCents);
+public sealed record ReportTopCategoryDto(string CategoryId, string Nome, long GastoCents, decimal? PercentualOrcamento);
+public sealed record ReportsResponseDto(string Period, string StartDate, string EndDate, long TotalCents, decimal? VariacaoPercentual, List<ReportCategoryItemDto> PorCategoria, ReportTopCategoryDto? MaiorGasto);
