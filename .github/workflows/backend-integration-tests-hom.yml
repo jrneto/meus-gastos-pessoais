@@ -1,0 +1,43 @@
+name: Backend — Teste Integrado (Homologação)
+
+# Só disparo manual, de propósito — mesmo raciocínio de
+# backend-integration-tests-prod.yml (equivalente pra hom): permite
+# validar homologação a qualquer momento sem rodar o restante da
+# pipeline de deploy. Extraído do job integration-tests que existia em
+# backend-deploy-hom.yml até 2026-09-01 — removido de lá porque rodar
+# a suíte inteira a cada push estourava o limite de e-mail padrão do
+# Cognito (50/dia por conta AWS, compartilhado com prod). Visível/
+# disparável pela aba Actions do GitHub.
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write # necessário para autenticação AWS via OIDC (sem access key fixa)
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    environment: backend-hom
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CICD_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Rodar testes integrados contra homologação
+        run: dotnet test tests/GastosApp.IntegrationTests -c Release
+        env:
+          INTEGRATION_TESTS_MODE: hom
+          INTEGRATION_TESTS_BASE_URL: https://api-hom.jrnexpenses.com
+          INTEGRATION_TESTS_PARAMETER_STORE_PATH: /GastosApp/Hom/
