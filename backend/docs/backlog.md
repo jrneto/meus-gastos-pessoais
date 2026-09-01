@@ -165,20 +165,17 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   resolve isso como efeito colateral — reavaliar naquele momento se dá
   pra devolver os testes integrados aos workflows.
 
-- [ ] **FEAT-33 — Infraestrutura de e-mail transacional (SES)**
-  Provisiona Amazon SES para hom e prod: identidade de e-mail/domínio
-  verificada (`ses.tf` por ambiente, mesmo padrão de `lambda-account-
-  trigger.tf`), IAM policy `ses:SendEmail`/`ses:SendRawEmail` pras
-  Lambdas que vão precisar (trigger de Custom Message da FEAT-34, e a
-  API/trigger que disparam e-mail direto nas FEAT-36/37). Definir
-  também `email_configuration` do `aws_cognito_user_pool` apontando pro
-  SES (hoje usa o envio padrão do Cognito). Investigar se a conta AWS
-  já está fora do sandbox do SES (sandbox limita destinatários a
-  endereços verificados manualmente — pode bloquear teste com contas de
-  usuário reais até sair dele).
-  **Exige aprovação explícita do usuário antes de qualquer `terraform
-  apply`.**
-  Depende de: nenhuma — pré-requisito de FEAT-34, FEAT-36, FEAT-37.
+- [x] **FEAT-33 — Infraestrutura de e-mail transacional (SES)** *(concluída,
+  ver `backend/specs/FEAT-33-infra-email-transacional-ses/`)*: SES
+  provisionado em hom e prod (identidade de domínio + DKIM verificados,
+  `ses.tf` por ambiente), Cognito de ambos os ambientes enviando via
+  SES (`email_configuration`), IAM `ses:SendEmail`/`ses:SendRawEmail`
+  concedido às Lambdas da API principal e do trigger de conta. Pedido
+  de saída do sandbox do SES enviado (`ReviewDetails.Status =
+  PENDING` na conclusão desta feature — conferir status atual antes de
+  assumir que já saiu, ver `backend/infra/CLAUDE.md`). Fluxo de
+  cadastro/login validado em hom sem regressão (e-mail de confirmação
+  chegou, mas caiu no spam — ver débito abaixo).
 
 - [ ] **FEAT-34 — Custom Message trigger do Cognito (e-mails de auth com HTML)**
   Novo handler em `GastosApp.CognitoTriggers` (ao lado do
@@ -296,6 +293,22 @@ monorepo.
   (ou se mudanças de Terraform devem mesmo ficar fora do PR
   automático, por não passarem pelo gate de build/teste de código) —
   ver `backend/infra/CLAUDE.md`.
+
+- [ ] **DÉBITO — E-mail via SES cai em spam (falta SPF/MAIL FROM
+  customizado e DMARC)** (percebido na validação manual da FEAT-33 —
+  `backend/specs/FEAT-33-infra-email-transacional-ses/`): a identidade
+  de domínio SES de hom/prod só tem DKIM habilitado (escopo fechado da
+  spec); o e-mail de confirmação de cadastro chegou ao destinatário de
+  teste (Gmail), mas na caixa de spam. Causa provável: sem um domínio
+  MAIL FROM customizado (registro SPF apontando pro SES) nem um
+  registro DMARC para `jrnexpenses.com`, a autenticação do remetente
+  fica incompleta aos olhos de provedores como o Gmail, mesmo com DKIM
+  válido. Resolver antes de qualquer e-mail novo ir pra produção com
+  volume real (FEAT-34/36/37) — senão o problema se repete em todos
+  eles. Passos possíveis: `aws_ses_domain_mail_from` (subdomínio tipo
+  `mail.jrnexpenses.com`, mais um record MX e um TXT/SPF na hosted
+  zone) e um record TXT de DMARC (`_dmarc.jrnexpenses.com`, política
+  inicial `p=none` pra só monitorar antes de enforçar).
 
 ## Compliance (LGPD)
 

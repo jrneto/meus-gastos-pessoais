@@ -50,6 +50,18 @@ resource "aws_cognito_user_pool" "main" {
   lambda_config {
     post_confirmation = aws_lambda_function.account_trigger.arn
   }
+
+  # Envio de e-mail (cadastro, recuperação de senha) via SES com
+  # domínio próprio, em vez do envio padrão do Cognito (FEAT-33). O
+  # depends_on garante que o Cognito só é reconfigurado depois da
+  # identidade estar VERIFICADA (não só criada) — ver ses.tf.
+  email_configuration {
+    email_sending_account = "DEVELOPER"
+    source_arn            = aws_ses_domain_identity.main.arn
+    from_email_address    = "jrn.expenses <no-reply@jrnexpenses.com>"
+  }
+
+  depends_on = [aws_ses_domain_identity_verification.main]
 }
 
 resource "aws_cognito_user_pool_client" "spa" {
