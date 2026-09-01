@@ -25,6 +25,7 @@ public sealed class TestAccountFixture : IAsyncDisposable
     private readonly IAmazonCognitoIdentityProvider _cognito;
     private readonly IAmazonDynamoDB _dynamoDb;
     private string? _userPoolId;
+    private string? _accountId;
 
     public IApiTransport Transport { get; }
     public string Email { get; }
@@ -84,6 +85,95 @@ public sealed class TestAccountFixture : IAsyncDisposable
             throw new InvalidOperationException($"Setup falhou em POST /auth/login ({loginResponse.StatusCode}): {loginResponse.Body}");
 
         AccessToken = loginResponse.Deserialize<LoginResponseDto>().AccessToken;
+
+        // Resolve o AccountId logo após o login (GetItem direto — mesmo
+        // access pattern de AccountPointer descrito em data-model.md, mais
+        // barato que a Query por partição já feita em CleanupDynamoDbAsync).
+        // Guardado aqui pra ser reaproveitado tanto pela limpeza quanto por
+        // InviteAndAcceptAsync (precisa saber qual conta excluir da
+        // limpeza da segunda identidade).
+        var accountPointerResponse = await _dynamoDb.GetItemAsync(new GetItemRequest
+        {
+            TableName = _env.DynamoDbTableName,
+            Key = new Dictionary<string, AttributeValue>
+            {
+                ["PK"] = new AttributeValue($"USER#{UserId}"),
+                ["SK"] = new AttributeValue("ACCOUNT#")
+            }
+        }, cancellationToken);
+
+        _accountId = accountPointerResponse.Item.TryGetValue("AccountId", out var accountIdAttribute)
+            ? accountIdAttribute.S
+            : throw new InvalidOperationException(
+                $"AccountPointer não encontrado para o usuário {UserId} logo após o login — conta não foi resolvida a tempo.");
+    }
+
+    /// <summary>
+    /// AccountId da conta ativa desta conta de teste, resolvido no setup.
+    /// Usado por <see cref="InviteAndAcceptAsync"/> pra saber qual conta
+    /// NÃO deve ser apagada na limpeza da segunda identidade convidada.
+    /// </summary>
+    internal string AccountId => _accountId
+        ?? throw new InvalidOperationException("AccountId ainda não resolvido — SetupAsync precisa ter concluído.");
+
+    /// <summary>
+    /// Convida um novo e-mail para a conta ativa desta conta (que precisa
+    /// ser Titular), registra/confirma/loga uma segunda identidade real
+    /// com esse e-mail — o login dispara o aceite automático do convite
+    /// (EnsureAccountCommand + AcceptPendingInvitesCommand, FEAT-20),
+    /// deixando a Membership dela Ativa na conta desta fixture. Usado
+    /// pelos módulos Membros e Transações (autorização por autoria do
+    /// papel Lancar). Ver plan.md, "TestAccountFixture.InviteAndAcceptAsync".
+    /// </summary>
+    public async Task<SecondaryTestAccount> InviteAndAcceptAsync(string role, CancellationToken cancellationToken = default)
+    {
+        var secondaryEmail = $"int-test+{Guid.NewGuid():N}@jrnexpenses.com";
+        var secondaryCpf = CpfGenerator.GenerateUnique();
+
+        // 1) Titular (esta conta) convida o e-mail.
+        var inviteResponse = await Transport.SendAsync(
+            HttpMethod.Post, "/members",
+            new MemberRequestDto(secondaryEmail, role),
+            bearerToken: AccessToken, cancellationToken: cancellationToken);
+
+        if (inviteResponse.StatusCode != 201) // 201 Created — ver MemberEndpoints
+            throw new InvalidOperationException($"InviteAndAcceptAsync falhou em POST /members ({inviteResponse.StatusCode}): {inviteResponse.Body}");
+
+        // 2) Segunda identidade real — próprio transporte, próprio registro/confirmação.
+        var secondaryTransport = ApiTransportFactory.Create(_env);
+
+        var registerResponse = await secondaryTransport.SendAsync(
+            HttpMethod.Post, "/auth/register",
+            new RegisterRequestDto(secondaryEmail, Password, "Membro Convidado (Teste Integrado)", "11988888888", secondaryCpf),
+            cancellationToken: cancellationToken);
+
+        if (registerResponse.StatusCode != 201)
+            throw new InvalidOperationException($"InviteAndAcceptAsync falhou em POST /auth/register ({registerResponse.StatusCode}): {registerResponse.Body}");
+
+        var secondaryUserId = registerResponse.Deserialize<RegisterResponseDto>().UserId;
+
+        await _cognito.AdminConfirmSignUpAsync(new AdminConfirmSignUpRequest
+        {
+            UserPoolId = _userPoolId,
+            Username = secondaryEmail
+        }, cancellationToken);
+
+        // 3) Login da segunda identidade — dispara EnsureAccountCommand
+        //    (cria a conta pessoal dela, idempotente) + AcceptPendingInvitesCommand
+        //    (aceita o convite do passo 1, troca a conta ativa dela pra
+        //    esta conta — a mais recente).
+        var loginResponse = await secondaryTransport.SendAsync(
+            HttpMethod.Post, "/auth/login",
+            new LoginRequestDto(secondaryEmail, Password), cancellationToken: cancellationToken);
+
+        if (loginResponse.StatusCode != 200)
+            throw new InvalidOperationException($"InviteAndAcceptAsync falhou em POST /auth/login ({loginResponse.StatusCode}): {loginResponse.Body}");
+
+        var secondaryAccessToken = loginResponse.Deserialize<LoginResponseDto>().AccessToken;
+
+        return new SecondaryTestAccount(
+            _env, _cognito, _dynamoDb, _userPoolId!, AccountId,
+            secondaryTransport, secondaryEmail, secondaryCpf, secondaryUserId, secondaryAccessToken);
     }
 
     private async Task<string> ResolveUserPoolIdAsync(CancellationToken cancellationToken)
@@ -153,8 +243,9 @@ public sealed class TestAccountFixture : IAsyncDisposable
             ["SK"] = i["SK"]
         }));
 
-        var accountPointer = userItems.FirstOrDefault(i => i["SK"].S == "ACCOUNT#");
-        var accountId = accountPointer?["AccountId"].S;
+        // Reaproveita o AccountId já resolvido em SetupAsync (GetItem logo
+        // após o login) em vez de derivá-lo de novo a partir de userItems.
+        var accountId = _accountId;
 
         // 2) ACCOUNT#<accountId> → Account, Membership(s), categorias padrão
         //    e qualquer Category/Transaction que o teste tenha criado.

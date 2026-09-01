@@ -153,23 +153,20 @@ Modo Leve, fora do escopo do que estava sendo feito no momento — ver
 "Débitos técnicos e oportunidades de melhoria" no `/CLAUDE.md` raiz do
 monorepo.
 
-- [ ] **DÉBITO — Módulos sem teste integrado ainda** (levantado na
-  FEAT-29 — `backend/specs/FEAT-29-testes-integrados/`): a
-  infraestrutura de testes integrados (suíte multiambiente, execução
+- [x] **DÉBITO — Módulos sem teste integrado ainda** (levantado na
+  FEAT-29 — `backend/specs/FEAT-29-testes-integrados/`) *(resolvido,
+  ver `backend/specs/FEAT-32-testes-integrados-modulos-pendentes/`)*:
+  a infraestrutura de testes integrados (suíte multiambiente, execução
   local via Docker/Native AOT/Runtime Interface Emulator, gates de
   CI/CD em hom/prod) foi entregue cobrindo só o módulo Auth como prova
-  de conceito — os demais módulos existentes continuam sem teste
-  integrado, cobertos só por teste de componente (mocks). Preencher
-  incrementalmente, seguindo o padrão já estabelecido
-  (`TestAccountFixture` + `<Modulo>/<Modulo>FlowTests.cs`, ver
-  `backend/specs/FEAT-29-testes-integrados/plan.md`):
-  - Categorias (`FEAT-16-crud-categorias`, `FEAT-21-categoria-tipo-orcamento`)
-  - Transações (`FEAT-22-transacoes-receita-despesa`)
-  - Membros/convites (`FEAT-20-membros-convites-permissoes`)
-  - Resumo mensal (`FEAT-23-resumo-mensal-dashboard`)
-  - Relatórios por período (`FEAT-24-relatorios-por-periodo`)
-  - Exportação CSV (`FEAT-25-exportacao-csv-transacoes`)
-  - Perfil do usuário (`FEAT-26-perfil-usuario-cadastro`)
+  de conceito — os demais módulos existentes continuavam sem teste
+  integrado, cobertos só por teste de componente (mocks). FEAT-32
+  preencheu os 7 módulos, seguindo o padrão já estabelecido
+  (`TestAccountFixture` + `<Modulo>/<Modulo>FlowTests.cs`): Categorias
+  (`FEAT-16`/`FEAT-21`), Transações (`FEAT-22`), Membros/convites
+  (`FEAT-20`), Resumo mensal (`FEAT-23`), Relatórios por período
+  (`FEAT-24`), Exportação CSV (`FEAT-25`), Perfil do usuário
+  (`FEAT-26`).
 
 - [ ] **DÉBITO — `DELETE /members` remove o membro em vez de
   inativá-lo** (confirmado com o usuário durante a FEAT-22): deveria
