@@ -135,26 +135,44 @@ validação em hom).
 
 ## Validação manual em hom (critérios de aceite do `spec.md`)
 
-- [ ] 25. Validar `CustomMessage_SignUp`: `POST /auth/register` real
+- [x] 25. Validar `CustomMessage_SignUp`: `POST /auth/register` real
       em hom, conferir e-mail recebido com HTML de
       `01-confirmacao-cadastro.html`, `{{codigo}}`/`{{nome}}`/`{{email}}`
       resolvidos corretamente e URLs já apontando pro domínio real.
-- [ ] 26. Validar `CustomMessage_ResendCode`: disparar reenvio via
+      **Achado real (ao vivo em hom):** `emailSubject` não recebe a
+      substituição de `{####}` do Cognito (só `emailMessage`) —
+      divergência da decisão técnica 5 do `plan.md`; corrigido (assunto
+      passou a ser texto fixo, sem `{{codigo}}`) e revalidado via task 26.
+      `{{nome}}` ficou pendente nesta rodada porque a API de hom ainda
+      roda o código de `develop` (sem a mudança desta branch que manda
+      `name` pro Cognito) — o deploy da API só dispara em push pra
+      `develop`. `{{codigo}}`/`{{email}}`/HTML/URLs validados OK.
+      Validação end-to-end de `{{nome}}` fica pendente pra depois do
+      merge+deploy (ver seção "Status" do `spec.md`).
+- [x] 26. Validar `CustomMessage_ResendCode`: disparar reenvio via
       console/CLI do Cognito (`aws cognito-idp resend-confirmation-code`)
       contra o User Pool de hom, conferir mesmo template/variáveis.
-- [ ] 27. Validar `CustomMessage_ForgotPassword`: disparar via
+      Validado após deploy manual do fix do assunto (task 25) — assunto,
+      código e e-mail corretos; mesma pendência de `{{nome}}` pós-merge.
+- [x] 27. Validar `CustomMessage_ForgotPassword`: disparar via
       console/CLI do Cognito (`aws cognito-idp forgot-password`) contra
       o User Pool de hom, conferir e-mail com HTML de
-      `02-recuperacao-senha.html`.
-- [ ] 28. Validar que um `TriggerSource` fora do escopo (ex.: criar um
+      `02-recuperacao-senha.html`. Validado — assunto, template, código
+      e URL (`/recuperar`) corretos.
+- [x] 28. Validar que um `TriggerSource` fora do escopo (ex.: criar um
       usuário via `AdminCreateUser` em hom, disparando
       `CustomMessage_AdminCreateUser`) continua com o texto padrão do
-      Cognito, sem regressão.
-- [ ] 29. Validar o fallback defensivo: simular falha no handler (ex.:
+      Cognito, sem regressão. Validado — e-mail chegou no formato padrão
+      do Cognito (usuário/senha temporária), sem o HTML customizado.
+- [x] 29. Validar o fallback defensivo: simular falha no handler (ex.:
       publicar temporariamente uma build que force exceção na
       formatação) e confirmar que `SignUp`/reenvio/recuperação de senha
       completam normalmente, com o e-mail saindo no texto padrão do
-      Cognito — depois reverter para a build correta.
+      Cognito — depois reverter para a build correta. **Decisão do
+      usuário:** aceitar a cobertura do teste automatizado
+      `HandleAsync_ShouldNeverPropagateFailure_WhenFormattingThrows`
+      (já passando) como evidência suficiente, sem repetir simulação
+      contra hom real.
 
 ## Testes automatizados
 
