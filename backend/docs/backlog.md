@@ -191,17 +191,19 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   não chama `ses:SendEmail` diretamente.
   Depende de: FEAT-33.
 
-- [ ] **FEAT-35 — Confirmação de cadastro via código (OTP)**
+- [x] **FEAT-35 — Confirmação de cadastro via código (OTP)** *(concluída,
+  ver `backend/specs/FEAT-35-confirmacao-cadastro-otp/`)*:
   `POST /auth/confirm` (`ConfirmSignUpAsync`) e `POST /auth/resend-
   confirmation` (`ResendConfirmationCodeAsync`). Novos erros em
-  `AuthErrors` (`invalid-confirmation-code` ← `CodeMismatchException`,
-  `expired-confirmation-code` ← `ExpiredCodeException`) — reaproveita
-  `AuthErrors.UserNotConfirmed`, já usado pelo login (`CognitoAuthService.
-  LoginAsync`) desde antes desta leva. Nenhuma mudança de TTL no
-  Cognito (ver decisão acima).
-  Depende de: FEAT-01 (auth) — já pronto. Recomendado depois de FEAT-34
-  pra já nascer com e-mail com marca própria, mas não é bloqueio
-  técnico (funciona com o e-mail padrão do Cognito também).
+  `AuthErrors` (`invalid-confirmation-code` ← `CodeMismatchException`/
+  `UserNotFoundException`, `expired-confirmation-code` ←
+  `ExpiredCodeException`) — reaproveita `AuthErrors.UserNotConfirmed`,
+  já usado pelo login (`CognitoAuthService.LoginAsync`) desde antes
+  desta leva. Nenhuma mudança de TTL no Cognito (ver decisão acima).
+  489 unit + 214 componente + 30 integrado passando (3 integrados
+  pulados em modo Local por limitação do `cognito-local`, ver débito
+  técnico abaixo — pendente validação real em hom via
+  `backend-integration-tests-hom.yml`).
 
 - [ ] **FEAT-36 — Recuperação de senha (esqueci minha senha)**
   `POST /auth/forgot-password` (`ForgotPasswordAsync`) e `POST /auth/
@@ -310,6 +312,28 @@ monorepo.
   zone) e um record TXT de DMARC (`_dmarc.jrnexpenses.com`, política
   inicial `p=none` pra só monitorar antes de enforçar).
 
+- [ ] **MELHORIA — Revisar throttling/brute-force do código de reset de
+  senha na FEAT-36** (levantado no `/specify` da FEAT-35 —
+  `backend/specs/FEAT-35-confirmacao-cadastro-otp/`): o código do
+  Cognito (`ConfirmSignUp`/`ConfirmForgotPassword`) é sempre válido por
+  24h, fixo e não configurável (nem via console/API, nem via Terraform
+  — confirmado na documentação oficial da AWS). Pra `POST /auth/confirm`
+  (FEAT-35) isso é aceitável: possuir o código não dá acesso à conta,
+  só confirma o email — login continua exigindo a senha, nunca enviada
+  por email. Já pra `POST /auth/reset-password` (FEAT-36,
+  `ConfirmForgotPassword`), o cálculo muda: o código certo permite
+  definir uma senha nova diretamente, ou seja, é takeover de conta
+  completo. Existe pesquisa de segurança pública (Pentagrid, 2021)
+  documentando que o throttling do Cognito pra esse fluxo específico já
+  foi, na prática, bem mais fraco que o anunciado ("5 a 20
+  tentativas/hora") — até ~1.587 tentativas antes de bloquear, com o
+  código permanecendo válido mesmo após "limite excedido" — vulnerabi-
+  lidade corrigida pela AWS em abril/2021, sem recorrência pública
+  conhecida desde então. Retomar essa discussão ao especificar a
+  FEAT-36: vale medir/validar o throttling real do Cognito antes de
+  assumir que a proteção nativa é suficiente para um fluxo que troca
+  senha.
+
 - [ ] **MELHORIA — `terraform apply` via esteira de CI/CD** (levantado
   no `/plan` da FEAT-34 —
   `backend/specs/FEAT-34-custom-message-emails-auth/`): hoje todo
@@ -329,6 +353,36 @@ monorepo.
   deploy de código). Cross-cutting — beneficiaria qualquer feature
   futura que precise provisionar recurso novo, não só a FEAT-34, que
   seguiu com `apply` manual (decisão confirmada com o usuário).
+
+- [ ] **DÉBITO — `cognito-local` (v5.3.0, última versão publicada) não
+  reproduz 3 comportamentos do Cognito real usados por `ConfirmSignUp`/
+  `ResendConfirmationCode`** (descoberto na FEAT-35 —
+  `backend/specs/FEAT-35-confirmacao-cadastro-otp/`, rodando
+  `run-local.sh`): (1) `ResendConfirmationCode` não existe entre os
+  targets implementados do pacote (verificado inspecionando
+  `/usr/local/lib/node_modules/cognito-local/lib/targets/` dentro do
+  container) — a chamada ao SDK propaga como exceção não mapeada (500);
+  (2) `ConfirmSignUp` (`lib/targets/confirmSignUp.js`) nunca checa
+  `UserStatus`, só compara o `ConfirmationCode` salvo — o branch de
+  idempotência do Cognito real (`NotAuthorizedException` pra usuário já
+  `CONFIRMED`, que no real dispara antes de olhar o código) é
+  inalcançável contra o emulador, e `AdminConfirmSignUp` também não
+  limpa o `ConfirmationCode` salvo; (3) pra usuário inexistente,
+  `ConfirmSignUp` lança `NotAuthorizedError` (não `UserNotFoundError`,
+  como o Cognito real e a documentação do AWS SDK) — nosso catch de
+  "já confirmado" acaba absorvendo isso como sucesso. Não há correção
+  via upgrade: v5.3.0 já é a última release oficial (conferido via
+  GitHub API); existe um PR de terceiro (#468, "100% Cognito API
+  parity") mas está aberto, não mergeado, não publicado. Os 3 testes
+  afetados (`Confirm_UsuarioJaConfirmado_Retorna200Idempotente`,
+  `Confirm_EmailInexistente_Retorna400`, `ResendConfirmation_
+  UsuarioNaoConfirmado_Retorna200` em
+  `backend/tests/GastosApp.IntegrationTests/Auth/AuthFlowTests.cs`)
+  pulam a asserção em modo Local (guarda `IntegrationTestEnvironment.
+  Current.IsLocal`) e só validam de verdade contra Cognito real via
+  `backend-integration-tests-hom.yml`. Reavaliar se/quando o pacote
+  ganhar uma versão nova que cubra esses 3 casos, ou se outra feature
+  de auth precisar de mais paridade do emulador.
 
 ## Compliance (LGPD)
 

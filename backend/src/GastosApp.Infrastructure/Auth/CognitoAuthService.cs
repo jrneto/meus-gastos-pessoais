@@ -133,4 +133,73 @@ public sealed class CognitoAuthService : IAuthService
             Username = email
         }, cancellationToken);
     }
+
+    public async Task<Result> ConfirmSignUpAsync(
+        string email, string code,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await _cognitoClient.ConfirmSignUpAsync(new ConfirmSignUpRequest
+            {
+                ClientId = _options.ClientId,
+                Username = email,
+                ConfirmationCode = code
+            }, cancellationToken);
+
+            return Result.Success();
+        }
+        catch (ExpiredCodeException)
+        {
+            return Result.Failure(AuthErrors.ExpiredConfirmationCode);
+        }
+        catch (CodeMismatchException)
+        {
+            return Result.Failure(AuthErrors.InvalidConfirmationCode);
+        }
+        catch (UserNotFoundException)
+        {
+            // Mesma resposta de código incorreto — não revela se o email
+            // está cadastrado (spec.md, decisão 1).
+            return Result.Failure(AuthErrors.InvalidConfirmationCode);
+        }
+        catch (NotAuthorizedException)
+        {
+            // Cognito recusa ConfirmSignUp de usuário já confirmado com
+            // "User cannot be confirmed. Current status is CONFIRMED" —
+            // único cenário realista de NotAuthorizedException aqui (não há
+            // senha/token envolvido). Idempotente, não é erro (spec.md,
+            // decisão 2).
+            return Result.Success();
+        }
+    }
+
+    public async Task<Result> ResendConfirmationCodeAsync(
+        string email,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await _cognitoClient.ResendConfirmationCodeAsync(new ResendConfirmationCodeRequest
+            {
+                ClientId = _options.ClientId,
+                Username = email
+            }, cancellationToken);
+        }
+        catch (UserNotFoundException)
+        {
+            // Não revela se o email existe (spec.md, decisão 3).
+        }
+        catch (InvalidParameterException)
+        {
+            // Cognito recusa reenvio pra usuário já confirmado com esse tipo
+            // de exceção — mesmo princípio de não-enumeração.
+        }
+
+        // Sempre 200 (spec.md, decisão 3). Qualquer exceção fora das duas
+        // acima (ex.: LimitExceededException do throttling nativo do
+        // Cognito) é verdadeiramente inesperada e propaga pro
+        // GlobalExceptionHandler (500), igual ao resto da API.
+        return Result.Success();
+    }
 }
