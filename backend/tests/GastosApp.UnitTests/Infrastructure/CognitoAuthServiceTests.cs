@@ -363,6 +363,152 @@ public class CognitoAuthServiceTests
     }
 
     [Fact]
+    public async Task ForgotPasswordAsync_ShouldSucceed_WhenCognitoCallSucceeds()
+    {
+        // Arrange
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ForgotPasswordAsync(Arg.Any<ForgotPasswordRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new ForgotPasswordResponse());
+
+        // Act
+        var result = await service.ForgotPasswordAsync("neto@email.com");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        await _cognitoMock.Received(1).ForgotPasswordAsync(
+            Arg.Is<ForgotPasswordRequest>(r => r.Username == "neto@email.com"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ForgotPasswordAsync_ShouldSucceed_WhenCognitoThrowsUserNotFoundException()
+    {
+        // Arrange — não revela se o email existe (spec.md, decisão 1).
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ForgotPasswordAsync(Arg.Any<ForgotPasswordRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ForgotPasswordResponse>(new UserNotFoundException("User not found")));
+
+        // Act
+        var result = await service.ForgotPasswordAsync("naoexiste@email.com");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ForgotPasswordAsync_ShouldSucceed_WhenCognitoThrowsInvalidParameterException()
+    {
+        // Arrange — usuário existe mas ainda não confirmado (sem atributo de
+        // contato verificado). Mesmo princípio de não-enumeração.
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ForgotPasswordAsync(Arg.Any<ForgotPasswordRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ForgotPasswordResponse>(new InvalidParameterException("Cannot reset password for the user as there is no registered/verified email or phone_number")));
+
+        // Act
+        var result = await service.ForgotPasswordAsync("naoconfirmado@email.com");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ConfirmForgotPasswordAsync_ShouldSucceed_WhenCognitoCallSucceeds()
+    {
+        // Arrange
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ConfirmForgotPasswordAsync(Arg.Any<ConfirmForgotPasswordRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new ConfirmForgotPasswordResponse());
+
+        // Act
+        var result = await service.ConfirmForgotPasswordAsync("neto@email.com", "123456", "NovaSenha@123");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        await _cognitoMock.Received(1).ConfirmForgotPasswordAsync(
+            Arg.Is<ConfirmForgotPasswordRequest>(r =>
+                r.Username == "neto@email.com" && r.ConfirmationCode == "123456" && r.Password == "NovaSenha@123"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ConfirmForgotPasswordAsync_ShouldReturnExpiredResetCode_WhenCognitoThrowsExpiredCodeException()
+    {
+        // Arrange
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ConfirmForgotPasswordAsync(Arg.Any<ConfirmForgotPasswordRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ConfirmForgotPasswordResponse>(new ExpiredCodeException("Code expired")));
+
+        // Act
+        var result = await service.ConfirmForgotPasswordAsync("neto@email.com", "123456", "NovaSenha@123");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Validation);
+        result.Error.Code.Should().Be("expired-reset-code");
+    }
+
+    [Fact]
+    public async Task ConfirmForgotPasswordAsync_ShouldReturnInvalidResetCode_WhenCognitoThrowsCodeMismatchException()
+    {
+        // Arrange
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ConfirmForgotPasswordAsync(Arg.Any<ConfirmForgotPasswordRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ConfirmForgotPasswordResponse>(new CodeMismatchException("Code mismatch")));
+
+        // Act
+        var result = await service.ConfirmForgotPasswordAsync("neto@email.com", "000000", "NovaSenha@123");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Validation);
+        result.Error.Code.Should().Be("invalid-reset-code");
+    }
+
+    [Fact]
+    public async Task ConfirmForgotPasswordAsync_ShouldReturnInvalidResetCode_WhenCognitoThrowsUserNotFoundException()
+    {
+        // Arrange — mesma resposta de código incorreto, pra não revelar se
+        // o email está cadastrado (spec.md, decisão 2).
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ConfirmForgotPasswordAsync(Arg.Any<ConfirmForgotPasswordRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ConfirmForgotPasswordResponse>(new UserNotFoundException("User not found")));
+
+        // Act
+        var result = await service.ConfirmForgotPasswordAsync("naoexiste@email.com", "123456", "NovaSenha@123");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Validation);
+        result.Error.Code.Should().Be("invalid-reset-code");
+    }
+
+    [Fact]
+    public async Task ConfirmForgotPasswordAsync_ShouldReturnValidationError_WhenCognitoThrowsInvalidPasswordException()
+    {
+        // Arrange — mensagem fixa do contrato (spec.md), não o ex.Message do SDK.
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ConfirmForgotPasswordAsync(Arg.Any<ConfirmForgotPasswordRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ConfirmForgotPasswordResponse>(new InvalidPasswordException("Password does not conform to policy")));
+
+        // Act
+        var result = await service.ConfirmForgotPasswordAsync("neto@email.com", "123456", "fraca");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Validation);
+        result.Error.Code.Should().Be("bad-request");
+        result.Error.Message.Should().Be("Senha deve ter no mínimo 8 caracteres, com letra maiúscula, minúscula, número e símbolo.");
+    }
+
+    [Fact]
     public async Task DeleteAsync_ShouldCallAdminDeleteUser_WithUserPoolIdAndEmailAsUsername()
     {
         // Arrange

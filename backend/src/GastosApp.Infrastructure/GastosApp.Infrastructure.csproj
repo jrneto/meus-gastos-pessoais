@@ -13,10 +13,20 @@
     <PackageReference Include="AWSSDK.SecretsManager" Version="4.0.5.8" />
     <PackageReference Include="AWSSDK.SSO" Version="4.0.3.8" />
     <PackageReference Include="AWSSDK.SSOOIDC" Version="4.0.4.10" />
+    <PackageReference Include="AWSSDK.SimpleEmailV2" Version="4.0.104" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
     <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="2.3.11" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.9" />
+  </ItemGroup>
+
+  <!-- Template de e-mail copiado de frontend/design-system/emails/03-senha-alterada.html
+       (FEAT-36, mesma decisão da FEAT-34: duplicar em vez de referenciar por
+       caminho relativo, pra não fazer o build do backend depender da árvore
+       do frontend). Embarcado no binário pra estar disponível no cold start
+       da Lambda sem I/O externo. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Email\Templates\03-senha-alterada.html" />
   </ItemGroup>
 
   <PropertyGroup>

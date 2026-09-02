@@ -96,6 +96,17 @@ ver "Testes integrados" abaixo).
   ver débito técnico correspondente em `backend/docs/backlog.md`.
 - Ver `backend/specs/FEAT-33-infra-email-transacional-ses/` para a
   spec/plano completos.
+- **`Ses/SenderEmail` no Parameter Store** (FEAT-36): o email de "senha
+  alterada" (`POST /auth/reset-password`) é enviado direto pela API via
+  `ses:SendEmail` — fora do fluxo nativo do Cognito, então o backend
+  precisa do remetente à mão em runtime. `/GastosApp/Ses/SenderEmail`
+  (prod) e `/GastosApp/Hom/Ses/SenderEmail` (hom), tipo `String`,
+  espelham o mesmo valor já calculado pelo `email_configuration` do
+  User Pool (`parameter-store.tf` de cada ambiente). Sem equivalente
+  local: LocalStack Community não emula SES (só o SSM genérico), e o
+  envio deste email é best-effort (falha só loga, não derruba a
+  resposta de sucesso do reset) — ver
+  `backend/specs/FEAT-36-recuperacao-senha/`.
 
 ## CI/CD (GitHub Actions)
 

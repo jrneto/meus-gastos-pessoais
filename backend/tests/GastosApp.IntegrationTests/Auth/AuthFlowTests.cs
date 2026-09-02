@@ -253,6 +253,77 @@ public sealed class AuthFlowTests
             });
         }
     }
+
+    // FEAT-36: cobertura do fluxo de sucesso real de POST /auth/forgot-password
+    // sem precisar do código de 6 dígitos de fato (a suíte não tem acesso ao
+    // e-mail — mesma limitação da FEAT-35, ver plan.md).
+    [Fact]
+    public async Task ForgotPassword_EmailDeContaExistente_Retorna200()
+    {
+        await using var account = await TestAccountFixture.CreateAsync();
+
+        var response = await account.Transport.SendAsync(
+            HttpMethod.Post, "/auth/forgot-password",
+            new ForgotPasswordRequestDto(account.Email));
+
+        response.StatusCode.Should().Be(200);
+    }
+
+    [Fact]
+    public async Task ForgotPassword_EmailInexistente_Retorna200()
+    {
+        using var transport = ApiTransportFactory.Create();
+
+        var response = await transport.SendAsync(
+            HttpMethod.Post, "/auth/forgot-password",
+            new ForgotPasswordRequestDto($"inexistente+{Guid.NewGuid():N}@jrnexpenses.com"));
+
+        response.StatusCode.Should().Be(200);
+    }
+
+    [Fact]
+    public async Task ResetPassword_CodigoIncorreto_Retorna400()
+    {
+        await using var account = await TestAccountFixture.CreateAsync();
+
+        var response = await account.Transport.SendAsync(
+            HttpMethod.Post, "/auth/reset-password",
+            new ResetPasswordRequestDto(account.Email, "000000", "OutraSenha@2026"));
+
+        response.StatusCode.Should().Be(400);
+
+        var problem = response.Deserialize<ProblemDetailsDto>();
+        problem.Type.Should().Be("https://gastosapp.dev/errors/invalid-reset-code");
+    }
+
+    [Fact]
+    public async Task ResetPassword_EmailInexistente_Retorna400()
+    {
+        using var transport = ApiTransportFactory.Create();
+
+        var response = await transport.SendAsync(
+            HttpMethod.Post, "/auth/reset-password",
+            new ResetPasswordRequestDto($"inexistente+{Guid.NewGuid():N}@jrnexpenses.com", "000000", "OutraSenha@2026"));
+
+        response.StatusCode.Should().Be(400);
+
+        var problem = response.Deserialize<ProblemDetailsDto>();
+        problem.Type.Should().Be("https://gastosapp.dev/errors/invalid-reset-code");
+    }
+
+    // Não existe um teste "ResetPassword_SenhaForaDaPolitica_Retorna400" nesta
+    // suíte — investigado durante a implementação da FEAT-36 (plan.md, ponto
+    // de confirmação 2): confirmado empiricamente (curl direto contra a Api
+    // local + cognito-local) que ConfirmForgotPassword valida o CÓDIGO antes
+    // da SENHA — código errado + senha fraca simultaneamente ainda retorna
+    // 400 invalid-reset-code, nunca bad-request. Como esta suíte não tem
+    // acesso ao código real de recuperação (só chega por e-mail), não há como
+    // forçar o caminho "código correto + senha fora da política" para exercitar
+    // esse branch especificamente. Coberto pelos testes unitário
+    // (ConfirmForgotPasswordAsync_ShouldReturnValidationError_WhenCognitoThrowsInvalidPasswordException,
+    // CognitoAuthServiceTests) e de componente
+    // (ResetPassword_QuandoAuthServiceRetornaErro_PropagaProblemDetails,
+    // AuthEndpointsTests) — validação real do Cognito não exercitada aqui.
 }
 
 file sealed record MeResponseDto(string UserId, string? Email, string? Name, string? PhoneNumber, string? Cpf);
