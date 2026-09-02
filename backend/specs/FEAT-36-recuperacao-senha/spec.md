@@ -64,9 +64,16 @@ tabela própria de OTP nem mecanismo de rate limit/brute force adicional
    também para o caso de `InvalidParameterException` (usuário ainda não
    confirmado, sem atributo de contato verificado).
 2. **Código incorreto e email inexistente em `POST /auth/reset-password`
-   recebem o mesmo erro** (`invalid-reset-code`, 400) — mesmo princípio
-   de não-enumeração da FEAT-35 (decisão 1), aplicado ao
-   `ConfirmForgotPassword`.
+   nunca revelam a diferença** (sempre 400, mesmo princípio de
+   não-enumeração da FEAT-35, decisão 1) — **redação original previa o
+   mesmo `type` (`invalid-reset-code`) para os dois casos; corrigido em
+   2026-09-02** (ver "Status", achado na primeira execução real contra
+   hom): contra o Cognito real, com `prevent_user_existence_errors=
+   "ENABLED"` (`cognito.tf`), email inexistente devolve
+   `expired-reset-code`, não `invalid-reset-code` — mesma anti-
+   enumeração da FEAT-35 (`ExpiredCodeException` em vez de
+   `UserNotFoundException`). O princípio continua valendo, só o `type`
+   específico difere do que se assumia originalmente.
 3. **Sem mecanismo próprio de rate limit/brute-force** para o código de
    reset — mesma decisão já tomada para a FEAT-35 (confirmação de
    cadastro), agora estendida deliberadamente também à recuperação de
@@ -113,10 +120,14 @@ tabela própria de OTP nem mecanismo de rate limit/brute force adicional
   tratadas como sucesso; qualquer exceção verdadeiramente inesperada do
   SDK continua caindo no `GlobalExceptionHandler` (500), igual ao resto
   da API
-- `POST /auth/reset-password` com código incorreto
-  (`CodeMismatchException`) ou email não encontrado no Cognito
-  (`UserNotFoundException`) retorna 400 (`invalid-reset-code`) — mesma
-  resposta para os dois casos (decisão 2)
+- `POST /auth/reset-password` com código incorreto, havendo um código
+  de reset pendente de verdade (`CodeMismatchException`) retorna 400
+  (`invalid-reset-code`)
+- `POST /auth/reset-password` com email inexistente (`ExpiredCodeException`,
+  não `UserNotFoundException` — anti-enumeração do
+  `prevent_user_existence_errors`) retorna 400 (`expired-reset-code`)
+  — mesmo status 400 do código incorreto, sem revelar a diferença
+  (decisão 2), ainda que o `type` específico não seja o mesmo
 - `POST /auth/reset-password` com código expirado (`ExpiredCodeException`)
   retorna 400 (`expired-reset-code`)
 - `POST /auth/reset-password` com `newPassword` fora da política de
@@ -187,8 +198,9 @@ não revela nada**
 - Given um `email` que nunca foi registrado
 - When alguém chama `POST /auth/reset-password` com esse `email` e
   qualquer `code`/`newPassword`
-- Then a API retorna 400 (`invalid-reset-code`) — mesma resposta da US4,
-  sem revelar que o email não existe
+- Then a API retorna 400 (`expired-reset-code`) — mesmo status 400 da
+  US4, sem revelar que o email não existe (`type` específico corrigido
+  em 2026-09-02, ver "Status")
 
 **US7 — Senha fora da política**
 - Given um usuário com código de recuperação válido
@@ -243,7 +255,8 @@ Response 400 (parâmetro ausente):
 }
 ```
 
-Response 400 (código incorreto ou email inexistente):
+Response 400 (código incorreto — havendo um código de reset pendente
+de verdade):
 ```json
 {
   "type": "https://gastosapp.dev/errors/invalid-reset-code",
@@ -253,7 +266,8 @@ Response 400 (código incorreto ou email inexistente):
 }
 ```
 
-Response 400 (código expirado):
+Response 400 (código expirado, ou email inexistente — mesmo `type` nos
+dois casos, corrigido em 2026-09-02, ver "Status"):
 ```json
 {
   "type": "https://gastosapp.dev/errors/expired-reset-code",
@@ -296,7 +310,8 @@ genérico por tipo de erro (RFC 9457), mensagem específica sempre em
 - [x] `POST /auth/reset-password` com código expirado retorna 400
       (`expired-reset-code`) (US5)
 - [x] `POST /auth/reset-password` com email inexistente retorna 400
-      (`invalid-reset-code`), mesma resposta de código incorreto (US6)
+      (`expired-reset-code`, corrigido em 2026-09-02 — ver "Status"),
+      mesmo status 400 de código incorreto (US6)
 - [x] `POST /auth/reset-password` com senha fora da política do Cognito
       retorna 400 (`bad-request`) (US7)
 - [x] Ausência de `email` (forgot-password) ou `email`/`code`/
@@ -331,13 +346,32 @@ Implementação concluída (todas as 57 tasks de `tasks.md`). Suíte
 completa: 502 unit + 224 componente + 34 integrado (todos passando,
 inclusive contra o binário Native AOT via `run-local.sh`).
 
-**Diferente da FEAT-35, o `cognito-local` v5.3.0 implementa
-`ForgotPassword`/`ConfirmForgotPassword` sem divergência observada** —
-os 4 testes integrados novos (`ForgotPassword_EmailDeContaExistente_
-Retorna200`, `ForgotPassword_EmailInexistente_Retorna200`,
-`ResetPassword_CodigoIncorreto_Retorna400`,
-`ResetPassword_EmailInexistente_Retorna400`) passam sem nenhuma guarda
-de `IsLocal`, diferente dos 3 testes correspondentes da FEAT-35.
+O `cognito-local` v5.3.0 implementa `ForgotPassword`/
+`ConfirmForgotPassword` — os 4 testes integrados novos rodam
+localmente sem erro. **Atualização de 2026-09-02, após a primeira
+execução real de `backend-integration-tests-hom.yml` (0 runs
+anteriores):** 2 dos 4 (`ResetPassword_CodigoIncorreto_Retorna400`,
+`ResetPassword_EmailInexistente_Retorna400`) precisaram de correção —
+mesmo achado documentado em
+`backend/specs/FEAT-35-confirmacao-cadastro-otp/spec.md` ("Status"),
+aplicado aqui:
+- `ResetPassword_EmailInexistente_Retorna400`: `expired-reset-code`,
+  não `invalid-reset-code` (anti-enumeração do
+  `prevent_user_existence_errors`, `ExpiredCodeException` em vez de
+  `UserNotFoundException`) — ganhou guarda `IsLocal` (`cognito-local`
+  ainda lança `UserNotFoundException` de fato, diverge de hom/prod).
+- `ResetPassword_CodigoIncorreto_Retorna400`: bug de teste, não de
+  contrato — nunca chamava `POST /auth/forgot-password` antes do
+  reset, então não havia código pendente de verdade pra comparar; o
+  Cognito real cai em `ExpiredCodeException` nesse caso (mesma
+  anti-enumeração acima), não `CodeMismatchException`. Corrigido
+  gerando um código pendente real primeiro — segue sem guarda
+  `IsLocal`, passa nos dois ambientes.
+
+Nenhuma mudança de código foi necessária em `CognitoAuthService` — o
+mapeamento de exceção já estava correto, só a suposição de qual
+exceção real o Cognito lança pra esses 2 cenários estava errada
+(validada só contra `cognito-local` até então).
 
 **Ponto de confirmação 2 do `plan.md`** (viabilidade do teste integrado
 de "senha fora da política"): investigado empiricamente durante a
@@ -356,9 +390,18 @@ Comentário equivalente registrado em `AuthFlowTests.cs`.
 
 **2 novos parâmetros SSM `String`** (`/GastosApp/Ses/SenderEmail` e
 `/GastosApp/Hom/Ses/SenderEmail`) criados em `parameter-store.tf` de
-cada ambiente — `terraform fmt`/`validate` confirmam os dois como única
-mudança sintaticamente válida; `terraform plan` não executado (token
-AWS local expirado), aplicação em si segue o fluxo normal de deploy.
+cada ambiente. **`/GastosApp/Hom/Ses/SenderEmail` já aplicado e
+confirmado na AWS de hom (2026-09-02)** — a versão original do `.tf`
+referenciava `aws_cognito_user_pool.main.email_configuration[...]` ao
+vivo, o que gerava diff perpétuo (a AWS devolve esse atributo com
+encoding MIME quando o texto tem acentuação, diferente do literal do
+`.tf`) e arrastava `aws_lambda_function.custom_message_trigger` pra
+dentro de qualquer apply targeted deste recurso, com risco de reverter
+o código real da Lambda pro zip local desatualizado (deploy real
+acontece fora do Terraform). Corrigido trocando pro mesmo literal já
+usado em `email_configuration` — `terraform plan` completo (sem
+`-target`) confirma que o recurso fica estável, sem entrar em diff.
+Prod ainda não aplicado (código também não deployado lá ainda).
 
 **Fluxo "código correto → senha trocada → login com a nova senha" de
 ponta a ponta não é coberto por teste automatizado** — mesma limitação
