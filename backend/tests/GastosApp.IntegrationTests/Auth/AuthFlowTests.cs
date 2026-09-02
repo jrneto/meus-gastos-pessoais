@@ -287,7 +287,7 @@ public sealed class AuthFlowTests
         response.StatusCode.Should().Be(200);
     }
 
-    // Corrigido DUAS vezes após execuções reais contra hom
+    // Corrigido TRÊS vezes após execuções reais contra hom
     // (backend-integration-tests-hom.yml, 2026-09-02):
     //
     // 1ª correção: a versão original nunca chamava POST /auth/forgot-password
@@ -295,43 +295,33 @@ public sealed class AuthFlowTests
     // distingue "código errado" de "nenhum código ativo" e lança
     // ExpiredCodeException. Corrigido chamando forgot-password primeiro.
     //
-    // 2ª correção: mesmo chamando forgot-password, o teste continuava
+    // 2ª/3ª correção: mesmo chamando forgot-password, o teste continuava
     // recebendo ExpiredCodeException — causa raiz: TestAccountFixture
     // confirma a conta via AdminConfirmSignUpAsync, que NÃO marca o atributo
     // email_verified=true no Cognito real (só o fluxo real de ConfirmSignUp
     // com o código de verdade faz isso, via auto_verified_attributes —
-    // confirmado empiricamente contra hom, comparando a mesma chamada antes/
-    // depois de forçar email_verified=true via AdminUpdateUserAttributes).
+    // confirmado empiricamente contra hom via curl + AdminUpdateUserAttributes,
+    // comparando o mesmo cenário antes/depois de forçar email_verified=true).
     // Sem email verificado, ForgotPasswordAsync sempre cai no catch de
     // InvalidParameterException (retorna 200 sem gerar nenhum código real —
-    // spec.md, decisão 1) — por isso o reset nunca tinha algo genuíno pra
-    // comparar. Corrigido marcando email_verified=true manualmente aqui
-    // (só pra esta conta de teste) antes de chamar forgot-password. Não
-    // mexe em TestAccountFixture em si (usado por muitos outros testes) —
-    // ver backend/docs/backlog.md sobre considerar esse ajuste lá também.
+    // spec.md, decisão 1) — o reset nunca tem algo genuíno pra comparar.
     //
-    // AdminUpdateUserAttributes só roda fora de Local: cognito-local não
-    // implementa essa operação (HttpErrorResponseException, verificado
-    // empiricamente) — e não precisa, porque ele não exige email verificado
-    // pro ForgotPassword gerar um código de verdade (diferente do Cognito
-    // real), então o teste já passava localmente sem esse passo.
+    // Tentativa de corrigir chamando AdminUpdateUserAttributes manualmente no
+    // teste (2ª correção) não se sustentou: a role de CI (gastosapp-backend-
+    // cicd) não tem essa permissão concedida (escopo mínimo deliberado, ver
+    // backend/infra/CLAUDE.md) — AccessDeniedException em
+    // backend-integration-tests-hom.yml. Decisão do usuário (3ª correção,
+    // sem mexer em IAM): aceitar o resultado real e observável da CI —
+    // expired-reset-code fora de Local, já que a suíte genuinamente não
+    // consegue forçar email_verified=true com o escopo de permissão atual.
+    // Localmente, cognito-local NÃO exige email verificado pro ForgotPassword
+    // gerar um código de verdade (diferente do Cognito real), então o
+    // CodeMismatchException real (invalid-reset-code) continua verificável
+    // ali. Ver débito técnico em backend/docs/backlog.md.
     [Fact]
     public async Task ResetPassword_CodigoIncorreto_Retorna400()
     {
-        var env = IntegrationTestEnvironment.Current;
         await using var account = await TestAccountFixture.CreateAsync();
-
-        if (!env.IsLocal)
-        {
-            using var cognito = AwsClientFactory.CreateCognitoClient(env);
-            var userPoolId = await TestAccountFixture.ResolveUserPoolIdAsync(env);
-            await cognito.AdminUpdateUserAttributesAsync(new AdminUpdateUserAttributesRequest
-            {
-                UserPoolId = userPoolId,
-                Username = account.Email,
-                UserAttributes = [new AttributeType { Name = "email_verified", Value = "true" }]
-            });
-        }
 
         await account.Transport.SendAsync(
             HttpMethod.Post, "/auth/forgot-password",
@@ -344,7 +334,10 @@ public sealed class AuthFlowTests
         response.StatusCode.Should().Be(400);
 
         var problem = response.Deserialize<ProblemDetailsDto>();
-        problem.Type.Should().Be("https://gastosapp.dev/errors/invalid-reset-code");
+        var expectedType = IntegrationTestEnvironment.Current.IsLocal
+            ? "https://gastosapp.dev/errors/invalid-reset-code"
+            : "https://gastosapp.dev/errors/expired-reset-code";
+        problem.Type.Should().Be(expectedType);
     }
 
     // Pulado em modo Local: type corrigido após a primeira execução real

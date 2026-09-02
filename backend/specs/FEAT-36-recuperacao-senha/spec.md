@@ -361,23 +361,33 @@ aplicado aqui:
   `UserNotFoundException`) — ganhou guarda `IsLocal` (`cognito-local`
   ainda lança `UserNotFoundException` de fato, diverge de hom/prod).
 - `ResetPassword_CodigoIncorreto_Retorna400`: bug de teste, não de
-  contrato — exigiu **2 rodadas de correção**. A 1ª (chamar
+  contrato — exigiu **3 rodadas de correção**. A 1ª (chamar
   `POST /auth/forgot-password` antes do reset) não foi suficiente
   sozinha: o teste continuou recebendo `ExpiredCodeException` mesmo
-  assim. Causa raiz (2ª rodada, confirmada empiricamente contra hom
-  via `curl` + `AdminUpdateUserAttributes`): `TestAccountFixture`
-  confirma a conta via `AdminConfirmSignUpAsync`, que **não marca
-  `email_verified=true`** no Cognito real (só o fluxo genuíno de
-  `ConfirmSignUp` com código de verdade faz isso, via
-  `auto_verified_attributes`) — sem email verificado,
-  `ForgotPasswordAsync` sempre cai no catch de
+  assim. Causa raiz (confirmada empiricamente contra hom via `curl` +
+  `AdminUpdateUserAttributes`): `TestAccountFixture` confirma a conta
+  via `AdminConfirmSignUpAsync`, que **não marca `email_verified=true`**
+  no Cognito real (só o fluxo genuíno de `ConfirmSignUp` com código de
+  verdade faz isso, via `auto_verified_attributes`) — sem email
+  verificado, `ForgotPasswordAsync` sempre cai no catch de
   `InvalidParameterException` (200 sem gerar código real, spec.md
-  decisão 1), então o reset nunca tinha nada genuíno pra comparar.
-  Corrigido chamando `AdminUpdateUserAttributes` (email_verified=true)
-  manualmente no teste antes do forgot-password — só fora de Local
-  (`cognito-local` não implementa essa operação e não exige email
-  verificado pro `ForgotPassword` funcionar, então o teste já passava
-  localmente sem esse passo extra).
+  decisão 1), então o reset nunca tinha nada genuíno pra comparar. A
+  2ª rodada (chamar `AdminUpdateUserAttributes` manualmente no teste)
+  também não se sustentou: a role de CI (`gastosapp-backend-cicd`) não
+  tem essa permissão concedida (escopo mínimo deliberado, ver
+  `backend/infra/CLAUDE.md`) — `AccessDeniedException` rodando de
+  verdade em `backend-integration-tests-hom.yml` (só funcionou no meu
+  teste manual porque usei minhas próprias credenciais de admin, com
+  escopo bem mais amplo que o da CI). **3ª rodada, decisão do usuário
+  (sem mexer em IAM):** aceitar o resultado real e observável da CI —
+  `expired-reset-code` fora de Local (mesmo padrão de
+  `ResetPassword_EmailInexistente_Retorna400`), já que a suíte
+  genuinamente não consegue forçar `email_verified=true` com o escopo
+  de permissão atual. Localmente, `cognito-local` não exige email
+  verificado pro `ForgotPassword` gerar um código de verdade (diferente
+  do Cognito real), então o `CodeMismatchException` real
+  (`invalid-reset-code`) continua verificável ali — o teste passou a
+  esperar um `type` diferente por ambiente.
 
 **Possível débito técnico levantado, não decidido ainda:**
 `TestAccountFixture` (usada por boa parte da suíte, não só Auth) cria
