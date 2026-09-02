@@ -64,7 +64,7 @@
 
 - [x] 32. Rodar `dotnet build backend/GastosApp.sln` e `dotnet test backend/GastosApp.sln` (suíte completa unit + componente) sem regressão
 
-- [ ] 33. Rodar `backend/infra/lambda/run-local.sh` (binário Native AOT via Runtime Interface Emulator) e os testes integrados relevantes (`AuthFlowTests`, `--filter Category=Integration`) localmente, confirmando que passam (constitution: feature só é concluída com testes integrados relevantes rodando localmente)
+- [x] 33. Rodar `backend/infra/lambda/run-local.sh` (binário Native AOT via Runtime Interface Emulator) e os testes integrados relevantes (`AuthFlowTests`, `--filter Category=Integration`) localmente, confirmando que passam (constitution: feature só é concluída com testes integrados relevantes rodando localmente)
 
 - [ ] 34. Rodar `./scripts/export-openapi.sh` e conferir via `git diff` que `backend/docs/openapi.json` mudou só para incluir `POST /auth/confirm` e `POST /auth/resend-confirmation`
 

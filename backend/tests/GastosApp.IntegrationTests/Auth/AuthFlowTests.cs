@@ -105,10 +105,25 @@ public sealed class AuthFlowTests
     // e-mail — ver plan.md, decisão técnica 5). TestAccountFixture já
     // confirma a conta via AdminConfirmSignUp, então chamar /auth/confirm
     // de novo aqui exercita o branch de idempotência (NotAuthorizedException
-    // → 200) contra o Cognito/cognito-local real.
+    // → 200) contra o Cognito real.
+    //
+    // Pulado em modo Local: o código-fonte do cognito-local v5.3.0
+    // (lib/targets/confirmSignUp.js) nunca checa UserStatus — só compara o
+    // ConfirmationCode salvo, então o branch "usuário já confirmado" do
+    // Cognito real (que dispara ANTES de checar o código) é inalcançável
+    // contra o emulador; AdminConfirmSignUp também não limpa o
+    // ConfirmationCode salvo. Verificado empiricamente rodando run-local.sh
+    // (achado registrado em backend/docs/backlog.md) — validado de verdade
+    // só contra Cognito real (hom/prod), via backend-integration-tests-hom.yml.
     [Fact]
     public async Task Confirm_UsuarioJaConfirmado_Retorna200Idempotente()
     {
+        if (IntegrationTestEnvironment.Current.IsLocal)
+        {
+            Console.WriteLine("SKIP (modo Local): cognito-local não reproduz a checagem de UserStatus do ConfirmSignUp real — ver comentário no teste.");
+            return;
+        }
+
         await using var account = await TestAccountFixture.CreateAsync();
 
         var response = await account.Transport.SendAsync(
@@ -164,9 +179,22 @@ public sealed class AuthFlowTests
         }
     }
 
+    // Pulado em modo Local: o cognito-local v5.3.0 lança NotAuthorizedError
+    // (não UserNotFoundError, como o Cognito real, ver AWS SDK docs) quando
+    // getUserByUsername não encontra o usuário em ConfirmSignUp — nosso
+    // catch de NotAuthorizedException (idempotência, "já confirmado") acaba
+    // absorvendo isso como sucesso (200) em vez do esperado 400. Verificado
+    // empiricamente rodando run-local.sh; validado contra Cognito real
+    // (hom/prod) via backend-integration-tests-hom.yml.
     [Fact]
     public async Task Confirm_EmailInexistente_Retorna400()
     {
+        if (IntegrationTestEnvironment.Current.IsLocal)
+        {
+            Console.WriteLine("SKIP (modo Local): cognito-local lança NotAuthorizedException (não UserNotFoundException) pra usuário inexistente em ConfirmSignUp — ver comentário no teste.");
+            return;
+        }
+
         using var transport = ApiTransportFactory.Create();
 
         var response = await transport.SendAsync(
@@ -179,10 +207,23 @@ public sealed class AuthFlowTests
         problem.Type.Should().Be("https://gastosapp.dev/errors/invalid-confirmation-code");
     }
 
+    // Pulado em modo Local: o cognito-local v5.3.0 não implementa
+    // ResendConfirmationCode (nenhum lib/targets/resendConfirmationCode.js
+    // existe no pacote — confirmado inspecionando o container; última
+    // versão publicada, sem correção pendente aceita upstream) — a chamada
+    // ao SDK bate numa operação inexistente no emulador e propaga como 500.
+    // Validado contra Cognito real (hom/prod) via backend-integration-tests-hom.yml.
     [Fact]
     public async Task ResendConfirmation_UsuarioNaoConfirmado_Retorna200()
     {
         var env = IntegrationTestEnvironment.Current;
+
+        if (env.IsLocal)
+        {
+            Console.WriteLine("SKIP (modo Local): cognito-local não implementa ResendConfirmationCode — ver comentário no teste.");
+            return;
+        }
+
         using var transport = ApiTransportFactory.Create(env);
         using var cognito = AwsClientFactory.CreateCognitoClient(env);
 

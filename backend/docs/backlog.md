@@ -352,6 +352,36 @@ monorepo.
   futura que precise provisionar recurso novo, não só a FEAT-34, que
   seguiu com `apply` manual (decisão confirmada com o usuário).
 
+- [ ] **DÉBITO — `cognito-local` (v5.3.0, última versão publicada) não
+  reproduz 3 comportamentos do Cognito real usados por `ConfirmSignUp`/
+  `ResendConfirmationCode`** (descoberto na FEAT-35 —
+  `backend/specs/FEAT-35-confirmacao-cadastro-otp/`, rodando
+  `run-local.sh`): (1) `ResendConfirmationCode` não existe entre os
+  targets implementados do pacote (verificado inspecionando
+  `/usr/local/lib/node_modules/cognito-local/lib/targets/` dentro do
+  container) — a chamada ao SDK propaga como exceção não mapeada (500);
+  (2) `ConfirmSignUp` (`lib/targets/confirmSignUp.js`) nunca checa
+  `UserStatus`, só compara o `ConfirmationCode` salvo — o branch de
+  idempotência do Cognito real (`NotAuthorizedException` pra usuário já
+  `CONFIRMED`, que no real dispara antes de olhar o código) é
+  inalcançável contra o emulador, e `AdminConfirmSignUp` também não
+  limpa o `ConfirmationCode` salvo; (3) pra usuário inexistente,
+  `ConfirmSignUp` lança `NotAuthorizedError` (não `UserNotFoundError`,
+  como o Cognito real e a documentação do AWS SDK) — nosso catch de
+  "já confirmado" acaba absorvendo isso como sucesso. Não há correção
+  via upgrade: v5.3.0 já é a última release oficial (conferido via
+  GitHub API); existe um PR de terceiro (#468, "100% Cognito API
+  parity") mas está aberto, não mergeado, não publicado. Os 3 testes
+  afetados (`Confirm_UsuarioJaConfirmado_Retorna200Idempotente`,
+  `Confirm_EmailInexistente_Retorna400`, `ResendConfirmation_
+  UsuarioNaoConfirmado_Retorna200` em
+  `backend/tests/GastosApp.IntegrationTests/Auth/AuthFlowTests.cs`)
+  pulam a asserção em modo Local (guarda `IntegrationTestEnvironment.
+  Current.IsLocal`) e só validam de verdade contra Cognito real via
+  `backend-integration-tests-hom.yml`. Reavaliar se/quando o pacote
+  ganhar uma versão nova que cubra esses 3 casos, ou se outra feature
+  de auth precisar de mais paridade do emulador.
+
 ## Compliance (LGPD)
 
 Levantado durante o `/specify` da FEAT-26 (coleta de CPF no cadastro).
