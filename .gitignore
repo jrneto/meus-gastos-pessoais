@@ -16,6 +16,11 @@ backend/infra/lambda/out/
 backend/infra/lambda/account-trigger-function.zip
 backend/infra/lambda/out-account-trigger/
 
+# Artefato de build do Lambda trigger CustomMessage (FEAT-34, gerado por
+# infra/lambda/build-custom-message-trigger.sh, regenerável)
+backend/infra/lambda/custom-message-trigger-function.zip
+backend/infra/lambda/out-custom-message-trigger/
+
 # User-specific files
 *.rsuser
 *.suo
