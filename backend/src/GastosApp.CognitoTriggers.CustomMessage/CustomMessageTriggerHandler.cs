@@ -17,12 +17,16 @@ public static class CustomMessageTriggerHandler
     {
         try
         {
+            // Assunto SEM "{{codigo}}"/"{####}" — confirmado ao vivo em hom
+            // (validação da task 25) que o Cognito só substitui o placeholder
+            // {####} em emailMessage, não em emailSubject; divergência da
+            // decisão técnica 5 do plan.md, corrigida aqui.
             var (template, subject) = evt.TriggerSource switch
             {
                 "CustomMessage_SignUp" or "CustomMessage_ResendCode"
-                    => (EmailTemplateProvider.SignUpTemplate, "Seu código de confirmação: {{codigo}}"),
+                    => (EmailTemplateProvider.SignUpTemplate, "Confirme seu cadastro no jrn.expenses"),
                 "CustomMessage_ForgotPassword"
-                    => (EmailTemplateProvider.ForgotPasswordTemplate, "Código para redefinir sua senha: {{codigo}}"),
+                    => (EmailTemplateProvider.ForgotPasswordTemplate, "Redefinição de senha solicitada"),
                 _ => ((string?)null, (string?)null) // fora do escopo — Cognito usa o texto padrão dele
             };
 
@@ -35,7 +39,7 @@ public static class CustomMessageTriggerHandler
                 var saudacao = string.IsNullOrWhiteSpace(nome) ? DefaultGreeting : nome;
 
                 evt.Response.EmailMessage = Fill(template, evt.Request.CodeParameter, saudacao, email);
-                evt.Response.EmailSubject = Fill(subject!, evt.Request.CodeParameter, saudacao, email);
+                evt.Response.EmailSubject = subject;
             }
         }
         catch (Exception ex)
@@ -53,7 +57,8 @@ public static class CustomMessageTriggerHandler
 
     // codigoParameter é o literal "{####}" — nunca o código real (ver
     // CognitoCustomMessageRequest.CodeParameter). O Cognito faz a substituição
-    // de verdade depois que o Lambda retorna, tanto no corpo quanto no assunto.
+    // de verdade depois que o Lambda retorna, só no corpo (emailMessage) —
+    // confirmado ao vivo que emailSubject NÃO recebe essa substituição.
     private static string Fill(string texto, string codigoParameter, string nome, string email) =>
         texto
             .Replace("{{codigo}}", codigoParameter)

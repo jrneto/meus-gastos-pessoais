@@ -55,7 +55,10 @@ public class CustomMessageTriggerHandlerTests
         result.Should().BeSameAs(evt);
         result.Response.EmailMessage.Should().Contain("Fulano da Silva").And.Contain("{####}").And.Contain("neto@email.com");
         result.Response.EmailMessage.Should().NotContain("{{nome}}").And.NotContain("{{codigo}}").And.NotContain("{{email}}");
-        result.Response.EmailSubject.Should().Be("Seu código de confirmação: {####}");
+        // Assunto não usa "{{codigo}}"/"{####}" — confirmado ao vivo em hom
+        // que o Cognito não substitui o placeholder em emailSubject (só em
+        // emailMessage), diferente do assumido originalmente no plan.md.
+        result.Response.EmailSubject.Should().Be("Confirme seu cadastro no jrn.expenses");
     }
 
     [Fact]
@@ -69,7 +72,7 @@ public class CustomMessageTriggerHandlerTests
 
         // Assert
         result.Response.EmailMessage.Should().Contain("Redefinir sua senha").And.Contain("{####}").And.Contain("neto@email.com");
-        result.Response.EmailSubject.Should().Be("Código para redefinir sua senha: {####}");
+        result.Response.EmailSubject.Should().Be("Redefinição de senha solicitada");
     }
 
     [Fact]

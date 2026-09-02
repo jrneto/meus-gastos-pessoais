@@ -234,12 +234,17 @@ existem no vocabulário do design system (README), mas não aparecem em
 `01-confirmacao-cadastro.html` nem `02-recuperacao-senha.html` — fora
 de escopo aqui.
 
-**5. Assunto (`emailSubject`) usa o texto sugerido no
-`frontend/design-system/emails/README.md`** ("Seu código de
-confirmação: {{codigo}}" / "Código para redefinir sua senha:
-{{codigo}}"), passando pelo mesmo `Fill(...)` do corpo — o token
-`{####}` funciona igual em `emailSubject` (confirmado na documentação
-da AWS, decisão técnica 1).
+**5. ~~Assunto (`emailSubject`) usa o texto sugerido no
+`frontend/design-system/emails/README.md`~~ — REVISTO durante a
+validação ao vivo (task 25, hom): o Cognito NÃO substitui `{####}` em
+`emailSubject`, só em `emailMessage`** (evidência real: e-mail chegou
+com o assunto literal "Seu código de confirmação: {####}", enquanto o
+corpo mostrou o código verdadeiro). A suposição original desta decisão
+(mesma substituição valendo pros dois campos) estava errada — a
+documentação da AWS não deixa isso explícito e só o teste real revelou.
+Assunto final, sem `{{codigo}}`: "Confirme seu cadastro no
+jrn.expenses" / "Redefinição de senha solicitada". O código continua
+visível e em destaque no corpo do e-mail.
 
 **6. Sem `ISender`/Mediator/DI container neste projeto** — diferente de
 `GastosApp.CognitoTriggers`, que precisa montar `Application`+
