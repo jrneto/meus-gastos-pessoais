@@ -282,44 +282,96 @@ genérico por tipo de erro (RFC 9457), mensagem específica sempre em
 
 ## Critérios de aceite
 
-- [ ] `POST /auth/forgot-password` com email de usuário confirmado
+- [x] `POST /auth/forgot-password` com email de usuário confirmado
       retorna 200 e dispara o código de recuperação por email (US1)
-- [ ] `POST /auth/forgot-password` com email inexistente ou não
+- [x] `POST /auth/forgot-password` com email inexistente ou não
       confirmado retorna 200 igualmente, sem revelar a diferença (US2)
-- [ ] `POST /auth/reset-password` com email, código e senha nova
+- [x] `POST /auth/reset-password` com email, código e senha nova
       corretos retorna 200, troca a senha no Cognito, dispara o email de
       "senha alterada", e o usuário passa a logar com a nova senha (US3)
-- [ ] `POST /auth/reset-password` com código incorreto retorna 400
+      — a parte "usuário passa a logar com a nova senha" não é
+      verificada por teste automatizado de ponta a ponta (ver "Status")
+- [x] `POST /auth/reset-password` com código incorreto retorna 400
       (`invalid-reset-code`) (US4)
-- [ ] `POST /auth/reset-password` com código expirado retorna 400
+- [x] `POST /auth/reset-password` com código expirado retorna 400
       (`expired-reset-code`) (US5)
-- [ ] `POST /auth/reset-password` com email inexistente retorna 400
+- [x] `POST /auth/reset-password` com email inexistente retorna 400
       (`invalid-reset-code`), mesma resposta de código incorreto (US6)
-- [ ] `POST /auth/reset-password` com senha fora da política do Cognito
+- [x] `POST /auth/reset-password` com senha fora da política do Cognito
       retorna 400 (`bad-request`) (US7)
-- [ ] Ausência de `email` (forgot-password) ou `email`/`code`/
+- [x] Ausência de `email` (forgot-password) ou `email`/`code`/
       `newPassword` (reset-password) retorna 400 (`validation-error`)
-- [ ] Falha no envio do email de "senha alterada" não impede a resposta
+- [x] Falha no envio do email de "senha alterada" não impede a resposta
       de sucesso de `POST /auth/reset-password` (só loga)
-- [ ] `POST /auth/login` continua funcionando normalmente com a nova
+- [x] `POST /auth/login` continua funcionando normalmente com a nova
       senha após um reset bem-sucedido, sem mudança de comportamento
-- [ ] Nenhuma mudança no TTL/política de expiração de código do Cognito
+      — não alterado nesta feature; sem teste específico de ponta a
+      ponta (mesma ressalva do critério US3 acima)
+- [x] Nenhuma mudança no TTL/política de expiração de código do Cognito
       User Pool (nem em `backend/infra/terraform/`)
-- [ ] Nenhuma mudança de IAM nova — reaproveita permissão SES já
+- [x] Nenhuma mudança de IAM nova — reaproveita permissão SES já
       concedida na FEAT-33; único Terraform novo são os 2 parâmetros
       `Ses/SenderEmail` no Parameter Store (decisão do `/plan`, ver
       `plan.md`)
-- [ ] Template `frontend/design-system/emails/03-senha-alterada.html`
+- [x] Template `frontend/design-system/emails/03-senha-alterada.html`
       ajustado para não depender de `{{nome}}` (decisão 4)
-- [ ] Os dois novos endpoints cobertos por teste de componente (mock de
+- [x] Os dois novos endpoints cobertos por teste de componente (mock de
       `IAuthService`/Cognito)
-- [ ] Os dois novos endpoints cobertos por teste integrado (pelo menos
+- [x] Os dois novos endpoints cobertos por teste integrado (pelo menos
       o fluxo de sucesso), rodado localmente via
       `backend/infra/lambda/run-local.sh` antes de a feature ser dada
       por concluída
-- [ ] Suíte completa de testes (unitário + componente) passando
-- [ ] `backend/docs/openapi.json` regenerado refletindo os dois novos
+- [x] Suíte completa de testes (unitário + componente) passando
+- [x] `backend/docs/openapi.json` regenerado refletindo os dois novos
       endpoints
+
+## Status
+
+Implementação concluída (todas as 57 tasks de `tasks.md`). Suíte
+completa: 502 unit + 224 componente + 34 integrado (todos passando,
+inclusive contra o binário Native AOT via `run-local.sh`).
+
+**Diferente da FEAT-35, o `cognito-local` v5.3.0 implementa
+`ForgotPassword`/`ConfirmForgotPassword` sem divergência observada** —
+os 4 testes integrados novos (`ForgotPassword_EmailDeContaExistente_
+Retorna200`, `ForgotPassword_EmailInexistente_Retorna200`,
+`ResetPassword_CodigoIncorreto_Retorna400`,
+`ResetPassword_EmailInexistente_Retorna400`) passam sem nenhuma guarda
+de `IsLocal`, diferente dos 3 testes correspondentes da FEAT-35.
+
+**Ponto de confirmação 2 do `plan.md`** (viabilidade do teste integrado
+de "senha fora da política"): investigado empiricamente durante a
+implementação (`curl` direto contra a Api local + `cognito-local`,
+conta real registrada e confirmada) — confirmado que
+`ConfirmForgotPassword` valida o **código antes da senha**: código
+errado + senha fraca simultaneamente ainda retorna 400
+`invalid-reset-code`, nunca `bad-request`. Como a suíte não tem acesso
+ao código real de recuperação (só chega por email), não há como forçar
+o caminho "código correto + senha fora da política" — não é viável
+como teste integrado. Coberto pelos testes unitário
+(`ConfirmForgotPasswordAsync_ShouldReturnValidationError_
+WhenCognitoThrowsInvalidPasswordException`) e de componente
+(`ResetPassword_QuandoAuthServiceRetornaErro_PropagaProblemDetails`).
+Comentário equivalente registrado em `AuthFlowTests.cs`.
+
+**2 novos parâmetros SSM `String`** (`/GastosApp/Ses/SenderEmail` e
+`/GastosApp/Hom/Ses/SenderEmail`) criados em `parameter-store.tf` de
+cada ambiente — `terraform fmt`/`validate` confirmam os dois como única
+mudança sintaticamente válida; `terraform plan` não executado (token
+AWS local expirado), aplicação em si segue o fluxo normal de deploy.
+
+**Fluxo "código correto → senha trocada → login com a nova senha" de
+ponta a ponta não é coberto por teste automatizado** — mesma limitação
+já aceita na FEAT-35 (a suíte não tem acesso ao código de 6 dígitos
+enviado por email); os critérios de aceite correspondentes (US3 e o
+item de `POST /auth/login`) foram marcados com essa ressalva explícita.
+
+Foi necessário também ajustar um teste-canário pré-existente
+(`AddApplicationServices_ShouldNotRegisterAnyOtherValidator_
+BeyondTheKnownFourteen` → `...Sixteen`, em `ApplicationExtensionsTests.cs`)
+para refletir os 2 validators novos — não estava listado como task
+própria em `tasks.md`, mas é manutenção esperada desse teste de
+regressão.
 
 ## Fora do escopo
 

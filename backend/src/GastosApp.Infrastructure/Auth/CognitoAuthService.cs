@@ -202,4 +202,74 @@ public sealed class CognitoAuthService : IAuthService
         // GlobalExceptionHandler (500), igual ao resto da API.
         return Result.Success();
     }
+
+    public async Task<Result> ForgotPasswordAsync(
+        string email,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await _cognitoClient.ForgotPasswordAsync(new ForgotPasswordRequest
+            {
+                ClientId = _options.ClientId,
+                Username = email
+            }, cancellationToken);
+        }
+        catch (UserNotFoundException)
+        {
+            // Não revela se o email existe (spec.md, decisão 1) — o
+            // prevent_user_existence_errors="ENABLED" do User Pool já
+            // cobre isso a nível de ForgotPassword; este catch é defensivo.
+        }
+        catch (InvalidParameterException)
+        {
+            // Usuário existe mas ainda não foi confirmado (sem atributo de
+            // contato verificado) — mesmo princípio de não-enumeração.
+        }
+
+        // Sempre 200 (spec.md, decisão 1). Qualquer exceção fora das duas
+        // acima (ex.: LimitExceededException do throttling nativo do
+        // Cognito) é verdadeiramente inesperada e propaga pro
+        // GlobalExceptionHandler (500), igual ao resto da API.
+        return Result.Success();
+    }
+
+    public async Task<Result> ConfirmForgotPasswordAsync(
+        string email, string code, string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await _cognitoClient.ConfirmForgotPasswordAsync(new ConfirmForgotPasswordRequest
+            {
+                ClientId = _options.ClientId,
+                Username = email,
+                ConfirmationCode = code,
+                Password = newPassword
+            }, cancellationToken);
+
+            return Result.Success();
+        }
+        catch (ExpiredCodeException)
+        {
+            return Result.Failure(AuthErrors.ExpiredResetCode);
+        }
+        catch (CodeMismatchException)
+        {
+            return Result.Failure(AuthErrors.InvalidResetCode);
+        }
+        catch (UserNotFoundException)
+        {
+            // Mesma resposta de código incorreto — não revela se o email
+            // está cadastrado (spec.md, decisão 2).
+            return Result.Failure(AuthErrors.InvalidResetCode);
+        }
+        catch (InvalidPasswordException)
+        {
+            // Mensagem fixa do contrato (spec.md) — não repassa ex.Message
+            // do SDK, mesmo padrão de AuthErrors.EmailAlreadyExists.
+            return Result.Failure(AuthErrors.Validation(
+                "Senha deve ter no mínimo 8 caracteres, com letra maiúscula, minúscula, número e símbolo."));
+        }
+    }
 }

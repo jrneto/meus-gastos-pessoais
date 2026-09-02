@@ -39,3 +39,13 @@ resource "aws_ssm_parameter" "cors_production_origin_1" {
   type  = "String"
   value = "https://www.jrnexpenses.com"
 }
+
+# Remetente do e-mail de "senha alterada" (FEAT-36), enviado direto pela
+# API via ses:SendEmail — fora do fluxo nativo do Cognito, então o backend
+# precisa desse valor à mão. Espelha o mesmo remetente já calculado pelo
+# email_configuration do User Pool (ver output ses_sender_email).
+resource "aws_ssm_parameter" "ses_sender_email" {
+  name  = "/GastosApp/Ses/SenderEmail"
+  type  = "String"
+  value = aws_cognito_user_pool.main.email_configuration[0].from_email_address
+}

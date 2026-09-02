@@ -26,6 +26,8 @@ namespace GastosApp.Api.Common;
 [JsonSerializable(typeof(LoginRequest))]
 [JsonSerializable(typeof(ConfirmRequest))]
 [JsonSerializable(typeof(ResendConfirmationRequest))]
+[JsonSerializable(typeof(ForgotPasswordRequest))]
+[JsonSerializable(typeof(ResetPasswordRequest))]
 [JsonSerializable(typeof(RegisterTransactionRequest))]
 [JsonSerializable(typeof(UpdateTransactionRequest))]
 [JsonSerializable(typeof(RegisterUserResult))]

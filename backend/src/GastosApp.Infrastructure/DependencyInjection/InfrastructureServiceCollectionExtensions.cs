@@ -40,6 +40,7 @@ namespace GastosApp.Infrastructure.DependencyInjection
             this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
         {
             services.AddCognitoSdk(configuration);
+            services.AddSesSdk(configuration);
 
             // Leitura manual (sem Configure<T>()/reflection) — mesmo motivo
             // documentado em AddCognitoSdk: Configure<T>(IConfiguration) usa

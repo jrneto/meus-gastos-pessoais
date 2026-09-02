@@ -205,8 +205,8 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   técnico abaixo — pendente validação real em hom via
   `backend-integration-tests-hom.yml`).
 
-- [ ] **FEAT-36 — Recuperação de senha (esqueci minha senha)** *(spec
-  pronta, ver `backend/specs/FEAT-36-recuperacao-senha/`)*:
+- [x] **FEAT-36 — Recuperação de senha (esqueci minha senha)** *(concluída,
+  ver `backend/specs/FEAT-36-recuperacao-senha/`)*:
   `POST /auth/forgot-password` (`ForgotPasswordAsync`) e `POST /auth/
   reset-password` (`ConfirmForgotPasswordAsync`), com erros
   `invalid-reset-code`/`expired-reset-code` (`CodeMismatchException`/
@@ -225,7 +225,18 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   proteção nativa do Cognito, decisão confirmada no `/specify`); sem
   personalização por nome no e-mail de "senha alterada" (reset não é
   autenticado, evita IAM novo — template ajustado pra não depender de
-  `{{nome}}`).
+  `{{nome}}`). Novas interfaces `IEmailSender`/`IPasswordChangedEmailSender`
+  (Application) + `SesEmailService`/`SesPasswordChangedEmailSender`
+  (Infrastructure, `AWSSDK.SimpleEmailV2`) — `IEmailSender` já pensado
+  genérico o bastante pra FEAT-37 reaproveitar. 2 novos parâmetros SSM
+  `String` (`Ses/SenderEmail`, um por ambiente) criados em
+  `parameter-store.tf`, espelhando o remetente já calculado pelo
+  `email_configuration` do Cognito (decisão tomada durante o `/plan`,
+  spec.md original previa zero Terraform novo). Diferente da FEAT-35, o
+  `cognito-local` implementa `ForgotPassword`/`ConfirmForgotPassword`
+  sem divergência — os 4 testes integrados novos rodam sem guarda de
+  `IsLocal`. 502 unit + 224 componente + 34 integrado passando
+  (Native AOT via `run-local.sh` incluído).
   Depende de: FEAT-33 (SES). Não depende de FEAT-34/35.
 
 - [ ] **FEAT-37 — E-mail de boas-vindas** *(substitui a antiga FEAT-27

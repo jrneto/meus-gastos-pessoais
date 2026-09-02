@@ -1,10 +1,12 @@
 using GastosApp.Api.Common;
 using GastosApp.Application.Auth.Commands.Confirm;
+using GastosApp.Application.Auth.Commands.ForgotPassword;
 using GastosApp.Application.Auth.Commands.Login;
 using GastosApp.Application.Auth.Commands.Logout;
 using GastosApp.Application.Auth.Commands.Refresh;
 using GastosApp.Application.Auth.Commands.Register;
 using GastosApp.Application.Auth.Commands.ResendConfirmation;
+using GastosApp.Application.Auth.Commands.ResetPassword;
 using GastosApp.Application.Auth.Queries.GetCurrentUser;
 using Mediator;
 using Microsoft.AspNetCore.Mvc;
@@ -43,6 +45,14 @@ public static class AuthEndpoints
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
         group.MapPost("/resend-confirmation", ResendConfirmation)
+            .Produces(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        group.MapPost("/forgot-password", ForgotPassword)
+            .Produces(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        group.MapPost("/reset-password", ResetPassword)
             .Produces(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -146,6 +156,28 @@ public static class AuthEndpoints
         var result = await sender.Send(command, cancellationToken);
         return result.ToHttpResult(() => Results.Ok());
     }
+
+    private static async Task<IResult> ForgotPassword(
+        ForgotPasswordRequest request,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var command = new ForgotPasswordCommand(request.Email);
+        var result = await sender.Send(command, cancellationToken);
+        return result.ToHttpResult(() => Results.Ok());
+    }
+
+    private static async Task<IResult> ResetPassword(
+        ResetPasswordRequest request,
+        ISender sender,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var userAgent = httpContext.Request.Headers.UserAgent.ToString();
+        var command = new ResetPasswordCommand(request.Email, request.Code, request.NewPassword, userAgent);
+        var result = await sender.Send(command, cancellationToken);
+        return result.ToHttpResult(() => Results.Ok());
+    }
 }
 
 public record RegisterRequest(string Email, string Password, string Name, string PhoneNumber, string Cpf);
@@ -153,3 +185,5 @@ public record LoginRequest(string Email, string Password);
 public record UserInfoResponse(string UserId, string? Email, string? Name, string? PhoneNumber, string? Cpf);
 public record ConfirmRequest(string Email, string Code);
 public record ResendConfirmationRequest(string Email);
+public record ForgotPasswordRequest(string Email);
+public record ResetPasswordRequest(string Email, string Code, string NewPassword);
