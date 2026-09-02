@@ -203,7 +203,7 @@ validação em hom).
       `RegisterAsync` (novo atributo `name`) não quebra o fluxo real de
       cadastro. 4 testes de `Auth/AuthFlowTests.cs` passando contra o
       binário Native AOT real (RIE + cognito-local/LocalStack).
-- [ ] 35. Atualizar `spec.md`: marcar os critérios de aceite concluídos
+- [x] 35. Atualizar `spec.md`: marcar os critérios de aceite concluídos
       (`- [x]`) e adicionar a seção "Status" (mesmo padrão de
       `backend/specs/FEAT-19-conta-multi-tenant/spec.md`) resumindo o
       que foi implementado.

@@ -101,10 +101,13 @@ têm endpoint).
   `{{nome}}` literal no e-mail.
 - `{{email}}` é substituído pelo e-mail do próprio usuário (atributo já
   existente no Cognito).
-- O assunto do e-mail também é customizado por este trigger, com o
-  código já resolvido (ex.: "Seu código de confirmação: 123456"), não
-  só o corpo — mesmo padrão sugerido em
-  `frontend/design-system/emails/README.md`.
+- O assunto do e-mail também é customizado por este trigger — texto
+  fixo, sem `{{codigo}}`. **Revisto durante a validação ao vivo em hom:**
+  o Cognito não substitui o placeholder `{####}` em `emailSubject` (só
+  em `emailMessage`), diferente do sugerido originalmente em
+  `frontend/design-system/emails/README.md` (que assumia o mesmo
+  comportamento nos dois campos); o código continua visível e em
+  destaque no corpo do e-mail.
 - As URLs `app.jrnexpenses.com.br` dos templates são corrigidas para o
   domínio real (`jrnexpenses.com`) antes de o HTML ser usado por este
   trigger.
@@ -183,34 +186,43 @@ senha), nunca a resposta de uma rota.
 
 ## Critérios de aceite
 
-- [ ] `CustomMessage_SignUp`: e-mail chega com o HTML de
+- [x] `CustomMessage_SignUp`: e-mail chega com o HTML de
       `01-confirmacao-cadastro.html`, `{{codigo}}`/`{{nome}}`/`{{email}}`
       resolvidos corretamente — validado manualmente em hom via `POST
-      /auth/register`
-- [ ] `CustomMessage_ResendCode`: mesmo template, `{{codigo}}`/`{{nome}}`/
-      `{{email}}` resolvidos — validado manualmente (ex.: reenvio via
-      console/CLI do Cognito, já que `POST /auth/resend-confirmation`
-      ainda não existe)
-- [ ] `CustomMessage_ForgotPassword`: e-mail chega com o HTML de
+      /auth/register`. `{{codigo}}`/`{{email}}`/HTML/URLs confirmados ao
+      vivo; `{{nome}}` confirmado via teste automatizado
+      (`CustomMessageTriggerHandlerTests`) — validação end-to-end em hom
+      fica pendente até o merge desta branch pra `develop` (a API de hom
+      só reflete o código de `develop`, que ainda não manda `name` pro
+      Cognito nesta rodada de testes)
+- [x] `CustomMessage_ResendCode`: mesmo template, `{{codigo}}`/`{{nome}}`/
+      `{{email}}` resolvidos — validado manualmente (reenvio via
+      `aws cognito-idp resend-confirmation-code`, já que `POST
+      /auth/resend-confirmation` ainda não existe). Mesma ressalva de
+      `{{nome}}` pendente pós-merge.
+- [x] `CustomMessage_ForgotPassword`: e-mail chega com o HTML de
       `02-recuperacao-senha.html`, `{{codigo}}`/`{{nome}}`/`{{email}}`
-      resolvidos — validado manualmente (ex.: via console/CLI do
-      Cognito, já que `POST /auth/forgot-password` ainda não existe)
-- [ ] Falha simulada no handler não impede a conclusão do
+      resolvidos — validado manualmente via `aws cognito-idp
+      forgot-password`, já que `POST /auth/forgot-password` ainda não
+      existe
+- [x] Falha simulada no handler não impede a conclusão do
       `SignUp`/`ResendConfirmationCode`/`ForgotPassword` — e-mail sai
-      com o texto padrão do Cognito nesse cenário
-- [ ] `TriggerSource` de `CustomMessage` fora dos 3 listados (ex.:
+      com o texto padrão do Cognito nesse cenário. Validado via teste
+      automatizado (`HandleAsync_ShouldNeverPropagateFailure_WhenFormattingThrows`);
+      decisão do usuário de não repetir a simulação contra hom real
+- [x] `TriggerSource` de `CustomMessage` fora dos 3 listados (ex.:
       `AdminCreateUser`) continua com o texto padrão do Cognito, sem
-      regressão
-- [ ] URLs dos templates corrigidas de `app.jrnexpenses.com.br` para o
+      regressão — validado manualmente em hom
+- [x] URLs dos templates corrigidas de `app.jrnexpenses.com.br` para o
       domínio real (`jrnexpenses.com`)
-- [ ] `SignUpAsync` passa a enviar `name` como atributo do Cognito, sem
+- [x] `SignUpAsync` passa a enviar `name` como atributo do Cognito, sem
       alterar request/response de `POST /auth/register`
       (`backend/docs/openapi.json` sem diff de contrato)
-- [ ] Teste de componente cobrindo o novo handler (evento simulado do
+- [x] Teste de componente cobrindo o novo handler (evento simulado do
       Cognito para os 3 `TriggerSource` cobertos, `{{nome}}` ausente
       como caso defensivo, e falha inesperada com fallback), seguindo o
       padrão de `AccountTriggerHandlerTests`
-- [ ] `terraform apply` que liga o trigger `CustomMessage` do
+- [x] `terraform apply` que liga o trigger `CustomMessage` do
       `aws_cognito_user_pool` (hom e depois prod) só executado após
       aprovação explícita do usuário
 
@@ -236,3 +248,56 @@ senha), nunca a resposta de uma rota.
   perfil do DynamoDB (decisão da FEAT-26 mantida); apenas `name` passa
   a ser replicado também para o Cognito, só para viabilizar estes
   e-mails
+
+## Status
+
+Implementado conforme `plan.md`/`tasks.md`. `IAuthService.RegisterAsync`/
+`CognitoAuthService.RegisterAsync`/`RegisterUserCommandHandler` passam a
+enviar `name` como atributo padrão do Cognito, ao lado de `email`, sem
+alterar o contrato de `POST /auth/register`. Novo projeto
+`GastosApp.CognitoTriggers.CustomMessage` (Native AOT, sem
+`ProjectReference` pra `Application`/`Infrastructure`) com
+`CustomMessageTriggerHandler`, `EmailTemplateProvider` (HTMLs embutidos
+como `EmbeddedResource`, copiados de `frontend/design-system/emails/`
+com URLs corrigidas para `jrnexpenses.com`) e `Function.cs`, adicionado
+à `GastosApp.sln`.
+
+Terraform aplicado em hom e prod (IAM Role dedicada só com
+`logs:CreateLogStream`/`PutLogEvents`, Lambda, `aws_lambda_permission`
+e `lambda_config.custom_message` no User Pool), com aprovação explícita
+do usuário antes de cada `apply`. Variáveis
+`CUSTOM_MESSAGE_TRIGGER_FUNCTION_NAME` cadastradas nos GitHub
+Environments `backend-hom`/`backend-prod`. Workflows
+`backend-deploy-custom-message-trigger-{hom,prod}.yml` criados,
+espelhando o padrão de `backend-deploy-account-trigger-*`.
+
+**Achado real durante a validação ao vivo em hom (task 25):** o Cognito
+não substitui o placeholder `{####}` em `emailSubject`, só em
+`emailMessage` — divergência da decisão técnica 5 do `plan.md`. Corrigido
+trocando o assunto por texto fixo, sem `{{codigo}}` ("Confirme seu
+cadastro no jrn.expenses" / "Redefinição de senha solicitada"); o
+código permanece visível e em destaque no corpo do e-mail. Fix
+implantado manualmente em hom (`aws lambda update-function-code`, fora
+da esteira normal) pra permitir revalidar antes do merge, e revalidado
+com sucesso via `CustomMessage_ResendCode`.
+
+`{{nome}}` foi validado por teste automatizado
+(`CustomMessageTriggerHandlerTests`) e pela leitura direta do schema do
+User Pool de hom (atributo `name` já suportado nativamente, não precisa
+de mudança de Terraform), mas a validação end-to-end em hom ficou
+pendente: a API de hom, no momento dos testes, ainda rodava o código de
+`develop` (sem a mudança desta branch), então o Cognito não tinha
+`name` armazenado para o usuário de teste. Fica como validação
+pendente pra depois do merge desta branch + deploy da API em hom.
+
+Suíte completa (`dotnet test GastosApp.sln --filter
+"Category!=Integration"`): 479 (UnitTests) + 207 (ComponentTests) = 686
+testes, 100% passando. Testes integrados locais do módulo Auth (via
+`run-local.sh`/RIE + cognito-local/LocalStack): 4 testes passando,
+confirmando que a mudança em `RegisterAsync` não quebra o fluxo real de
+cadastro. `backend/docs/openapi.json` regenerado — `git diff` confirma
+zero diferença de contrato (só normalização de fim de linha).
+
+Dois usuários de teste ficaram no User Pool de hom
+(`reato.neto@gmail.com`, `reato.neto+admintest@gmail.com`) — decisão do
+usuário de não limpar agora.
