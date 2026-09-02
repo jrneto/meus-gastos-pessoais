@@ -40,6 +40,18 @@ variable "prod_account_trigger_function_name" {
   default     = "jrnexpenses-account-trigger"
 }
 
+variable "hom_custom_message_trigger_function_name" {
+  description = "Nome da função Lambda do trigger CustomMessage do Cognito, homologação (FEAT-34)."
+  type        = string
+  default     = "jrnexpenses-custom-message-trigger-hom"
+}
+
+variable "prod_custom_message_trigger_function_name" {
+  description = "Nome da função Lambda do trigger CustomMessage do Cognito, produção (FEAT-34)."
+  type        = string
+  default     = "jrnexpenses-custom-message-trigger"
+}
+
 # FEAT-29 — usados só pelo job de teste integrado em CI (nunca pela
 # Lambda da aplicação, cujas permissões não mudam nesta feature).
 

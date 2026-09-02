@@ -5,6 +5,7 @@ using GastosApp.Application.Auth.Commands.Login;
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.Application.Common.Results;
 using GastosApp.Application.Members.Commands.AcceptPendingInvites;
+using GastosApp.Domain.Users;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -15,6 +16,7 @@ namespace GastosApp.UnitTests.Application;
 public class LoginUserCommandHandlerTests
 {
     private readonly IAuthService _authServiceMock;
+    private readonly IUserProfileRepository _userProfileRepositoryMock;
     private readonly ISender _senderMock;
     private readonly LoginUserCommandHandler _handler;
 
@@ -22,8 +24,17 @@ public class LoginUserCommandHandlerTests
     {
         _authServiceMock = Substitute.For<IAuthService>();
         _senderMock = Substitute.For<ISender>();
+
+        // Default "esperto" (FEAT-31, mesmo espírito dos mocks da ComponentTestWebApplicationFactory):
+        // perfil completo por padrão, pra não precisar editar os testes de sucesso já
+        // existentes um por um. Só os testes desta feature que simulam perfil ausente
+        // sobrescrevem explicitamente para null.
+        _userProfileRepositoryMock = Substitute.For<IUserProfileRepository>();
+        _userProfileRepositoryMock.FindByUserIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserProfile.Restore(call.Arg<string>(), "Fulano da Silva", "11999998888", "11144477735", DateTimeOffset.UtcNow));
+
         _handler = new LoginUserCommandHandler(
-            _authServiceMock, _senderMock, Substitute.For<ILogger<LoginUserCommandHandler>>());
+            _authServiceMock, _userProfileRepositoryMock, _senderMock, Substitute.For<ILogger<LoginUserCommandHandler>>());
     }
 
     [Fact]
@@ -143,6 +154,82 @@ public class LoginUserCommandHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.AccessToken.Should().Be("token-jwt-123");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnForbiddenFailure_WhenProfileDoesNotExist()
+    {
+        // Arrange (FEAT-31: usuário criado direto no Cognito, sem UserProfile no DynamoDB)
+        var command = new LoginUserCommand("neto@email.com", "Senha123");
+        var expectedResult = new LoginResult("token-jwt-123", 3600, "user-id-123", "refresh-token-abc");
+
+        _authServiceMock.LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
+            .Returns(Result.Success(expectedResult));
+        _userProfileRepositoryMock.FindByUserIdAsync("user-id-123", Arg.Any<CancellationToken>())
+            .Returns((UserProfile?)null);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Forbidden);
+        result.Error.Code.Should().Be("profile-incomplete");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotDispatchEnsureAccountCommand_WhenProfileIsIncomplete()
+    {
+        // Arrange
+        var command = new LoginUserCommand("neto@email.com", "Senha123");
+        var expectedResult = new LoginResult("token-jwt-123", 3600, "user-id-123", "refresh-token-abc");
+
+        _authServiceMock.LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
+            .Returns(Result.Success(expectedResult));
+        _userProfileRepositoryMock.FindByUserIdAsync("user-id-123", Arg.Any<CancellationToken>())
+            .Returns((UserProfile?)null);
+
+        // Act
+        await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await _senderMock.DidNotReceiveWithAnyArgs().Send(Arg.Any<EnsureAccountCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotDispatchAcceptPendingInvitesCommand_WhenProfileIsIncomplete()
+    {
+        // Arrange
+        var command = new LoginUserCommand("neto@email.com", "Senha123");
+        var expectedResult = new LoginResult("token-jwt-123", 3600, "user-id-123", "refresh-token-abc");
+
+        _authServiceMock.LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
+            .Returns(Result.Success(expectedResult));
+        _userProfileRepositoryMock.FindByUserIdAsync("user-id-123", Arg.Any<CancellationToken>())
+            .Returns((UserProfile?)null);
+
+        // Act
+        await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await _senderMock.DidNotReceiveWithAnyArgs().Send(Arg.Any<AcceptPendingInvitesCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldCheckProfile_OnlyAfterCredentialsAreValidated()
+    {
+        // Arrange — credenciais inválidas nunca devem chegar a consultar o perfil
+        var command = new LoginUserCommand("neto@email.com", "SenhaIncorreta");
+
+        _authServiceMock.LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
+            .Returns(Result.Failure<LoginResult>(AuthErrors.InvalidCredentials));
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Error!.Code.Should().Be("invalid-credentials");
+        await _userProfileRepositoryMock.DidNotReceiveWithAnyArgs().FindByUserIdAsync(default!, default);
     }
 
     [Fact]

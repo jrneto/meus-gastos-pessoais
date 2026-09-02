@@ -32,7 +32,7 @@ public class DynamoDbCategoryRepositoryTests
         {
             ["PK"] = new AttributeValue { S = $"ACCOUNT#{accountId}" },
             ["SK"] = new AttributeValue { S = sk },
-            ["GSI2PK"] = new AttributeValue { S = $"ID#{id}" },
+            ["GSI2PK"] = new AttributeValue { S = $"ID#{accountId}#{id}" },
             ["Nome"] = new AttributeValue { S = nome },
             ["TipoLancamento"] = new AttributeValue { S = tipoLancamento },
             ["CreatedAt"] = new AttributeValue { S = OriginalCreatedAt.ToString("O") }
@@ -171,21 +171,23 @@ public class DynamoDbCategoryRepositoryTests
     }
 
     [Fact]
-    public async Task GetByIdAsync_ShouldReturnNull_WhenCategoryBelongsToAnotherUser()
+    public async Task GetByIdAsync_ShouldQueryGsi2ScopedByAccountId()
     {
+        // Regressão do bug corrigido na FEAT-30: a busca por id não pode mais
+        // depender de um post-check de PK depois da Query (GSI2PK sem
+        // accountId, Limit=1, colidia entre contas nas 13 categorias
+        // padrão) — o escopo por conta precisa estar na própria condição da
+        // Query enviada ao GSI2.
         _dynamoDbClientMock.QueryAsync(Arg.Any<QueryRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new QueryResponse
-            {
-                Items = [new Dictionary<string, AttributeValue>
-                {
-                    ["PK"] = new AttributeValue { S = "ACCOUNT#outro-user" },
-                    ["SK"] = new AttributeValue { S = "CAT#viagem" }
-                }]
-            });
+            .Returns(new QueryResponse { Items = [] });
 
-        var result = await _repository.GetByIdAsync("user-1", "category-1");
+        await _repository.GetByIdAsync("user-1", "category-1");
 
-        result.Should().BeNull();
+        await _dynamoDbClientMock.Received(1).QueryAsync(
+            Arg.Is<QueryRequest>(r =>
+                r.IndexName == "GSI2"
+                && r.ExpressionAttributeValues[":gsi2pk"].S == "ID#user-1#category-1"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -339,21 +341,19 @@ public class DynamoDbCategoryRepositoryTests
     }
 
     [Fact]
-    public async Task UpdateAsync_ShouldReturnNotFound_WhenCategoryBelongsToAnotherUser()
+    public async Task UpdateAsync_ShouldQueryGsi2ScopedByAccountId()
     {
+        // Mesma regressão de GetByIdAsync_ShouldQueryGsi2ScopedByAccountId.
         _dynamoDbClientMock.QueryAsync(Arg.Any<QueryRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new QueryResponse
-            {
-                Items = [new Dictionary<string, AttributeValue>
-                {
-                    ["PK"] = new AttributeValue { S = "ACCOUNT#outro-user" },
-                    ["SK"] = new AttributeValue { S = "CAT#viagem" }
-                }]
-            });
+            .Returns(new QueryResponse { Items = [] });
 
-        var result = await _repository.UpdateAsync("user-1", "category-1", "Viagens", "despesa", null);
+        await _repository.UpdateAsync("user-1", "category-1", "Viagens", "despesa", null);
 
-        result.Outcome.Should().Be(GastosApp.Application.Common.Interfaces.CategoryWriteOutcome.NotFound);
+        await _dynamoDbClientMock.Received(1).QueryAsync(
+            Arg.Is<QueryRequest>(r =>
+                r.IndexName == "GSI2"
+                && r.ExpressionAttributeValues[":gsi2pk"].S == "ID#user-1#category-1"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -543,21 +543,19 @@ public class DynamoDbCategoryRepositoryTests
     }
 
     [Fact]
-    public async Task DeleteAsync_ShouldReturnFalse_WhenCategoryBelongsToAnotherUser()
+    public async Task DeleteAsync_ShouldQueryGsi2ScopedByAccountId()
     {
+        // Mesma regressão de GetByIdAsync_ShouldQueryGsi2ScopedByAccountId.
         _dynamoDbClientMock.QueryAsync(Arg.Any<QueryRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new QueryResponse
-            {
-                Items = [new Dictionary<string, AttributeValue>
-                {
-                    ["PK"] = new AttributeValue { S = "ACCOUNT#outro-user" },
-                    ["SK"] = new AttributeValue { S = "CAT#viagem" }
-                }]
-            });
+            .Returns(new QueryResponse { Items = [] });
 
-        var result = await _repository.DeleteAsync("user-1", "category-1");
+        await _repository.DeleteAsync("user-1", "category-1");
 
-        result.Should().BeFalse();
+        await _dynamoDbClientMock.Received(1).QueryAsync(
+            Arg.Is<QueryRequest>(r =>
+                r.IndexName == "GSI2"
+                && r.ExpressionAttributeValues[":gsi2pk"].S == "ID#user-1#category-1"),
+            Arg.Any<CancellationToken>());
         await _dynamoDbClientMock.DidNotReceiveWithAnyArgs().DeleteItemAsync(default!, default);
     }
 

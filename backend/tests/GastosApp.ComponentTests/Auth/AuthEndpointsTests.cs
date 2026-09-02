@@ -40,7 +40,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
     public async Task Register_ComDadosValidos_Retorna201ComLocationEBody()
     {
         _factory.AuthServiceMock
-            .RegisterAsync("neto@email.com", "Senha123", Arg.Any<CancellationToken>())
+            .RegisterAsync("neto@email.com", "Senha123", "Fulano da Silva", Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result.Success(new RegisterResult("uuid-123", "neto@email.com"))));
 
         var response = await _client.PostAsJsonAsync("/auth/register", ValidRegisterRequest);
@@ -60,7 +60,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
     public async Task Register_ComEmailDuplicado_Retorna409()
     {
         _factory.AuthServiceMock
-            .RegisterAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .RegisterAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result.Failure<RegisterResult>(AuthErrors.EmailAlreadyExists)));
 
         var response = await _client.PostAsJsonAsync("/auth/register", ValidRegisterRequest);
@@ -75,7 +75,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
     public async Task Register_ComCpfJaCadastrado_Retorna409EDesfazCadastroNoCognito()
     {
         _factory.AuthServiceMock
-            .RegisterAsync("neto@email.com", "Senha123", Arg.Any<CancellationToken>())
+            .RegisterAsync("neto@email.com", "Senha123", "Fulano da Silva", Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result.Success(new RegisterResult("uuid-123", "neto@email.com"))));
         _factory.UserProfileRepositoryMock
             .CreateAsync(Arg.Any<UserProfile>(), Arg.Any<CancellationToken>())
@@ -116,7 +116,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/validation-error");
 
         _ = _factory.AuthServiceMock.DidNotReceive()
-            .RegisterAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            .RegisterAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -276,6 +276,46 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
             .SetActiveAccountAsync(default!, default!, default);
     }
 
+    // FEAT-31: login não pode mais autenticar um usuário sem perfil completo
+    // (ex.: criado direto no Cognito, fora de POST /auth/register).
+    [Fact]
+    public async Task Login_ComUsuarioSemPerfil_Retorna403ComProfileIncomplete()
+    {
+        _factory.AuthServiceMock
+            .LoginAsync("neto@email.com", "Senha123", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Success(new LoginResult("eyJ...", 3600, "uuid-sem-perfil", "refresh-token-abc"))));
+        _factory.UserProfileRepositoryMock
+            .FindByUserIdAsync("uuid-sem-perfil", Arg.Any<CancellationToken>())
+            .Returns((UserProfile?)null);
+
+        var response = await _client.PostAsJsonAsync("/auth/login", new { email = "neto@email.com", password = "Senha123" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/profile-incomplete");
+
+        response.Headers.TryGetValues("Set-Cookie", out _).Should().BeFalse("login bloqueado não deve emitir cookie de refresh token");
+    }
+
+    [Fact]
+    public async Task Login_ComUsuarioSemPerfil_NaoCriaAccountNemAceitaConvite()
+    {
+        _factory.AuthServiceMock
+            .LoginAsync("neto@email.com", "Senha123", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Success(new LoginResult("eyJ...", 3600, "uuid-sem-perfil", "refresh-token-abc"))));
+        _factory.UserProfileRepositoryMock
+            .FindByUserIdAsync("uuid-sem-perfil", Arg.Any<CancellationToken>())
+            .Returns((UserProfile?)null);
+
+        var response = await _client.PostAsJsonAsync("/auth/login", new { email = "neto@email.com", password = "Senha123" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        await _factory.AccountRepositoryMock.DidNotReceiveWithAnyArgs().FindAccountIdByUserIdAsync(default!, default);
+        await _factory.AccountRepositoryMock.DidNotReceiveWithAnyArgs().CreateAsync(default!, default!, default);
+        await _factory.MembershipRepositoryMock.DidNotReceiveWithAnyArgs().AcceptPendingInvitesByEmailAsync(default!, default!, default);
+    }
+
     [Fact]
     public async Task Refresh_ComCookieValido_Retorna200()
     {
@@ -378,9 +418,13 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
     public async Task Me_SemPerfilCadastrado_Retorna200ComCamposNulos()
     {
         // Usuário cadastrado antes desta feature (sem migração de dados, backlog.md) —
-        // FindByUserIdAsync sem configuração já retorna null (default do mock).
+        // desde a FEAT-31 o default do mock é "perfil completo", então este cenário
+        // precisa sobrescrever FindByUserIdAsync explicitamente para null.
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(TestAuthHandler.SchemeName, "uuid-123|neto@email.com|Neto");
+        _factory.UserProfileRepositoryMock
+            .FindByUserIdAsync("uuid-123", Arg.Any<CancellationToken>())
+            .Returns((UserProfile?)null);
 
         var response = await _client.GetAsync("/auth/me");
 
@@ -409,7 +453,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
     public async Task Register_QuandoAuthServiceLancaExcecaoNaoPrevista_Retorna500()
     {
         _factory.AuthServiceMock
-            .RegisterAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .RegisterAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<Result<RegisterResult>>(new InvalidOperationException("Falha simulada")));
 
         var response = await _client.PostAsJsonAsync("/auth/register", ValidRegisterRequest);

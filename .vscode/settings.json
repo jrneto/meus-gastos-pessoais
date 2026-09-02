@@ -1,4 +1,5 @@
 {
+    "dotnet.defaultSolution": "backend/GastosApp.sln",
     "editor.quickSuggestions": {
         "other": true,
         "comments": true,

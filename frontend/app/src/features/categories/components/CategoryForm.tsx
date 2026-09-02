@@ -12,13 +12,7 @@ import {
   type CategoryFormOutput,
 } from '../schemas/categorySchema'
 
-// Cor/ícone continuam existindo no contrato da API (`categorySchema`,
-// backend) — o frontend só parou de pedir/exibir esses campos (mais
-// fiel ao design de referência, que não tem seletor de cor/ícone),
-// enviando um valor padrão por baixo dos panos ao criar. Ao editar, o
-// valor já salvo da categoria é preservado (não há campo para trocá-lo).
-const DEFAULT_COLOR = '#3B82F6'
-const DEFAULT_ICON = 'wallet'
+const DEFAULT_VALUES: CategoryFormInput = { nome: '', tipo: 'despesa', orcamentoMensal: '' }
 
 interface CategoryFormProps {
   mode?: 'create' | 'edit'
@@ -45,17 +39,21 @@ export function CategoryForm({
     register,
     handleSubmit,
     reset,
+    resetField,
+    watch,
     setError,
     formState: { errors },
   } = useForm<CategoryFormInput, unknown, CategoryFormOutput>({
     resolver: zodResolver(categorySchema),
-    defaultValues: initialValues ?? { nome: '', cor: DEFAULT_COLOR, icone: DEFAULT_ICON },
+    defaultValues: initialValues ?? DEFAULT_VALUES,
   })
+  const tipo = watch('tipo')
+  const tipoField = register('tipo')
 
   useEffect(() => {
     if (success && data) {
       if (mode === 'create') {
-        reset({ nome: '', cor: DEFAULT_COLOR, icone: DEFAULT_ICON })
+        reset(DEFAULT_VALUES)
       }
       onSaved(data)
     }
@@ -103,6 +101,52 @@ export function CategoryForm({
           </p>
         )}
       </label>
+
+      <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+        <legend style={{ fontSize: '12px', opacity: 0.7, padding: 0, marginBottom: 'var(--space-2)' }}>
+          Tipo da categoria
+        </legend>
+        <div className="seg">
+          <label className="seg-opt">
+            <input type="radio" value="despesa" {...tipoField} />
+            Despesa
+          </label>
+          <label className="seg-opt">
+            <input
+              type="radio"
+              value="receita"
+              {...tipoField}
+              onChange={(event) => {
+                tipoField.onChange(event)
+                resetField('orcamentoMensal')
+              }}
+            />
+            Receita
+          </label>
+        </div>
+        {errors.tipo && (
+          <p role="alert" style={{ color: 'var(--color-accent-700)', fontSize: '12px', margin: '4px 0 0' }}>
+            {errors.tipo.message}
+          </p>
+        )}
+      </fieldset>
+
+      {tipo === 'despesa' && (
+        <label className="field">
+          <span>Teto mensal (R$)</span>
+          <input
+            className="input"
+            placeholder="0,00"
+            aria-invalid={!!errors.orcamentoMensal}
+            {...register('orcamentoMensal')}
+          />
+          {errors.orcamentoMensal && (
+            <p role="alert" style={{ color: 'var(--color-accent-700)', fontSize: '12px', margin: '4px 0 0' }}>
+              {errors.orcamentoMensal.message}
+            </p>
+          )}
+        </label>
+      )}
 
       <div className="dialog-actions">
         <button type="button" className="btn btn-secondary" onClick={onCancel}>

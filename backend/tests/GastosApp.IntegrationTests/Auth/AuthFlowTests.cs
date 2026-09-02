@@ -7,10 +7,10 @@ namespace GastosApp.IntegrationTests.Auth;
 /// Primeiro módulo coberto por teste integrado (FEAT-29) — register,
 /// confirmação (via AdminConfirmSignUp) e login contra a API real
 /// (Cognito + DynamoDB reais em Hom/Prod; LocalStack + cognito-local via
-/// o container Native AOT em Local). Demais módulos (categorias,
-/// transações, membros, resumo, relatórios, export, perfil) ficam como
-/// débito técnico em backend/docs/backlog.md — ver
-/// backend/specs/FEAT-29-testes-integrados/spec.md.
+/// o container Native AOT em Local). Também cobre o módulo Perfil
+/// (FEAT-26 — name/phoneNumber/cpf em GET /auth/me, unicidade de CPF),
+/// que não tem endpoint próprio (FEAT-32). Ver
+/// backend/specs/FEAT-32-testes-integrados-modulos-pendentes/spec.md.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class AuthFlowTests
@@ -37,6 +37,30 @@ public sealed class AuthFlowTests
         var me = meResponse.Deserialize<MeResponseDto>();
         me.UserId.Should().Be(account.UserId);
         me.Email.Should().Be(account.Email);
+
+        // Perfil (FEAT-26): name/phoneNumber/cpf gravados no registro
+        // (TestAccountFixture.SetupAsync) precisam voltar idênticos.
+        me.Name.Should().Be("Conta de Teste Integrado");
+        me.PhoneNumber.Should().Be("11999999999");
+        me.Cpf.Should().Be(account.Cpf);
+    }
+
+    [Fact]
+    public async Task Register_CpfJaCadastrado_Retorna409()
+    {
+        await using var account = await TestAccountFixture.CreateAsync();
+
+        using var transport = ApiTransportFactory.Create();
+        var response = await transport.SendAsync(
+            HttpMethod.Post, "/auth/register",
+            new RegisterRequestDto(
+                $"int-test+{Guid.NewGuid():N}@jrnexpenses.com", "OutraSenha@123",
+                "Outro Nome", "11888888888", account.Cpf));
+
+        response.StatusCode.Should().Be(409);
+
+        var problem = response.Deserialize<ProblemDetailsDto>();
+        problem.Type.Should().Be("https://gastosapp.dev/errors/cpf-already-exists");
     }
 
     [Fact]

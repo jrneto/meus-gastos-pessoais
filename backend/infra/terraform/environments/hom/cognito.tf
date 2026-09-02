@@ -44,10 +44,26 @@ resource "aws_cognito_user_pool" "main" {
   }
 
   # Cria Account+Membership (Titular) assim que o usuário confirma o
-  # cadastro (FEAT-19) — ver lambda-account-trigger.tf.
+  # cadastro (FEAT-19) — ver lambda-account-trigger.tf. Personaliza
+  # assunto/corpo dos e-mails de SignUp/ResendCode/ForgotPassword com os
+  # templates HTML de marca própria (FEAT-34) — ver
+  # lambda-custom-message-trigger.tf.
   lambda_config {
     post_confirmation = aws_lambda_function.account_trigger.arn
+    custom_message    = aws_lambda_function.custom_message_trigger.arn
   }
+
+  # Envio de e-mail (cadastro, recuperação de senha) via SES com
+  # domínio próprio, em vez do envio padrão do Cognito (FEAT-33). O
+  # depends_on garante que o Cognito só é reconfigurado depois da
+  # identidade estar VERIFICADA (não só criada) — ver ses.tf.
+  email_configuration {
+    email_sending_account = "DEVELOPER"
+    source_arn            = aws_ses_domain_identity.main.arn
+    from_email_address    = "jrn.expenses (homologação) <no-reply@hom.jrnexpenses.com>"
+  }
+
+  depends_on = [aws_ses_domain_identity_verification.main]
 }
 
 resource "aws_cognito_user_pool_client" "spa" {

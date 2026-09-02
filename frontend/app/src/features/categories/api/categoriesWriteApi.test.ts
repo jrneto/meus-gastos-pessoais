@@ -10,12 +10,12 @@ import {
   UnknownCategoryError,
   ValidationError,
 } from '../errors/categoryErrors'
-import { categoriesWriteApi } from './categoriesWriteApi'
+import { categoriesWriteApi, type CategoryPayload } from './categoriesWriteApi'
 
 const CATEGORIES_URL = 'http://localhost:5049/categories'
 const CATEGORY_URL = 'http://localhost:5049/categories/cat-1'
 
-const payload = { nome: 'Viagem', cor: '#0EA5E9', icone: 'plane' }
+const payload: CategoryPayload = { nome: 'Viagem', tipo: 'despesa', orcamentoMensalCents: 50000 }
 const category = { id: 'cat-1', ...payload, createdAt: '2025-06-15T12:00:00Z' }
 
 function problem(type: string) {
@@ -26,12 +26,42 @@ function problem(type: string) {
 }
 
 describe('categoriesWriteApi.createCategory', () => {
-  it('retorna a categoria criada em caso de sucesso', async () => {
+  it('retorna a categoria criada em caso de sucesso (despesa com teto)', async () => {
     server.use(http.post(CATEGORIES_URL, () => HttpResponse.json(category, { status: 201 })))
 
     const result = await categoriesWriteApi.createCategory('tok-123', payload)
 
     expect(result).toEqual(category)
+  })
+
+  it('envia o payload de despesa sem teto sem o campo orcamentoMensalCents', async () => {
+    const semTeto: CategoryPayload = { nome: 'Assinaturas', tipo: 'despesa' }
+    let receivedBody: unknown
+    server.use(
+      http.post(CATEGORIES_URL, async ({ request }) => {
+        receivedBody = await request.json()
+        return HttpResponse.json({ id: 'cat-2', ...semTeto, createdAt: '2025-06-15T12:00:00Z' }, { status: 201 })
+      }),
+    )
+
+    await categoriesWriteApi.createCategory('tok-123', semTeto)
+
+    expect(receivedBody).toEqual(semTeto)
+  })
+
+  it('envia o payload de receita sem o campo orcamentoMensalCents', async () => {
+    const receita: CategoryPayload = { nome: 'Salário', tipo: 'receita' }
+    let receivedBody: unknown
+    server.use(
+      http.post(CATEGORIES_URL, async ({ request }) => {
+        receivedBody = await request.json()
+        return HttpResponse.json({ id: 'cat-3', ...receita, createdAt: '2025-06-15T12:00:00Z' }, { status: 201 })
+      }),
+    )
+
+    await categoriesWriteApi.createCategory('tok-123', receita)
+
+    expect(receivedBody).toEqual(receita)
   })
 
   it('em caso de 400, lança ValidationError', async () => {

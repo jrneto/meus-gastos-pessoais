@@ -4,7 +4,7 @@ namespace GastosApp.Application.Common.Interfaces;
 
 public interface IAuthService
 {
-    Task<Result<RegisterResult>> RegisterAsync(string email, string password, CancellationToken cancellationToken = default);
+    Task<Result<RegisterResult>> RegisterAsync(string email, string password, string name, CancellationToken cancellationToken = default);
     Task<Result<LoginResult>> LoginAsync(string email, string password, CancellationToken cancellationToken = default);
     Task<Result<RefreshResult>> RefreshAsync(string refreshToken, CancellationToken cancellationToken = default);
 

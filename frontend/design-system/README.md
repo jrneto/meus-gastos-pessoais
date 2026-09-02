@@ -33,4 +33,21 @@ Latência simulada de 1,7–1,8s. Em produção, trocar os `setTimeout` por prom
 
 ## Modelo de dados do protótipo
 
-Receitas e despesas vivem na mesma lista (`transactions`) com campo `type: 'income' | 'expense'`, categorias separadas por tipo, e orçamento como conceito exclusivo de despesa. O dashboard calcula saldo do mês = receitas − despesas.
+Receitas e despesas vivem na mesma lista (`transactions`) com campo `type: 'income' | 'expense'`. Cada categoria também carrega `type` — a tela de Categorias agrupa em **Categorias de despesa** (com teto mensal e barra de consumo, tile e etiqueta em vermelho de acento) e **Categorias de receita** (com valor previsto e realizado em verde, sem barra). Não há mais distinção de despesa fixa × variável. O dashboard calcula saldo do mês = receitas − despesas.
+
+Categorias de receita não têm teto nem valor previsto — mostram apenas o realizado do mês. O campo de anexar comprovante foi removido de despesa, receita e do detalhe do lançamento.
+
+> Nota: alguns screenshots ainda refletem versões anteriores dessas telas; os arquivos `.dc.html` estão sempre na versão atual.
+
+
+## Autenticação (atualizado)
+
+- **Senha visível opcional** — botão Mostrar/Ocultar no campo de senha do login, do cadastro e da nova senha.
+- **Cadastro com confirmação de e-mail** — após "Criar conta" o app envia um código OTP de 6 dígitos; contador de 1 minuto na tela, expiração desabilita os campos e revela "Reenviar e-mail", que reinicia o minuto. Com o código válido a conta é ativada e o usuário volta ao login com aviso de confirmação.
+- **Recuperação de senha em 3 passos** — "Esqueci minha senha" → e-mail → mesmo OTP de 1 minuto → nova senha (mín. 8 caracteres, com confirmação) → volta ao login com aviso de senha redefinida.
+- Código do protótipo: **123456**.
+
+
+## E-mails
+
+`emails/` traz os quatro modelos transacionais em HTML autocontido (confirmação de cadastro, recuperação de senha, aviso de senha alterada e boas-vindas), com README próprio de variáveis e assuntos.

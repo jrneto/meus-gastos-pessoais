@@ -1,0 +1,68 @@
+name: Backend — Deploy Trigger CustomMessage (Homologação)
+
+# Espelha backend-deploy-account-trigger-hom.yml, mas para o Lambda do
+# trigger CustomMessage do Cognito (FEAT-34) — artefato e deploy
+# independentes dos outros dois Lambdas do backend. Path filter mais
+# estreito que o do account-trigger: GastosApp.CognitoTriggers.CustomMessage
+# não referencia Application/Domain/Infrastructure (ver plan.md), então
+# mudança nessas camadas não precisa disparar este workflow.
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'backend/src/GastosApp.CognitoTriggers.CustomMessage/**'
+      - 'backend/infra/lambda/Dockerfile.build-custom-message-trigger'
+      - 'backend/infra/lambda/build-custom-message-trigger.sh'
+      - 'backend/GastosApp.sln'
+  workflow_dispatch:
+
+permissions:
+  id-token: write # necessário para autenticação AWS via OIDC (sem access key fixa)
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - run: dotnet build GastosApp.sln -c Release
+      # --filter exclui GastosApp.IntegrationTests (FEAT-29) — exige
+      # Docker/rede real, não roda nos gates de qualidade padrão.
+      - run: dotnet test GastosApp.sln -c Release --filter "Category!=Integration"
+
+  deploy:
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: backend-hom
+    steps:
+      - uses: actions/checkout@v4
+
+      # Build Native AOT em container Amazon Linux 2023 (mesma base do
+      # runtime da Lambda) — gera infra/lambda/custom-message-trigger-function.zip.
+      - name: Build do artefato (Native AOT)
+        run: bash infra/lambda/build-custom-message-trigger.sh
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CICD_ROLE_ARN }}
+          aws-region: us-east-1
+
+      # CUSTOM_MESSAGE_TRIGGER_FUNCTION_NAME: variável própria do GitHub
+      # Environment backend-hom, distinta de FUNCTION_NAME (API) e
+      # ACCOUNT_TRIGGER_FUNCTION_NAME (trigger PostConfirmation).
+      - name: Publicar código na Lambda (trigger CustomMessage, hom)
+        run: |
+          aws lambda update-function-code \
+            --function-name "${{ vars.CUSTOM_MESSAGE_TRIGGER_FUNCTION_NAME }}" \
+            --zip-file fileb://infra/lambda/custom-message-trigger-function.zip \
+            --publish
+          aws lambda wait function-updated --function-name "${{ vars.CUSTOM_MESSAGE_TRIGGER_FUNCTION_NAME }}"

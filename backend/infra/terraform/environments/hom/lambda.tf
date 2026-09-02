@@ -74,6 +74,12 @@ resource "aws_iam_role_policy" "lambda_exec" {
           "logs:PutLogEvents"
         ]
         Resource = "${aws_cloudwatch_log_group.lambda.arn}:*"
+      },
+      {
+        Sid      = "SesSendEmail"
+        Effect   = "Allow"
+        Action   = ["ses:SendEmail", "ses:SendRawEmail"]
+        Resource = aws_ses_domain_identity.main.arn
       }
     ]
   })
@@ -96,7 +102,7 @@ resource "aws_lambda_function" "api" {
   environment {
     variables = {
       ParameterStore__Path = "/GastosApp/Hom/"
-      DynamoDb__TableName   = aws_dynamodb_table.gastos_app.name
+      DynamoDb__TableName  = aws_dynamodb_table.gastos_app.name
     }
   }
 

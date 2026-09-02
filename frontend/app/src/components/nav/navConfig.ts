@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { BarChart3, Home, ListFilter, Settings, Tag } from 'lucide-react'
+import { BarChart3, Home, ListFilter, Settings, Tag, Users } from 'lucide-react'
 
 export type NavItemStatus = 'active' | 'placeholder'
 
@@ -20,17 +20,18 @@ export interface NavItem {
 // existe de verdade, mas agora navega para uma página fake em vez de
 // ficar cinza e sem ação.
 export const NAV_TREE: NavItem[] = [
-  { id: 'home', label: 'Início', icon: Home, to: '/', status: 'placeholder', mobilePrimary: true },
+  { id: 'home', label: 'Início', icon: Home, to: '/', status: 'active', mobilePrimary: true },
   {
-    id: 'expenses',
+    id: 'transactions',
     label: 'Transações',
     icon: ListFilter,
-    to: '/expenses',
+    to: '/transactions',
     status: 'active',
     mobilePrimary: true,
   },
   { id: 'reports', label: 'Relatórios', icon: BarChart3, to: '/reports', status: 'active' },
   { id: 'categories', label: 'Categorias', icon: Tag, to: '/categories', status: 'active' },
+  { id: 'members', label: 'Membros', icon: Users, to: '/members', status: 'active' },
   {
     id: 'settings',
     label: 'Configurações',

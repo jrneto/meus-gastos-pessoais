@@ -19,8 +19,10 @@
  *
  * Só as classes de componente realmente usadas são portadas a cada
  * migração (`.btn`, `.field`/`.input`, `.seg`/`.seg-opt` na FEAT-14;
- * `.dialog-backdrop`/`.dialog` na FEAT-15). O restante do sistema
- * (`.card`, `.tag`, `.table`, `.nav`) entra quando a tela que o usa for
+ * `.dialog-backdrop`/`.dialog` na FEAT-15; `.tag`/`.table` na FEAT-16;
+ * `.card`/`.elev-sm` e a barra de progresso `.je-track`/`.je-fill` na
+ * FEAT-26; `.card-title` na FEAT-27; `.je-spin`/`.je-indet`/`.je-toast`
+ * na FEAT-28). O restante do sistema entra quando a tela que o usa for
  * migrada.
  */
 @import '@fontsource-variable/archivo';
@@ -46,6 +48,14 @@
   --color-neutral-800: #444141;
   --color-neutral-900: #2d2b2b;
 
+  /* Verde usado só para diferenciar categorias de receita (FEAT-22) —
+   * valores copiados do `.dc.html` de referência (`oklch(45% 0.13 150)`
+   * / `oklch(95% 0.04 150)` / `oklch(38% 0.12 150)`), mesma lógica de
+   * "vendorizar só o que é usado" das outras cores acima. */
+  --color-positive: oklch(45% 0.13 150);
+  --color-positive-100: oklch(95% 0.04 150);
+  --color-positive-700: oklch(38% 0.12 150);
+
   --font-heading: 'Archivo Variable', system-ui, sans-serif;
   --font-heading-weight: 800;
   --font-body: 'Archivo Variable', system-ui, sans-serif;
@@ -60,6 +70,7 @@
   --radius-md: 0px;
   --radius-lg: 0px;
 
+  --shadow-sm: 0 1px 2px color-mix(in srgb, var(--color-neutral-900) 14%, transparent);
   --shadow-lg: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
 
   color: var(--color-text);
@@ -347,4 +358,85 @@
   justify-content: flex-end;
   gap: var(--space-2);
   margin-top: var(--space-2);
+}
+
+/* — cards (dashboard, FEAT-26) — */
+.ds-modernist .card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.ds-modernist .card-kicker {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+.ds-modernist .elev-sm {
+  box-shadow: var(--shadow-sm);
+}
+.ds-modernist .card-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+/* — barra de progresso (dashboard, FEAT-26) — classes do próprio
+   `.dc.html` (não do bundle base do design system), mesmo racional de
+   "vendorizar só o que é usado" das outras classes acima. */
+.ds-modernist .je-track {
+  height: 6px;
+  background: var(--color-neutral-300);
+  position: relative;
+  overflow: hidden;
+}
+.ds-modernist .je-fill {
+  height: 100%;
+}
+
+/* — spinner, barra indeterminada e toast (membros/convites, FEAT-28) —
+   classes do próprio `.dc.html` (não do bundle base), mesmo racional
+   de "vendorizar só o que é usado" das outras acima. */
+@keyframes je-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.ds-modernist .je-spin {
+  width: 34px;
+  height: 34px;
+  border: 3px solid var(--color-neutral-300);
+  border-top-color: var(--color-accent);
+  animation: je-spin 0.7s linear infinite;
+}
+@keyframes je-indet {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+.ds-modernist .je-indet {
+  width: 30%;
+  height: 100%;
+  background: var(--color-accent);
+  animation: je-indet 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes je-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.ds-modernist .je-toast {
+  animation: je-toast-in 0.18s ease-out;
 }

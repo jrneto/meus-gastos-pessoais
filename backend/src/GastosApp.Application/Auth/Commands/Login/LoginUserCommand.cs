@@ -13,12 +13,18 @@ public sealed record LoginUserCommand(string Email, string Password) : ICommand<
 public sealed class LoginUserCommandHandler : ICommandHandler<LoginUserCommand, Result<LoginUserResult>>
 {
     private readonly IAuthService _authService;
+    private readonly IUserProfileRepository _userProfileRepository;
     private readonly ISender _sender;
     private readonly ILogger<LoginUserCommandHandler> _logger;
 
-    public LoginUserCommandHandler(IAuthService authService, ISender sender, ILogger<LoginUserCommandHandler> logger)
+    public LoginUserCommandHandler(
+        IAuthService authService,
+        IUserProfileRepository userProfileRepository,
+        ISender sender,
+        ILogger<LoginUserCommandHandler> logger)
     {
         _authService = authService;
+        _userProfileRepository = userProfileRepository;
         _sender = sender;
         _logger = logger;
     }
@@ -33,6 +39,16 @@ public sealed class LoginUserCommandHandler : ICommandHandler<LoginUserCommand, 
         var result = await _authService.LoginAsync(command.Email, command.Password, cancellationToken);
         if (result.IsFailure)
             return Result.Failure<LoginUserResult>(result.Error!);
+
+        // Perfil completo obrigatório no login (FEAT-31): o fluxo normal
+        // (POST /auth/register, FEAT-26) só grava o UserProfile depois de
+        // validar name/phoneNumber/cpf, então a existência do registro já
+        // garante perfil completo. Mas um usuário criado diretamente no
+        // Cognito (fora do /auth/register) nunca tem esse UserProfile — sem
+        // essa checagem, ele logaria normalmente sem cadastro completo.
+        var profile = await _userProfileRepository.FindByUserIdAsync(result.Value.UserId, cancellationToken);
+        if (profile is null)
+            return Result.Failure<LoginUserResult>(AuthErrors.ProfileIncomplete);
 
         // Fallback de criação de conta (FEAT-19): normalmente a Account já existe,
         // criada pelo trigger PostConfirmation do Cognito. Se não existir ainda

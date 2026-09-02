@@ -11,7 +11,7 @@ import {
 import { useUpdateCategory } from './useUpdateCategory'
 
 const CATEGORY_URL = 'http://localhost:5049/categories/cat-1'
-const payload = { nome: 'Viagem', cor: '#0EA5E9', icone: 'plane' }
+const payload = { nome: 'Viagem', tipo: 'despesa' as const, orcamentoMensalCents: 50000 }
 
 function problem(type: string) {
   return HttpResponse.json(

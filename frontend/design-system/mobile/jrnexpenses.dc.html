@@ -10,7 +10,6 @@
 <helmet>
 <link rel="stylesheet" href="_ds/modernist-a01587a5-394c-4dcb-a692-c51267a2ceac/styles.css">
 <script src="_ds/modernist-a01587a5-394c-4dcb-a692-c51267a2ceac/_ds_bundle.js"></script>
-<script src="./image-slot.js"></script>
 <style>
   body{margin:0}
   .je-track{height:6px;background:var(--color-neutral-300);position:relative;overflow:hidden}
@@ -74,6 +73,17 @@
     <div style="font:800 30px var(--font-heading);letter-spacing:-.02em">jrn<span style="color:var(--color-accent)">.</span></div>
     <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6">expenses</div>
   </div>
+  <sc-if value="{{ justVerified }}" hint-placeholder-val="{{ false }}">    <div style="border:2px solid var(--color-accent);background:var(--color-accent-100);padding:12px 14px;display:flex;gap:10px;align-items:flex-start">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:1px"><polyline points="20 6 9 17 4 12" stroke="var(--color-accent-700)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span style="font-size:12.5px;line-height:1.45;color:var(--color-accent-700)">E-mail confirmado. Sua conta está ativa — entre com seus dados.</span>
+    </div>
+  </sc-if>
+  <sc-if value="{{ justReset }}" hint-placeholder-val="{{ false }}">
+    <div style="border:2px solid var(--color-accent);background:var(--color-accent-100);padding:12px 14px;display:flex;gap:10px;align-items:flex-start">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:1px"><polyline points="20 6 9 17 4 12" stroke="var(--color-accent-700)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span style="font-size:12.5px;line-height:1.45;color:var(--color-accent-700)">Senha redefinida. Entre com a nova senha.</span>
+    </div>
+  </sc-if>
   <div class="seg" style="align-self:flex-start">
     <label class="seg-opt"><input type="radio" name="authmode" checked="{{ isLoginMode }}" onChange="{{ setLoginMode }}" style="display:none"/>Entrar</label>
     <label class="seg-opt"><input type="radio" name="authmode" checked="{{ isSignupMode }}" onChange="{{ setSignupMode }}" style="display:none"/>Criar conta</label>
@@ -99,14 +109,102 @@
     </label>
     <label class="field">
       <span style="font-size:12px;opacity:.7">Senha</span>
-      <input class="input" type="password" placeholder="••••••••" value="{{ authPassword }}" onChange="{{ setAuthPassword }}"/>
+      <span style="position:relative;display:block">
+        <input class="input" type="{{ passwordInputType }}" placeholder="••••••••" value="{{ authPassword }}" onChange="{{ setAuthPassword }}" style="width:100%;box-sizing:border-box;padding-right:86px"/>
+        <button type="button" onClick="{{ togglePassword }}" class="btn btn-ghost" style="position:absolute;right:0;top:0;height:100%;padding:0 12px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase">{{ passwordToggleLabel }}</button>
+      </span>
     </label>
   </div>
   <sc-if value="{{ isLoginMode }}" hint-placeholder-val="{{ true }}">
-    <button class="btn btn-ghost" style="align-self:flex-start;padding-left:0">Esqueceu a senha?</button>
+    <button onClick="{{ goForgot }}" class="btn btn-ghost" style="align-self:flex-start;padding-left:0">Esqueci minha senha</button>
   </sc-if>
   <button data-shot="submit-auth" onClick="{{ submitAuth }}" disabled="{{ isAuthing }}" class="btn btn-primary btn-block" style="display:flex;align-items:center;gap:10px"><sc-if value="{{ isAuthing }}" hint-placeholder-val="{{ false }}"><span class="je-spin-sm"></span></sc-if>{{ authButtonLabel }}</button>
   <p style="font-size:11px;opacity:.5;text-align:left">Ao continuar, você concorda com os Termos de Uso.</p>
+</div>
+</sc-if>
+
+<sc-if value="{{ isOtp }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;overflow:auto;padding:54px 28px 28px;box-sizing:border-box;display:flex;flex-direction:column;gap:22px">
+  <button onClick="{{ otpBack }}" class="btn btn-ghost" style="align-self:flex-start;padding-left:0;font-size:12px">← Voltar</button>
+  <div>
+    <sc-if value="{{ isOtpSignup }}" hint-placeholder-val="{{ true }}">
+      <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6;margin-bottom:8px">Passo 2 de 2 · Confirmação</div>
+      <h1 style="font:800 26px var(--font-heading);margin:0 0 10px;letter-spacing:-.01em;line-height:1.15">Confirme seu e-mail</h1>
+    </sc-if>
+    <sc-if value="{{ isOtpReset }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6;margin-bottom:8px">Passo 2 de 3 · Recuperação</div>
+      <h1 style="font:800 26px var(--font-heading);margin:0 0 10px;letter-spacing:-.01em;line-height:1.15">Verifique o código</h1>
+    </sc-if>
+    <p style="font-size:13px;line-height:1.55;opacity:.7;margin:0;text-wrap:pretty">Enviamos um código de 6 dígitos para <span style="opacity:1;font-weight:600">{{ authEmailDisplay }}</span>. Ele vale por 1 minuto.</p>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
+    <sc-for list="{{ otpCells }}" as="d" hint-placeholder-count="6">
+      <input class="input" ref="{{ d.ref }}" type="text" inputmode="numeric" maxlength="6" disabled="{{ d.disabled }}" value="{{ d.value }}" onChange="{{ d.onChange }}" onKeyDown="{{ d.onKeyDown }}" style="text-align:center;font:700 20px var(--font-heading);height:56px;padding:0;box-sizing:border-box"/>
+    </sc-for>
+  </div>
+  <sc-if value="{{ hasOtpError }}" hint-placeholder-val="{{ false }}">
+    <div style="font-size:12.5px;color:var(--color-accent-700);line-height:1.45">{{ otpError }}</div>
+  </sc-if>
+  <sc-if value="{{ otpActive }}" hint-placeholder-val="{{ true }}">
+    <div style="border-top:2px solid var(--color-divider);padding-top:14px;display:flex;align-items:baseline;gap:10px">
+      <span style="font:800 24px var(--font-heading);color:var(--color-accent);font-variant-numeric:tabular-nums">{{ otpTimerLabel }}</span>
+      <span style="font-size:12px;opacity:.6">até o código expirar</span>
+    </div>
+    <button onClick="{{ submitOtp }}" disabled="{{ isOtpVerifying }}" class="btn btn-primary btn-block" style="display:flex;align-items:center;gap:10px"><sc-if value="{{ isOtpVerifying }}" hint-placeholder-val="{{ false }}"><span class="je-spin-sm"></span></sc-if>{{ otpButtonLabel }}</button>
+  </sc-if>
+  <sc-if value="{{ otpExpired }}" hint-placeholder-val="{{ false }}">
+    <div style="border-top:2px solid var(--color-divider);padding-top:14px;display:flex;flex-direction:column;gap:12px;align-items:flex-start">
+      <span style="font-size:12.5px;line-height:1.5;opacity:.7">O código expirou. Solicite um novo para concluir o cadastro.</span>
+      <button onClick="{{ resendOtp }}" class="btn btn-primary btn-block">Reenviar e-mail</button>
+    </div>
+  </sc-if>
+  <p style="font-size:11px;opacity:.5;margin:0">Protótipo: use o código 123456.</p>
+</div>
+</sc-if>
+
+<sc-if value="{{ isForgot }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;overflow:auto;padding:54px 28px 28px;box-sizing:border-box;display:flex;flex-direction:column;gap:22px">
+  <button onClick="{{ backToLogin }}" class="btn btn-ghost" style="align-self:flex-start;padding-left:0;font-size:12px">← Voltar ao login</button>
+  <div>
+    <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6;margin-bottom:8px">Passo 1 de 3 · Recuperação</div>
+    <h1 style="font:800 26px var(--font-heading);margin:0 0 10px;letter-spacing:-.01em;line-height:1.15">Recuperar senha</h1>
+    <p style="font-size:13px;line-height:1.55;opacity:.7;margin:0;text-wrap:pretty">Informe o e-mail da sua conta. Enviaremos um código de 6 dígitos para confirmar que é você.</p>
+  </div>
+  <label class="field">
+    <span style="font-size:12px;opacity:.7">E-mail</span>
+    <input class="input" type="email" placeholder="voce@email.com" value="{{ authEmail }}" onChange="{{ setAuthEmail }}"/>
+  </label>
+  <sc-if value="{{ hasForgotError }}" hint-placeholder-val="{{ false }}">
+    <div style="font-size:12.5px;color:var(--color-accent-700);line-height:1.45">{{ forgotError }}</div>
+  </sc-if>
+  <button onClick="{{ submitForgot }}" class="btn btn-primary btn-block">Enviar código</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ isReset }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;overflow:auto;padding:54px 28px 28px;box-sizing:border-box;display:flex;flex-direction:column;gap:22px">
+  <div>
+    <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6;margin-bottom:8px">Passo 3 de 3 · Recuperação</div>
+    <h1 style="font:800 26px var(--font-heading);margin:0 0 10px;letter-spacing:-.01em;line-height:1.15">Nova senha</h1>
+    <p style="font-size:13px;line-height:1.55;opacity:.7;margin:0;text-wrap:pretty">Escolha uma senha com pelo menos 8 caracteres.</p>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <label class="field">
+      <span style="font-size:12px;opacity:.7">Nova senha</span>
+      <span style="position:relative;display:block">
+        <input class="input" type="{{ newPasswordInputType }}" placeholder="••••••••" value="{{ newPassword }}" onChange="{{ setNewPassword }}" style="width:100%;box-sizing:border-box;padding-right:86px"/>
+        <button type="button" onClick="{{ toggleNewPassword }}" class="btn btn-ghost" style="position:absolute;right:0;top:0;height:100%;padding:0 12px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase">{{ newPasswordToggleLabel }}</button>
+      </span>
+    </label>
+    <label class="field">
+      <span style="font-size:12px;opacity:.7">Confirmar nova senha</span>
+      <input class="input" type="{{ newPasswordInputType }}" placeholder="••••••••" value="{{ newPassword2 }}" onChange="{{ setNewPassword2 }}"/>
+    </label>
+  </div>
+  <sc-if value="{{ hasResetError }}" hint-placeholder-val="{{ false }}">
+    <div style="font-size:12.5px;color:var(--color-accent-700);line-height:1.45">{{ resetError }}</div>
+  </sc-if>
+  <button onClick="{{ submitReset }}" class="btn btn-primary btn-block">Salvar nova senha</button>
 </div>
 </sc-if>
 
@@ -137,16 +235,19 @@
         <div style="font-size:12px;opacity:.6">Restam {{ remainingFmt }}</div>
       </div>
       <div>
-        <h2 style="font-size:15px;margin:0 0 10px">Por categoria</h2>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px">
+          <h2 style="font-size:15px;margin:0">Onde o dinheiro foi</h2>
+          <button onClick="{{ toggleCategoriesOverlay }}" class="btn btn-ghost" style="padding-right:0;font-size:12px;flex:none;white-space:nowrap">{{ categoryCountLabel }}</button>
+        </div>
         <div style="display:flex;flex-direction:column;gap:14px">
-          <sc-for list="{{ categoriesComputed }}" as="c" hint-placeholder-count="6">
+          <sc-for list="{{ topCategories }}" as="c" hint-placeholder-count="5">
             <div>
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-                <div style="display:flex;align-items:center;gap:8px">
-                  <div style="width:22px;height:22px;border:1px solid var(--color-divider);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;font-family:var(--font-heading)">{{ c.letter }}</div>
-                  <span style="font-size:13px">{{ c.name }}</span>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                  <div style="width:24px;height:24px;border:1px solid var(--color-divider);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;font-family:var(--font-heading);flex:none">{{ c.letter }}</div>
+                  <span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
                 </div>
-                <span style="font-size:12px;color:{{ c.textColor }}">{{ c.spentFmt }} / {{ c.budgetFmt }}</span>
+                <span style="font-size:12px;color:{{ c.textColor }};white-space:nowrap;flex:none">{{ c.spentFmt }} / {{ c.budgetFmt }}</span>
               </div>
               <div class="je-track"><div class="je-fill" style="width:{{ c.barWidth }};background:{{ c.barColor }}"></div></div>
             </div>
@@ -367,25 +468,15 @@
       </div>
       <input class="input" type="text" inputMode="decimal" placeholder="R$ 0,00" value="{{ newAmount }}" onChange="{{ setNewAmount }}" style="font-size:34px;font-weight:800;font-family:var(--font-heading);border:none;border-bottom:2px solid var(--color-divider);padding:8px 0;background:transparent"/>
       <div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-          <span style="font-size:12px;opacity:.7">Categoria</span>
-          <span style="font-size:12px;font-weight:700;color:var(--color-accent-700)">{{ selectedCategoryName }}</span>
-        </div>
-        <input class="input" type="text" placeholder="Buscar categoria" value="{{ categorySearch }}" onChange="{{ setCategorySearch }}" style="margin-bottom:8px"/>
-        <div style="border:2px solid var(--color-divider);max-height:220px;overflow-y:auto">
-          <sc-for list="{{ addCategories }}" as="c" hint-placeholder-count="6">
-            <button onClick="{{ c.select }}" style="display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:10px 12px;border:none;border-bottom:1px solid var(--color-divider);background:{{ c.rowBg }};cursor:pointer;text-align:left">
-              <span style="width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;border:2px solid {{ c.tileBorder }};background:{{ c.tileBg }};font-weight:800;font-family:var(--font-heading);font-size:11px">{{ c.letter }}</span>
-              <span style="flex:1;font-size:13px">{{ c.name }}</span>
-              <sc-if value="{{ c.isSelected }}" hint-placeholder-val="{{ false }}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="var(--color-accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </sc-if>
-            </button>
-          </sc-for>
-        </div>
-        <sc-if value="{{ noCategoryMatch }}" hint-placeholder-val="{{ false }}">
-          <div style="font-size:12px;opacity:.6;padding:8px 0">Nenhuma categoria encontrada.</div>
-        </sc-if>
+        <div style="font-size:12px;opacity:.7;margin-bottom:8px">Categoria</div>
+        <button onClick="{{ openCatPicker }}" style="display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;padding:12px;border:2px solid var(--color-divider);background:transparent;cursor:pointer;text-align:left;min-height:56px">
+          <span style="width:34px;height:34px;flex:none;display:flex;align-items:center;justify-content:center;border:2px solid var(--color-accent);background:var(--color-accent-100);font-weight:800;font-family:var(--font-heading);font-size:11px">{{ selectedCatLetter }}</span>
+          <span style="flex:1;min-width:0">
+            <span style="display:block;font-size:14px;font-weight:600;font-family:var(--font-heading)">{{ selectedCategoryName }}</span>
+            <span style="display:block;font-size:11px;opacity:.6;color:{{ selectedCatTextColor }}">{{ selectedCatBudgetLine }}</span>
+          </span>
+          <svg width="8" height="14" viewBox="0 0 8 14" style="opacity:.4;flex:none"><path d="M1 1l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
       </div>
       <label class="field">
         <span style="font-size:12px;opacity:.7">Data</span>
@@ -395,10 +486,6 @@
         <span style="font-size:12px;opacity:.7">Observação</span>
         <input class="input" type="text" placeholder="Ex: Mercado, Uber…" value="{{ newNote }}" onChange="{{ setNewNote }}"/>
       </label>
-      <div>
-        <div style="font-size:12px;opacity:.7;margin-bottom:8px">{{ receiptFieldLabel }}</div>
-        <image-slot id="receipt-new" shape="rect" placeholder="Anexar comprovante" style="width:100%;height:140px"></image-slot>
-      </div>
       <button onClick="{{ saveExpense }}" disabled="{{ isSavingTx }}" class="btn btn-primary btn-block">{{ addFormSaveLabel }}</button>
     </div>
   </div>
@@ -438,10 +525,6 @@
         <div style="font-size:12px;opacity:.6;margin-bottom:4px">Observação</div>
         <div style="font-size:14px">{{ txDetailNote }}</div>
       </div>
-      <div>
-        <div style="font-size:12px;opacity:.6;margin-bottom:8px">Comprovante</div>
-        <image-slot id="{{ txDetailReceiptId }}" shape="rect" placeholder="Sem comprovante" style="width:100%;height:160px"></image-slot>
-      </div>
       <button onClick="{{ closeTx }}" class="btn btn-secondary btn-block">Fechar</button>
     </div>
   </div>
@@ -462,22 +545,32 @@
       <sc-if value="{{ showNewCategory }}" hint-placeholder-val="{{ false }}">
         <div style="border:1px solid var(--color-divider);padding:12px;display:flex;flex-direction:column;gap:10px">
           <input class="input" type="text" placeholder="Nome da categoria" value="{{ newCatName }}" onChange="{{ setNewCatName }}"/>
-          <input class="input" type="number" placeholder="Orçamento mensal (R$)" value="{{ newCatBudget }}" onChange="{{ setNewCatBudget }}"/>
+          <sc-if value="{{ isNewCatExpense }}" hint-placeholder-val="{{ true }}">
+            <input class="input" type="number" placeholder="Teto mensal (R$)" value="{{ newCatBudget }}" onChange="{{ setNewCatBudget }}"/>
+          </sc-if>
+          <div class="seg" style="align-self:flex-start">
+            <label class="seg-opt"><input type="radio" name="newcattype" checked="{{ isNewCatExpense }}" onChange="{{ setNewCatExpense }}" style="display:none"/>Despesa</label>
+            <label class="seg-opt"><input type="radio" name="newcattype" checked="{{ isNewCatIncome }}" onChange="{{ setNewCatIncome }}" style="display:none"/>Receita</label>
+          </div>
           <div style="display:flex;gap:8px">
             <button onClick="{{ toggleNewCategory }}" class="btn btn-secondary" style="flex:1">Cancelar</button>
             <button onClick="{{ addCategory }}" class="btn btn-primary" style="flex:1">Adicionar</button>
           </div>
         </div>
       </sc-if>
-      <div style="display:flex;flex-direction:column;gap:16px">
-        <sc-for list="{{ categoriesOverlayView }}" as="c" hint-placeholder-count="6">
-          <div style="border-bottom:1px solid var(--color-divider);padding-bottom:14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <div style="display:flex;align-items:center;gap:8px">
-                <div style="width:22px;height:22px;border:1px solid var(--color-divider);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;font-family:var(--font-heading)">{{ c.letter }}</div>
-                <span style="font-size:13.5px">{{ c.name }}</span>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding-bottom:7px;border-bottom:2px solid var(--color-divider)">
+          <span style="font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase">Categorias de despesa</span>
+          <span style="font-size:10.5px;opacity:.55;white-space:nowrap">{{ expenseCountLabel }}</span>
+        </div>
+        <sc-for list="{{ expenseRows }}" as="c" hint-placeholder-count="7">
+          <div style="border-bottom:1px solid var(--color-divider);padding:12px 0">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:9px;min-width:0">
+                <div style="width:24px;height:24px;border:2px solid var(--color-accent);background:var(--color-accent-100);color:var(--color-accent-700);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;font-family:var(--font-heading);flex:none">{{ c.letter }}</div>
+                <span style="font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
               </div>
-              <span style="font-size:12px;color:{{ c.textColor }}">{{ c.spentFmt }} / {{ c.budgetFmt }}</span>
+              <span style="font-size:12px;color:{{ c.textColor }};white-space:nowrap;flex:none">{{ c.spentFmt }} / {{ c.budgetFmt }}</span>
             </div>
             <div class="je-track" style="margin-bottom:8px"><div class="je-fill" style="width:{{ c.barWidth }};background:{{ c.barColor }}"></div></div>
             <sc-if value="{{ c.isEditing }}" hint-placeholder-val="{{ false }}">
@@ -487,8 +580,28 @@
               </div>
             </sc-if>
             <sc-if value="{{ !c.isEditing }}" hint-placeholder-val="{{ true }}">
-              <button onClick="{{ c.startEdit }}" class="btn btn-ghost" style="padding-left:0;font-size:12px">Editar orçamento</button>
+              <div style="display:flex;gap:14px;align-items:center">
+                <button onClick="{{ c.startEdit }}" class="btn btn-ghost" style="padding-left:0;font-size:12px">Editar teto</button>
+              </div>
             </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding-bottom:7px;border-bottom:2px solid var(--color-divider)">
+          <span style="font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase">Categorias de receita</span>
+          <span style="font-size:10.5px;opacity:.55;white-space:nowrap">{{ incomeCountLabel }}</span>
+        </div>
+        <sc-for list="{{ incomeRows }}" as="c" hint-placeholder-count="5">
+          <div style="border-bottom:1px solid var(--color-divider);padding:12px 0">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:9px;min-width:0">
+                <div style="width:24px;height:24px;border:2px solid oklch(45% 0.13 150);background:oklch(95% 0.04 150);color:oklch(38% 0.12 150);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;font-family:var(--font-heading);flex:none">{{ c.letter }}</div>
+                <span style="font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
+              </div>
+              <span style="font-size:12px;font-weight:600;color:oklch(45% 0.13 150);white-space:nowrap;flex:none">+ {{ c.spentFmt }}</span>
+            </div>
+            <div style="font-size:11px;opacity:.55;margin-bottom:8px">{{ c.incomeMetaLabel }}</div>
           </div>
         </sc-for>
       </div>
@@ -561,6 +674,50 @@
 </div>
 </sc-if>
 
+<sc-if value="{{ showCatPicker }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:var(--color-bg);z-index:60;display:flex;flex-direction:column">
+  <div style="padding:54px 20px 12px;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;flex:none;border-bottom:2px solid var(--color-divider)">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button onClick="{{ closeCatPicker }}" class="btn btn-icon btn-ghost" style="padding:0;width:44px;height:44px;margin-left:-10px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><line x1="19" y1="12" x2="5" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="12 19 5 12 12 5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span style="font-family:var(--font-heading);font-weight:800;font-size:15px">{{ catPickerTitle }}</span>
+    </div>
+    <input class="input" type="text" placeholder="Buscar categoria" value="{{ categorySearch }}" onChange="{{ setCategorySearch }}"/>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:0 20px 40px;box-sizing:border-box">
+    <sc-if value="{{ isExpenseForm }}" hint-placeholder-val="{{ true }}">
+      <sc-for list="{{ addCategories }}" as="c" hint-placeholder-count="7">
+        <button onClick="{{ c.select }}" style="display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;padding:12px 0;min-height:52px;border:none;border-bottom:1px solid var(--color-divider);background:{{ c.rowBg }};cursor:pointer;text-align:left">
+          <span style="width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;border:2px solid {{ c.tileBorder }};background:{{ c.tileBg }};font-weight:800;font-family:var(--font-heading);font-size:10px">{{ c.letter }}</span>
+          <span style="flex:1;min-width:0">
+            <span style="display:block;font-size:13.5px">{{ c.name }}</span>
+            <span style="display:block;font-size:11px;opacity:.55;color:{{ c.textColor }}">{{ c.spentFmt }} de {{ c.budgetFmt }}</span>
+          </span>
+          <sc-if value="{{ c.isSelected }}" hint-placeholder-val="{{ false }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex:none"><polyline points="20 6 9 17 4 12" stroke="var(--color-accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </sc-if>
+        </button>
+      </sc-for>
+    </sc-if>
+    <sc-if value="{{ !isExpenseForm }}" hint-placeholder-val="{{ false }}">
+      <sc-for list="{{ addCategories }}" as="c" hint-placeholder-count="5">
+        <button onClick="{{ c.select }}" style="display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;padding:14px 0;min-height:52px;border:none;border-bottom:1px solid var(--color-divider);background:{{ c.rowBg }};cursor:pointer;text-align:left">
+          <span style="width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;border:2px solid {{ c.tileBorder }};background:{{ c.tileBg }};font-weight:800;font-family:var(--font-heading);font-size:10px">{{ c.letter }}</span>
+          <span style="flex:1;min-width:0;font-size:13.5px">{{ c.name }}</span>
+          <sc-if value="{{ c.isSelected }}" hint-placeholder-val="{{ false }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex:none"><polyline points="20 6 9 17 4 12" stroke="var(--color-accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </sc-if>
+        </button>
+      </sc-for>
+    </sc-if>
+    <sc-if value="{{ noCategoryMatch }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:12.5px;opacity:.6;padding:20px 0">Nenhuma categoria encontrada.</div>
+    </sc-if>
+  </div>
+</div>
+</sc-if>
+
 <sc-if value="{{ isBusy }}" hint-placeholder-val="{{ false }}">
 <div style="position:absolute;inset:0;z-index:90;background:color-mix(in oklch, var(--color-bg) 90%, transparent);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:0 40px;box-sizing:border-box">
   <div class="je-spin"></div>
@@ -587,6 +744,9 @@ class Component extends DCLogic {
     screen: 'onboarding',
     onboardStep: 0,
     authMode: 'login',
+    otpCode: ['', '', '', '', '', ''], otpSeconds: 60, otpError: '', otpVerifying: false, justVerified: false,
+    otpPurpose: 'signup', showPassword: false, showNewPassword: false,
+    newPassword: '', newPassword2: '', resetError: '', forgotError: '', justReset: false,
     authName: '', authEmail: '', authPassword: '', authCpf: '', authPhone: '',
     tab: 'dashboard',
     showAdd: false,
@@ -598,6 +758,8 @@ class Component extends DCLogic {
     newCatName: '',
     newCatBudget: '',
     showMembers: false,
+    showCatPicker: false,
+    newCatType: 'expense',
     showInviteForm: false,
     inviteEmail: '',
     inviteRole: 'lancamento',
@@ -610,14 +772,22 @@ class Component extends DCLogic {
     notifPush: true,
     notifEmail: false,
     newAmount: '', newCategoryId: 'alimentacao', newDate: '2026-08-21', newNote: '', newTxType: 'expense',
-    nextId: 14,
+    nextId: 24,
     categories: [
-      { id: 'alimentacao', name: 'Alimentação', letter: 'A', budget: 800, type: 'expense' },
-      { id: 'transporte', name: 'Transporte', letter: 'T', budget: 300, type: 'expense' },
-      { id: 'moradia', name: 'Moradia', letter: 'M', budget: 1200, type: 'expense' },
-      { id: 'lazer', name: 'Lazer', letter: 'L', budget: 90, type: 'expense' },
-      { id: 'saude', name: 'Saúde', letter: 'S', budget: 200, type: 'expense' },
-      { id: 'compras', name: 'Compras', letter: 'C', budget: 400, type: 'expense' },
+      { id: 'moradia', name: 'Moradia', letter: 'MO', budget: 1500, type: 'expense' },
+      { id: 'alimentacao', name: 'Alimentação', letter: 'AL', budget: 950, type: 'expense' },
+      { id: 'transporte', name: 'Transporte', letter: 'TR', budget: 450, type: 'expense' },
+      { id: 'saude', name: 'Saúde', letter: 'SA', budget: 350, type: 'expense' },
+      { id: 'educacao', name: 'Educação', letter: 'ED', budget: 280, type: 'expense' },
+      { id: 'filhos', name: 'Filhos e dependentes', letter: 'FD', budget: 480, type: 'expense' },
+      { id: 'lazer', name: 'Lazer e entretenimento', letter: 'LZ', budget: 250, type: 'expense' },
+      { id: 'vestuario', name: 'Vestuário e cuidados pessoais', letter: 'VC', budget: 180, type: 'expense' },
+      { id: 'pets', name: 'Pets', letter: 'PT', budget: 130, type: 'expense' },
+      { id: 'dividas', name: 'Dívidas e financiamentos', letter: 'DF', budget: 620, type: 'expense' },
+      { id: 'impostos', name: 'Impostos, taxas e seguros', letter: 'IT', budget: 200, type: 'expense' },
+      { id: 'doacoes', name: 'Doações e presentes', letter: 'DP', budget: 80, type: 'expense' },
+      { id: 'investimentos', name: 'Investimentos e poupança', letter: 'IP', budget: 400, type: 'expense' },
+      { id: 'outros', name: 'Outros', letter: 'OU', budget: 80, type: 'expense' },
       { id: 'salario', name: 'Salário', letter: 'SL', budget: 0, type: 'income' },
       { id: 'restituicao-ir', name: 'Restituição de IR', letter: 'IR', budget: 0, type: 'income' },
       { id: 'resgate-investimento', name: 'Resgate de investimento', letter: 'RI', budget: 0, type: 'income' },
@@ -630,14 +800,24 @@ class Component extends DCLogic {
       { id: 't3', date: '2026-08-18', categoryId: 'lazer', note: 'Cinema', amount: 58.00, createdBy: 'm1', type: 'expense' },
       { id: 't4', date: '2026-08-17', categoryId: 'alimentacao', note: 'Restaurante', amount: 96.50, createdBy: 'owner', type: 'expense' },
       { id: 't5', date: '2026-08-15', categoryId: 'moradia', note: 'Conta de luz', amount: 210.30, createdBy: 'owner', type: 'expense' },
-      { id: 't6', date: '2026-08-14', categoryId: 'compras', note: 'Farmácia', amount: 45.20, createdBy: 'm1', type: 'expense' },
+      { id: 't6', date: '2026-08-14', categoryId: 'saude', note: 'Farmácia', amount: 45.20, createdBy: 'm1', type: 'expense' },
       { id: 't7', date: '2026-08-12', categoryId: 'saude', note: 'Consulta médica', amount: 150.00, createdBy: 'owner', type: 'expense' },
       { id: 't8', date: '2026-08-10', categoryId: 'transporte', note: 'Combustível', amount: 120.00, createdBy: 'owner', type: 'expense' },
       { id: 't9', date: '2026-08-08', categoryId: 'alimentacao', note: 'Padaria', amount: 22.80, createdBy: 'owner', type: 'expense' },
-      { id: 't10', date: '2026-08-05', categoryId: 'compras', note: 'Loja de roupas', amount: 189.90, createdBy: 'owner', type: 'expense' },
+      { id: 't10', date: '2026-08-05', categoryId: 'vestuario', note: 'Loja de roupas', amount: 189.90, createdBy: 'owner', type: 'expense' },
       { id: 't11', date: '2026-08-03', categoryId: 'moradia', note: 'Internet', amount: 99.90, createdBy: 'owner', type: 'expense' },
       { id: 't12', date: '2026-08-01', categoryId: 'lazer', note: 'Streaming (assinatura)', amount: 39.90, createdBy: 'owner', type: 'expense' },
       { id: 't13', date: '2026-08-05', categoryId: 'salario', note: 'Salário', amount: 5200.00, createdBy: 'owner', type: 'income' },
+      { id: 't14', date: '2026-08-05', categoryId: 'moradia', note: 'Aluguel', amount: 1200.00, createdBy: 'owner', type: 'expense' },
+      { id: 't15', date: '2026-08-07', categoryId: 'filhos', note: 'Escola das crianças', amount: 480.00, createdBy: 'owner', type: 'expense' },
+      { id: 't16', date: '2026-08-06', categoryId: 'dividas', note: 'Fatura do cartão', amount: 620.00, createdBy: 'owner', type: 'expense' },
+      { id: 't17', date: '2026-08-11', categoryId: 'educacao', note: 'Curso de inglês', amount: 280.00, createdBy: 'm1', type: 'expense' },
+      { id: 't18', date: '2026-08-13', categoryId: 'pets', note: 'Ração e veterinário', amount: 118.00, createdBy: 'm1', type: 'expense' },
+      { id: 't19', date: '2026-08-09', categoryId: 'impostos', note: 'IPVA (parcela)', amount: 186.40, createdBy: 'owner', type: 'expense' },
+      { id: 't20', date: '2026-08-16', categoryId: 'doacoes', note: 'Presente de aniversário', amount: 90.00, createdBy: 'owner', type: 'expense' },
+      { id: 't21', date: '2026-08-05', categoryId: 'investimentos', note: 'Aporte mensal CDB', amount: 400.00, createdBy: 'owner', type: 'expense' },
+      { id: 't22', date: '2026-08-21', categoryId: 'alimentacao', note: 'Delivery', amount: 74.30, createdBy: 'm1', type: 'expense' },
+      { id: 't23', date: '2026-08-14', categoryId: 'receita-extra', note: 'Freelance de design', amount: 900.00, createdBy: 'owner', type: 'income' },
     ],
   };
 
@@ -666,10 +846,17 @@ class Component extends DCLogic {
         spentFmt: this.formatCurrency(spent),
         budgetFmt: this.formatCurrency(c.budget),
         realPct,
+        pctLabel: realPct + '%',
+        remainingFmt: this.formatCurrency(Math.abs(c.budget - spent)),
         barWidth: Math.min(100, realPct) + '%',
         barColor: over ? 'var(--color-accent)' : 'var(--color-neutral-800)',
         textColor: over ? 'var(--color-accent-700)' : 'var(--color-text)',
         over,
+        hasNature: true,
+        natureLabel: c.type === 'income' ? 'Receita' : 'Despesa',
+        isIncomeCat: c.type === 'income',
+        incomeMetaLabel: 'Recebido neste mês',
+        remainingLabel: over ? 'Acima do teto em' : 'Ainda pode gastar',
       };
     });
   }
@@ -708,19 +895,100 @@ class Component extends DCLogic {
     if (d.length <= 10) return '(' + d.slice(0, 2) + ') ' + d.slice(2, 6) + '-' + d.slice(6);
     return '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7);
   }
+  _otpRefs = [];
   setLoginMode() { this.setState({ authMode: 'login' }); }
   setSignupMode() { this.setState({ authMode: 'signup' }); }
   submitAuth() {
     if (this.state.authing) return;
-    this.setState({ authing: true });
-    this._authT = setTimeout(() => this.setState({ authing: false, screen: 'app', tab: 'dashboard' }), 1700);
+    this.setState({ authing: true, justVerified: false });
+    this._authT = setTimeout(() => {
+      if (this.state.authMode === 'signup') {
+        this.setState({ authing: false });
+        this.startOtp('signup');
+        this.showToast('Código enviado para ' + (this.state.authEmail || 'seu e-mail'));
+      } else {
+        this.setState({ authing: false, screen: 'app', tab: 'dashboard' });
+      }
+    }, 1700);
+  }
+  startOtp(purpose) {
+    clearInterval(this._otpI);
+    this._otpRefs = [];
+    this.setState(s => ({ screen: 'otp', otpPurpose: purpose || s.otpPurpose || 'signup', otpCode: ['', '', '', '', '', ''], otpSeconds: 60, otpError: '', otpVerifying: false }));
+    this._otpI = setInterval(() => this.setState(s => {
+      if (s.otpSeconds <= 1) { clearInterval(this._otpI); return { otpSeconds: 0 }; }
+      return { otpSeconds: s.otpSeconds - 1 };
+    }), 1000);
+  }
+  resendOtp() {
+    this.startOtp(this.state.otpPurpose || 'signup');
+    this.showToast('Novo código enviado para ' + (this.state.authEmail || 'seu e-mail'));
+  }
+  setOtpDigit(i, raw) {
+    const v = (raw || '').replace(/\D/g, '');
+    this.setState(s => {
+      const code = [...(s.otpCode || ['', '', '', '', '', ''])];
+      if (v.length > 1) v.split('').slice(0, 6 - i).forEach((ch, k) => { code[i + k] = ch; });
+      else code[i] = v;
+      return { otpCode: code, otpError: '' };
+    }, () => {
+      if (!v) return;
+      const next = Math.min(5, i + Math.max(1, v.length));
+      if (this._otpRefs[next]) this._otpRefs[next].focus();
+    });
+  }
+  otpKeyDown(i, e) {
+    if (e.key === 'Backspace' && !(this.state.otpCode || [])[i] && this._otpRefs[i - 1]) this._otpRefs[i - 1].focus();
+  }
+  submitOtp() {
+    const s = this.state;
+    if (s.otpVerifying || s.otpSeconds === 0) return;
+    const code = (s.otpCode || []).join('');
+    if (code.length < 6) { this.setState({ otpError: 'Digite os 6 dígitos do código.' }); return; }
+    if (code !== '123456') { this.setState({ otpError: 'Código inválido. Confira o e-mail e tente novamente.' }); return; }
+    this.setState({ otpVerifying: true });
+    this._otpT = setTimeout(() => {
+      clearInterval(this._otpI);
+      if ((this.state.otpPurpose || 'signup') === 'reset') {
+        this.setState({ otpVerifying: false, screen: 'reset', newPassword: '', newPassword2: '', resetError: '' });
+      } else {
+        this.setState({ otpVerifying: false, screen: 'login', authMode: 'login', authPassword: '', justVerified: true });
+      }
+    }, 1200);
+  }
+  otpBack() {
+    clearInterval(this._otpI);
+    if ((this.state.otpPurpose || 'signup') === 'reset') this.setState({ screen: 'forgot', otpError: '' });
+    else this.setState({ screen: 'login', authMode: 'signup', otpError: '' });
+  }
+  backToLogin() {
+    clearInterval(this._otpI);
+    this.setState({ screen: 'login', authMode: 'login', otpError: '', forgotError: '' });
+  }
+  goForgot() {
+    this.setState({ screen: 'forgot', forgotError: '', justVerified: false, justReset: false, authPassword: '' });
+  }
+  submitForgot() {
+    const email = (this.state.authEmail || '').trim();
+    if (!email || email.indexOf('@') < 1) { this.setState({ forgotError: 'Informe um e-mail válido.' }); return; }
+    this.setState({ forgotError: '' });
+    this.startOtp('reset');
+    this.showToast('Código enviado para ' + email);
+  }
+  submitReset() {
+    const s = this.state;
+    const p = s.newPassword || '', p2 = s.newPassword2 || '';
+    if (p.length < 8) { this.setState({ resetError: 'A senha precisa ter pelo menos 8 caracteres.' }); return; }
+    if (p !== p2) { this.setState({ resetError: 'As senhas não coincidem.' }); return; }
+    this.setState({ screen: 'login', authMode: 'login', authPassword: '', newPassword: '', newPassword2: '', resetError: '', justReset: true, justVerified: false });
+    this.showToast('Senha redefinida com sucesso.');
   }
   showToast(text) {
     clearTimeout(this._toastT);
     this.setState({ toast: text });
     this._toastT = setTimeout(() => this.setState({ toast: null }), 3200);
   }
-  componentWillUnmount() { clearTimeout(this._authT); clearTimeout(this._toastT); clearTimeout(this._saveT); clearTimeout(this._inviteT); }
+  componentWillUnmount() { clearTimeout(this._authT); clearTimeout(this._toastT); clearTimeout(this._saveT); clearTimeout(this._inviteT); clearTimeout(this._otpT); clearInterval(this._otpI); }
   setTab(t) { this.setState({ tab: t }); }
   openAdd(type) {
     const t = type || 'expense';
@@ -732,7 +1000,7 @@ class Component extends DCLogic {
     if (!tx) return;
     this.setState({ showAdd: true, editingTxId: id, viewingTxId: null, newTxType: tx.type, newAmount: String(tx.amount).replace('.', ','), newCategoryId: tx.categoryId, newDate: tx.date, newNote: tx.note, categorySearch: '' });
   }
-  closeAdd() { this.setState({ showAdd: false, editingTxId: null }); }
+  closeAdd() { this.setState({ showAdd: false, editingTxId: null, showCatPicker: false, categorySearch: '' }); }
   saveExpense() {
     if (this.state.savingTx) return;
     const amt = parseFloat((this.state.newAmount || '0').replace(',', '.'));
@@ -768,7 +1036,8 @@ class Component extends DCLogic {
     const letter = name.charAt(0).toUpperCase();
     const budget = parseFloat((this.state.newCatBudget || '0').replace(',', '.')) || 0;
     const id = 'cat_' + Date.now();
-    this.setState(s => ({ categories: [...s.categories, { id, name, letter, budget, type: 'expense' }], showNewCategory: false, newCatName: '', newCatBudget: '' }));
+    const type = this.state.newCatType || 'expense';
+    this.setState(s => ({ categories: [...s.categories, { id, name, letter, budget, type }], showNewCategory: false, newCatName: '', newCatBudget: '', newCatType: 'expense' }));
   }
   setPeriod(p) { this.setState({ period: p }); }
   toggleNotifPush() { this.setState(s => ({ notifPush: !s.notifPush })); }
@@ -841,16 +1110,23 @@ class Component extends DCLogic {
       .filter(c => !search || c.name.toLowerCase().includes(search))
       .map(c => ({
         ...c,
-        select: () => this.setState({ newCategoryId: c.id }),
+        select: () => this.setState({ newCategoryId: c.id, showCatPicker: false, categorySearch: '' }),
         isSelected: s.newCategoryId === c.id,
         tileBorder: s.newCategoryId === c.id ? 'var(--color-accent)' : 'var(--color-divider)',
         tileBg: s.newCategoryId === c.id ? 'var(--color-accent-100)' : 'transparent',
         rowBg: s.newCategoryId === c.id ? 'var(--color-accent-100)' : 'transparent',
       }));
     const noCategoryMatch = addCategories.length === 0;
-    const selectedCategoryName = (catsComputed.find(c => c.id === s.newCategoryId) || {}).name || '';
+    const selectedCat = catsComputed.find(c => c.id === s.newCategoryId) || null;
+    const selectedCategoryName = selectedCat ? selectedCat.name : '';
+    const isExpenseForm = (s.newTxType || 'expense') === 'expense';
 
-    const categoriesOverlayView = expenseCats.map(c => ({
+    const topCategories = expenseCats.slice().sort((a, b) => b.spent - a.spent).slice(0, 5);
+    const incomeCatsList = catsComputed.filter(c => c.type === 'income');
+    const expenseBudgetTotal = expenseCats.reduce((sum, c) => sum + c.budget, 0);
+    const incomeExpectedTotal = incomeCatsList.reduce((sum, c) => sum + c.budget, 0);
+
+    const categoriesRows = catsComputed.map(c => ({
       ...c,
       isEditing: s.editingCatId === c.id,
       editValue: s.editingCatId === c.id ? s.editBudgetValue : String(c.budget),
@@ -864,13 +1140,50 @@ class Component extends DCLogic {
         }));
       },
     }));
+    const categoriesOverlayView = categoriesRows.filter(c => c.type === 'expense');
+    const expenseRows = categoriesOverlayView;
+    const incomeRows = categoriesRows.filter(c => c.type === 'income');
 
     const viewingTx = s.viewingTxId ? s.transactions.find(t => t.id === s.viewingTxId) : null;
     const viewingCat = viewingTx ? s.categories.find(c => c.id === viewingTx.categoryId) : null;
     const topCategory = reportsSorted[0] || { name: '', spentFmt: '', realPct: 0 };
 
+    const otpDigits = s.otpCode || ['', '', '', '', '', ''];
+    const otpExpired = s.otpSeconds === 0;
+    const otpSecs = s.otpSeconds == null ? 60 : s.otpSeconds;
+    const otpTimerLabel = Math.floor(otpSecs / 60) + ':' + String(otpSecs % 60).padStart(2, '0');
+    const otpCells = otpDigits.map((d, i) => ({
+      value: d,
+      disabled: otpExpired || !!s.otpVerifying,
+      ref: (el) => { this._otpRefs[i] = el; },
+      onChange: (e) => this.setOtpDigit(i, e.target.value),
+      onKeyDown: (e) => this.otpKeyDown(i, e),
+    }));
+
     return {
       isOnboarding: s.screen === 'onboarding', isLogin: s.screen === 'login', isApp: s.screen === 'app',
+      isOtp: s.screen === 'otp', justVerified: !!s.justVerified,
+      otpCells, otpTimerLabel, otpExpired, otpActive: !otpExpired,
+      otpError: s.otpError || '', hasOtpError: !!s.otpError,
+      isOtpVerifying: !!s.otpVerifying,
+      otpButtonLabel: s.otpVerifying ? 'Confirmando…' : 'Confirmar código',
+      submitOtp: () => this.submitOtp(), resendOtp: () => this.resendOtp(),
+      otpBack: () => this.otpBack(), backToLogin: () => this.backToLogin(), goForgot: () => this.goForgot(),
+      isOtpSignup: (s.otpPurpose || 'signup') === 'signup', isOtpReset: (s.otpPurpose || 'signup') === 'reset',
+      isForgot: s.screen === 'forgot', isReset: s.screen === 'reset',
+      forgotError: s.forgotError || '', hasForgotError: !!s.forgotError,
+      submitForgot: () => this.submitForgot(), submitReset: () => this.submitReset(),
+      justReset: !!s.justReset,
+      passwordInputType: s.showPassword ? 'text' : 'password',
+      passwordToggleLabel: s.showPassword ? 'Ocultar' : 'Mostrar',
+      togglePassword: () => this.setState(st => ({ showPassword: !st.showPassword })),
+      newPassword: s.newPassword || '', newPassword2: s.newPassword2 || '',
+      setNewPassword: (e) => this.setState({ newPassword: e.target.value, resetError: '' }),
+      setNewPassword2: (e) => this.setState({ newPassword2: e.target.value, resetError: '' }),
+      newPasswordInputType: s.showNewPassword ? 'text' : 'password',
+      newPasswordToggleLabel: s.showNewPassword ? 'Ocultar' : 'Mostrar',
+      toggleNewPassword: () => this.setState(st => ({ showNewPassword: !st.showNewPassword })),
+      resetError: s.resetError || '', hasResetError: !!s.resetError,
       ob0: s.onboardStep === 0, ob1: s.onboardStep === 1, ob2: s.onboardStep === 2,
       obLast: s.onboardStep === 2, obNextLabel: s.onboardStep === 2 ? 'Começar' : 'Próximo',
       nextOnboard: () => this.nextOnboard(), skipOnboard: () => this.skipOnboard(),
@@ -904,6 +1217,10 @@ class Component extends DCLogic {
       totalSpentFmt: this.formatCurrency(totalSpent), totalBudgetFmt: this.formatCurrency(totalBudget),
       overallPctStr: overallPct + '%', remainingFmt: this.formatCurrency(Math.max(0, totalBudget - totalSpent)),
       categoriesComputed: expenseCats, recentTx: allTxView.slice(0, 5),
+      topCategories, categoryCountLabel: 'Ver todas (' + expenseCats.length + ') →',
+      expenseRows, incomeRows,
+      expenseCountLabel: expenseCats.length + ' categorias · teto ' + this.formatCurrency(expenseBudgetTotal),
+      incomeCountLabel: incomeCatsList.length + ' categorias · recebido ' + this.formatCurrency(totalIncome),
       totalIncomeFmt: this.formatCurrency(totalIncome),
       saldoFmt: (saldo < 0 ? '- ' : '') + this.formatCurrency(Math.abs(saldo)),
       saldoColor: saldo >= 0 ? 'oklch(45% 0.13 150)' : 'var(--color-accent-700)',
@@ -932,11 +1249,26 @@ class Component extends DCLogic {
 
       showAdd: s.showAdd, closeAdd: () => this.closeAdd(), openAdd: () => this.openAdd(s.newTxType),
       openAddExpense: () => this.openAdd('expense'), openAddIncome: () => this.openAdd('income'),
-      receiptFieldLabel: s.newTxType === 'income' ? 'Comprovante de recebimento (opcional)' : 'Comprovante (opcional)',
       addFormTitle: s.editingTxId ? (s.newTxType === 'income' ? 'Editar receita' : 'Editar despesa') : (s.newTxType === 'income' ? 'Nova receita' : 'Nova despesa'),
       addFormSaveLabel: s.savingTx ? 'Salvando…' : (s.editingTxId ? 'Salvar alterações' : (s.newTxType === 'income' ? 'Salvar receita' : 'Salvar despesa')),
       editTxFn: () => this.editTx(s.viewingTxId),
       addCategories, noCategoryMatch, selectedCategoryName, categorySearch: s.categorySearch || '',
+      isExpenseForm,
+      showCatPicker: !!s.showCatPicker,
+      openCatPicker: () => this.setState({ showCatPicker: true, categorySearch: '' }),
+      closeCatPicker: () => this.setState({ showCatPicker: false, categorySearch: '' }),
+      catPickerTitle: isExpenseForm ? 'Categoria da despesa' : 'Categoria da receita',
+      selectedCatLetter: selectedCat ? selectedCat.letter : '',
+      selectedCatNature: selectedCat ? selectedCat.natureLabel : '',
+      selectedCatHasNature: !!(selectedCat && selectedCat.hasNature),
+      selectedCatBudgetLine: selectedCat && selectedCat.budget > 0
+        ? selectedCat.remainingLabel + ' ' + selectedCat.remainingFmt + ' · ' + selectedCat.pctLabel + ' do teto'
+        : 'Entra direto no saldo do mês',
+      selectedCatTextColor: selectedCat ? selectedCat.textColor : 'var(--color-text)',
+      isNewCatExpense: (s.newCatType || 'expense') === 'expense',
+      isNewCatIncome: (s.newCatType || 'expense') === 'income',
+      setNewCatExpense: () => this.setState({ newCatType: 'expense' }),
+      setNewCatIncome: () => this.setState({ newCatType: 'income' }),
       setCategorySearch: (e) => this.setState({ categorySearch: e.target.value }),
       newAmount: s.newAmount, newDate: s.newDate, newNote: s.newNote,
       setNewAmount: (e) => this.setState({ newAmount: e.target.value }),
@@ -952,7 +1284,6 @@ class Component extends DCLogic {
       txDetailCatName: viewingCat ? viewingCat.name : '',
       txDetailNote: viewingTx ? (viewingTx.note || 'Sem observação') : '',
       txDetailCreatedBy: viewingTx ? this.getMemberName(viewingTx.createdBy) : '',
-      txDetailReceiptId: viewingTx ? ('receipt-' + viewingTx.id) : 'receipt-none',
 
       showCategories: s.showCategories, toggleCategoriesOverlay: () => this.toggleCategoriesOverlay(),
       categoriesOverlayView,

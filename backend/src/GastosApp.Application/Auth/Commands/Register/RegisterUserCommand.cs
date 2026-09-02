@@ -24,7 +24,7 @@ public sealed class RegisterUserCommandHandler : ICommandHandler<RegisterUserCom
         // Validação de formato (email/password/name/phoneNumber/cpf) já rodou no
         // ValidationBehavior via RegisterUserCommandValidator — Handle fica só com
         // orquestração (constitution: "Handlers não devem conter validação manual").
-        var authResult = await _authService.RegisterAsync(command.Email, command.Password, cancellationToken);
+        var authResult = await _authService.RegisterAsync(command.Email, command.Password, command.Name.Trim(), cancellationToken);
         if (authResult.IsFailure)
             return Result.Failure<RegisterUserResult>(authResult.Error!);
 

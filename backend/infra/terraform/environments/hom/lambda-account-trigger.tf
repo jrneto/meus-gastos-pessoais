@@ -47,6 +47,12 @@ resource "aws_iam_role_policy" "account_trigger_lambda_exec" {
           "logs:PutLogEvents"
         ]
         Resource = "${aws_cloudwatch_log_group.account_trigger_lambda.arn}:*"
+      },
+      {
+        Sid      = "SesSendEmail"
+        Effect   = "Allow"
+        Action   = ["ses:SendEmail", "ses:SendRawEmail"]
+        Resource = aws_ses_domain_identity.main.arn
       }
     ]
   })

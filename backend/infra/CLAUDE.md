@@ -53,13 +53,57 @@ Leve vs Fluxo Completo e a regra de organização de specs, e
   LocalStack). `scripts/local-init.sh` faz o seed idempotente. Passo a
   passo: `backend/infra/README.md`.
 
+## E-mail transacional (SES, FEAT-33)
+
+Cognito (cadastro, recuperação de senha) e as Lambdas do backend que
+precisarem enviar e-mail diretamente (trigger de conta, API principal)
+enviam via **Amazon SES**, com identidade de domínio própria por
+ambiente — não mais o envio padrão do Cognito (sem marca própria e
+limitado a 50 e-mails/dia por conta, compartilhado entre hom e prod,
+ver "Testes integrados" abaixo).
+
+- **Identidade verificada por ambiente**, com DKIM habilitado
+  (`ses.tf` em cada `environments/{prod,hom}/`): prod verifica o
+  domínio raiz `jrnexpenses.com`, hom verifica o subdomínio
+  `hom.jrnexpenses.com` — mesmo padrão de separação por subdomínio já
+  usado por `api.jrnexpenses.com`/`api-hom.jrnexpenses.com`. Os
+  records DNS de verificação/DKIM vivem em `dns.tf` de cada ambiente,
+  na hosted zone `jrnexpenses.com.` (gerenciada pelo frontend, lida
+  só por `data "aws_route53_zone"`, mesmo mecanismo da FEAT-12).
+- **`email_configuration` do `aws_cognito_user_pool`**
+  (`email_sending_account = "DEVELOPER"`) aponta pra identidade do
+  próprio ambiente. Remetente: `jrn.expenses <no-reply@jrnexpenses.com>`
+  em prod, `jrn.expenses (homologação) <no-reply@hom.jrnexpenses.com>`
+  em hom (nome de exibição com sufixo pra nunca confundir com prod
+  durante teste manual).
+- **IAM `ses:SendEmail`/`ses:SendRawEmail`** concedido só às duas
+  Lambdas do backend (`lambda.tf` e `lambda-account-trigger.tf` de
+  cada ambiente), escopado à identidade de domínio do próprio ambiente
+  — nenhuma outra função ganha essa permissão.
+- **Sandbox do SES**: a conta nasceu no sandbox (`ProductionAccessEnabled:
+  false`, teto de 200 e-mails/dia, 1/s, só destinatários verificados
+  manualmente). Pedido de saída enviado em 2026-09-01 via
+  `aws sesv2 put-account-details` (`mail-type=TRANSACTIONAL`,
+  `website-url=https://jrnexpenses.com`) — status na conclusão da
+  FEAT-33: `ReviewDetails.Status = "PENDING"`. Conferir
+  `aws sesv2 get-account --region us-east-1` antes de assumir que já
+  saiu; enquanto pendente, e-mail pra um destinatário real (não
+  verificado manualmente no SES) não é entregue, mesmo com o resto da
+  infra correta.
+- **Gotcha de deliverability**: validado manualmente em hom que o
+  e-mail de confirmação chega, mas caiu na caixa de spam do Gmail —
+  só DKIM foi configurado, sem MAIL FROM customizado (SPF) nem DMARC;
+  ver débito técnico correspondente em `backend/docs/backlog.md`.
+- Ver `backend/specs/FEAT-33-infra-email-transacional-ses/` para a
+  spec/plano completos.
+
 ## CI/CD (GitHub Actions)
 
 `backend-feature-pr.yml` (PR automático branch→develop),
-`backend-deploy-hom.yml` (deploy a cada push em `develop` + testes
-integrados + rascunho de release) e `backend-deploy-prod.yml` (checagem
-do teste integrado de hom + deploy disparado por GitHub Release + PR
-automático develop→main).
+`backend-deploy-hom.yml` (deploy a cada push em `develop` + rascunho de
+release) e `backend-deploy-prod.yml` (deploy disparado por GitHub
+Release + PR automático develop→main). Testes integrados **não** fazem
+parte desses dois pipelines — ver bullet abaixo.
 
 - **Deploy fora do Terraform**: os workflows publicam via
   `aws lambda update-function-code`/`update-function-configuration`
@@ -73,22 +117,26 @@ automático develop→main).
   nos workflows de deploy/rascunho de release do outro contexto.
 - **GitHub Environments** `backend-hom`/`backend-prod` (distintos de
   `hom`/`prod`, do frontend), variáveis `CICD_ROLE_ARN`/`FUNCTION_NAME`.
-- **Testes integrados no pipeline (FEAT-29)**: `backend-deploy-hom.yml`
-  ganha o job `integration-tests` (roda `GastosApp.IntegrationTests`
-  contra `https://api-hom.jrnexpenses.com` logo após o deploy) — o
-  rascunho de release só é criado/atualizado se esse job passar.
-  `backend-deploy-prod.yml` ganha o job `check-hom-integration-tests`
-  (via `gh run list`, confirma que `backend-deploy-hom.yml` passou —
-  teste integrado incluso — para o commit exato da release/tag), rodando
-  **antes** de `quality`/`deploy` — nenhum deploy de produção acontece
-  sem essa confirmação. Workflow avulso
-  `backend-integration-tests-prod.yml` (só `workflow_dispatch`) roda a
-  suíte isolada contra produção, sem tocar build/deploy. A role
-  `gastosapp-backend-cicd` ganhou permissão adicional pra isso —
+- **Testes integrados são sob demanda, não gate de pipeline (FEAT-29/32,
+  revisto em 2026-09-01)**: `backend-deploy-hom.yml` e
+  `backend-deploy-prod.yml` **não** rodam `GastosApp.IntegrationTests` —
+  até 2026-09-01 rodavam (job `integration-tests` em hom bloqueando o
+  rascunho de release, job `check-hom-integration-tests` em prod
+  bloqueando o deploy), mas o volume de `SignUp` no Cognito que a suíte
+  inteira faz por execução (~35, um por teste + convite) estourava o
+  limite de e-mail padrão do Cognito (50/dia por conta AWS, sem SES
+  configurado — compartilhado entre hom e prod), quebrando pipelines
+  sem nenhum bug de verdade. Continuam **obrigatórios localmente**
+  antes de dar uma feature por concluída (ver `backend/CLAUDE.md`), e
+  disponíveis sob demanda, isolados por ambiente, via
+  `workflow_dispatch`: `backend-integration-tests-hom.yml` e
+  `backend-integration-tests-prod.yml` (aba Actions do GitHub, sem
+  tocar build/deploy). A role `gastosapp-backend-cicd` mantém a
+  permissão adicional que esses dois workflows usam —
   `cognito-idp:AdminConfirmSignUp`/`AdminDeleteUser` (User Pools hom/
-  prod), `dynamodb:Query`/`DeleteItem`/`BatchWriteItem` (tabelas hom/
-  prod) e `ssm:GetParametersByPath` (prefixo `/GastosApp`) — usada só
-  pelos jobs de teste integrado, nunca pela Lambda da aplicação. Ver
+  prod), `dynamodb:GetItem`/`Query`/`DeleteItem`/`BatchWriteItem`
+  (tabelas hom/prod) e `ssm:GetParametersByPath` (prefixo
+  `/GastosApp`) — nunca usada pela Lambda da aplicação. Ver
   `backend/specs/FEAT-29-testes-integrados/`.
 
 ## Gotchas conhecidos
@@ -105,6 +153,20 @@ automático develop→main).
 - **Perfil `agent-toolkit` provavelmente sem `iam:CreateRole`/`PutRolePolicy`**
   — se `terraform apply` do OIDC Provider/Role falhar com `AccessDenied`,
   criar manualmente no console e conferir contra os `.tf`.
+- **Mesmo guardrail de IAM também bloqueia leitura de role já existente**
+  (achado na FEAT-33): `terraform plan`/`apply` com o perfil
+  `agent-toolkit` falha com `AccessDenied` em `iam:GetRole`/
+  `iam:GetRolePolicy` sobre `jrnexpenses-account-trigger-lambda-exec`
+  (role criada pelo próprio Terraform na FEAT-19, não é o caso do OIDC
+  acima) — não é só sobre criação/OIDC, é uma restrição mais ampla de
+  leitura de IAM para essa role específica com esse perfil. Contorno
+  pra `plan`/`apply` que não mexem em IAM: `-refresh=false` +
+  `-target=<recursos não-IAM>`. Para `apply` que precisa criar/alterar
+  IAM (ex.: `aws_iam_role_policy`), rodar localmente com um profile com
+  permissão de IAM de fato (não `agent-toolkit`) — conferir o resultado
+  aplicado via `terraform state show <recurso>` (não depende de
+  `iam:Get*`) quando a leitura via AWS CLI/console também estiver
+  bloqueada.
 
 ## Specs
 
