@@ -62,7 +62,7 @@
 
 - [x] 31. Adicionar `ResendConfirmation_UsuarioNaoConfirmado_Retorna200` (mesmo arquivo) — registra conta nova via `POST /auth/register` sem confirmar (sem `TestAccountFixture` completa), chama `POST /auth/resend-confirmation`, espera 200; limpeza manual do usuário Cognito criado (`AdminDeleteUserAsync`) em `finally`
 
-- [ ] 32. Rodar `dotnet build backend/GastosApp.sln` e `dotnet test backend/GastosApp.sln` (suíte completa unit + componente) sem regressão
+- [x] 32. Rodar `dotnet build backend/GastosApp.sln` e `dotnet test backend/GastosApp.sln` (suíte completa unit + componente) sem regressão
 
 - [ ] 33. Rodar `backend/infra/lambda/run-local.sh` (binário Native AOT via Runtime Interface Emulator) e os testes integrados relevantes (`AuthFlowTests`, `--filter Category=Integration`) localmente, confirmando que passam (constitution: feature só é concluída com testes integrados relevantes rodando localmente)
 
