@@ -100,37 +100,34 @@ public sealed class AuthFlowTests
         problem.Type.Should().Be("https://gastosapp.dev/errors/invalid-credentials");
     }
 
-    // FEAT-35: cobertura do fluxo de sucesso real de POST /auth/confirm sem
-    // precisar do código de 6 dígitos de fato (a suíte não tem acesso ao
-    // e-mail — ver plan.md, decisão técnica 5). TestAccountFixture já
-    // confirma a conta via AdminConfirmSignUp, então chamar /auth/confirm
-    // de novo aqui exercita o branch de idempotência (NotAuthorizedException
-    // → 200) contra o Cognito real.
-    //
-    // Pulado em modo Local: o código-fonte do cognito-local v5.3.0
-    // (lib/targets/confirmSignUp.js) nunca checa UserStatus — só compara o
-    // ConfirmationCode salvo, então o branch "usuário já confirmado" do
-    // Cognito real (que dispara ANTES de checar o código) é inalcançável
-    // contra o emulador; AdminConfirmSignUp também não limpa o
-    // ConfirmationCode salvo. Verificado empiricamente rodando run-local.sh
-    // (achado registrado em backend/docs/backlog.md) — validado de verdade
-    // só contra Cognito real (hom/prod), via backend-integration-tests-hom.yml.
+    // FEAT-35, corrigido após a primeira execução real contra hom
+    // (backend-integration-tests-hom.yml, 2026-09-02): a suposição original
+    // deste teste — que ConfirmSignUp contra usuário já confirmado, com
+    // QUALQUER código, cai em NotAuthorizedException e é tratado como
+    // idempotente (200) — não se confirmou. Verificado empiricamente contra
+    // Cognito real (não só cognito-local): com um código arbitrário
+    // ("000000"), o Cognito real lança CodeMismatchException (400
+    // invalid-confirmation-code), igual a qualquer outro código incorreto —
+    // não há tratamento especial por "já confirmado" nesse caminho. A
+    // idempotência real (resubmeter o MESMO código que já confirmou a
+    // conta) continua sem cobertura automatizada — exigiria capturar o
+    // código genuíno enviado por e-mail, que esta suíte não tem acesso (ver
+    // plan.md, decisão técnica 5). O catch de NotAuthorizedException
+    // permanece em CognitoAuthService (defensivo, categoria documentada na
+    // API do Cognito), só não é mais o que este teste exercita.
     [Fact]
-    public async Task Confirm_UsuarioJaConfirmado_Retorna200Idempotente()
+    public async Task Confirm_UsuarioJaConfirmado_ComCodigoIncorreto_Retorna400()
     {
-        if (IntegrationTestEnvironment.Current.IsLocal)
-        {
-            Console.WriteLine("SKIP (modo Local): cognito-local não reproduz a checagem de UserStatus do ConfirmSignUp real — ver comentário no teste.");
-            return;
-        }
-
         await using var account = await TestAccountFixture.CreateAsync();
 
         var response = await account.Transport.SendAsync(
             HttpMethod.Post, "/auth/confirm",
             new ConfirmRequestDto(account.Email, "000000"));
 
-        response.StatusCode.Should().Be(200);
+        response.StatusCode.Should().Be(400);
+
+        var problem = response.Deserialize<ProblemDetailsDto>();
+        problem.Type.Should().Be("https://gastosapp.dev/errors/invalid-confirmation-code");
     }
 
     // Diverge da redação literal da task 29 (tasks.md), que descrevia
@@ -184,8 +181,17 @@ public sealed class AuthFlowTests
     // getUserByUsername não encontra o usuário em ConfirmSignUp — nosso
     // catch de NotAuthorizedException (idempotência, "já confirmado") acaba
     // absorvendo isso como sucesso (200) em vez do esperado 400. Verificado
-    // empiricamente rodando run-local.sh; validado contra Cognito real
-    // (hom/prod) via backend-integration-tests-hom.yml.
+    // empiricamente rodando run-local.sh.
+    //
+    // Type corrigido após a primeira execução real contra hom
+    // (backend-integration-tests-hom.yml, 2026-09-02): esperava-se
+    // invalid-confirmation-code (UserNotFoundException), mas o
+    // prevent_user_existence_errors="ENABLED" do User Pool (cognito.tf,
+    // hom/prod) faz o Cognito real lançar ExpiredCodeException pra usuário
+    // inexistente — resposta genérica de anti-enumeração, documentada pela
+    // AWS. UserNotFoundException nunca chega a esse ponto de fato contra o
+    // serviço real; o catch continua em CognitoAuthService por segurança
+    // (não custa manter), mas ExpiredCodeException é o caminho real.
     [Fact]
     public async Task Confirm_EmailInexistente_Retorna400()
     {
@@ -204,7 +210,7 @@ public sealed class AuthFlowTests
         response.StatusCode.Should().Be(400);
 
         var problem = response.Deserialize<ProblemDetailsDto>();
-        problem.Type.Should().Be("https://gastosapp.dev/errors/invalid-confirmation-code");
+        problem.Type.Should().Be("https://gastosapp.dev/errors/expired-confirmation-code");
     }
 
     // Pulado em modo Local: o cognito-local v5.3.0 não implementa
@@ -281,10 +287,24 @@ public sealed class AuthFlowTests
         response.StatusCode.Should().Be(200);
     }
 
+    // Corrigido após a primeira execução real contra hom
+    // (backend-integration-tests-hom.yml, 2026-09-02): a versão original
+    // deste teste nunca chamava POST /auth/forgot-password antes do reset —
+    // sem uma sessão de código pendente de verdade, o Cognito real não
+    // consegue distinguir "código errado" de "nenhum código ativo" e lança
+    // ExpiredCodeException (mesmo caminho do "email inexistente" abaixo), não
+    // CodeMismatchException. Contra cognito-local (mais simplificado) isso
+    // "funcionava" por acidente. Corrigido gerando um código pendente de
+    // verdade primeiro — só assim o Cognito tem algo genuíno pra comparar e
+    // lança CodeMismatchException (400 invalid-reset-code) de fato.
     [Fact]
     public async Task ResetPassword_CodigoIncorreto_Retorna400()
     {
         await using var account = await TestAccountFixture.CreateAsync();
+
+        await account.Transport.SendAsync(
+            HttpMethod.Post, "/auth/forgot-password",
+            new ForgotPasswordRequestDto(account.Email));
 
         var response = await account.Transport.SendAsync(
             HttpMethod.Post, "/auth/reset-password",
@@ -296,9 +316,24 @@ public sealed class AuthFlowTests
         problem.Type.Should().Be("https://gastosapp.dev/errors/invalid-reset-code");
     }
 
+    // Pulado em modo Local: type corrigido após a primeira execução real
+    // contra hom (backend-integration-tests-hom.yml, 2026-09-02) — esperava-se
+    // invalid-reset-code (UserNotFoundException), mas o
+    // prevent_user_existence_errors="ENABLED" do User Pool (cognito.tf,
+    // hom/prod) faz o Cognito real lançar ExpiredCodeException pra usuário
+    // inexistente em ConfirmForgotPassword também (mesma resposta genérica de
+    // anti-enumeração documentada pela AWS que afeta ConfirmSignUp — ver
+    // Confirm_EmailInexistente_Retorna400). cognito-local não reproduz isso
+    // (lança UserNotFoundException de fato), então local e hom divergem aqui.
     [Fact]
     public async Task ResetPassword_EmailInexistente_Retorna400()
     {
+        if (IntegrationTestEnvironment.Current.IsLocal)
+        {
+            Console.WriteLine("SKIP (modo Local): cognito-local lança UserNotFoundException (não ExpiredCodeException) pra usuário inexistente em ConfirmForgotPassword — ver comentário no teste.");
+            return;
+        }
+
         using var transport = ApiTransportFactory.Create();
 
         var response = await transport.SendAsync(
@@ -308,7 +343,7 @@ public sealed class AuthFlowTests
         response.StatusCode.Should().Be(400);
 
         var problem = response.Deserialize<ProblemDetailsDto>();
-        problem.Type.Should().Be("https://gastosapp.dev/errors/invalid-reset-code");
+        problem.Type.Should().Be("https://gastosapp.dev/errors/expired-reset-code");
     }
 
     // Não existe um teste "ResetPassword_SenhaForaDaPolitica_Retorna400" nesta

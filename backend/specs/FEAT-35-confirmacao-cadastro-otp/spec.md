@@ -34,14 +34,27 @@ adicional.
 **Decisões fechadas com o usuário durante o `/specify`:**
 
 1. **Email inexistente ou código incorreto em `POST /auth/confirm`
-   recebem o mesmo erro** (`invalid-confirmation-code`, 400) — evita
-   que a API revele se um email está cadastrado ou não (mesmo
-   princípio de não-enumeração já seguido implicitamente pelo restante
-   da API de auth).
-2. **Confirmar um usuário que já está confirmado é idempotente**: a
-   API retorna 200, não erro — cobre o caso de o usuário reenviar o
-   formulário (ex.: duplo clique, aba duplicada) sem quebrar a UX do
-   fluxo de OTP.
+   nunca revelam se o email está cadastrado** (mesmo princípio de
+   não-enumeração já seguido implicitamente pelo restante da API de
+   auth) — **redação original previa o mesmo `type` de erro
+   (`invalid-confirmation-code`) para os dois casos; corrigido em
+   2026-09-02** (ver "Status"): contra o Cognito real, com
+   `prevent_user_existence_errors="ENABLED"` (`cognito.tf`), email
+   inexistente devolve `expired-confirmation-code`, não
+   `invalid-confirmation-code` — o princípio de não-enumeração
+   continua valendo (sempre 400, nunca revela a diferença), só o
+   `type` específico difere do que se assumia originalmente.
+2. **Confirmar um usuário que já está confirmado com um código
+   arbitrário/incorreto retorna 400** (`invalid-confirmation-code`),
+   não 200 — **decisão original (2026-08-xx) previa idempotência
+   (200) via `NotAuthorizedException`; corrigida em 2026-09-02** (ver
+   "Status"): contra o Cognito real, um código incorreto qualquer
+   sempre lança `CodeMismatchException`, mesmo pra usuário já
+   confirmado — não há tratamento especial por status. A idempotência
+   real (resubmeter o mesmo código genuíno que já confirmou a conta)
+   não foi refutada nem confirmada — não há como testar isso sem
+   capturar o código de verdade enviado por email (fora do alcance da
+   suíte de testes integrados).
 3. **`POST /auth/resend-confirmation` sempre retorna 200**, mesmo
    quando o email não existe ou já está confirmado — mesmo princípio
    de não-enumeração da decisão 1, aplicado ao reenvio (o Cognito é
@@ -60,15 +73,25 @@ adicional.
   respectivamente — ausência de qualquer um retorna 400
   (`validation-error`, mesmo padrão do `ValidationBehavior` já usado
   pelas demais rotas, ex.: `POST /auth/register`)
-- `POST /auth/confirm` com código incorreto (`CodeMismatchException`)
-  ou email não encontrado no Cognito (`UserNotFoundException`) retorna
-  400 (`invalid-confirmation-code`) — mesma resposta para os dois casos
-  (decisão 1)
+- `POST /auth/confirm` com código incorreto pra um usuário existente,
+  não confirmado (`CodeMismatchException`) retorna 400
+  (`invalid-confirmation-code`)
+- `POST /auth/confirm` com email inexistente (`ExpiredCodeException`,
+  não `UserNotFoundException` — anti-enumeração do
+  `prevent_user_existence_errors`) retorna 400
+  (`expired-confirmation-code`) — mesmo status 400 do código incorreto,
+  sem revelar a diferença (decisão 1), ainda que o `type` específico
+  não seja o mesmo
 - `POST /auth/confirm` com código expirado (`ExpiredCodeException`)
   retorna 400 (`expired-confirmation-code`)
-- `POST /auth/confirm` para um usuário já confirmado (Cognito recusa
-  com `NotAuthorizedException`, "Current status is CONFIRMED") retorna
-  200, sem erro (decisão 2)
+- `POST /auth/confirm` para um usuário já confirmado com um código
+  incorreto/arbitrário (`CodeMismatchException`) retorna 400
+  (`invalid-confirmation-code`) — não há tratamento especial de
+  idempotência nesse caminho (decisão 2). O catch de
+  `NotAuthorizedException` ("Current status is CONFIRMED") permanece
+  em `CognitoAuthService` por segurança, mapeado pra sucesso (200),
+  mas não é o caminho observado empiricamente contra o Cognito real
+  pra código incorreto
 - `POST /auth/resend-confirmation` sempre retorna 200, independentemente
   de o email existir, já estar confirmado, ou o Cognito recusar o
   reenvio (decisão 3) — exceções não mapeadas explicitamente (ex.:
@@ -108,14 +131,19 @@ adicional.
 - Given um `email` que nunca foi registrado
 - When alguém chama `POST /auth/confirm` com esse `email` e qualquer
   `code`
-- Then a API retorna 400 (`invalid-confirmation-code`) — mesma resposta
-  da US2, sem revelar que o email não existe
+- Then a API retorna 400 (`expired-confirmation-code`) — mesmo status
+  400 da US2, sem revelar que o email não existe (`type` específico
+  corrigido em 2026-09-02, ver "Status")
 
-**US5 — Confirmar duas vezes é idempotente**
+**US5 — Confirmar duas vezes com código incorreto retorna 400**
 - Given um usuário já confirmado (ex.: já chamou `POST /auth/confirm`
   com sucesso antes)
-- When ele chama `POST /auth/confirm` novamente (com qualquer `code`)
-- Then a API retorna 200, sem erro
+- When ele chama `POST /auth/confirm` novamente com um código
+  incorreto/arbitrário
+- Then a API retorna 400 (`invalid-confirmation-code`) — **corrigido em
+  2026-09-02** (redação original previa 200/idempotência; ver
+  "Status"). O comportamento de fato idempotente (resubmeter o mesmo
+  código genuíno) permanece sem cobertura de teste
 
 **US6 — Reenvio de código**
 - Given um usuário não confirmado
@@ -153,7 +181,7 @@ Response 400 (parâmetro ausente):
 }
 ```
 
-Response 400 (código incorreto ou email inexistente):
+Response 400 (código incorreto — usuário existente, confirmado ou não):
 ```json
 {
   "type": "https://gastosapp.dev/errors/invalid-confirmation-code",
@@ -163,7 +191,8 @@ Response 400 (código incorreto ou email inexistente):
 }
 ```
 
-Response 400 (código expirado):
+Response 400 (código expirado, ou email inexistente — mesmo `type` nos
+dois casos, corrigido em 2026-09-02, ver "Status"):
 ```json
 {
   "type": "https://gastosapp.dev/errors/expired-confirmation-code",
@@ -210,16 +239,18 @@ genérico por tipo de erro (RFC 9457), mensagem específica sempre em
       escopo do teste integrado
 - [x] `POST /auth/confirm` com código incorreto retorna 400
       (`invalid-confirmation-code`) (US2) — validado por unit + componente
-      + integrado (rodando de verdade contra cognito-local)
+      + integrado (rodando de verdade contra cognito-local e Cognito real)
 - [x] `POST /auth/confirm` com código expirado retorna 400
       (`expired-confirmation-code`) (US3) — validado por unit + componente
 - [x] `POST /auth/confirm` com email inexistente retorna 400
-      (`invalid-confirmation-code`), mesma resposta de código incorreto
-      (US4) — validado por unit + componente; ver "Status" sobre escopo
-      do teste integrado
-- [x] `POST /auth/confirm` para usuário já confirmado retorna 200, sem
-      erro (US5) — validado por unit + componente; ver "Status" sobre
-      escopo do teste integrado
+      (`expired-confirmation-code`, corrigido em 2026-09-02 — ver
+      "Status") (US4) — validado por unit + componente + integrado
+      (Cognito real, hom)
+- [x] `POST /auth/confirm` para usuário já confirmado com código
+      incorreto retorna 400 (`invalid-confirmation-code`, corrigido em
+      2026-09-02 — ver "Status") (US5) — validado por integrado
+      (Cognito real, hom); idempotência de fato (mesmo código genuíno)
+      sem cobertura de teste
 - [x] `POST /auth/resend-confirmation` com email de usuário não
       confirmado retorna 200 e dispara um novo código pelo Cognito (US6)
       — validado por unit + componente; ver "Status" sobre escopo do
@@ -249,6 +280,35 @@ genérico por tipo de erro (RFC 9457), mensagem específica sempre em
 
 Implementação concluída (todas as 36 tasks de `tasks.md`). Suíte
 completa: 489 unit + 214 componente + 30 integrado (todos passando).
+
+**Correção de 2026-09-02 (descoberta durante a FEAT-36, primeira
+execução real de `backend-integration-tests-hom.yml` desde que a
+suíte existe — 0 runs anteriores):** duas suposições desta spec sobre
+o comportamento do Cognito **real** (só validadas antes contra
+`cognito-local`) se provaram erradas:
+1. **Idempotência (decisão 2/US5)**: confirmar um usuário já
+   confirmado com um código incorreto/arbitrário retorna 400
+   (`invalid-confirmation-code`, via `CodeMismatchException`), não 200
+   — não existe tratamento especial por status "já confirmado" nesse
+   caminho. `cognito-local` reproduziu esse mesmo resultado depois de
+   corrigido (sem precisar de guarda `IsLocal`); a "verificação de
+   idempotência real" (resubmeter o código genuíno já usado) continua
+   sem cobertura de teste — exigiria capturar o código de verdade
+   enviado por email.
+2. **Email inexistente (decisão 1/US4)**: retorna
+   `expired-confirmation-code`, não `invalid-confirmation-code` — o
+   `prevent_user_existence_errors="ENABLED"` do User Pool
+   (`cognito.tf`) faz o Cognito real lançar `ExpiredCodeException`
+   (não `UserNotFoundException`) como resposta genérica de
+   anti-enumeração. O princípio de não-enumeração em si continua
+   correto (sempre 400, nunca revela a diferença).
+
+Nenhuma mudança de código foi necessária em `CognitoAuthService` —o
+mapeamento de exceção já estava correto, só a suposição de qual
+exceção o Cognito realmente lança para esses 2 cenários específicos
+estava errada. Testes (`AuthFlowTests.cs`) e este `spec.md` corrigidos
+de acordo. Ver `backend/specs/FEAT-36-recuperacao-senha/spec.md`
+("Status") para o achado equivalente nos testes próprios da FEAT-36.
 
 **Suposição da decisão técnica 4 do `plan.md`** (que
 `ResendConfirmationCode` pra usuário já confirmado lança
