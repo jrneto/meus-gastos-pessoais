@@ -1,0 +1,45 @@
+# Build efêmero do artefato Native AOT do Lambda trigger CustomMessage do
+# Cognito (FEAT-34). Mesmo padrão de Dockerfile.build-account-trigger
+# (Amazon Linux 2023 na base do build, mesma glibc do runtime
+# "provided.al2023"), publicando um projeto diferente
+# (GastosApp.CognitoTriggers.CustomMessage) — que não referencia
+# Application/Infrastructure, então este build não recompila as camadas
+# compartilhadas com a API.
+#
+# Contexto de build esperado: backend/ (para enxergar src/*)
+# Exemplo: docker build -f infra/lambda/Dockerfile.build-custom-message-trigger
+#          --target export --output type=local,dest=infra/lambda/out .
+# (rodar a partir de backend/)
+
+FROM amazonlinux:2023 AS build
+
+RUN dnf install -y -q clang zlib-devel tar gzip \
+    && dnf clean all
+
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+
+RUN curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh \
+    && chmod +x /tmp/dotnet-install.sh \
+    && /tmp/dotnet-install.sh --channel 10.0 --quality preview --install-dir /usr/share/dotnet
+ENV PATH="/usr/share/dotnet:${PATH}"
+
+WORKDIR /src
+COPY . .
+
+RUN dotnet publish src/GastosApp.CognitoTriggers.CustomMessage/GastosApp.CognitoTriggers.CustomMessage.csproj \
+    -c Release \
+    -r linux-x64 \
+    --self-contained \
+    -p:PublishAot=true \
+    -p:NuGetPackageFolders=/root/.nuget/packages \
+    -o /app/publish
+
+FROM amazonlinux:2023 AS package
+RUN dnf install -y -q zip && dnf clean all
+WORKDIR /pkg
+COPY --from=build /app/publish/GastosApp.CognitoTriggers.CustomMessage ./bootstrap
+RUN chmod +x ./bootstrap \
+    && zip -j /custom-message-trigger-function.zip bootstrap
+
+FROM scratch AS export
+COPY --from=package /custom-message-trigger-function.zip /custom-message-trigger-function.zip

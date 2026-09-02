@@ -22,7 +22,7 @@ public sealed class CognitoAuthService : IAuthService
     }
 
     public async Task<Result<RegisterResult>> RegisterAsync(
-        string email, string password,
+        string email, string password, string name,
         CancellationToken cancellationToken = default)
     {
         try
@@ -34,7 +34,8 @@ public sealed class CognitoAuthService : IAuthService
                 Password = password,
                 UserAttributes =
                 [
-                    new AttributeType { Name = "email", Value = email }
+                    new AttributeType { Name = "email", Value = email },
+                    new AttributeType { Name = "name", Value = name }
                 ]
             }, cancellationToken);
 

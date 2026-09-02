@@ -36,7 +36,7 @@ public class RegisterUserCommandHandlerTests
         var command = ValidCommand();
         var authResult = new RegisterResult("user-id-123", command.Email);
 
-        _authServiceMock.RegisterAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
+        _authServiceMock.RegisterAsync(command.Email, command.Password, command.Name.Trim(), Arg.Any<CancellationToken>())
             .Returns(Result.Success(authResult));
         _userProfileRepositoryMock.CreateAsync(Arg.Any<GastosApp.Domain.Users.UserProfile>(), Arg.Any<CancellationToken>())
             .Returns(new CreateUserProfileResult(CpfAlreadyExists: false));
@@ -52,7 +52,7 @@ public class RegisterUserCommandHandlerTests
         result.Value.PhoneNumber.Should().Be(PhoneNumber);
         result.Value.Cpf.Should().Be(CpfValue);
 
-        await _authServiceMock.Received(1).RegisterAsync(command.Email, command.Password, Arg.Any<CancellationToken>());
+        await _authServiceMock.Received(1).RegisterAsync(command.Email, command.Password, command.Name.Trim(), Arg.Any<CancellationToken>());
         await _authServiceMock.DidNotReceiveWithAnyArgs().DeleteAsync(default!, default);
     }
 
@@ -62,7 +62,7 @@ public class RegisterUserCommandHandlerTests
         // Arrange
         var command = new RegisterUserCommand(Email, Password, "  Fulano da Silva  ", PhoneNumber, CpfValue);
 
-        _authServiceMock.RegisterAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
+        _authServiceMock.RegisterAsync(command.Email, command.Password, command.Name.Trim(), Arg.Any<CancellationToken>())
             .Returns(Result.Success(new RegisterResult("user-id-123", command.Email)));
         _userProfileRepositoryMock.CreateAsync(Arg.Any<GastosApp.Domain.Users.UserProfile>(), Arg.Any<CancellationToken>())
             .Returns(new CreateUserProfileResult(CpfAlreadyExists: false));
@@ -80,7 +80,7 @@ public class RegisterUserCommandHandlerTests
         // Arrange
         var command = ValidCommand();
 
-        _authServiceMock.RegisterAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
+        _authServiceMock.RegisterAsync(command.Email, command.Password, command.Name.Trim(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure<RegisterResult>(AuthErrors.EmailAlreadyExists));
 
         // Act
@@ -101,7 +101,7 @@ public class RegisterUserCommandHandlerTests
         // Arrange
         var command = ValidCommand();
 
-        _authServiceMock.RegisterAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
+        _authServiceMock.RegisterAsync(command.Email, command.Password, command.Name.Trim(), Arg.Any<CancellationToken>())
             .Returns(Result.Success(new RegisterResult("user-id-123", command.Email)));
         _userProfileRepositoryMock.CreateAsync(Arg.Any<GastosApp.Domain.Users.UserProfile>(), Arg.Any<CancellationToken>())
             .Returns(new CreateUserProfileResult(CpfAlreadyExists: true));
@@ -124,7 +124,7 @@ public class RegisterUserCommandHandlerTests
         var command = ValidCommand();
         var exception = new InvalidOperationException("erro transiente");
 
-        _authServiceMock.RegisterAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
+        _authServiceMock.RegisterAsync(command.Email, command.Password, command.Name.Trim(), Arg.Any<CancellationToken>())
             .Returns(Result.Success(new RegisterResult("user-id-123", command.Email)));
         _userProfileRepositoryMock.CreateAsync(Arg.Any<GastosApp.Domain.Users.UserProfile>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<CreateUserProfileResult>(exception));

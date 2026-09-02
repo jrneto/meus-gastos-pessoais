@@ -40,7 +40,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
     public async Task Register_ComDadosValidos_Retorna201ComLocationEBody()
     {
         _factory.AuthServiceMock
-            .RegisterAsync("neto@email.com", "Senha123", Arg.Any<CancellationToken>())
+            .RegisterAsync("neto@email.com", "Senha123", "Fulano da Silva", Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result.Success(new RegisterResult("uuid-123", "neto@email.com"))));
 
         var response = await _client.PostAsJsonAsync("/auth/register", ValidRegisterRequest);
@@ -60,7 +60,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
     public async Task Register_ComEmailDuplicado_Retorna409()
     {
         _factory.AuthServiceMock
-            .RegisterAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .RegisterAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result.Failure<RegisterResult>(AuthErrors.EmailAlreadyExists)));
 
         var response = await _client.PostAsJsonAsync("/auth/register", ValidRegisterRequest);
@@ -75,7 +75,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
     public async Task Register_ComCpfJaCadastrado_Retorna409EDesfazCadastroNoCognito()
     {
         _factory.AuthServiceMock
-            .RegisterAsync("neto@email.com", "Senha123", Arg.Any<CancellationToken>())
+            .RegisterAsync("neto@email.com", "Senha123", "Fulano da Silva", Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result.Success(new RegisterResult("uuid-123", "neto@email.com"))));
         _factory.UserProfileRepositoryMock
             .CreateAsync(Arg.Any<UserProfile>(), Arg.Any<CancellationToken>())
@@ -116,7 +116,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/validation-error");
 
         _ = _factory.AuthServiceMock.DidNotReceive()
-            .RegisterAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            .RegisterAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -453,7 +453,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
     public async Task Register_QuandoAuthServiceLancaExcecaoNaoPrevista_Retorna500()
     {
         _factory.AuthServiceMock
-            .RegisterAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .RegisterAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<Result<RegisterResult>>(new InvalidOperationException("Falha simulada")));
 
         var response = await _client.PostAsJsonAsync("/auth/register", ValidRegisterRequest);
