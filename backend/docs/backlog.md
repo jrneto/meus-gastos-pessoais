@@ -205,7 +205,8 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   técnico abaixo — pendente validação real em hom via
   `backend-integration-tests-hom.yml`).
 
-- [ ] **FEAT-36 — Recuperação de senha (esqueci minha senha)**
+- [ ] **FEAT-36 — Recuperação de senha (esqueci minha senha)** *(spec
+  pronta, ver `backend/specs/FEAT-36-recuperacao-senha/`)*:
   `POST /auth/forgot-password` (`ForgotPasswordAsync`) e `POST /auth/
   reset-password` (`ConfirmForgotPasswordAsync`), com erros
   `invalid-reset-code`/`expired-reset-code` (`CodeMismatchException`/
@@ -220,7 +221,11 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   código do Cognito) com `{{data}}` da própria request;
   `{{dispositivo}}` pode ficar com o `User-Agent` cru como fallback (sem
   parsing de dispositivo no projeto hoje — refinar como débito futuro
-  se o usuário quiser).
+  se o usuário quiser). Sem rate limit/brute-force próprio (confia na
+  proteção nativa do Cognito, decisão confirmada no `/specify`); sem
+  personalização por nome no e-mail de "senha alterada" (reset não é
+  autenticado, evita IAM novo — template ajustado pra não depender de
+  `{{nome}}`).
   Depende de: FEAT-33 (SES). Não depende de FEAT-34/35.
 
 - [ ] **FEAT-37 — E-mail de boas-vindas** *(substitui a antiga FEAT-27
@@ -312,9 +317,28 @@ monorepo.
   zone) e um record TXT de DMARC (`_dmarc.jrnexpenses.com`, política
   inicial `p=none` pra só monitorar antes de enforçar).
 
-- [ ] **MELHORIA — Revisar throttling/brute-force do código de reset de
-  senha na FEAT-36** (levantado no `/specify` da FEAT-35 —
-  `backend/specs/FEAT-35-confirmacao-cadastro-otp/`): o código do
+- [ ] **DÉBITO — `POST /auth/register` não trata `InvalidPasswordException`
+  do Cognito** (percebido no `/specify` da FEAT-36 —
+  `backend/specs/FEAT-36-recuperacao-senha/`): `RegisterUserCommandValidator`
+  só valida `MinimumLength(8)` pra senha, sem cobrir o resto da política
+  real do Cognito (maiúscula+minúscula+número+símbolo, `cognito.tf` de
+  hom/prod). `CognitoAuthService.RegisterAsync` só captura
+  `UsernameExistsException` — uma senha com 8+ caracteres mas fora do
+  resto da política (ex.: só minúsculas) faz o SDK lançar
+  `InvalidPasswordException`, não tratada, propagando pro
+  `GlobalExceptionHandler` como 500 em vez de 400. A FEAT-36 resolveu o
+  mesmo problema para `POST /auth/reset-password` (reaproveitando
+  `AuthErrors.Validation`); aplicar o mesmo tratamento em `RegisterAsync`
+  fica pendente.
+
+- [x] **MELHORIA — Revisar throttling/brute-force do código de reset de
+  senha na FEAT-36** *(revisitado no `/specify` da FEAT-36 —
+  `backend/specs/FEAT-36-recuperacao-senha/`, decisão 3: manter sem
+  mecanismo próprio, confiando na proteção nativa do Cognito; a
+  vulnerabilidade documentada abaixo foi corrigida pela AWS em
+  abril/2021, sem recorrência pública conhecida desde então. Reavaliar
+  só se houver evidência de abuso real.)* (levantado no `/specify` da
+  FEAT-35 — `backend/specs/FEAT-35-confirmacao-cadastro-otp/`): o código do
   Cognito (`ConfirmSignUp`/`ConfirmForgotPassword`) é sempre válido por
   24h, fixo e não configurável (nem via console/API, nem via Terraform
   — confirmado na documentação oficial da AWS). Pra `POST /auth/confirm`
