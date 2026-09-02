@@ -273,6 +273,32 @@ Modo Leve, fora do escopo do que estava sendo feito no momento — ver
 "Débitos técnicos e oportunidades de melhoria" no `/CLAUDE.md` raiz do
 monorepo.
 
+- [ ] **DÉBITO — `TestAccountFixture` não verifica email de verdade no
+  Cognito real** (percebido na FEAT-36, ao investigar falhas de
+  `backend-integration-tests-hom.yml` — `backend/specs/FEAT-36-
+  recuperacao-senha/spec.md`, "Status"): `TestAccountFixture`
+  (`backend/tests/GastosApp.IntegrationTests/Support/
+  TestAccountFixture.cs`, usada por boa parte da suíte de testes
+  integrados, não só Auth) confirma a conta via `AdminConfirmSignUpAsync`
+  — isso marca `UserStatus=CONFIRMED`, mas **não** marca o atributo
+  `email_verified=true` no Cognito real (só o fluxo genuíno de
+  `ConfirmSignUp` com o código de verdade enviado por email faz isso,
+  via `auto_verified_attributes` do User Pool). Confirmado
+  empiricamente contra hom (`curl` direto + `AdminUpdateUserAttributes`
+  comparando antes/depois). Efeito prático: qualquer chamada a
+  `ForgotPasswordAsync` contra uma conta da fixture cai no catch
+  defensivo de `InvalidParameterException` (retorna 200 sem gerar
+  nenhum código real) — o cenário "usuário de fato confirmado" nunca é
+  exercitado por completo contra Cognito real por nenhum teste da
+  suíte, incluindo `ForgotPassword_EmailDeContaExistente_Retorna200`
+  (FEAT-36, US1), que só verifica o status HTTP (200), não se um
+  código de verdade foi gerado. Contorno pontual aplicado em
+  `ResetPassword_CodigoIncorreto_Retorna400` (chama
+  `AdminUpdateUserAttributes` manualmente, só fora de Local). Corrigir
+  isso de forma abrangente (`TestAccountFixture` passar a marcar
+  `email_verified=true` por padrão) afeta todos os testes que a usam —
+  avaliar impacto mais amplo antes de aplicar.
+
 - [x] **DÉBITO — Módulos sem teste integrado ainda** (levantado na
   FEAT-29 — `backend/specs/FEAT-29-testes-integrados/`) *(resolvido,
   ver `backend/specs/FEAT-32-testes-integrados-modulos-pendentes/`)*:
