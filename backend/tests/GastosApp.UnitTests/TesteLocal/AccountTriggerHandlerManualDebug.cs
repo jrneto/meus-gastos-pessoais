@@ -24,21 +24,40 @@ namespace GastosApp.UnitTests.TesteLocal;
 // Pré-requisito: LocalStack no ar (gastosapp-localstack) com a tabela
 // GastosApp-Local já seedada (./infra/scripts/local-init.sh).
 //
-// Rodar: Test Explorer do VS Code → botão direito no teste → "Debug Test"
-// (breakpoint funciona normal dentro de AccountTriggerHandler.HandleAsync
-// e em qualquer coisa que EnsureAccountCommand chame). Antes de rodar,
-// ajuste userId pro sub do usuário que você confirmou localmente (ver
+// Antes de rodar (por qualquer um dos dois jeitos abaixo): ajuste userId
+// pro sub do usuário que você confirmou localmente (ver
 // ConfirmationCode/estado em /app/.cognito/db/<user-pool-id>.json, dentro
 // do container gastosapp-cognito-local) — email fica fixo em
 // titular@jrnexpenses.com, mesmo domínio de teste já usado pela suíte de
 // integração (nunca commitar e-mail pessoal aqui).
+//
+// Rodar (Test Explorer do VS Code): botão direito no teste → "Debug Test"
+// — quando o Test Explorer estiver enxergando os testes (às vezes some,
+// ver alternativa abaixo).
+//
+// Rodar (linha de comando, quando o Test Explorer não aparece): tirar o
+// "Skip" do [Fact] abaixo primeiro — Skip nunca executa o corpo do
+// método, então nenhum breakpoint é atingido com ele presente. Depois,
+// a partir de backend/:
+//
+//   VSTEST_HOST_DEBUG=1 dotnet test tests/GastosApp.UnitTests \
+//     --filter "FullyQualifiedName~AccountTriggerHandlerManualDebug"
+//
+// O testhost builda, imprime "Process Id: <PID>, Name: testhost" e PARA,
+// esperando debugger anexado (não roda o teste ainda). No VS Code:
+// Ctrl+Shift+P → ".NET: Attach to a .NET 5+ or .NET Core process" →
+// escolher esse PID (filtrar digitando "testhost" ajuda a achar). A
+// execução só continua depois de anexado — os breakpoints já colocados
+// no arquivo são atingidos normalmente a partir daí. Ao terminar, devolva
+// o "Skip" pro [Fact] (evita rodar isso à toa em qualquer `dotnet test`
+// sem --filter).
 public class AccountTriggerHandlerManualDebug
 {
     [Fact(Skip = "Manual — rode com Debug Test quando precisar simular o trigger PostConfirmation localmente.")]
     public async Task Simular_PostConfirmation_ParaUsuarioLocal()
     {
         // AJUSTE AQUI: sub do usuário que você confirmou localmente.
-        const string userId = "b63bc2af-05dd-4655-82a3-09d6af1740b8";
+        const string userId = "bef5807d-2126-4624-accf-6ab34e2bfca6";
         const string email = "titular@jrnexpenses.com";
 
         var configuration = new ConfigurationBuilder()
