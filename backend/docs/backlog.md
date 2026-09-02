@@ -292,12 +292,21 @@ monorepo.
   exercitado por completo contra Cognito real por nenhum teste da
   suíte, incluindo `ForgotPassword_EmailDeContaExistente_Retorna200`
   (FEAT-36, US1), que só verifica o status HTTP (200), não se um
-  código de verdade foi gerado. Contorno pontual aplicado em
-  `ResetPassword_CodigoIncorreto_Retorna400` (chama
-  `AdminUpdateUserAttributes` manualmente, só fora de Local). Corrigir
-  isso de forma abrangente (`TestAccountFixture` passar a marcar
-  `email_verified=true` por padrão) afeta todos os testes que a usam —
-  avaliar impacto mais amplo antes de aplicar.
+  código de verdade foi gerado. **Tentativa de contorno pontual em
+  `ResetPassword_CodigoIncorreto_Retorna400`** (chamar
+  `AdminUpdateUserAttributes` manualmente no teste) **não se
+  sustentou**: a role de CI (`gastosapp-backend-cicd`) não tem essa
+  permissão concedida (escopo mínimo deliberado, ver
+  `backend/infra/CLAUDE.md`) — `AccessDeniedException` rodando de
+  verdade em `backend-integration-tests-hom.yml`. Decisão do usuário
+  (sem mexer em IAM): o teste passou a esperar `type` diferente por
+  ambiente (`invalid-reset-code` local, `expired-reset-code` fora de
+  Local) — aceita a limitação real em vez de contornar. Corrigir isso
+  de forma abrangente (`TestAccountFixture` passar a marcar
+  `email_verified=true` por padrão, e/ou conceder
+  `cognito-idp:AdminUpdateUserAttributes` à role de CI) afeta todos os
+  testes que usam a fixture e é uma mudança de IAM — avaliar impacto
+  mais amplo antes de aplicar.
 
 - [x] **DÉBITO — Módulos sem teste integrado ainda** (levantado na
   FEAT-29 — `backend/specs/FEAT-29-testes-integrados/`) *(resolvido,
