@@ -68,6 +68,6 @@
 
 - [x] 34. Rodar `./scripts/export-openapi.sh` e conferir via `git diff` que `backend/docs/openapi.json` mudou só para incluir `POST /auth/confirm` e `POST /auth/resend-confirmation`
 
-- [ ] 35. Marcar os critérios de aceite concluídos em `backend/specs/FEAT-35-confirmacao-cadastro-otp/spec.md` e preencher uma seção "Status", resumindo o que foi implementado (incluir a confirmação empírica da suposição da task 20/ponto 4 do plan.md, e o escopo real do teste integrado de sucesso conforme decisão técnica 5)
+- [x] 35. Marcar os critérios de aceite concluídos em `backend/specs/FEAT-35-confirmacao-cadastro-otp/spec.md` e preencher uma seção "Status", resumindo o que foi implementado (incluir a confirmação empírica da suposição da task 20/ponto 4 do plan.md, e o escopo real do teste integrado de sucesso conforme decisão técnica 5)
 
 - [ ] 36. Atualizar `backend/docs/backlog.md` — mover/marcar o item da FEAT-35 como concluído, seguindo a convenção já usada para features anteriores (ver commit da FEAT-34)

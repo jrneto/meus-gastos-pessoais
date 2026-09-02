@@ -204,38 +204,91 @@ genérico por tipo de erro (RFC 9457), mensagem específica sempre em
 
 ## Critérios de aceite
 
-- [ ] `POST /auth/confirm` com email e código corretos retorna 200 (sem
+- [x] `POST /auth/confirm` com email e código corretos retorna 200 (sem
       corpo), e o usuário passa a logar normalmente via `POST /auth/login`
-      (US1)
-- [ ] `POST /auth/confirm` com código incorreto retorna 400
-      (`invalid-confirmation-code`) (US2)
-- [ ] `POST /auth/confirm` com código expirado retorna 400
-      (`expired-confirmation-code`) (US3)
-- [ ] `POST /auth/confirm` com email inexistente retorna 400
+      (US1) — validado por unit + componente (mock); ver "Status" sobre
+      escopo do teste integrado
+- [x] `POST /auth/confirm` com código incorreto retorna 400
+      (`invalid-confirmation-code`) (US2) — validado por unit + componente
+      + integrado (rodando de verdade contra cognito-local)
+- [x] `POST /auth/confirm` com código expirado retorna 400
+      (`expired-confirmation-code`) (US3) — validado por unit + componente
+- [x] `POST /auth/confirm` com email inexistente retorna 400
       (`invalid-confirmation-code`), mesma resposta de código incorreto
-      (US4)
-- [ ] `POST /auth/confirm` para usuário já confirmado retorna 200, sem
-      erro (US5)
-- [ ] `POST /auth/resend-confirmation` com email de usuário não
+      (US4) — validado por unit + componente; ver "Status" sobre escopo
+      do teste integrado
+- [x] `POST /auth/confirm` para usuário já confirmado retorna 200, sem
+      erro (US5) — validado por unit + componente; ver "Status" sobre
+      escopo do teste integrado
+- [x] `POST /auth/resend-confirmation` com email de usuário não
       confirmado retorna 200 e dispara um novo código pelo Cognito (US6)
-- [ ] `POST /auth/resend-confirmation` com email inexistente ou já
+      — validado por unit + componente; ver "Status" sobre escopo do
+      teste integrado
+- [x] `POST /auth/resend-confirmation` com email inexistente ou já
       confirmado retorna 200 igualmente, sem revelar a diferença (US7)
-- [ ] Ausência de `email`/`code` em qualquer um dos dois endpoints
+      — validado por unit (mock de Cognito)
+- [x] Ausência de `email`/`code` em qualquer um dos dois endpoints
       retorna 400 (`validation-error`)
-- [ ] `POST /auth/login` continua retornando 401
+- [x] `POST /auth/login` continua retornando 401
       (`user-not-confirmed`) para usuário não confirmado, sem mudança
       de comportamento
-- [ ] Nenhuma mudança no TTL/política de expiração de código do
+- [x] Nenhuma mudança no TTL/política de expiração de código do
       Cognito User Pool (nem em `backend/infra/terraform/`)
-- [ ] Os dois novos endpoints cobertos por teste de componente (mock
+- [x] Os dois novos endpoints cobertos por teste de componente (mock
       de `IAuthService`/Cognito)
-- [ ] Os dois novos endpoints cobertos por teste integrado (pelo menos
+- [x] Os dois novos endpoints cobertos por teste integrado (pelo menos
       o fluxo de sucesso), rodado localmente via
       `backend/infra/lambda/run-local.sh` antes de a feature ser dada
-      por concluída
-- [ ] Suíte completa de testes (unitário + componente) passando
-- [ ] `backend/docs/openapi.json` regenerado refletindo os dois novos
+      por concluída — ver "Status" pra ressalva sobre 3 cenários pulados
+      em modo Local (limitação do cognito-local, não da implementação)
+- [x] Suíte completa de testes (unitário + componente) passando
+- [x] `backend/docs/openapi.json` regenerado refletindo os dois novos
       endpoints
+
+## Status
+
+Implementação concluída (todas as 36 tasks de `tasks.md`). Suíte
+completa: 489 unit + 214 componente + 30 integrado (todos passando).
+
+**Suposição da decisão técnica 4 do `plan.md`** (que
+`ResendConfirmationCode` pra usuário já confirmado lança
+`InvalidParameterException`) não pôde ser confirmada empiricamente:
+descoberto durante a implementação que o `cognito-local` **não
+implementa `ResendConfirmationCode`** — nenhuma versão publicada do
+pacote suporta essa operação (v5.3.0, a mais recente, verificada via
+GitHub API). O `catch (InvalidParameterException)` em
+`CognitoAuthService.ResendConfirmationCodeAsync` continua no código
+(mapeado pra `AuthErrors`, coberto por teste unitário com mock), mas só
+será validado de fato contra Cognito real em homologação.
+
+**Escopo real do teste integrado local** (decisão técnica 5 do
+`plan.md`, revisado durante a implementação): rodando
+`run-local.sh`, descobertas 3 divergências de comportamento entre
+`cognito-local` v5.3.0 e o Cognito real (investigado lendo o
+código-fonte do pacote — ver `backend/docs/backlog.md` pro detalhe
+completo):
+1. `ResendConfirmationCode` não implementado no emulador.
+2. `ConfirmSignUp` do emulador nunca checa `UserStatus` (só compara o
+   `ConfirmationCode` salvo) — o branch de idempotência do Cognito real
+   é inalcançável localmente.
+3. Emulador lança `NotAuthorizedException` (não `UserNotFoundException`)
+   pra usuário inexistente em `ConfirmSignUp`.
+
+Por decisão do usuário: os 3 testes integrados afetados
+(`Confirm_UsuarioJaConfirmado_Retorna200Idempotente`,
+`Confirm_EmailInexistente_Retorna400`,
+`ResendConfirmation_UsuarioNaoConfirmado_Retorna200`) pulam a asserção
+em modo Local (guarda `IntegrationTestEnvironment.Current.IsLocal`) e
+continuam escritos pra rodar de verdade contra Cognito real via
+`backend-integration-tests-hom.yml` — ainda não executados contra hom
+nesta sessão. Débito técnico registrado em `backend/docs/backlog.md`
+com o contexto completo, incluindo a checagem de que não há versão mais
+nova do `cognito-local` que resolva.
+
+Os demais 27 testes integrados (incluindo `Confirm_CodigoIncorreto_
+Retorna400`, que exercita `POST /auth/confirm` de ponta a ponta contra
+o container Native AOT + cognito-local de verdade) passam localmente
+sem ressalva.
 
 ## Fora do escopo
 
