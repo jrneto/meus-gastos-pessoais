@@ -24,23 +24,23 @@
 
 - [x] 12. Rodar `dotnet build backend/GastosApp.sln` e confirmar que compila sem erro (Native AOT trim warnings incluídos)
 
-- [ ] 13. Adicionar `ConfirmSignUpAsync_ShouldSucceed_WhenCognitoCallSucceeds` em `backend/tests/GastosApp.UnitTests/Infrastructure/CognitoAuthServiceTests.cs`
+- [x] 13. Adicionar `ConfirmSignUpAsync_ShouldSucceed_WhenCognitoCallSucceeds` em `backend/tests/GastosApp.UnitTests/Infrastructure/CognitoAuthServiceTests.cs`
 
-- [ ] 14. Adicionar `ConfirmSignUpAsync_ShouldReturnExpiredConfirmationCode_WhenCognitoThrowsExpiredCodeException` (mesmo arquivo)
+- [x] 14. Adicionar `ConfirmSignUpAsync_ShouldReturnExpiredConfirmationCode_WhenCognitoThrowsExpiredCodeException` (mesmo arquivo)
 
-- [ ] 15. Adicionar `ConfirmSignUpAsync_ShouldReturnInvalidConfirmationCode_WhenCognitoThrowsCodeMismatchException` (mesmo arquivo)
+- [x] 15. Adicionar `ConfirmSignUpAsync_ShouldReturnInvalidConfirmationCode_WhenCognitoThrowsCodeMismatchException` (mesmo arquivo)
 
-- [ ] 16. Adicionar `ConfirmSignUpAsync_ShouldReturnInvalidConfirmationCode_WhenCognitoThrowsUserNotFoundException` (mesmo arquivo)
+- [x] 16. Adicionar `ConfirmSignUpAsync_ShouldReturnInvalidConfirmationCode_WhenCognitoThrowsUserNotFoundException` (mesmo arquivo)
 
-- [ ] 17. Adicionar `ConfirmSignUpAsync_ShouldSucceed_WhenCognitoThrowsNotAuthorizedException` (mesmo arquivo) — cobre a idempotência de usuário já confirmado
+- [x] 17. Adicionar `ConfirmSignUpAsync_ShouldSucceed_WhenCognitoThrowsNotAuthorizedException` (mesmo arquivo) — cobre a idempotência de usuário já confirmado
 
-- [ ] 18. Adicionar `ResendConfirmationCodeAsync_ShouldSucceed_WhenCognitoCallSucceeds` (mesmo arquivo)
+- [x] 18. Adicionar `ResendConfirmationCodeAsync_ShouldSucceed_WhenCognitoCallSucceeds` (mesmo arquivo)
 
-- [ ] 19. Adicionar `ResendConfirmationCodeAsync_ShouldSucceed_WhenCognitoThrowsUserNotFoundException` (mesmo arquivo)
+- [x] 19. Adicionar `ResendConfirmationCodeAsync_ShouldSucceed_WhenCognitoThrowsUserNotFoundException` (mesmo arquivo)
 
-- [ ] 20. Adicionar `ResendConfirmationCodeAsync_ShouldSucceed_WhenCognitoThrowsInvalidParameterException` (mesmo arquivo) — valida a suposição documentada no plan.md (decisão técnica 4/ponto de confirmação 1); se o Cognito real lançar outro tipo de exceção, ajustar o `catch` da task 4 e este teste juntos
+- [x] 20. Adicionar `ResendConfirmationCodeAsync_ShouldSucceed_WhenCognitoThrowsInvalidParameterException` (mesmo arquivo) — valida a suposição documentada no plan.md (decisão técnica 4/ponto de confirmação 1); se o Cognito real lançar outro tipo de exceção, ajustar o `catch` da task 4 e este teste juntos
 
-- [ ] 21. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~CognitoAuthServiceTests` e confirmar tudo passando
+- [x] 21. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~CognitoAuthServiceTests` e confirmar tudo passando
 
 - [ ] 22. Adicionar `Confirm_ComCodigoCorreto_Retorna200SemCorpo` em `backend/tests/GastosApp.ComponentTests/Auth/AuthEndpointsTests.cs`
 

@@ -221,6 +221,148 @@ public class CognitoAuthServiceTests
     }
 
     [Fact]
+    public async Task ConfirmSignUpAsync_ShouldSucceed_WhenCognitoCallSucceeds()
+    {
+        // Arrange
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ConfirmSignUpAsync(Arg.Any<ConfirmSignUpRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new ConfirmSignUpResponse());
+
+        // Act
+        var result = await service.ConfirmSignUpAsync("neto@email.com", "123456");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ConfirmSignUpAsync_ShouldReturnExpiredConfirmationCode_WhenCognitoThrowsExpiredCodeException()
+    {
+        // Arrange
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ConfirmSignUpAsync(Arg.Any<ConfirmSignUpRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ConfirmSignUpResponse>(new ExpiredCodeException("Code expired")));
+
+        // Act
+        var result = await service.ConfirmSignUpAsync("neto@email.com", "123456");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Validation);
+        result.Error.Code.Should().Be("expired-confirmation-code");
+    }
+
+    [Fact]
+    public async Task ConfirmSignUpAsync_ShouldReturnInvalidConfirmationCode_WhenCognitoThrowsCodeMismatchException()
+    {
+        // Arrange
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ConfirmSignUpAsync(Arg.Any<ConfirmSignUpRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ConfirmSignUpResponse>(new CodeMismatchException("Code mismatch")));
+
+        // Act
+        var result = await service.ConfirmSignUpAsync("neto@email.com", "000000");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Validation);
+        result.Error.Code.Should().Be("invalid-confirmation-code");
+    }
+
+    [Fact]
+    public async Task ConfirmSignUpAsync_ShouldReturnInvalidConfirmationCode_WhenCognitoThrowsUserNotFoundException()
+    {
+        // Arrange — mesma resposta de código incorreto, pra não revelar se
+        // o email está cadastrado (spec.md, decisão 1).
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ConfirmSignUpAsync(Arg.Any<ConfirmSignUpRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ConfirmSignUpResponse>(new UserNotFoundException("User not found")));
+
+        // Act
+        var result = await service.ConfirmSignUpAsync("naoexiste@email.com", "123456");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Validation);
+        result.Error.Code.Should().Be("invalid-confirmation-code");
+    }
+
+    [Fact]
+    public async Task ConfirmSignUpAsync_ShouldSucceed_WhenCognitoThrowsNotAuthorizedException()
+    {
+        // Arrange — Cognito recusa ConfirmSignUp de usuário já confirmado
+        // com NotAuthorizedException ("Current status is CONFIRMED").
+        // Idempotente: não é erro (spec.md, decisão 2).
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ConfirmSignUpAsync(Arg.Any<ConfirmSignUpRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ConfirmSignUpResponse>(new NotAuthorizedException("User cannot be confirmed. Current status is CONFIRMED")));
+
+        // Act
+        var result = await service.ConfirmSignUpAsync("neto@email.com", "123456");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ResendConfirmationCodeAsync_ShouldSucceed_WhenCognitoCallSucceeds()
+    {
+        // Arrange
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ResendConfirmationCodeAsync(Arg.Any<ResendConfirmationCodeRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new ResendConfirmationCodeResponse());
+
+        // Act
+        var result = await service.ResendConfirmationCodeAsync("neto@email.com");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        await _cognitoMock.Received(1).ResendConfirmationCodeAsync(
+            Arg.Is<ResendConfirmationCodeRequest>(r => r.Username == "neto@email.com"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ResendConfirmationCodeAsync_ShouldSucceed_WhenCognitoThrowsUserNotFoundException()
+    {
+        // Arrange — não revela se o email existe (spec.md, decisão 3).
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ResendConfirmationCodeAsync(Arg.Any<ResendConfirmationCodeRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ResendConfirmationCodeResponse>(new UserNotFoundException("User not found")));
+
+        // Act
+        var result = await service.ResendConfirmationCodeAsync("naoexiste@email.com");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ResendConfirmationCodeAsync_ShouldSucceed_WhenCognitoThrowsInvalidParameterException()
+    {
+        // Arrange — suposição documentada no plan.md (decisão técnica 4):
+        // Cognito recusa reenvio pra usuário já confirmado com esse tipo de
+        // exceção. Mesmo princípio de não-enumeração (spec.md, decisão 3).
+        var service = new CognitoAuthService(_cognitoMock, _options);
+
+        _cognitoMock.ResendConfirmationCodeAsync(Arg.Any<ResendConfirmationCodeRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ResendConfirmationCodeResponse>(new InvalidParameterException("User is already confirmed.")));
+
+        // Act
+        var result = await service.ResendConfirmationCodeAsync("jaconfirmado@email.com");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task DeleteAsync_ShouldCallAdminDeleteUser_WithUserPoolIdAndEmailAsUsername()
     {
         // Arrange
