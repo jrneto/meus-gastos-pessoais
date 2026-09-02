@@ -37,10 +37,18 @@ resource "aws_ssm_parameter" "cors_hom_origin_0" {
 
 # Remetente do e-mail de "senha alterada" (FEAT-36), enviado direto pela
 # API via ses:SendEmail — fora do fluxo nativo do Cognito, então o backend
-# precisa desse valor à mão. Espelha o mesmo remetente já calculado pelo
-# email_configuration do User Pool (ver output ses_sender_email).
+# precisa desse valor à mão. Mesmo literal já usado em
+# email_configuration.from_email_address (cognito.tf) — não referencia o
+# recurso ao vivo porque a AWS devolve esse atributo com encoding MIME
+# (RFC 2047) sempre que o texto tem acentuação, diferente do literal do
+# .tf; isso gera diff perpétuo nesse atributo (bug de idempotência do
+# provider) e, pior, arrasta aws_lambda_function.custom_message_trigger
+# pra dentro de qualquer apply targeted deste recurso (mesma cadeia de
+# dependência), com risco de reverter o código da Lambda pro zip local
+# desatualizado (deploy real acontece fora do Terraform, ver
+# backend/infra/CLAUDE.md). Descoberto ao aplicar em hom (FEAT-36).
 resource "aws_ssm_parameter" "ses_sender_email" {
   name  = "/GastosApp/Hom/Ses/SenderEmail"
   type  = "String"
-  value = aws_cognito_user_pool.main.email_configuration[0].from_email_address
+  value = "jrn.expenses (homologação) <no-reply@hom.jrnexpenses.com>"
 }
