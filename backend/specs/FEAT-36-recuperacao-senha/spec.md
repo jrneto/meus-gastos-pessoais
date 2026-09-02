@@ -32,8 +32,12 @@ código novo:**
 - IAM `ses:SendEmail`/`ses:SendRawEmail` para a Lambda da API principal
   já foi concedido na FEAT-33 (`lambda.tf` de hom/prod), escopado à
   identidade de domínio do próprio ambiente — suficiente para o envio
-  direto do email de "senha alterada" desta feature, sem Terraform
-  novo.
+  direto do email de "senha alterada" desta feature, sem IAM novo.
+  Único Terraform novo necessário: 2 parâmetros `String` no Parameter
+  Store (`Ses/SenderEmail`, um por ambiente, custo zero e sem impacto
+  de segurança) pra expor ao app o remetente já calculado pelo
+  `email_configuration` do Cognito — decisão tomada e confirmada com o
+  usuário durante o `/plan` (ver `plan.md`).
 - As chamadas do Cognito usadas aqui (`ForgotPassword`,
   `ConfirmForgotPassword`) fazem parte da lista de operações que **não
   exigem policy IAM própria** quando chamadas só com `ClientId` (mesma
@@ -301,8 +305,10 @@ genérico por tipo de erro (RFC 9457), mensagem específica sempre em
       senha após um reset bem-sucedido, sem mudança de comportamento
 - [ ] Nenhuma mudança no TTL/política de expiração de código do Cognito
       User Pool (nem em `backend/infra/terraform/`)
-- [ ] Nenhuma mudança de IAM/Terraform nova — reaproveita permissão SES
-      já concedida na FEAT-33
+- [ ] Nenhuma mudança de IAM nova — reaproveita permissão SES já
+      concedida na FEAT-33; único Terraform novo são os 2 parâmetros
+      `Ses/SenderEmail` no Parameter Store (decisão do `/plan`, ver
+      `plan.md`)
 - [ ] Template `frontend/design-system/emails/03-senha-alterada.html`
       ajustado para não depender de `{{nome}}` (decisão 4)
 - [ ] Os dois novos endpoints cobertos por teste de componente (mock de
