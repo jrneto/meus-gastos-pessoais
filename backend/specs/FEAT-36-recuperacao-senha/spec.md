@@ -361,12 +361,35 @@ aplicado aqui:
   `UserNotFoundException`) — ganhou guarda `IsLocal` (`cognito-local`
   ainda lança `UserNotFoundException` de fato, diverge de hom/prod).
 - `ResetPassword_CodigoIncorreto_Retorna400`: bug de teste, não de
-  contrato — nunca chamava `POST /auth/forgot-password` antes do
-  reset, então não havia código pendente de verdade pra comparar; o
-  Cognito real cai em `ExpiredCodeException` nesse caso (mesma
-  anti-enumeração acima), não `CodeMismatchException`. Corrigido
-  gerando um código pendente real primeiro — segue sem guarda
-  `IsLocal`, passa nos dois ambientes.
+  contrato — exigiu **2 rodadas de correção**. A 1ª (chamar
+  `POST /auth/forgot-password` antes do reset) não foi suficiente
+  sozinha: o teste continuou recebendo `ExpiredCodeException` mesmo
+  assim. Causa raiz (2ª rodada, confirmada empiricamente contra hom
+  via `curl` + `AdminUpdateUserAttributes`): `TestAccountFixture`
+  confirma a conta via `AdminConfirmSignUpAsync`, que **não marca
+  `email_verified=true`** no Cognito real (só o fluxo genuíno de
+  `ConfirmSignUp` com código de verdade faz isso, via
+  `auto_verified_attributes`) — sem email verificado,
+  `ForgotPasswordAsync` sempre cai no catch de
+  `InvalidParameterException` (200 sem gerar código real, spec.md
+  decisão 1), então o reset nunca tinha nada genuíno pra comparar.
+  Corrigido chamando `AdminUpdateUserAttributes` (email_verified=true)
+  manualmente no teste antes do forgot-password — só fora de Local
+  (`cognito-local` não implementa essa operação e não exige email
+  verificado pro `ForgotPassword` funcionar, então o teste já passava
+  localmente sem esse passo extra).
+
+**Possível débito técnico levantado, não decidido ainda:**
+`TestAccountFixture` (usada por boa parte da suíte, não só Auth) cria
+contas que — contra o Cognito real — nunca têm o email genuinamente
+verificado, mesmo com `UserStatus=CONFIRMED`. Isso também significa
+que `ForgotPassword_EmailDeContaExistente_Retorna200` (US1) só
+verifica o status HTTP (200), não se um código de verdade foi gerado —
+o cenário "email de usuário de fato confirmado" nunca é exercitado por
+completo contra hom/prod. Corrigir isso de forma abrangente
+(ex.: `TestAccountFixture` passar a marcar `email_verified=true` por
+padrão) afeta todos os testes que a usam, não só os da FEAT-36 — fora
+do escopo desta correção pontual.
 
 Nenhuma mudança de código foi necessária em `CognitoAuthService` — o
 mapeamento de exceção já estava correto, só a suposição de qual

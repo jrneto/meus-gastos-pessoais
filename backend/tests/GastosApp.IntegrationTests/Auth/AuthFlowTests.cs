@@ -287,20 +287,51 @@ public sealed class AuthFlowTests
         response.StatusCode.Should().Be(200);
     }
 
-    // Corrigido após a primeira execução real contra hom
-    // (backend-integration-tests-hom.yml, 2026-09-02): a versão original
-    // deste teste nunca chamava POST /auth/forgot-password antes do reset —
-    // sem uma sessão de código pendente de verdade, o Cognito real não
-    // consegue distinguir "código errado" de "nenhum código ativo" e lança
-    // ExpiredCodeException (mesmo caminho do "email inexistente" abaixo), não
-    // CodeMismatchException. Contra cognito-local (mais simplificado) isso
-    // "funcionava" por acidente. Corrigido gerando um código pendente de
-    // verdade primeiro — só assim o Cognito tem algo genuíno pra comparar e
-    // lança CodeMismatchException (400 invalid-reset-code) de fato.
+    // Corrigido DUAS vezes após execuções reais contra hom
+    // (backend-integration-tests-hom.yml, 2026-09-02):
+    //
+    // 1ª correção: a versão original nunca chamava POST /auth/forgot-password
+    // antes do reset — sem uma sessão de código pendente, o Cognito real não
+    // distingue "código errado" de "nenhum código ativo" e lança
+    // ExpiredCodeException. Corrigido chamando forgot-password primeiro.
+    //
+    // 2ª correção: mesmo chamando forgot-password, o teste continuava
+    // recebendo ExpiredCodeException — causa raiz: TestAccountFixture
+    // confirma a conta via AdminConfirmSignUpAsync, que NÃO marca o atributo
+    // email_verified=true no Cognito real (só o fluxo real de ConfirmSignUp
+    // com o código de verdade faz isso, via auto_verified_attributes —
+    // confirmado empiricamente contra hom, comparando a mesma chamada antes/
+    // depois de forçar email_verified=true via AdminUpdateUserAttributes).
+    // Sem email verificado, ForgotPasswordAsync sempre cai no catch de
+    // InvalidParameterException (retorna 200 sem gerar nenhum código real —
+    // spec.md, decisão 1) — por isso o reset nunca tinha algo genuíno pra
+    // comparar. Corrigido marcando email_verified=true manualmente aqui
+    // (só pra esta conta de teste) antes de chamar forgot-password. Não
+    // mexe em TestAccountFixture em si (usado por muitos outros testes) —
+    // ver backend/docs/backlog.md sobre considerar esse ajuste lá também.
+    //
+    // AdminUpdateUserAttributes só roda fora de Local: cognito-local não
+    // implementa essa operação (HttpErrorResponseException, verificado
+    // empiricamente) — e não precisa, porque ele não exige email verificado
+    // pro ForgotPassword gerar um código de verdade (diferente do Cognito
+    // real), então o teste já passava localmente sem esse passo.
     [Fact]
     public async Task ResetPassword_CodigoIncorreto_Retorna400()
     {
+        var env = IntegrationTestEnvironment.Current;
         await using var account = await TestAccountFixture.CreateAsync();
+
+        if (!env.IsLocal)
+        {
+            using var cognito = AwsClientFactory.CreateCognitoClient(env);
+            var userPoolId = await TestAccountFixture.ResolveUserPoolIdAsync(env);
+            await cognito.AdminUpdateUserAttributesAsync(new AdminUpdateUserAttributesRequest
+            {
+                UserPoolId = userPoolId,
+                Username = account.Email,
+                UserAttributes = [new AttributeType { Name = "email_verified", Value = "true" }]
+            });
+        }
 
         await account.Transport.SendAsync(
             HttpMethod.Post, "/auth/forgot-password",
