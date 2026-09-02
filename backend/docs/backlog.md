@@ -310,6 +310,28 @@ monorepo.
   zone) e um record TXT de DMARC (`_dmarc.jrnexpenses.com`, política
   inicial `p=none` pra só monitorar antes de enforçar).
 
+- [ ] **MELHORIA — Revisar throttling/brute-force do código de reset de
+  senha na FEAT-36** (levantado no `/specify` da FEAT-35 —
+  `backend/specs/FEAT-35-confirmacao-cadastro-otp/`): o código do
+  Cognito (`ConfirmSignUp`/`ConfirmForgotPassword`) é sempre válido por
+  24h, fixo e não configurável (nem via console/API, nem via Terraform
+  — confirmado na documentação oficial da AWS). Pra `POST /auth/confirm`
+  (FEAT-35) isso é aceitável: possuir o código não dá acesso à conta,
+  só confirma o email — login continua exigindo a senha, nunca enviada
+  por email. Já pra `POST /auth/reset-password` (FEAT-36,
+  `ConfirmForgotPassword`), o cálculo muda: o código certo permite
+  definir uma senha nova diretamente, ou seja, é takeover de conta
+  completo. Existe pesquisa de segurança pública (Pentagrid, 2021)
+  documentando que o throttling do Cognito pra esse fluxo específico já
+  foi, na prática, bem mais fraco que o anunciado ("5 a 20
+  tentativas/hora") — até ~1.587 tentativas antes de bloquear, com o
+  código permanecendo válido mesmo após "limite excedido" — vulnerabi-
+  lidade corrigida pela AWS em abril/2021, sem recorrência pública
+  conhecida desde então. Retomar essa discussão ao especificar a
+  FEAT-36: vale medir/validar o throttling real do Cognito antes de
+  assumir que a proteção nativa é suficiente para um fluxo que troca
+  senha.
+
 - [ ] **MELHORIA — `terraform apply` via esteira de CI/CD** (levantado
   no `/plan` da FEAT-34 —
   `backend/specs/FEAT-34-custom-message-emails-auth/`): hoje todo
