@@ -117,19 +117,19 @@ validação em hom).
 - [x] 21. Criar `backend-deploy-custom-message-trigger-prod.yml`:
       disparado por Release `backend-v*`, mesmo padrão de
       `backend-deploy-account-trigger-prod.yml`.
-- [ ] 22. **(Ação manual, fora do código)** Adicionar a variável
+- [x] 22. **(Ação manual, fora do código)** Adicionar a variável
       `CUSTOM_MESSAGE_TRIGGER_FUNCTION_NAME` nos GitHub Environments
       `backend-hom` e `backend-prod`, com o nome real da função Lambda
       de cada ambiente.
 
 ## Aplicação da infraestrutura (manual, mediante aprovação)
 
-- [ ] 23. **(Ação manual)** Rodar `terraform plan`/`apply` em
+- [x] 23. **(Ação manual)** Rodar `terraform plan`/`apply` em
       `environments/hom/` **só após aprovação explícita do usuário**
       (`aws_lambda_function.custom_message_trigger`, IAM Role, log
       group, `aws_lambda_permission` e o novo `lambda_config` do User
       Pool de hom).
-- [ ] 24. **(Ação manual)** Repetir a task 23 em `environments/prod/`,
+- [x] 24. **(Ação manual)** Repetir a task 23 em `environments/prod/`,
       também mediante aprovação explícita do usuário, depois de validar
       hom.
 
