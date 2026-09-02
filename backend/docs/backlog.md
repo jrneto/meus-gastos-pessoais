@@ -177,7 +177,7 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   cadastro/login validado em hom sem regressão (e-mail de confirmação
   chegou, mas caiu no spam — ver débito abaixo).
 
-- [ ] **FEAT-34 — Custom Message trigger do Cognito (e-mails de auth com HTML)**
+- [x] **FEAT-34 — Custom Message trigger do Cognito (e-mails de auth com HTML)**
   Novo handler em `GastosApp.CognitoTriggers` (ao lado do
   `AccountTriggerHandler` já existente) pro trigger `CustomMessage` do
   Cognito, cobrindo os `TriggerSource` `CustomMessage_SignUp`,
