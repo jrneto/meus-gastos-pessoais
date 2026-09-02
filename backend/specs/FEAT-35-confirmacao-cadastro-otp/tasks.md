@@ -1,28 +1,28 @@
 # Tasks: FEAT-35 — Confirmação de cadastro via código (OTP)
 
-- [ ] 1. Adicionar `ConfirmSignUpAsync(string email, string code, CancellationToken)` e `ResendConfirmationCodeAsync(string email, CancellationToken)` (ambos retornando `Task<Result>`) à interface `IAuthService` (`backend/src/GastosApp.Application/Common/Interfaces/IAuthService.cs`)
+- [x] 1. Adicionar `ConfirmSignUpAsync(string email, string code, CancellationToken)` e `ResendConfirmationCodeAsync(string email, CancellationToken)` (ambos retornando `Task<Result>`) à interface `IAuthService` (`backend/src/GastosApp.Application/Common/Interfaces/IAuthService.cs`)
 
-- [ ] 2. Adicionar `AuthErrors.InvalidConfirmationCode` (`Error.Validation("invalid-confirmation-code", "Código de confirmação inválido.")`) e `AuthErrors.ExpiredConfirmationCode` (`Error.Validation("expired-confirmation-code", "Código de confirmação expirado.")`) em `backend/src/GastosApp.Application/Auth/AuthErrors.cs`
+- [x] 2. Adicionar `AuthErrors.InvalidConfirmationCode` (`Error.Validation("invalid-confirmation-code", "Código de confirmação inválido.")`) e `AuthErrors.ExpiredConfirmationCode` (`Error.Validation("expired-confirmation-code", "Código de confirmação expirado.")`) em `backend/src/GastosApp.Application/Auth/AuthErrors.cs`
 
-- [ ] 3. Implementar `ConfirmSignUpAsync` em `CognitoAuthService` (`backend/src/GastosApp.Infrastructure/Auth/CognitoAuthService.cs`) — chama `_cognitoClient.ConfirmSignUpAsync`; mapeia `ExpiredCodeException` → `ExpiredConfirmationCode`, `CodeMismatchException`/`UserNotFoundException` → `InvalidConfirmationCode`, `NotAuthorizedException` → `Result.Success()` (idempotência, usuário já confirmado)
+- [x] 3. Implementar `ConfirmSignUpAsync` em `CognitoAuthService` (`backend/src/GastosApp.Infrastructure/Auth/CognitoAuthService.cs`) — chama `_cognitoClient.ConfirmSignUpAsync`; mapeia `ExpiredCodeException` → `ExpiredConfirmationCode`, `CodeMismatchException`/`UserNotFoundException` → `InvalidConfirmationCode`, `NotAuthorizedException` → `Result.Success()` (idempotência, usuário já confirmado)
 
-- [ ] 4. Implementar `ResendConfirmationCodeAsync` em `CognitoAuthService` — chama `_cognitoClient.ResendConfirmationCodeAsync`; absorve `UserNotFoundException` e `InvalidParameterException` sem erro; sempre retorna `Result.Success()` (qualquer outra exceção propaga)
+- [x] 4. Implementar `ResendConfirmationCodeAsync` em `CognitoAuthService` — chama `_cognitoClient.ResendConfirmationCodeAsync`; absorve `UserNotFoundException` e `InvalidParameterException` sem erro; sempre retorna `Result.Success()` (qualquer outra exceção propaga)
 
-- [ ] 5. Criar `backend/src/GastosApp.Application/Auth/Commands/Confirm/ConfirmSignUpCommand.cs` com `ConfirmSignUpCommand(string Email, string Code) : ICommand<Result>` e `ConfirmSignUpCommandHandler` (repasse direto a `IAuthService.ConfirmSignUpAsync`)
+- [x] 5. Criar `backend/src/GastosApp.Application/Auth/Commands/Confirm/ConfirmSignUpCommand.cs` com `ConfirmSignUpCommand(string Email, string Code) : ICommand<Result>` e `ConfirmSignUpCommandHandler` (repasse direto a `IAuthService.ConfirmSignUpAsync`)
 
-- [ ] 6. Adicionar `ConfirmSignUpCommandValidator` (mesmo arquivo ou arquivo próprio na mesma pasta) — `RuleFor(c => c.Email).NotEmpty()` e `RuleFor(c => c.Code).NotEmpty()`
+- [x] 6. Adicionar `ConfirmSignUpCommandValidator` (mesmo arquivo ou arquivo próprio na mesma pasta) — `RuleFor(c => c.Email).NotEmpty()` e `RuleFor(c => c.Code).NotEmpty()`
 
-- [ ] 7. Criar `backend/src/GastosApp.Application/Auth/Commands/ResendConfirmation/ResendConfirmationCodeCommand.cs` com `ResendConfirmationCodeCommand(string Email) : ICommand<Result>` e `ResendConfirmationCodeCommandHandler` (repasse direto a `IAuthService.ResendConfirmationCodeAsync`)
+- [x] 7. Criar `backend/src/GastosApp.Application/Auth/Commands/ResendConfirmation/ResendConfirmationCodeCommand.cs` com `ResendConfirmationCodeCommand(string Email) : ICommand<Result>` e `ResendConfirmationCodeCommandHandler` (repasse direto a `IAuthService.ResendConfirmationCodeAsync`)
 
-- [ ] 8. Adicionar `ResendConfirmationCodeCommandValidator` (mesmo arquivo ou arquivo próprio na mesma pasta) — `RuleFor(c => c.Email).NotEmpty()`
+- [x] 8. Adicionar `ResendConfirmationCodeCommandValidator` (mesmo arquivo ou arquivo próprio na mesma pasta) — `RuleFor(c => c.Email).NotEmpty()`
 
-- [ ] 9. Adicionar `POST /auth/confirm` em `AuthEndpoints.MapAuthEndpoints` (`backend/src/GastosApp.Api/Endpoints/AuthEndpoints.cs`) — handler `ConfirmSignUp` (envia `ConfirmSignUpCommand`, `result.ToHttpResult(Results.Ok)`), record `ConfirmRequest(string Email, string Code)`, `.Produces(StatusCodes.Status200OK)` + `.ProducesProblem(StatusCodes.Status400BadRequest)`
+- [x] 9. Adicionar `POST /auth/confirm` em `AuthEndpoints.MapAuthEndpoints` (`backend/src/GastosApp.Api/Endpoints/AuthEndpoints.cs`) — handler `ConfirmSignUp` (envia `ConfirmSignUpCommand`, `result.ToHttpResult(Results.Ok)`), record `ConfirmRequest(string Email, string Code)`, `.Produces(StatusCodes.Status200OK)` + `.ProducesProblem(StatusCodes.Status400BadRequest)`
 
-- [ ] 10. Adicionar `POST /auth/resend-confirmation` em `AuthEndpoints.MapAuthEndpoints` — handler `ResendConfirmation` (envia `ResendConfirmationCodeCommand`, `result.ToHttpResult(Results.Ok)`), record `ResendConfirmationRequest(string Email)`, `.Produces(StatusCodes.Status200OK)` + `.ProducesProblem(StatusCodes.Status400BadRequest)`
+- [x] 10. Adicionar `POST /auth/resend-confirmation` em `AuthEndpoints.MapAuthEndpoints` — handler `ResendConfirmation` (envia `ResendConfirmationCodeCommand`, `result.ToHttpResult(Results.Ok)`), record `ResendConfirmationRequest(string Email)`, `.Produces(StatusCodes.Status200OK)` + `.ProducesProblem(StatusCodes.Status400BadRequest)`
 
-- [ ] 11. Adicionar `[JsonSerializable(typeof(ConfirmRequest))]` e `[JsonSerializable(typeof(ResendConfirmationRequest))]` em `backend/src/GastosApp.Api/Common/AppJsonSerializerContext.cs`
+- [x] 11. Adicionar `[JsonSerializable(typeof(ConfirmRequest))]` e `[JsonSerializable(typeof(ResendConfirmationRequest))]` em `backend/src/GastosApp.Api/Common/AppJsonSerializerContext.cs`
 
-- [ ] 12. Rodar `dotnet build backend/GastosApp.sln` e confirmar que compila sem erro (Native AOT trim warnings incluídos)
+- [x] 12. Rodar `dotnet build backend/GastosApp.sln` e confirmar que compila sem erro (Native AOT trim warnings incluídos)
 
 - [ ] 13. Adicionar `ConfirmSignUpAsync_ShouldSucceed_WhenCognitoCallSucceeds` em `backend/tests/GastosApp.UnitTests/Infrastructure/CognitoAuthServiceTests.cs`
 

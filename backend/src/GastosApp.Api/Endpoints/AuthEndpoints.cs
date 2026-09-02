@@ -1,8 +1,10 @@
 using GastosApp.Api.Common;
+using GastosApp.Application.Auth.Commands.Confirm;
 using GastosApp.Application.Auth.Commands.Login;
 using GastosApp.Application.Auth.Commands.Logout;
 using GastosApp.Application.Auth.Commands.Refresh;
 using GastosApp.Application.Auth.Commands.Register;
+using GastosApp.Application.Auth.Commands.ResendConfirmation;
 using GastosApp.Application.Auth.Queries.GetCurrentUser;
 using Mediator;
 using Microsoft.AspNetCore.Mvc;
@@ -35,6 +37,14 @@ public static class AuthEndpoints
 
         group.MapPost("/logout", Logout)
             .Produces(StatusCodes.Status200OK);
+
+        group.MapPost("/confirm", ConfirmSignUp)
+            .Produces(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        group.MapPost("/resend-confirmation", ResendConfirmation)
+            .Produces(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
 
         group.MapGet("/me", UserData)
             .RequireAuthorization()
@@ -116,8 +126,30 @@ public static class AuthEndpoints
         var result = await sender.Send(command, cancellationToken);
         return result.ToHttpResult(value => Results.Created("/auth/me", value));
     }
+
+    private static async Task<IResult> ConfirmSignUp(
+        ConfirmRequest request,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var command = new ConfirmSignUpCommand(request.Email, request.Code);
+        var result = await sender.Send(command, cancellationToken);
+        return result.ToHttpResult(() => Results.Ok());
+    }
+
+    private static async Task<IResult> ResendConfirmation(
+        ResendConfirmationRequest request,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var command = new ResendConfirmationCodeCommand(request.Email);
+        var result = await sender.Send(command, cancellationToken);
+        return result.ToHttpResult(() => Results.Ok());
+    }
 }
 
 public record RegisterRequest(string Email, string Password, string Name, string PhoneNumber, string Cpf);
 public record LoginRequest(string Email, string Password);
 public record UserInfoResponse(string UserId, string? Email, string? Name, string? PhoneNumber, string? Cpf);
+public record ConfirmRequest(string Email, string Code);
+public record ResendConfirmationRequest(string Email);
