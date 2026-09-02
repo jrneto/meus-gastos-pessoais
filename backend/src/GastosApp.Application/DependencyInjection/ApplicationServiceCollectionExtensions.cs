@@ -1,5 +1,7 @@
 using FluentValidation;
+using GastosApp.Application.Auth.Commands.Confirm;
 using GastosApp.Application.Auth.Commands.Register;
+using GastosApp.Application.Auth.Commands.ResendConfirmation;
 using GastosApp.Application.Categories.Commands.CreateCategory;
 using GastosApp.Application.Categories.Commands.UpdateCategory;
 using GastosApp.Application.Categories.Queries.GetCategories;
@@ -35,6 +37,8 @@ namespace GastosApp.Application.DependencyInjection
             // classe nova de AbstractValidator<T> precisa ser adicionada aqui
             // também (nada mais descobre isso sozinho).
             services.AddScoped<IValidator<RegisterUserCommand>, RegisterUserCommandValidator>();
+            services.AddScoped<IValidator<ConfirmSignUpCommand>, ConfirmSignUpCommandValidator>();
+            services.AddScoped<IValidator<ResendConfirmationCodeCommand>, ResendConfirmationCodeCommandValidator>();
             services.AddScoped<IValidator<CreateCategoryCommand>, CreateCategoryCommandValidator>();
             services.AddScoped<IValidator<UpdateCategoryCommand>, UpdateCategoryCommandValidator>();
             services.AddScoped<IValidator<GetCategoriesQuery>, GetCategoriesQueryValidator>();

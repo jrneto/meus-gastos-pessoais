@@ -42,17 +42,17 @@
 
 - [x] 21. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~CognitoAuthServiceTests` e confirmar tudo passando
 
-- [ ] 22. Adicionar `Confirm_ComCodigoCorreto_Retorna200SemCorpo` em `backend/tests/GastosApp.ComponentTests/Auth/AuthEndpointsTests.cs`
+- [x] 22. Adicionar `Confirm_ComCodigoCorreto_Retorna200SemCorpo` em `backend/tests/GastosApp.ComponentTests/Auth/AuthEndpointsTests.cs`
 
-- [ ] 23. Adicionar `Confirm_ComParametrosInvalidos_Retorna400SemChamarAuthService` (Theory: email vazio, code vazio) — confirma `validation-error` e que `AuthServiceMock.ConfirmSignUpAsync` nunca é chamado
+- [x] 23. Adicionar `Confirm_ComParametrosInvalidos_Retorna400SemChamarAuthService` (Theory: email vazio, code vazio) — confirma `validation-error` e que `AuthServiceMock.ConfirmSignUpAsync` nunca é chamado
 
-- [ ] 24. Adicionar `Confirm_QuandoAuthServiceRetornaErro_PropagaProblemDetails` (Theory: `AuthErrors.InvalidConfirmationCode` → 400 `invalid-confirmation-code`, `AuthErrors.ExpiredConfirmationCode` → 400 `expired-confirmation-code`)
+- [x] 24. Adicionar `Confirm_QuandoAuthServiceRetornaErro_PropagaProblemDetails` (Theory: `AuthErrors.InvalidConfirmationCode` → 400 `invalid-confirmation-code`, `AuthErrors.ExpiredConfirmationCode` → 400 `expired-confirmation-code`)
 
-- [ ] 25. Adicionar `ResendConfirmation_ComEmailValido_Retorna200SemCorpo` (mesmo arquivo)
+- [x] 25. Adicionar `ResendConfirmation_ComEmailValido_Retorna200SemCorpo` (mesmo arquivo)
 
-- [ ] 26. Adicionar `ResendConfirmation_ComEmailVazio_Retorna400SemChamarAuthService` (mesmo arquivo)
+- [x] 26. Adicionar `ResendConfirmation_ComEmailVazio_Retorna400SemChamarAuthService` (mesmo arquivo)
 
-- [ ] 27. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~AuthEndpointsTests` e confirmar tudo passando
+- [x] 27. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~AuthEndpointsTests` e confirmar tudo passando
 
 - [ ] 28. Adicionar `Confirm_UsuarioJaConfirmado_Retorna200Idempotente` em `backend/tests/GastosApp.IntegrationTests/Auth/AuthFlowTests.cs` — reusa `TestAccountFixture.CreateAsync()` (já confirmado), chama `POST /auth/confirm` com código qualquer, espera 200
 
