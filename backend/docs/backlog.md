@@ -191,17 +191,19 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   não chama `ses:SendEmail` diretamente.
   Depende de: FEAT-33.
 
-- [ ] **FEAT-35 — Confirmação de cadastro via código (OTP)**
+- [x] **FEAT-35 — Confirmação de cadastro via código (OTP)** *(concluída,
+  ver `backend/specs/FEAT-35-confirmacao-cadastro-otp/`)*:
   `POST /auth/confirm` (`ConfirmSignUpAsync`) e `POST /auth/resend-
   confirmation` (`ResendConfirmationCodeAsync`). Novos erros em
-  `AuthErrors` (`invalid-confirmation-code` ← `CodeMismatchException`,
-  `expired-confirmation-code` ← `ExpiredCodeException`) — reaproveita
-  `AuthErrors.UserNotConfirmed`, já usado pelo login (`CognitoAuthService.
-  LoginAsync`) desde antes desta leva. Nenhuma mudança de TTL no
-  Cognito (ver decisão acima).
-  Depende de: FEAT-01 (auth) — já pronto. Recomendado depois de FEAT-34
-  pra já nascer com e-mail com marca própria, mas não é bloqueio
-  técnico (funciona com o e-mail padrão do Cognito também).
+  `AuthErrors` (`invalid-confirmation-code` ← `CodeMismatchException`/
+  `UserNotFoundException`, `expired-confirmation-code` ←
+  `ExpiredCodeException`) — reaproveita `AuthErrors.UserNotConfirmed`,
+  já usado pelo login (`CognitoAuthService.LoginAsync`) desde antes
+  desta leva. Nenhuma mudança de TTL no Cognito (ver decisão acima).
+  489 unit + 214 componente + 30 integrado passando (3 integrados
+  pulados em modo Local por limitação do `cognito-local`, ver débito
+  técnico abaixo — pendente validação real em hom via
+  `backend-integration-tests-hom.yml`).
 
 - [ ] **FEAT-36 — Recuperação de senha (esqueci minha senha)**
   `POST /auth/forgot-password` (`ForgotPasswordAsync`) e `POST /auth/
