@@ -189,16 +189,20 @@ validação em hom).
 
 ## Fechamento
 
-- [ ] 32. Rodar `./scripts/export-openapi.sh` e confirmar que
+- [x] 32. Rodar `./scripts/export-openapi.sh` e confirmar que
       `backend/docs/openapi.json` não sofre diff de contrato (nenhum
-      endpoint novo/alterado nesta feature).
-- [ ] 33. Rodar a suíte completa (`dotnet test GastosApp.sln --filter
+      endpoint novo/alterado nesta feature). Confirmado — único diff foi
+      de fim de linha (LF/CRLF, normalização do `.gitattributes`),
+      descartado.
+- [x] 33. Rodar a suíte completa (`dotnet test GastosApp.sln --filter
       "Category!=Integration"`) e confirmar 100% dos testes passando.
-- [ ] 34. Rodar localmente os testes integrados relevantes de Auth
+      479 (UnitTests) + 207 (ComponentTests) = 686 testes, 100% ok.
+- [x] 34. Rodar localmente os testes integrados relevantes de Auth
       (`backend/infra/lambda/run-local.sh` + `GastosApp.IntegrationTests`,
       filtro do módulo Auth) para confirmar que a mudança em
       `RegisterAsync` (novo atributo `name`) não quebra o fluxo real de
-      cadastro.
+      cadastro. 4 testes de `Auth/AuthFlowTests.cs` passando contra o
+      binário Native AOT real (RIE + cognito-local/LocalStack).
 - [ ] 35. Atualizar `spec.md`: marcar os critérios de aceite concluídos
       (`- [x]`) e adicionar a seção "Status" (mesmo padrão de
       `backend/specs/FEAT-19-conta-multi-tenant/spec.md`) resumindo o
