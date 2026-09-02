@@ -1,3 +1,4 @@
+using Amazon.CognitoIdentityProvider.Model;
 using FluentAssertions;
 using GastosApp.IntegrationTests.Support;
 
@@ -97,6 +98,119 @@ public sealed class AuthFlowTests
 
         var problem = response.Deserialize<ProblemDetailsDto>();
         problem.Type.Should().Be("https://gastosapp.dev/errors/invalid-credentials");
+    }
+
+    // FEAT-35: cobertura do fluxo de sucesso real de POST /auth/confirm sem
+    // precisar do código de 6 dígitos de fato (a suíte não tem acesso ao
+    // e-mail — ver plan.md, decisão técnica 5). TestAccountFixture já
+    // confirma a conta via AdminConfirmSignUp, então chamar /auth/confirm
+    // de novo aqui exercita o branch de idempotência (NotAuthorizedException
+    // → 200) contra o Cognito/cognito-local real.
+    [Fact]
+    public async Task Confirm_UsuarioJaConfirmado_Retorna200Idempotente()
+    {
+        await using var account = await TestAccountFixture.CreateAsync();
+
+        var response = await account.Transport.SendAsync(
+            HttpMethod.Post, "/auth/confirm",
+            new ConfirmRequestDto(account.Email, "000000"));
+
+        response.StatusCode.Should().Be(200);
+    }
+
+    // Diverge da redação literal da task 29 (tasks.md), que descrevia
+    // reusar a mesma fixture já confirmada — mas spec.md US2 já definia
+    // "código incorreto" como cenário de usuário NÃO confirmado, e o
+    // catch de NotAuthorizedException (idempotência) independe do código
+    // enviado ("qualquer code", spec.md US5) — reusar uma conta já
+    // confirmada aqui sempre daria 200, nunca 400. Registra uma conta
+    // deliberadamente não confirmada (mesmo padrão de
+    // ResendConfirmation_UsuarioNaoConfirmado_Retorna200) e limpa no
+    // Cognito manualmente.
+    [Fact]
+    public async Task Confirm_CodigoIncorreto_Retorna400()
+    {
+        var env = IntegrationTestEnvironment.Current;
+        using var transport = ApiTransportFactory.Create(env);
+        using var cognito = AwsClientFactory.CreateCognitoClient(env);
+
+        var email = $"int-test+{Guid.NewGuid():N}@jrnexpenses.com";
+
+        var registerResponse = await transport.SendAsync(
+            HttpMethod.Post, "/auth/register",
+            new RegisterRequestDto(email, "Teste@Integrado123", "Conta Não Confirmada", "11999999999", CpfGenerator.GenerateUnique()));
+
+        registerResponse.StatusCode.Should().Be(201);
+
+        try
+        {
+            var response = await transport.SendAsync(
+                HttpMethod.Post, "/auth/confirm",
+                new ConfirmRequestDto(email, "000000"));
+
+            response.StatusCode.Should().Be(400);
+
+            var problem = response.Deserialize<ProblemDetailsDto>();
+            problem.Type.Should().Be("https://gastosapp.dev/errors/invalid-confirmation-code");
+        }
+        finally
+        {
+            var userPoolId = await TestAccountFixture.ResolveUserPoolIdAsync(env);
+            await cognito.AdminDeleteUserAsync(new AdminDeleteUserRequest
+            {
+                UserPoolId = userPoolId,
+                Username = email
+            });
+        }
+    }
+
+    [Fact]
+    public async Task Confirm_EmailInexistente_Retorna400()
+    {
+        using var transport = ApiTransportFactory.Create();
+
+        var response = await transport.SendAsync(
+            HttpMethod.Post, "/auth/confirm",
+            new ConfirmRequestDto($"inexistente+{Guid.NewGuid():N}@jrnexpenses.com", "000000"));
+
+        response.StatusCode.Should().Be(400);
+
+        var problem = response.Deserialize<ProblemDetailsDto>();
+        problem.Type.Should().Be("https://gastosapp.dev/errors/invalid-confirmation-code");
+    }
+
+    [Fact]
+    public async Task ResendConfirmation_UsuarioNaoConfirmado_Retorna200()
+    {
+        var env = IntegrationTestEnvironment.Current;
+        using var transport = ApiTransportFactory.Create(env);
+        using var cognito = AwsClientFactory.CreateCognitoClient(env);
+
+        var email = $"int-test+{Guid.NewGuid():N}@jrnexpenses.com";
+
+        var registerResponse = await transport.SendAsync(
+            HttpMethod.Post, "/auth/register",
+            new RegisterRequestDto(email, "Teste@Integrado123", "Conta Não Confirmada", "11999999999", CpfGenerator.GenerateUnique()));
+
+        registerResponse.StatusCode.Should().Be(201);
+
+        try
+        {
+            var response = await transport.SendAsync(
+                HttpMethod.Post, "/auth/resend-confirmation",
+                new ResendConfirmationRequestDto(email));
+
+            response.StatusCode.Should().Be(200);
+        }
+        finally
+        {
+            var userPoolId = await TestAccountFixture.ResolveUserPoolIdAsync(env);
+            await cognito.AdminDeleteUserAsync(new AdminDeleteUserRequest
+            {
+                UserPoolId = userPoolId,
+                Username = email
+            });
+        }
     }
 }
 

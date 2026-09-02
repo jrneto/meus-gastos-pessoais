@@ -54,13 +54,13 @@
 
 - [x] 27. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~AuthEndpointsTests` e confirmar tudo passando
 
-- [ ] 28. Adicionar `Confirm_UsuarioJaConfirmado_Retorna200Idempotente` em `backend/tests/GastosApp.IntegrationTests/Auth/AuthFlowTests.cs` — reusa `TestAccountFixture.CreateAsync()` (já confirmado), chama `POST /auth/confirm` com código qualquer, espera 200
+- [x] 28. Adicionar `Confirm_UsuarioJaConfirmado_Retorna200Idempotente` em `backend/tests/GastosApp.IntegrationTests/Auth/AuthFlowTests.cs` — reusa `TestAccountFixture.CreateAsync()` (já confirmado), chama `POST /auth/confirm` com código qualquer, espera 200
 
-- [ ] 29. Adicionar `Confirm_CodigoIncorreto_Retorna400` (mesmo arquivo) — mesma fixture, código inválido (ex.: `"000000"`), espera 400 `invalid-confirmation-code`
+- [x] 29. Adicionar `Confirm_CodigoIncorreto_Retorna400` (mesmo arquivo) — **divergiu da redação original** ("mesma fixture, código inválido"): a fixture já confirmada sempre cai no branch de idempotência (200) independente do código, por definição (spec.md US5, "qualquer code") — reusá-la aqui nunca produziria 400. Implementado como spec.md US2 realmente descreve (usuário NÃO confirmado): registra conta nova sem confirmar, chama `/auth/confirm` com código errado, espera 400 `invalid-confirmation-code`; limpeza manual via `AdminDeleteUserAsync` em `finally` (mesmo padrão da task 31)
 
-- [ ] 30. Adicionar `Confirm_EmailInexistente_Retorna400` (mesmo arquivo) — sem fixture, email inexistente, espera 400 `invalid-confirmation-code`
+- [x] 30. Adicionar `Confirm_EmailInexistente_Retorna400` (mesmo arquivo) — sem fixture, email inexistente, espera 400 `invalid-confirmation-code`
 
-- [ ] 31. Adicionar `ResendConfirmation_UsuarioNaoConfirmado_Retorna200` (mesmo arquivo) — registra conta nova via `POST /auth/register` sem confirmar (sem `TestAccountFixture` completa), chama `POST /auth/resend-confirmation`, espera 200; limpeza manual do usuário Cognito criado (`AdminDeleteUserAsync`) em `finally`
+- [x] 31. Adicionar `ResendConfirmation_UsuarioNaoConfirmado_Retorna200` (mesmo arquivo) — registra conta nova via `POST /auth/register` sem confirmar (sem `TestAccountFixture` completa), chama `POST /auth/resend-confirmation`, espera 200; limpeza manual do usuário Cognito criado (`AdminDeleteUserAsync`) em `finally`
 
 - [ ] 32. Rodar `dotnet build backend/GastosApp.sln` e `dotnet test backend/GastosApp.sln` (suíte completa unit + componente) sem regressão
 
