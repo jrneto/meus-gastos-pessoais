@@ -192,7 +192,16 @@ display:flex, flexDirection:'column', gap:'4px' }}>` que já lista
    corrigida por esta feature (`status` não tem efeito visual hoje em
    `NavItemRow`, é só metadado — corrigido para não ficar
    inconsistente).
-9. **`SettingsPage.test.tsx` reescrito**: remove o teste de "Sair" (o
+9. **`AccountFooter` ganha uma prop `collapsed?: boolean`**, não
+   prevista originalmente neste plano — necessária porque
+   `DesktopSidebar` já suporta um modo colapsado (ícones só, 224px →
+   56px) que o protótipo não modela. Quando `collapsed=true`, o rodapé
+   mostra só o avatar "VC" como botão (`aria-label`/`title="Sair"`),
+   sem o texto "Sua conta" — mesmo padrão de fallback que
+   `NavItemRow` já usa pros itens de menu (ícone + `title`, sem
+   label). Decisão confirmada com o usuário durante a implementação
+   (task 5 do `tasks.md`).
+10. **`SettingsPage.test.tsx` reescrito**: remove o teste de "Sair" (o
    comportamento migra para `AccountFooter.test.tsx`, testado a partir
    de `DesktopSidebar`/`NavMoreSheet`), mantém o teste de versão
    (`AppVersion`), adiciona os cenários de exportação (sucesso,

@@ -1,16 +1,16 @@
 # Tasks — FEAT-30: Ajustes (migrar para Modernist + exportação CSV)
 
-- [ ] 1. Criar `lib/downloadFile.ts` com `downloadBlob(blob, filename)`
+- [x] 1. Criar `lib/downloadFile.ts` com `downloadBlob(blob, filename)`
       (cria object URL, dispara clique num `<a download>` temporário,
       revoga a URL) e `downloadFile.test.ts` cobrindo: cria e revoga a
       object URL, define `href`/`download` corretos no link temporário e
       aciona o clique (mockar `URL.createObjectURL`/`revokeObjectURL` e
       espionar `HTMLAnchorElement.prototype.click`, indisponíveis por
       padrão no jsdom)
-- [ ] 2. Criar `features/settings/errors/settingsErrors.ts`:
+- [x] 2. Criar `features/settings/errors/settingsErrors.ts`:
       `SessionExpiredError`, `NetworkError`, `UnknownExportError`
       (mesmas mensagens padrão já usadas nas outras features)
-- [ ] 3. Criar `features/settings/api/settingsApi.ts`: constante
+- [x] 3. Criar `features/settings/api/settingsApi.ts`: constante
       `EXPORT_FILENAME = 'transacoes.csv'` e
       `settingsApi.exportTransactionsCsv(token)` (`GET
       /transactions/export`, mesmo padrão `safeFetch`/`assertOk` de
@@ -19,7 +19,7 @@
       `SessionExpiredError`, falha de rede lança `NetworkError`, outro
       status lança `UnknownExportError`, sucesso devolve o `Blob` do
       corpo da resposta
-- [ ] 4. Criar `features/settings/hooks/useExportTransactions.ts`
+- [x] 4. Criar `features/settings/hooks/useExportTransactions.ts`
       (`useExportTransactions()` → `{ exportCsv, isExporting, error,
       success }`, mesmo esqueleto de `useInviteMember.ts`: chama
       `settingsApi.exportTransactionsCsv`, aciona `downloadBlob` no
@@ -30,7 +30,7 @@
       `success = true`, erro de sessão expirada limpa a `authStore` e
       expõe o erro, erro de rede expõe `NetworkError` sem mexer na
       `authStore`
-- [ ] 5. Criar `components/nav/AccountFooter.tsx` (avatar "VC" + rótulo
+- [x] 5. Criar `components/nav/AccountFooter.tsx` (avatar "VC" + rótulo
       "Sua conta" + botão "Sair", reaproveitando `useLogout()`, prop
       opcional `onBeforeLogout` chamada antes do logout) e
       `AccountFooter.test.tsx` cobrindo: renderiza avatar/rótulo, clicar
