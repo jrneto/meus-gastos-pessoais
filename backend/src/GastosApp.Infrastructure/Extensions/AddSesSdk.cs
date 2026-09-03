@@ -21,17 +21,20 @@ namespace GastosApp.Infrastructure.Extensions
                 var section = configuration.GetSection(SesOptions.SectionName);
                 var options = new SesOptions
                 {
-                    SenderEmail = section["SenderEmail"]!
+                    SenderEmail = section["SenderEmail"]!,
+                    Region = section["Region"] ?? "us-east-1"
                 };
 
                 return Options.Create(options);
             });
 
-            // Sem seção própria de região: reaproveita CognitoOptions.Region
-            // (mesma região AWS de todo o projeto).
+            // Região própria de SesOptions (com fallback seguro) — não reaproveita
+            // mais CognitoOptions.Region: essa dependência quebrava a Lambda de
+            // trigger de conta, que nunca configura Cognito de propósito (ver
+            // SesOptions.Region para o histórico do bug).
             services.AddSingleton<IAmazonSimpleEmailServiceV2>(sp =>
             {
-                var region = sp.GetRequiredService<IOptions<CognitoOptions>>().Value.Region;
+                var region = sp.GetRequiredService<IOptions<SesOptions>>().Value.Region;
                 return new AmazonSimpleEmailServiceV2Client(Amazon.RegionEndpoint.GetBySystemName(region));
             });
 

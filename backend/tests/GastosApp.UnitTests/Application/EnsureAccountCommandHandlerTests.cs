@@ -11,6 +11,7 @@ public class EnsureAccountCommandHandlerTests
 {
     private readonly IAccountRepository _accountRepositoryMock;
     private readonly IWelcomeEmailSender _welcomeEmailSenderMock;
+    private readonly IServiceProvider _serviceProviderMock;
     private readonly ILogger<EnsureAccountCommandHandler> _loggerMock;
     private readonly EnsureAccountCommandHandler _handler;
 
@@ -19,7 +20,15 @@ public class EnsureAccountCommandHandlerTests
         _accountRepositoryMock = Substitute.For<IAccountRepository>();
         _welcomeEmailSenderMock = Substitute.For<IWelcomeEmailSender>();
         _loggerMock = Substitute.For<ILogger<EnsureAccountCommandHandler>>();
-        _handler = new EnsureAccountCommandHandler(_accountRepositoryMock, _welcomeEmailSenderMock, _loggerMock);
+
+        // IWelcomeEmailSender é resolvido tardiamente via IServiceProvider
+        // (não injeção direta) — ver comentário no construtor de
+        // EnsureAccountCommandHandler. Mock retorna o sender de cima quando
+        // GetRequiredService<IWelcomeEmailSender>() é chamado.
+        _serviceProviderMock = Substitute.For<IServiceProvider>();
+        _serviceProviderMock.GetService(typeof(IWelcomeEmailSender)).Returns(_welcomeEmailSenderMock);
+
+        _handler = new EnsureAccountCommandHandler(_accountRepositoryMock, _serviceProviderMock, _loggerMock);
     }
 
     [Fact]
@@ -145,5 +154,32 @@ public class EnsureAccountCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.AccountId.Should().Be("account-novo");
         result.Value.AlreadyExisted.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotPropagate_WhenWelcomeEmailSenderResolutionFails()
+    {
+        // Arrange — reproduz o bug real de produção da FEAT-37: a resolução
+        // de DI de IWelcomeEmailSender (não só a chamada SendAsync) falha
+        // (ex.: cliente SES não consegue resolver a região na Lambda de
+        // trigger de conta). GetService retornando null faz
+        // GetRequiredService lançar InvalidOperationException — precisa ser
+        // capturada pelo try/catch tanto quanto uma falha em SendAsync.
+        _accountRepositoryMock.FindAccountIdByUserIdAsync("user-1", Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        _accountRepositoryMock.CreateAsync("user-1", "user1@email.com", Arg.Any<CancellationToken>())
+            .Returns(new CreateAccountResult("account-novo", AlreadyExisted: false));
+        _serviceProviderMock.GetService(typeof(IWelcomeEmailSender)).Returns((object?)null);
+
+        // Act
+        var act = async () => await _handler.Handle(new EnsureAccountCommand("user-1", "user1@email.com"), CancellationToken.None);
+
+        // Assert
+        await act.Should().NotThrowAsync();
+        var result = await _handler.Handle(new EnsureAccountCommand("user-1", "user1@email.com"), CancellationToken.None);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.AccountId.Should().Be("account-novo");
+        result.Value.AlreadyExisted.Should().BeFalse();
+        await _welcomeEmailSenderMock.DidNotReceiveWithAnyArgs().SendAsync(default!, default!, default);
     }
 }

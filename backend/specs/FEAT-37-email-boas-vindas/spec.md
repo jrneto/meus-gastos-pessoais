@@ -226,21 +226,30 @@ de debug foi revertido ao estado original (`Skip` de volta,
 de hom e prod, com o mesmo literal fixo já usado em
 `aws_ssm_parameter.ses_sender_email`/`email_configuration` do Cognito
 (evita o diff perpétuo já descoberto na FEAT-36). `terraform fmt -check`
-sem diff e `terraform validate` OK nos dois ambientes.
-**`terraform plan`/`apply` não foram executados** — credenciais AWS
-locais expiradas (`ExpiredToken` no `GetCallerIdentity`) impediram até
-o `plan`. **Os 2 `terraform apply` (hom e prod) continuam pendentes de
-aprovação explícita do usuário**, a ser feita separadamente (mesma
-regra de custo/segurança do projeto) — o e-mail de boas-vindas só
-funciona de fato em hom/prod depois desse apply, já que sem
-`Ses__SenderEmail` a Lambda de trigger não sabe o remetente.
+sem diff e `terraform validate` OK nos dois ambientes. **`terraform
+apply` de hom e prod aplicado pelo próprio usuário em 2026-09-03**
+(credenciais AWS locais desta sessão estavam expiradas, sem permitir
+nem `plan`).
+
+**PR #100 mergeado em `develop` em 2026-09-03. Primeira validação real
+em hom (Postman) encontrou um bug de produção** — ver
+`backend/docs/backlog.md`, seção Bugs ("Cliente SES quebrava a criação
+de conta inteira na Lambda de trigger"): `AddSesSdk` reaproveitava
+`CognitoOptions.Region` (nunca configurado na Lambda de trigger, FEAT-19)
+pro cliente SES, e a injeção direta de `IWelcomeEmailSender` no
+construtor de `EnsureAccountCommandHandler` fazia essa falha de DI
+escapar do `try/catch` — `EnsureAccountCommand` abortava por completo,
+não só o email; `Account`/`Membership`/categorias nunca eram criados.
+Corrigido em `fix/ses-client-region-lambda-trigger`: `SesOptions` ganhou
+`Region` própria com fallback `"us-east-1"`, e `IWelcomeEmailSender`
+passou a ser resolvido tardiamente via `IServiceProvider` dentro do
+próprio `try/catch`. Reproduzido e validado localmente antes/depois da
+correção (usuário real, sem `Cognito:*` configurado, espelhando a
+Lambda real). 513 unit (2 testes novos) + 224 componente passando.
 
 **Validação em hom (e-mail chegando de verdade, remetente/assunto/link
-corretos) ainda não realizada** — depende do `terraform apply` de hom
-(acima) e do deploy da Lambda de trigger via
-`backend-deploy-account-trigger-hom.yml` (dispara automaticamente no
-push desta branch, depois do merge pra `develop`). Fica como próximo
-passo pós-merge, fora do escopo deste `/implement`.
+corretos) ainda pendente** — depende do merge/deploy de
+`fix/ses-client-region-lambda-trigger` primeiro.
 
 ## Fora do escopo
 
