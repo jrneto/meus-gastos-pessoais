@@ -69,18 +69,27 @@ avatar com iniciais, "Sua conta" e o link "Sair".
    arquivo e aciona o download no navegador com o nome de arquivo
    devolvido pela API (`Content-Disposition`, já fixo em
    `transacoes.csv` conforme o contrato).
-5. **Estado de carregamento padrão do projeto.** Durante a exportação,
-   o botão "Exportar CSV" segue o mesmo padrão já usado nas demais
-   telas (spinner + rótulo em gerúndio + `disabled`) — sem overlay de
-   tela cheia, que continua sendo débito técnico registrado (ver
-   `frontend/docs/backlog.md`).
-6. **Erros seguem os padrões já existentes no projeto.** Sessão
-   expirada durante a exportação aciona o mesmo fluxo já usado nas
-   demais telas (limpa sessão, redireciona pro login). Falha de rede
-   mostra mensagem de erro inline (`role="alert"`), mesmo padrão
-   inline já usado em outras telas (sem o componente de toast genérico,
-   ainda um débito técnico). Como o client nunca envia filtro nenhum,
-   não há cenário esperado de erro de validação (`400`) em uso normal.
+5. **Estado de carregamento: botão ocupado, sem overlay.** Durante a
+   exportação, o botão "Exportar CSV" segue o padrão mais simples já
+   usado em `CategoryForm`/`TransactionForm` (rótulo em gerúndio +
+   `disabled`, sem spinner dedicado) — não o `ProcessingOverlay`
+   (componente que já existe desde a FEAT-28, resolvendo o débito
+   técnico do backlog que constava como pendente até então). O
+   protótipo não tem nenhuma tela de "exportando" dedicada (diferente
+   de `08-salvando-despesa-loading.png`/`16-enviando-convite-loading.
+   png`), então esta ação segue o padrão mais simples de botão ocupado,
+   coerente com uma ação de um clique só (sem modal), em vez do overlay
+   reservado a fluxos de formulário mais longos.
+6. **Sucesso em toast, erro inline — mesmo padrão da FEAT-28.** O
+   componente `Toast` genérico já existe (FEAT-28, resolveu o débito
+   técnico do backlog) e é usado em `MembersPage` só para sucesso,
+   nunca para erro. Esta feature segue o mesmo padrão: exportação
+   concluída mostra o toast "Transações exportadas." (auto-some depois
+   de alguns segundos); sessão expirada aciona o mesmo fluxo já usado
+   nas demais telas (limpa sessão, redireciona pro login); falha de
+   rede mostra mensagem de erro inline (`role="alert"`), sem toast.
+   Como o client nunca envia filtro nenhum, não há cenário esperado de
+   erro de validação (`400`) em uso normal.
 
 ## Requisitos de negócio
 
@@ -98,7 +107,9 @@ avatar com iniciais, "Sua conta" e o link "Sair".
   do token em memória)
 - Uma resposta de sucesso (`200`, `text/csv`) é salva como arquivo no
   navegador do usuário, com o nome de arquivo indicado pela API
-  (`transacoes.csv`)
+  (`transacoes.csv`), e mostra o toast "Transações exportadas."
+  (componente `Toast` genérico, mesmo padrão de sucesso já usado em
+  `MembersPage`)
 - Enquanto a exportação está em andamento, o botão mostra o estado de
   "ocupado" (spinner + rótulo em gerúndio, ex.: "Exportando…") e fica
   desabilitado, sem permitir novo clique concorrente
@@ -130,7 +141,8 @@ avatar com iniciais, "Sua conta" e o link "Sair".
 - Given um usuário autenticado na tela "Ajustes"
 - When ele clica em "Exportar CSV" e a API responde `200` com o CSV
 - Then o navegador salva um arquivo `transacoes.csv` com o conteúdo
-  retornado pela API, e o botão volta ao estado normal
+  retornado pela API, a tela mostra o toast "Transações exportadas.",
+  e o botão volta ao estado normal
 
 **US3 — Estado de carregamento durante a exportação**
 - Given um usuário que acabou de clicar em "Exportar CSV"
@@ -209,7 +221,8 @@ de onde ele é acionado na UI (decisão 2).
 - [ ] `AppVersion` continua visível na tela, sem quebrar o teste já
       existente de rastreabilidade (FEAT-09)
 - [ ] Clicar em "Exportar CSV" chama `GET /transactions/export` sem
-      query params e salva o arquivo retornado no navegador
+      query params, salva o arquivo retornado no navegador e mostra o
+      toast "Transações exportadas."
 - [ ] Botão "Exportar CSV" mostra estado de carregamento (spinner +
       rótulo em gerúndio + desabilitado) durante a requisição
 - [ ] Sessão expirada durante a exportação aciona o fluxo padrão já
@@ -230,10 +243,8 @@ de onde ele é acionado na UI (decisão 2).
   protótipo — decisão 1, sem suporte de backend hoje
 - Qualquer seletor de filtro (período, categoria, tipo) na exportação
   — decisão 3, sempre exporta tudo, mesmo botão único do protótipo
-- Overlay de processamento de tela cheia — decisão 5, débito técnico
-  já registrado em `frontend/docs/backlog.md`
-- Componente de toast genérico — decisão 6, débito técnico já
-  registrado em `frontend/docs/backlog.md`
+- `ProcessingOverlay` na exportação — decisão 5, o componente já existe
+  (FEAT-28) mas não se aplica a uma ação de um clique só sem modal
 - Atalhos "Categorias e orçamentos" / "Membros e convites" dentro de
   Ajustes — existem só no protótipo **mobile** (`design-system/
   mobile/`), que não é referência usada por nenhuma spec deste
