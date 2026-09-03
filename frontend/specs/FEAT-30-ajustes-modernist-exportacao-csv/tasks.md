@@ -64,7 +64,7 @@
       mostra o toast), estado de carregamento (botão desabilitado com
       rótulo "Exportando..."), sessão expirada (limpa sessão, navega pro
       login), erro de rede (mensagem inline, botão volta ao normal)
-- [ ] 11. Rodar a suíte completa (`npm test`), `tsc -b`, `oxlint` e `npm
+- [x] 11. Rodar a suíte completa (`npm test`), `tsc -b`, `oxlint` e `npm
       run build`; confirmar 100% dos testes passando, sem erro de tipo e
       sem warning novo de lint
 - [ ] 12. Revisão manual/visual: no app real (backend local +
