@@ -37,6 +37,7 @@ namespace GastosApp.Infrastructure.Extensions
 
             services.AddScoped<IEmailSender, SesEmailService>();
             services.AddScoped<IPasswordChangedEmailSender, SesPasswordChangedEmailSender>();
+            services.AddScoped<IWelcomeEmailSender, SesWelcomeEmailSender>();
 
             return services;
         }

@@ -239,16 +239,36 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   (Native AOT via `run-local.sh` incluído).
   Depende de: FEAT-33 (SES). Não depende de FEAT-34/35.
 
-- [ ] **FEAT-37 — E-mail de boas-vindas** *(substitui a antiga FEAT-27
-  deste arquivo)*
-  O trigger `Post Confirmation` já existente (`AccountTriggerHandler`,
-  FEAT-19) passa a também enviar `04-boas-vindas.html` via
-  `ses:SendEmail` direto (mesmo padrão da FEAT-36), depois de
-  `EnsureAccountCommand` ter sucesso — precisa acrescentar
-  `ses:SendEmail` na IAM role já existente do Lambda de trigger
-  (`lambda-account-trigger.tf`). Falha no envio do e-mail não pode
-  bloquear a criação da conta (mesma filosofia defensiva já aplicada ao
-  `EnsureAccountCommand` no `AccountTriggerHandler` — só loga).
+- [x] **FEAT-37 — E-mail de boas-vindas** *(concluída, ver
+  `backend/specs/FEAT-37-email-boas-vindas/`)*: `EnsureAccountCommandHandler`
+  passa a enviar `04-boas-vindas.html` via `ses:SendEmail` direto (mesmo
+  padrão da FEAT-36) quando a conta é criada pela primeira vez
+  (`AlreadyExisted: false`) — não em `AccountTriggerHandler`, pra manter
+  a mesma fronteira já usada por `ResetPasswordCommandHandler` (o
+  próprio Command Handler decide o efeito colateral, com try/catch
+  defensivo próprio). Novos `IWelcomeEmailSender`/`SesWelcomeEmailSender`,
+  compondo `IEmailSender` + `IUserProfileRepository` pra resolver o nome
+  real (FEAT-26) — **sem fallback de saudação genérica** (decisão do
+  usuário: usuário confirmado sem `UserProfile` é uma anomalia, já
+  bloqueada no login pela FEAT-31; perfil ausente lança e é tratado como
+  qualquer outra falha de envio, só loga). IAM `ses:SendEmail` **já
+  estava concedido** à Lambda de trigger desde a FEAT-33 — a suposição
+  original deste item (precisar de IAM novo) não se confirmou. Único
+  Terraform necessário: `Ses__SenderEmail` no `environment{}` de
+  `lambda-account-trigger.tf` (hom/prod) — essa Lambda não lê Parameter
+  Store (FEAT-19), então o remetente do SES chega via variável de
+  ambiente, mesmo literal fixo já usado em `parameter-store.tf`. Domínio
+  errado no template (`jrnexpenses.com.br`) corrigido pra
+  `jrnexpenses.com`, nos dois arquivos (design system + cópia
+  embarcada). Teste integrado automatizado não é viável (mesma
+  limitação já aceita desde a FEAT-19 pro resto do trigger) — validado
+  manualmente via `AccountTriggerHandlerManualDebug.cs` (perfil resolvido
+  e template montado corretamente; chamada real ao SES falhou por falta
+  de equivalente local, capturada pelo catch defensivo, comportamento
+  esperado). 512 unit + 224 componente passando. **`terraform apply` de
+  hom e prod segue pendente de aprovação explícita separada** — sem ele,
+  a Lambda de trigger não tem o remetente configurado em produção/
+  homologação (ver "Status" em `spec.md`).
   Depende de: FEAT-33, FEAT-19 (já pronto).
 
 ## Bugs

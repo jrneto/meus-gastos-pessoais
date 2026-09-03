@@ -79,6 +79,14 @@ resource "aws_lambda_function" "account_trigger" {
   environment {
     variables = {
       DynamoDb__TableName = aws_dynamodb_table.gastos_app.name
+
+      # FEAT-37: este Lambda não lê Parameter Store (decisão da FEAT-19,
+      # ver comentário em Function.cs), então o remetente do SES precisa
+      # chegar via variável de ambiente — mesmo literal fixo já usado em
+      # aws_ssm_parameter.ses_sender_email (parameter-store.tf) e em
+      # email_configuration do Cognito, não referência ao atributo ao vivo
+      # (evita diff perpétuo, lição da FEAT-36).
+      Ses__SenderEmail = "jrn.expenses <no-reply@jrnexpenses.com>"
     }
   }
 
