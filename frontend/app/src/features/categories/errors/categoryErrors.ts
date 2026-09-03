@@ -18,6 +18,13 @@ export class NameConflictError extends Error {
   }
 }
 
+export class ForbiddenError extends Error {
+  constructor() {
+    super('Seu nível de acesso não permite esta ação.')
+    this.name = 'ForbiddenError'
+  }
+}
+
 export class CategoryInUseError extends Error {
   constructor() {
     super('Esta categoria não pode ser excluída enquanto houver despesas associadas a ela.')

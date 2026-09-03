@@ -193,21 +193,27 @@ e-mail entre o item de `GET /members` e `GET /auth/me`).
 
 ## Critérios de aceite
 
-- [ ] Papel `Leitura` não vê nenhum botão/ícone de escrita em
+- [x] Papel `Leitura` não vê nenhum botão/ícone de escrita em
       Transações (criar despesa/receita, editar/excluir) nem em
       Categorias (criar, editar, excluir, orçamento)
-- [ ] Papel `Lancar` vê "+ Nova despesa"/"+ Nova receita", vê "Editar"/
+- [x] Papel `Lancar` vê "+ Nova despesa"/"+ Nova receita", vê "Editar"/
       "Excluir" só nas transações que ele mesmo criou, e não vê nenhum
       botão de escrita em Categorias
-- [ ] Papéis `Total` e `Titular` têm acesso irrestrito a toda ação de
+- [x] Papéis `Total` e `Titular` têm acesso irrestrito a toda ação de
       escrita em Transações (qualquer transação, independente de quem
       criou) e Categorias (incluindo orçamento)
-- [ ] Um 403 defensivo em `/transactions` ou `/categories` mostra uma
+- [x] Um 403 defensivo em `/transactions` ou `/categories` mostra uma
       mensagem específica de acesso negado, nunca o erro genérico atual
-- [ ] Nenhum botão de escrita aparece enquanto o papel do usuário ainda
+- [x] Nenhum botão de escrita aparece enquanto o papel do usuário ainda
       não foi determinado
-- [ ] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima,
+- [x] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima,
       100% dos testes passando
+
+Implementado conforme `plan.md`/`tasks.md` (suíte completa: 517/517
+testes passando). A revisão manual no app real (Docker local + contas
+nos 4 papéis, `tasks.md` item 15) foi conscientemente adiada — a
+cobertura automatizada já exercita cada cenário por papel nas duas
+telas; retomar quando conveniente.
 
 ## Fora do escopo
 

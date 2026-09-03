@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { NetworkError, NotFoundError, SessionExpiredError } from '../errors/transactionErrors'
+import { ForbiddenError, NetworkError, NotFoundError, SessionExpiredError } from '../errors/transactionErrors'
 import { useDeleteTransaction } from './useDeleteTransaction'
 
 const TRANSACTION_URL = 'http://localhost:5049/transactions/tx-1'
@@ -63,5 +63,18 @@ describe('useDeleteTransaction', () => {
     })
 
     expect(result.current.error).toBeInstanceOf(NetworkError)
+  })
+
+  it('em caso de 403, expõe ForbiddenError', async () => {
+    server.use(http.delete(TRANSACTION_URL, () => new HttpResponse(null, { status: 403 })))
+
+    const { result } = renderHook(() => useDeleteTransaction())
+
+    await act(async () => {
+      await result.current.deleteTransaction('tx-1')
+    })
+
+    expect(result.current.error).toBeInstanceOf(ForbiddenError)
+    expect(result.current.success).toBe(false)
   })
 })

@@ -42,6 +42,7 @@ function renderCategoryList(props: Partial<React.ComponentProps<typeof CategoryL
       onEditToggle={vi.fn()}
       onSaved={vi.fn()}
       onNotFound={vi.fn()}
+      canWrite
       {...props}
     />,
   )
@@ -156,5 +157,20 @@ describe('CategoryList', () => {
     ).toBeInTheDocument()
     expect(onDeleted).not.toHaveBeenCalled()
     expect(screen.getByText('Alimentação')).toBeInTheDocument()
+  })
+
+  it('canWrite=true mostra os ícones de editar/excluir de cada categoria (FEAT-29)', () => {
+    renderCategoryList({ items: [expenseWithBudget], canWrite: true })
+
+    expect(screen.getByRole('button', { name: /editar categoria/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /excluir categoria/i })).toBeInTheDocument()
+  })
+
+  it('canWrite=false esconde os ícones de editar/excluir, mantendo o rótulo de orçamento (FEAT-29)', () => {
+    renderCategoryList({ items: [expenseWithBudget], canWrite: false })
+
+    expect(screen.queryByRole('button', { name: /editar categoria/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /excluir categoria/i })).not.toBeInTheDocument()
+    expect(screen.getByText('R$ 800,00')).toBeInTheDocument()
   })
 })
