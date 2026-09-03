@@ -20,13 +20,14 @@
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.9" />
   </ItemGroup>
 
-  <!-- Template de e-mail copiado de frontend/design-system/emails/03-senha-alterada.html
-       (FEAT-36, mesma decisão da FEAT-34: duplicar em vez de referenciar por
-       caminho relativo, pra não fazer o build do backend depender da árvore
-       do frontend). Embarcado no binário pra estar disponível no cold start
-       da Lambda sem I/O externo. -->
+  <!-- Templates de e-mail copiados de frontend/design-system/emails/
+       (FEAT-36/37, mesma decisão da FEAT-34: duplicar em vez de referenciar
+       por caminho relativo, pra não fazer o build do backend depender da
+       árvore do frontend). Embarcados no binário pra estar disponíveis no
+       cold start da Lambda sem I/O externo. -->
   <ItemGroup>
     <EmbeddedResource Include="Email\Templates\03-senha-alterada.html" />
+    <EmbeddedResource Include="Email\Templates\04-boas-vindas.html" />
   </ItemGroup>
 
   <PropertyGroup>

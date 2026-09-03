@@ -169,36 +169,78 @@ já usado pelo e-mail de "senha alterada" (FEAT-36), assunto igual ao
 
 ## Critérios de aceite
 
-- [ ] Conta criada pela primeira vez (`AlreadyExisted: false`) dispara
+- [x] Conta criada pela primeira vez (`AlreadyExisted: false`) dispara
       o envio do e-mail de boas-vindas (US1)
-- [ ] Usuário com `UserProfile` cadastrado recebe o e-mail com o nome
+- [x] Usuário com `UserProfile` cadastrado recebe o e-mail com o nome
       real em `{{nome}}` (US1)
-- [ ] Usuário sem `UserProfile` não recebe e-mail de boas-vindas (tratado
+- [x] Usuário sem `UserProfile` não recebe e-mail de boas-vindas (tratado
       como falha, sem conteúdo degradado), sem travar a confirmação nem
       a criação da conta (US2)
-- [ ] Conta já existente (`AlreadyExisted: true`) não gera novo envio
+- [x] Conta já existente (`AlreadyExisted: true`) não gera novo envio
       de e-mail de boas-vindas (US3)
-- [ ] Falha ao buscar perfil ou ao enviar o e-mail não impede a
+- [x] Falha ao buscar perfil ou ao enviar o e-mail não impede a
       confirmação do cadastro nem a criação da conta — só loga (US4)
-- [ ] `frontend/design-system/emails/04-boas-vindas.html` corrigido
+- [x] `frontend/design-system/emails/04-boas-vindas.html` corrigido
       para usar `jrnexpenses.com` (sem ".br") nos 3 lugares (CTA, link
       de preferências, e-mail de suporte) — decisão 3
-- [ ] `Ses__SenderEmail` (variável de ambiente) adicionada a
+- [x] `Ses__SenderEmail` (variável de ambiente) adicionada a
       `lambda-account-trigger.tf` de hom e prod, com o mesmo literal já
       usado em `parameter-store.tf`/`email_configuration` do Cognito —
-      detalhar viabilidade/abordagem exata no `plan.md`
-- [ ] Nenhuma mudança de IAM nova (permissão já concedida na FEAT-33)
-- [ ] Fluxo coberto por teste unitário (`AccountTriggerHandler`,
-      mock de `IUserProfileRepository`/`IEmailSender` ou equivalente)
-- [ ] Suíte completa de testes (unitário + componente) passando
-- [ ] Teste integrado avaliado no `plan.md`: `AccountTriggerHandler`
-      roda fora do fluxo HTTP padrão (invocado diretamente nos testes
-      de unidade hoje, ver `AccountTriggerHandlerManualDebug.cs`) — se
-      não for viável como teste integrado automatizado, documentar a
-      limitação explicitamente (mesmo padrão já aceito em FEAT-35/36
-      para trechos não verificáveis pela suíte)
-- [ ] `backend/docs/openapi.json` não muda (sem contrato de API novo) —
-      confirmar que nenhuma regeneração é necessária
+      escrito e validado (`terraform fmt`/`validate`); `terraform apply`
+      em cada ambiente segue pendente de aprovação explícita separada
+      (ver "Status")
+- [x] Nenhuma mudança de IAM nova (permissão já concedida na FEAT-33)
+- [x] Fluxo coberto por teste unitário (`EnsureAccountCommandHandler` +
+      `SesWelcomeEmailSender`, mock de `IUserProfileRepository`/
+      `IEmailSender`)
+- [x] Suíte completa de testes (unitário + componente) passando
+- [x] Teste integrado avaliado no `plan.md`: não viável como
+      automatizado (mesma limitação já aceita desde a FEAT-19 pro
+      restante de `AccountTriggerHandler`/`EnsureAccountCommand`) —
+      validado manualmente via `AccountTriggerHandlerManualDebug.cs`
+      (ver "Status")
+- [x] `backend/docs/openapi.json` não muda (sem contrato de API novo) —
+      confirmado via `git status` sem diff
+
+## Status
+
+Implementação concluída (24 das 25 tasks de `tasks.md` — a última,
+atualizar `backend/docs/backlog.md`, é o passo final do fechamento).
+Suíte completa: 512 unit + 224 componente passando, 0 falhas (1 skip
+esperado: `AccountTriggerHandlerManualDebug`, manual por design).
+
+**Nome real via `UserProfile` confirmado empiricamente**: validação
+manual local (LocalStack + cognito-local) registrou um usuário de
+verdade via `POST /auth/register`, confirmou via `AdminConfirmSignUp`
+no `cognito-local`, e rodou `AccountTriggerHandlerManualDebug.cs`
+contra esse `userId` real. `IUserProfileRepository.FindByUserIdAsync`
+resolveu o perfil e o template foi montado sem erro — a chamada real a
+`ses:SendEmail` falhou (sem SES no LocalStack Community, credenciais
+AWS locais expiradas), capturada pelo `catch` defensivo de
+`EnsureAccountCommandHandler` sem quebrar o trigger — exatamente o
+comportamento previsto no `plan.md`/`tasks.md`, não um bug. O arquivo
+de debug foi revertido ao estado original (`Skip` de volta,
+`userId` placeholder original) ao final da validação.
+
+**Terraform**: `Ses__SenderEmail` escrito em `lambda-account-trigger.tf`
+de hom e prod, com o mesmo literal fixo já usado em
+`aws_ssm_parameter.ses_sender_email`/`email_configuration` do Cognito
+(evita o diff perpétuo já descoberto na FEAT-36). `terraform fmt -check`
+sem diff e `terraform validate` OK nos dois ambientes.
+**`terraform plan`/`apply` não foram executados** — credenciais AWS
+locais expiradas (`ExpiredToken` no `GetCallerIdentity`) impediram até
+o `plan`. **Os 2 `terraform apply` (hom e prod) continuam pendentes de
+aprovação explícita do usuário**, a ser feita separadamente (mesma
+regra de custo/segurança do projeto) — o e-mail de boas-vindas só
+funciona de fato em hom/prod depois desse apply, já que sem
+`Ses__SenderEmail` a Lambda de trigger não sabe o remetente.
+
+**Validação em hom (e-mail chegando de verdade, remetente/assunto/link
+corretos) ainda não realizada** — depende do `terraform apply` de hom
+(acima) e do deploy da Lambda de trigger via
+`backend-deploy-account-trigger-hom.yml` (dispara automaticamente no
+push desta branch, depois do merge pra `develop`). Fica como próximo
+passo pós-merge, fora do escopo deste `/implement`.
 
 ## Fora do escopo
 

@@ -1,6 +1,7 @@
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.Application.Common.Results;
 using Mediator;
+using Microsoft.Extensions.Logging;
 
 namespace GastosApp.Application.Accounts.Commands.EnsureAccount;
 
@@ -23,10 +24,17 @@ public sealed record EnsureAccountResult(string AccountId, bool AlreadyExisted);
 public sealed class EnsureAccountCommandHandler : ICommandHandler<EnsureAccountCommand, Result<EnsureAccountResult>>
 {
     private readonly IAccountRepository _accountRepository;
+    private readonly IWelcomeEmailSender _welcomeEmailSender;
+    private readonly ILogger<EnsureAccountCommandHandler> _logger;
 
-    public EnsureAccountCommandHandler(IAccountRepository accountRepository)
+    public EnsureAccountCommandHandler(
+        IAccountRepository accountRepository,
+        IWelcomeEmailSender welcomeEmailSender,
+        ILogger<EnsureAccountCommandHandler> logger)
     {
         _accountRepository = accountRepository;
+        _welcomeEmailSender = welcomeEmailSender;
+        _logger = logger;
     }
 
     public async ValueTask<Result<EnsureAccountResult>> Handle(EnsureAccountCommand command, CancellationToken cancellationToken)
@@ -36,6 +44,23 @@ public sealed class EnsureAccountCommandHandler : ICommandHandler<EnsureAccountC
             return Result.Success(new EnsureAccountResult(existingAccountId, AlreadyExisted: true));
 
         var created = await _accountRepository.CreateAsync(command.UserId, command.Email, cancellationToken);
+
+        if (!created.AlreadyExisted)
+        {
+            try
+            {
+                await _welcomeEmailSender.SendAsync(command.UserId, command.Email, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // Nunca propaga: a conta já foi criada de fato (FEAT-37,
+                // spec.md) — falha no envio deste email de boas-vindas não
+                // pode derrubar EnsureAccountCommand. Mesma filosofia
+                // defensiva do ResetPasswordCommandHandler (FEAT-36).
+                _logger.LogError(ex, "Falha ao enviar email de boas-vindas para o usuário {UserId}.", command.UserId);
+            }
+        }
+
         return Result.Success(new EnsureAccountResult(created.AccountId, created.AlreadyExisted));
     }
 }
