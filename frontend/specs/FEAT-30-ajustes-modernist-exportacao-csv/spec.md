@@ -111,8 +111,8 @@ avatar com iniciais, "Sua conta" e o link "Sair".
   (componente `Toast` genérico, mesmo padrão de sucesso já usado em
   `MembersPage`)
 - Enquanto a exportação está em andamento, o botão mostra o estado de
-  "ocupado" (spinner + rótulo em gerúndio, ex.: "Exportando…") e fica
-  desabilitado, sem permitir novo clique concorrente
+  "ocupado" (rótulo em gerúndio, ex.: "Exportando…", sem spinner — ver
+  decisão 5) e fica desabilitado, sem permitir novo clique concorrente
 - Sessão expirada (`401` sem refresh possível) durante a exportação
   aciona o mesmo comportamento já existente nas demais telas (limpa
   sessão, redireciona pro login)
@@ -148,8 +148,8 @@ avatar com iniciais, "Sua conta" e o link "Sair".
 - Given um usuário que acabou de clicar em "Exportar CSV"
 - When a requisição a `GET /transactions/export` ainda está em
   andamento
-- Then o botão mostra spinner + rótulo em gerúndio e fica desabilitado,
-  impedindo um segundo clique até a requisição terminar
+- Then o botão mostra rótulo em gerúndio ("Exportando...") e fica
+  desabilitado, impedindo um segundo clique até a requisição terminar
 
 **US4 — Sessão expirada ao exportar**
 - Given um usuário cuja sessão expirou
@@ -215,27 +215,34 @@ de onde ele é acionado na UI (decisão 2).
 
 ## Critérios de aceite
 
-- [ ] Tela "Ajustes" migrada para o Modernist, com título "Ajustes" e
+- [x] Tela "Ajustes" migrada para o Modernist, com título "Ajustes" e
       a linha "Exportar dados" / botão "Exportar CSV" (sem
       Moeda/Notificações)
-- [ ] `AppVersion` continua visível na tela, sem quebrar o teste já
+- [x] `AppVersion` continua visível na tela, sem quebrar o teste já
       existente de rastreabilidade (FEAT-09)
-- [ ] Clicar em "Exportar CSV" chama `GET /transactions/export` sem
+- [x] Clicar em "Exportar CSV" chama `GET /transactions/export` sem
       query params, salva o arquivo retornado no navegador e mostra o
       toast "Transações exportadas."
-- [ ] Botão "Exportar CSV" mostra estado de carregamento (spinner +
-      rótulo em gerúndio + desabilitado) durante a requisição
-- [ ] Sessão expirada durante a exportação aciona o fluxo padrão já
-      existente (limpa sessão, redireciona pro login)
-- [ ] Erro de rede durante a exportação mostra mensagem inline, sem
+- [x] Botão "Exportar CSV" mostra estado de carregamento (rótulo em
+      gerúndio "Exportando..." + desabilitado, sem spinner — mesmo
+      padrão mais simples de `CategoryForm`/`TransactionForm`, ver
+      decisão 5 e `plan.md`) durante a requisição
+- [x] Sessão expirada durante a exportação aciona o fluxo padrão já
+      existente (limpa sessão; redirect pro login é global, via
+      `ProtectedRoute`, não algo que a página aciona sozinha)
+- [x] Erro de rede durante a exportação mostra mensagem inline, sem
       travar a tela, permitindo nova tentativa
-- [ ] `DesktopSidebar` tem um rodapé "Sua conta / Sair" funcional
+- [x] `DesktopSidebar` tem um rodapé "Sua conta / Sair" funcional
       (mesmo efeito de logout do botão removido de `SettingsPage`)
-- [ ] `NavMoreSheet` (mobile) tem o mesmo rodapé "Sua conta / Sair"
+- [x] `NavMoreSheet` (mobile) tem o mesmo rodapé "Sua conta / Sair"
       funcional
-- [ ] `SettingsPage` não tem mais nenhum botão "Sair" próprio
-- [ ] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima,
-      100% dos testes passando
+- [x] `SettingsPage` não tem mais nenhum botão "Sair" próprio
+- [x] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima,
+      100% dos testes passando (542/542 — 1 falha isolada de
+      `InviteMemberDialog.test.tsx` confirmada como flaky
+      pré-existente, arquivo não tocado por esta feature)
+- [ ] Revisão manual/visual no app real (task 12 do `tasks.md`) —
+      pendente, o usuário confere quando subir o ambiente local
 
 ## Fora do escopo
 

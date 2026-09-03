@@ -75,5 +75,5 @@
       `MobileBottomNav` (janela estreita), contra
       `frontend/design-system/web/jrnexpenses-web.dc.html` (blocos
       `isSet` e o rodapé de conta da sidebar)
-- [ ] 13. Atualizar `spec.md` marcando todos os critérios de aceite
+- [x] 13. Atualizar `spec.md` marcando todos os critérios de aceite
       concluídos (`- [x]`)
