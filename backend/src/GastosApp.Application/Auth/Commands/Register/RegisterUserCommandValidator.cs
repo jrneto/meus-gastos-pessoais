@@ -12,7 +12,9 @@ public sealed class RegisterUserCommandValidator : AbstractValidator<RegisterUse
     {
         ClassLevelCascadeMode = CascadeMode.Stop;
 
-        RuleFor(c => c.Email).NotEmpty().WithMessage("Email é obrigatório.");
+        RuleFor(c => c.Email)
+            .NotEmpty().WithMessage("Email é obrigatório.")
+            .EmailAddress().WithMessage("E-mail em formato inválido.");
 
         RuleFor(c => c.Password)
             .NotEmpty().WithMessage("Senha é obrigatória.")
