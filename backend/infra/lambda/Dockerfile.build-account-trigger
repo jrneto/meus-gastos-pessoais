@@ -43,3 +43,16 @@ RUN chmod +x ./bootstrap \
 
 FROM scratch AS export
 COPY --from=package /account-trigger-function.zip /account-trigger-function.zip
+
+# Estágio "roda localmente" — mesmo padrão de infra/lambda/Dockerfile.local-run
+# (Api): parte da mesma imagem base do runtime "provided.al2023" real, copia
+# o binário publicado direto do estágio `build` (sem passar por `package`,
+# que só existe pra gerar o .zip de deploy) e deixa o RIE ser montado por
+# volume no `docker run` (infra/lambda/local-env-up-account-trigger.sh) — não
+# embutido na imagem, que nunca é usada em deploy.
+FROM public.ecr.aws/lambda/provided:al2023 AS local-run
+
+COPY --from=build /app/publish/GastosApp.CognitoTriggers ${LAMBDA_TASK_ROOT}/bootstrap
+RUN chmod +x ${LAMBDA_TASK_ROOT}/bootstrap
+
+ENTRYPOINT [ "/var/runtime/bootstrap" ]
