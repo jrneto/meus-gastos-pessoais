@@ -62,12 +62,19 @@ infraestrutura nova:**
    `AccountTriggerHandler` passa a consultar `IUserProfileRepository.
    FindByUserIdAsync` (mesma tabela DynamoDB, já com permissão IAM —
    sem policy nova) para obter o nome cadastrado no registro (FEAT-26)
-   e preencher `{{nome}}` de verdade. Caso não exista perfil (mesmo
-   cenário de borda já tratado pela FEAT-31 — usuário confirmado fora
-   do fluxo `POST /auth/register`, ex.: criado direto no console
-   Cognito), usa um fallback sem depender do nome (ver requisito
-   abaixo) em vez de falhar o envio.
-2. **Corrigir o domínio no template antes de ir para produção.**
+   e preencher `{{nome}}` de verdade.
+2. **Sem perfil, sem e-mail — nenhum fallback de saudação genérica**
+   (revisto após o `/specify` inicial, a pedido do usuário). Um usuário
+   confirmado sem `UserProfile` correspondente (ex.: criado direto no
+   console Cognito, fora do fluxo `POST /auth/register`) é uma anomalia
+   — a FEAT-31 já bloqueia o login desse usuário (403
+   `profile-incomplete`) justamente por ele não ter cadastro completo.
+   Esta feature não trata esse cenário como um caminho válido a
+   suportar com conteúdo degradado: perfil não encontrado é tratado
+   como qualquer outra falha de envio (mesmo mecanismo defensivo
+   log-only, ver requisito abaixo) — o e-mail simplesmente não é
+   enviado, sem texto alternativo no lugar do nome.
+3. **Corrigir o domínio no template antes de ir para produção.**
    `04-boas-vindas.html` é ajustado nesta feature, trocando
    `jrnexpenses.com.br` por `jrnexpenses.com` nos 3 lugares (CTA,
    link de preferências, e-mail de suporte).
@@ -87,20 +94,21 @@ infraestrutura nova:**
 - Placeholders do template:
   - `{{nome}}`: nome cadastrado em `UserProfile` (via
     `IUserProfileRepository.FindByUserIdAsync`, buscado pelo `userId`
-    do próprio evento). Se não existir perfil, usa "Bem-vindo(a)." no
-    lugar de "Bem-vindo, {{nome}}." — sem travar o envio por falta de
-    nome.
+    do próprio evento).
   - `{{email}}`: e-mail do próprio evento `Post Confirmation`
     (`UserAttributes["email"]`, já validado como presente pelo mesmo
     guard que `EnsureAccountCommand` usa).
-- Falha ao buscar o perfil (`IUserProfileRepository`) ou ao enviar o
-  e-mail (SES) **não pode** bloquear nem reverter a criação da conta —
-  mesma filosofia defensiva já aplicada a `EnsureAccountCommand` dentro
-  de `AccountTriggerHandler` (FEAT-19): só loga, o trigger sempre
-  retorna sucesso ao Cognito.
+- **Ausência de `UserProfile` não é um caminho suportado com conteúdo
+  alternativo** (decisão 2): tratada como falha de envio, sem e-mail
+  degradado — mesmo mecanismo defensivo do bullet seguinte.
+- Falha ao buscar o perfil (`IUserProfileRepository`), a ausência dele,
+  ou falha ao enviar o e-mail (SES) **não pode** bloquear nem reverter
+  a criação da conta — mesma filosofia defensiva já aplicada a
+  `EnsureAccountCommand` dentro de `AccountTriggerHandler` (FEAT-19):
+  só loga, o trigger sempre retorna sucesso ao Cognito.
 - `frontend/design-system/emails/04-boas-vindas.html` é ajustado para
   usar o domínio real (`jrnexpenses.com`) nos 3 links/endereços citados
-  acima (decisão 2).
+  acima (decisão 3).
 - Nenhuma mudança no contrato de `POST /auth/register`,
   `POST /auth/confirm`, `POST /auth/resend-confirmation`, no login, ou
   em qualquer outro endpoint — esta feature não expõe rota HTTP nova,
@@ -124,9 +132,9 @@ infraestrutura nova:**
   diretamente no console AWS)
 - When o trigger `Post Confirmation` roda e `EnsureAccountCommand` cria
   a conta pela primeira vez
-- Then um e-mail de boas-vindas ainda assim chega ao endereço
-  cadastrado, com uma saudação genérica no lugar do nome (sem travar o
-  envio)
+- Then nenhum e-mail de boas-vindas é enviado (tratado como falha,
+  só loga), mas a confirmação do cadastro e a criação da conta
+  continuam funcionando normalmente — mesmo efeito prático de US4
 
 **US3 — Conta já existente (idempotência)**
 - Given um usuário cuja conta já foi criada anteriormente (ex.:
@@ -165,15 +173,16 @@ já usado pelo e-mail de "senha alterada" (FEAT-36), assunto igual ao
       o envio do e-mail de boas-vindas (US1)
 - [ ] Usuário com `UserProfile` cadastrado recebe o e-mail com o nome
       real em `{{nome}}` (US1)
-- [ ] Usuário sem `UserProfile` recebe o e-mail com saudação genérica,
-      sem travar o envio (US2)
+- [ ] Usuário sem `UserProfile` não recebe e-mail de boas-vindas (tratado
+      como falha, sem conteúdo degradado), sem travar a confirmação nem
+      a criação da conta (US2)
 - [ ] Conta já existente (`AlreadyExisted: true`) não gera novo envio
       de e-mail de boas-vindas (US3)
 - [ ] Falha ao buscar perfil ou ao enviar o e-mail não impede a
       confirmação do cadastro nem a criação da conta — só loga (US4)
 - [ ] `frontend/design-system/emails/04-boas-vindas.html` corrigido
       para usar `jrnexpenses.com` (sem ".br") nos 3 lugares (CTA, link
-      de preferências, e-mail de suporte) — decisão 2
+      de preferências, e-mail de suporte) — decisão 3
 - [ ] `Ses__SenderEmail` (variável de ambiente) adicionada a
       `lambda-account-trigger.tf` de hom e prod, com o mesmo literal já
       usado em `parameter-store.tf`/`email_configuration` do Cognito —

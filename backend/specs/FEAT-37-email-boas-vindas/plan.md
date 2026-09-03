@@ -104,14 +104,12 @@ public sealed class SesWelcomeEmailSender : IWelcomeEmailSender
 
     public async Task SendAsync(string userId, string email, CancellationToken cancellationToken = default)
     {
-        var profile = await _profileRepository.FindByUserIdAsync(userId, cancellationToken);
+        var profile = await _profileRepository.FindByUserIdAsync(userId, cancellationToken)
+            ?? throw new InvalidOperationException(
+                $"UserProfile não encontrado para o usuário {userId} — e-mail de boas-vindas não enviado.");
 
-        // Substitui a sentença inteira (não só o valor de {{nome}}) pra
-        // sempre fechar a frase corretamente com ou sem nome — ver
-        // spec.md, requisito de negócio / US2.
-        var greeting = profile is null ? "(a)." : $", {profile.Name}.";
         var html = WelcomeEmailTemplateProvider.Template
-            .Replace(", {{nome}}.", greeting)
+            .Replace("{{nome}}", profile.Name)
             .Replace("{{email}}", email);
 
         await _emailSender.SendAsync(email, Subject, html, cancellationToken);
@@ -119,14 +117,14 @@ public sealed class SesWelcomeEmailSender : IWelcomeEmailSender
 }
 ```
 
-Nota de implementação: o texto exato no template é
-`Bem-vindo, {{nome}}.` — a substituição busca a substring
-`", {{nome}}."` (vírgula + espaço + placeholder + ponto), não só
-`{{nome}}`, exatamente pra poder virar `"Bem-vindo(a)."` (sem vírgula
-solta) quando não há nome. Se o template mudar essa pontuação no
-futuro, a substituição precisa acompanhar — mesmo tipo de acoplamento
-textual que já existe nos outros `*TemplateProvider`/`*EmailSender`
-(substituição de string simples, sem template engine).
+Nota de implementação: **sem fallback textual** (decisão revista com o
+usuário após o `/specify` inicial) — perfil ausente lança
+`InvalidOperationException`, capturada pelo mesmo `try/catch` do
+`EnsureAccountCommandHandler` que já existe para qualquer outra falha
+(SES indisponível, DynamoDB fora do ar etc.). Não é um caso especial:
+vira só mais uma causa de "falha no envio, só loga" — mesma mensagem
+de log (`"Falha ao enviar email de boas-vindas para o usuário
+{UserId}."`), sem precisar de nenhum tratamento dedicado no handler.
 
 ### `WelcomeEmailTemplateProvider` (novo, `GastosApp.Infrastructure/Email/WelcomeEmailTemplateProvider.cs`)
 
@@ -185,10 +183,15 @@ GSI.
    mesma separação já usada por `SesPasswordChangedEmailSender`: a
    Application só entrega `userId`/`email`, quem sabe montar o HTML
    (incluindo buscar dados auxiliares pro template) é a Infrastructure.
-3. **Fallback sem nome faz `.Replace(", {{nome}}.", "(a).")`** — decisão
-   já fechada no `/specify` (US2). Evita um `if` ramificado no template
-   (não existe template engine no projeto) mantendo uma frase
-   gramaticalmente correta nos dois casos.
+3. **Sem fallback de saudação genérica — perfil ausente é tratado como
+   falha, não como conteúdo alternativo** (decisão revista com o
+   usuário após o `/specify` inicial, ver spec.md decisão 2). Um
+   usuário confirmado sem `UserProfile` é uma anomalia (a FEAT-31 já
+   bloqueia esse mesmo usuário no login) — não vale a pena desenhar
+   texto degradado pra um cenário que o produto já trata como inválido
+   em outro lugar. `SesWelcomeEmailSender` lança quando não encontra
+   perfil, reaproveitando o `try/catch` já existente no handler em vez
+   de um caminho de conteúdo alternativo.
 4. **Correção do domínio do template feita nos dois arquivos** (design
    system + cópia embarcada) — evita a mesma divergência se propagar
    pra uma eventual FEAT futura que reutilize o arquivo do design
@@ -253,8 +256,9 @@ SES indisponível, exceção inesperada) é absorvida dentro do próprio
     nem muda o resultado).
   - `SesWelcomeEmailSenderTests` (novo, mesma pasta/padrão de
     `SesPasswordChangedEmailSenderTests`): monta HTML certo com perfil
-    encontrado, monta HTML de fallback sem perfil, chama
-    `IEmailSender.SendAsync` com destinatário/assunto certos.
+    encontrado e chama `IEmailSender.SendAsync` com destinatário/
+    assunto certos; lança `InvalidOperationException` (sem chamar
+    `IEmailSender`) quando o perfil não é encontrado.
   - `AccountTriggerHandlerTests`: sem mudança esperada (o handler em si
     não muda — só o que o `EnsureAccountCommand` faz por trás).
 - **Componente** (`GastosApp.ComponentTests`): não aplicável — feature
@@ -303,8 +307,5 @@ SES indisponível, exceção inesperada) é absorvida dentro do próprio
    trigger — mudança de infraestrutura existente, sem custo e sem
    mudança de superfície de segurança, mas ainda assim sob a regra de
    aprovação explícita do projeto.
-2. **Confirmar o texto de fallback "Bem-vindo(a)."** como aceitável
-   (já validado na íntegra no `/specify`, só reconfirmando antes de
-   virar código) — outra opção seria omitir a vírgula e ponto e usar
-   algo como "Bem-vindo!" com pontuação própria, mas isso mudaria a
-   pontuação do H1 fora do padrão atual do template.
+2. ~~Fallback de saudação genérica~~ — decidido: sem fallback, perfil
+   ausente é tratado como falha (ver decisão técnica 3).
