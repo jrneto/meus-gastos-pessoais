@@ -27,7 +27,8 @@ describe('useExportTransactions', () => {
 
     expect(downloadBlobMock).toHaveBeenCalledTimes(1)
     expect(downloadBlobMock.mock.calls[0][1]).toBe(EXPORT_FILENAME)
-    expect(downloadBlobMock.mock.calls[0][0]).toBeInstanceOf(Blob)
+    // Não usa `toBeInstanceOf(Blob)` — ver settingsApi.test.ts.
+    expect(typeof downloadBlobMock.mock.calls[0][0].text).toBe('function')
     expect(result.current.success).toBe(true)
     expect(result.current.error).toBeNull()
   })

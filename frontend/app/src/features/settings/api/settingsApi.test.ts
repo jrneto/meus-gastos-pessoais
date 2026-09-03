@@ -21,7 +21,13 @@ describe('settingsApi.exportTransactionsCsv', () => {
     const result = await settingsApi.exportTransactionsCsv('tok-123')
 
     expect(receivedAuth).toBe('Bearer tok-123')
-    expect(result).toBeInstanceOf(Blob)
+    // Não usa `toBeInstanceOf(Blob)` — o `Blob` global do processo de
+    // teste pode ser uma classe diferente do `Blob` retornado por
+    // `Response.blob()` dependendo da versão do Node/runtime (achado
+    // em CI, Node 22, ausente localmente em Node 24), então checa o
+    // formato (duck typing) + o conteúdo, que é o que importa de
+    // verdade pro `downloadBlob` funcionar.
+    expect(typeof result.text).toBe('function')
     expect(await result.text()).toBe(CSV_BODY)
   })
 
