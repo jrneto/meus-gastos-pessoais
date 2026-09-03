@@ -1,5 +1,6 @@
 import { httpClient } from '@/lib/httpClient'
 import {
+  ForbiddenError,
   InvalidFilterError,
   NetworkError,
   NotFoundError,
@@ -93,6 +94,9 @@ function assertOk(response: Response): void {
   if (response.status === 401) {
     throw new SessionExpiredError()
   }
+  if (response.status === 403) {
+    throw new ForbiddenError()
+  }
   if (!response.ok) {
     throw new UnknownTransactionError()
   }
@@ -132,6 +136,9 @@ function assertUpdateOk(response: Response): void {
   if (response.status === 401) {
     throw new SessionExpiredError()
   }
+  if (response.status === 403) {
+    throw new ForbiddenError()
+  }
   if (!response.ok) {
     throw new UnknownTransactionError()
   }
@@ -143,6 +150,9 @@ function assertDeleteOk(response: Response): void {
   }
   if (response.status === 401) {
     throw new SessionExpiredError()
+  }
+  if (response.status === 403) {
+    throw new ForbiddenError()
   }
   if (!response.ok) {
     throw new UnknownTransactionError()

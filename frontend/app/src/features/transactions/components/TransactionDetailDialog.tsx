@@ -10,6 +10,10 @@ interface TransactionDetailDialogProps {
   onOpenChange: (open: boolean) => void
   onEdit: (transaction: TransactionQueryItem) => void
   onDelete: (transaction: TransactionQueryItem) => void
+  /** Controla "Editar"/"Excluir" (FEAT-29) — mesma regra pras duas
+   * ações, ver lib/permissions/rules.ts#canManageTransaction. "Fechar"
+   * continua sempre visível independente deste flag. */
+  canManage: boolean
 }
 
 // Popup "Detalhe da despesa/receita" (FEAT-20) — sem chamada à API,
@@ -21,7 +25,7 @@ interface TransactionDetailDialogProps {
 // `TransactionList`) — qualquer generalização visual além disso
 // (ícone, demais ajustes finos de `19-detalhe-transacao.png`) continua
 // sendo escopo da FEAT-25.
-export function TransactionDetailDialog({ transaction, onOpenChange, onEdit, onDelete }: TransactionDetailDialogProps) {
+export function TransactionDetailDialog({ transaction, onOpenChange, onEdit, onDelete, canManage }: TransactionDetailDialogProps) {
   const { items: categories } = useCategories()
   const open = transaction !== null
 
@@ -90,29 +94,33 @@ export function TransactionDetailDialog({ transaction, onOpenChange, onEdit, onD
           <div style={{ fontSize: '14px' }}>{transaction.description}</div>
         </div>
 
-        <div className="dialog-actions" style={{ justifyContent: 'space-between' }}>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            style={{ color: 'var(--color-accent-700)' }}
-            onClick={() => {
-              onDelete(transaction)
-              onOpenChange(false)
-            }}
-          >
-            Excluir
-          </button>
-          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+        <div className="dialog-actions" style={{ justifyContent: canManage ? 'space-between' : 'flex-end' }}>
+          {canManage && (
             <button
               type="button"
-              className="btn btn-secondary"
+              className="btn btn-ghost"
+              style={{ color: 'var(--color-accent-700)' }}
               onClick={() => {
-                onEdit(transaction)
+                onDelete(transaction)
                 onOpenChange(false)
               }}
             >
-              Editar
+              Excluir
             </button>
+          )}
+          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            {canManage && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  onEdit(transaction)
+                  onOpenChange(false)
+                }}
+              >
+                Editar
+              </button>
+            )}
             <button type="button" className="btn btn-primary" onClick={() => onOpenChange(false)}>
               Fechar
             </button>

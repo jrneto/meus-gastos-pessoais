@@ -8,6 +8,14 @@ import { server } from '@/test/msw/server'
 import { CategoriesPage } from './CategoriesPage'
 
 const CATEGORIES_URL = 'http://localhost:5049/categories'
+const ME_URL = 'http://localhost:5049/auth/me'
+const MEMBERS_URL = 'http://localhost:5049/members'
+
+const currentUser = {
+  userId: 'user-1',
+  email: 'titular@email.com',
+  name: 'Titular da Conta',
+}
 
 function renderPage() {
   return render(
@@ -21,6 +29,14 @@ describe('CategoriesPage', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
+    // Papel Titular por padrão (acesso irrestrito) — testes de papéis
+    // restritos (Leitura/Lancar) sobrescrevem com server.use() (FEAT-29).
+    server.use(
+      http.get(ME_URL, () => HttpResponse.json(currentUser)),
+      http.get(MEMBERS_URL, () =>
+        HttpResponse.json({ items: [{ email: currentUser.email, role: 'Titular' }] }),
+      ),
+    )
   })
 
   it('exibe o título "Categorias e orçamentos"', () => {
@@ -70,7 +86,7 @@ describe('CategoriesPage', () => {
 
     renderPage()
 
-    await user.click(screen.getByRole('button', { name: /nova categoria/i }))
+    await user.click(await screen.findByRole('button', { name: /nova categoria/i }))
     expect(screen.getByLabelText('Nome')).toBeInTheDocument()
 
     await user.type(screen.getByLabelText('Nome'), 'Viagem')
@@ -99,11 +115,105 @@ describe('CategoriesPage', () => {
     renderPage()
     await screen.findByText('Alimentação')
 
-    await user.click(screen.getByRole('button', { name: /editar categoria/i }))
+    await user.click(await screen.findByRole('button', { name: /editar categoria/i }))
     await user.clear(screen.getByLabelText('Nome'))
     await user.type(screen.getByLabelText('Nome'), 'Alimentação e bebidas')
     await user.click(screen.getByRole('button', { name: /^salvar$/i }))
 
     await waitFor(() => expect(screen.getByText('Alimentação e bebidas')).toBeInTheDocument())
+  })
+
+  it.each(['Leitura', 'Lancar'] as const)(
+    'papel %s não vê "+ Nova categoria" nem os ícones de editar/excluir (FEAT-29)',
+    async (role) => {
+      server.use(
+        http.get(MEMBERS_URL, () =>
+          HttpResponse.json({ items: [{ email: currentUser.email, role }] }),
+        ),
+        http.get(CATEGORIES_URL, () =>
+          HttpResponse.json({
+            items: [
+              {
+                id: 'cat-1',
+                nome: 'Alimentação',
+                tipo: 'despesa',
+                orcamentoMensalCents: 80000,
+                createdAt: '2025-06-15T12:00:00Z',
+              },
+            ],
+          }),
+        ),
+      )
+
+      renderPage()
+
+      await screen.findByText('Alimentação')
+      expect(screen.queryByRole('button', { name: /nova categoria/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /editar categoria/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /excluir categoria/i })).not.toBeInTheDocument()
+    },
+  )
+
+  it.each(['Total', 'Titular'] as const)(
+    'papel %s vê "+ Nova categoria" e os ícones de editar/excluir (FEAT-29)',
+    async (role) => {
+      server.use(
+        http.get(MEMBERS_URL, () =>
+          HttpResponse.json({ items: [{ email: currentUser.email, role }] }),
+        ),
+        http.get(CATEGORIES_URL, () =>
+          HttpResponse.json({
+            items: [
+              {
+                id: 'cat-1',
+                nome: 'Alimentação',
+                tipo: 'despesa',
+                orcamentoMensalCents: 80000,
+                createdAt: '2025-06-15T12:00:00Z',
+              },
+            ],
+          }),
+        ),
+      )
+
+      renderPage()
+
+      await screen.findByText('Alimentação')
+      expect(await screen.findByRole('button', { name: /nova categoria/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /editar categoria/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /excluir categoria/i })).toBeInTheDocument()
+    },
+  )
+
+  it('nenhum botão de escrita aparece enquanto o papel ainda está carregando (FEAT-29)', async () => {
+    server.use(
+      http.get(CATEGORIES_URL, () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: 'cat-1',
+              nome: 'Alimentação',
+              tipo: 'despesa',
+              orcamentoMensalCents: 80000,
+              createdAt: '2025-06-15T12:00:00Z',
+            },
+          ],
+        }),
+      ),
+      http.get(MEMBERS_URL, async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        return HttpResponse.json({ items: [{ email: currentUser.email, role: 'Titular' }] })
+      }),
+    )
+
+    renderPage()
+    await screen.findByText('Alimentação')
+
+    expect(screen.queryByRole('button', { name: /nova categoria/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /editar categoria/i })).not.toBeInTheDocument()
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /nova categoria/i })).toBeInTheDocument(),
+    )
   })
 })

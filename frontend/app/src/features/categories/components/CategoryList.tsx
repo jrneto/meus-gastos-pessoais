@@ -16,6 +16,9 @@ interface CategoryListProps {
   onEditToggle: (id: string) => void
   onSaved: (category: CategoryItem) => void
   onNotFound: (id: string) => void
+  /** Controla os ícones de editar/excluir de cada linha (FEAT-29) — o
+   * rótulo de orçamento (informativo) continua sempre visível. */
+  canWrite: boolean
 }
 
 const SECTION_HEADING_STYLE: React.CSSProperties = {
@@ -36,6 +39,7 @@ export function CategoryList({
   onEditToggle,
   onSaved,
   onNotFound,
+  canWrite,
 }: CategoryListProps) {
   const [deleteTarget, setDeleteTarget] = useState<CategoryItem | null>(null)
   const expenseItems = items.filter((item) => item.tipo === 'despesa')
@@ -81,24 +85,26 @@ export function CategoryList({
                     : 'Sem teto definido'}
                 </span>
               )}
-              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                <button
-                  type="button"
-                  className="btn"
-                  aria-label="Editar categoria"
-                  onClick={() => onEditToggle(item.id)}
-                >
-                  <Pencil size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="btn"
-                  aria-label="Excluir categoria"
-                  onClick={() => setDeleteTarget(item)}
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
+              {canWrite && (
+                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                  <button
+                    type="button"
+                    className="btn"
+                    aria-label="Editar categoria"
+                    onClick={() => onEditToggle(item.id)}
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    aria-label="Excluir categoria"
+                    onClick={() => setDeleteTarget(item)}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

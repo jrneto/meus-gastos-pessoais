@@ -3,7 +3,12 @@ import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { NotFoundError, SessionExpiredError, UpdateValidationError } from '../errors/transactionErrors'
+import {
+  ForbiddenError,
+  NotFoundError,
+  SessionExpiredError,
+  UpdateValidationError,
+} from '../errors/transactionErrors'
 import type { TransactionFormOutput } from '../schemas/transactionSchema'
 import { useUpdateTransaction } from './useUpdateTransaction'
 
@@ -141,5 +146,18 @@ describe('useUpdateTransaction', () => {
 
     expect(result.current.error).toBeInstanceOf(SessionExpiredError)
     expect(useAuthStore.getState().token).toBeNull()
+  })
+
+  it('em caso de 403, expõe ForbiddenError', async () => {
+    server.use(http.put(TRANSACTION_URL, () => new HttpResponse(null, { status: 403 })))
+
+    const { result } = renderHook(() => useUpdateTransaction('tx-1', 'despesa'))
+
+    await act(async () => {
+      await result.current.updateTransaction(validTransaction)
+    })
+
+    expect(result.current.error).toBeInstanceOf(ForbiddenError)
+    expect(result.current.success).toBe(false)
   })
 })

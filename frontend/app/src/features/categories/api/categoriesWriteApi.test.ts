@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { server } from '@/test/msw/server'
 import {
   CategoryInUseError,
+  ForbiddenError,
   NameConflictError,
   NetworkError,
   NotFoundError,
@@ -95,6 +96,14 @@ describe('categoriesWriteApi.createCategory', () => {
       NetworkError,
     )
   })
+
+  it('em caso de 403, lança ForbiddenError', async () => {
+    server.use(http.post(CATEGORIES_URL, () => new HttpResponse(null, { status: 403 })))
+
+    await expect(categoriesWriteApi.createCategory('tok-123', payload)).rejects.toBeInstanceOf(
+      ForbiddenError,
+    )
+  })
 })
 
 describe('categoriesWriteApi.updateCategory', () => {
@@ -120,6 +129,14 @@ describe('categoriesWriteApi.updateCategory', () => {
     await expect(
       categoriesWriteApi.updateCategory('tok-123', 'cat-1', payload),
     ).rejects.toBeInstanceOf(NameConflictError)
+  })
+
+  it('em caso de 403, lança ForbiddenError', async () => {
+    server.use(http.put(CATEGORY_URL, () => new HttpResponse(null, { status: 403 })))
+
+    await expect(
+      categoriesWriteApi.updateCategory('tok-123', 'cat-1', payload),
+    ).rejects.toBeInstanceOf(ForbiddenError)
   })
 })
 
@@ -151,6 +168,14 @@ describe('categoriesWriteApi.deleteCategory', () => {
 
     await expect(categoriesWriteApi.deleteCategory('tok-123', 'cat-1')).rejects.toBeInstanceOf(
       UnknownCategoryError,
+    )
+  })
+
+  it('em caso de 403, lança ForbiddenError', async () => {
+    server.use(http.delete(CATEGORY_URL, () => new HttpResponse(null, { status: 403 })))
+
+    await expect(categoriesWriteApi.deleteCategory('tok-123', 'cat-1')).rejects.toBeInstanceOf(
+      ForbiddenError,
     )
   })
 })

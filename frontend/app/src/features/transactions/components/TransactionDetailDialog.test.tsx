@@ -38,7 +38,7 @@ describe('TransactionDetailDialog', () => {
 
   it('fica fechado quando transaction é null', () => {
     render(
-      <TransactionDetailDialog transaction={null} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+      <TransactionDetailDialog transaction={null} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} canManage />,
     )
 
     expect(screen.queryByText('Detalhe da despesa')).not.toBeInTheDocument()
@@ -46,7 +46,7 @@ describe('TransactionDetailDialog', () => {
 
   it('aberto exibe valor, data, categoria e descrição', async () => {
     render(
-      <TransactionDetailDialog transaction={transaction} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+      <TransactionDetailDialog transaction={transaction} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} canManage />,
     )
 
     expect(screen.getByText('Detalhe da despesa')).toBeInTheDocument()
@@ -58,7 +58,7 @@ describe('TransactionDetailDialog', () => {
 
   it('mostra "Lançado por: Você" quando o autor é o próprio usuário logado', () => {
     render(
-      <TransactionDetailDialog transaction={transaction} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+      <TransactionDetailDialog transaction={transaction} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} canManage />,
     )
 
     expect(screen.getByText('Lançado por')).toBeInTheDocument()
@@ -78,6 +78,7 @@ describe('TransactionDetailDialog', () => {
         onOpenChange={vi.fn()}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
+        canManage
       />,
     )
 
@@ -94,7 +95,7 @@ describe('TransactionDetailDialog', () => {
     }
 
     render(
-      <TransactionDetailDialog transaction={incomeTransaction} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+      <TransactionDetailDialog transaction={incomeTransaction} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} canManage />,
     )
 
     expect(screen.getByText('Detalhe da receita')).toBeInTheDocument()
@@ -105,7 +106,7 @@ describe('TransactionDetailDialog', () => {
 
   it('despesa mostra cor accent no valor, sem regressão (FEAT-24)', () => {
     render(
-      <TransactionDetailDialog transaction={transaction} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+      <TransactionDetailDialog transaction={transaction} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} canManage />,
     )
 
     const amount = screen.getByText('- R$ 45,90')
@@ -118,7 +119,7 @@ describe('TransactionDetailDialog', () => {
     const onOpenChange = vi.fn()
 
     render(
-      <TransactionDetailDialog transaction={transaction} onOpenChange={onOpenChange} onEdit={onEdit} onDelete={vi.fn()} />,
+      <TransactionDetailDialog transaction={transaction} onOpenChange={onOpenChange} onEdit={onEdit} onDelete={vi.fn()} canManage />,
     )
     await user.click(screen.getByRole('button', { name: /^editar$/i }))
 
@@ -132,7 +133,7 @@ describe('TransactionDetailDialog', () => {
     const onOpenChange = vi.fn()
 
     render(
-      <TransactionDetailDialog transaction={transaction} onOpenChange={onOpenChange} onEdit={vi.fn()} onDelete={onDelete} />,
+      <TransactionDetailDialog transaction={transaction} onOpenChange={onOpenChange} onEdit={vi.fn()} onDelete={onDelete} canManage />,
     )
     await user.click(screen.getByRole('button', { name: /^excluir$/i }))
 
@@ -147,7 +148,7 @@ describe('TransactionDetailDialog', () => {
     const onOpenChange = vi.fn()
 
     render(
-      <TransactionDetailDialog transaction={transaction} onOpenChange={onOpenChange} onEdit={onEdit} onDelete={onDelete} />,
+      <TransactionDetailDialog transaction={transaction} onOpenChange={onOpenChange} onEdit={onEdit} onDelete={onDelete} canManage />,
     )
     await user.click(screen.getByRole('button', { name: /^fechar$/i }))
 
@@ -161,7 +162,7 @@ describe('TransactionDetailDialog', () => {
     const onOpenChange = vi.fn()
 
     render(
-      <TransactionDetailDialog transaction={transaction} onOpenChange={onOpenChange} onEdit={vi.fn()} onDelete={vi.fn()} />,
+      <TransactionDetailDialog transaction={transaction} onOpenChange={onOpenChange} onEdit={vi.fn()} onDelete={vi.fn()} canManage />,
     )
     await user.keyboard('{Escape}')
 
@@ -173,10 +174,35 @@ describe('TransactionDetailDialog', () => {
     const onOpenChange = vi.fn()
 
     render(
-      <TransactionDetailDialog transaction={transaction} onOpenChange={onOpenChange} onEdit={vi.fn()} onDelete={vi.fn()} />,
+      <TransactionDetailDialog transaction={transaction} onOpenChange={onOpenChange} onEdit={vi.fn()} onDelete={vi.fn()} canManage />,
     )
     await user.click(screen.getByRole('dialog').parentElement as HTMLElement)
 
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('canManage=true mostra "Editar" e "Excluir" (FEAT-29)', () => {
+    render(
+      <TransactionDetailDialog transaction={transaction} onOpenChange={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} canManage />,
+    )
+
+    expect(screen.getByRole('button', { name: /^editar$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^excluir$/i })).toBeInTheDocument()
+  })
+
+  it('canManage=false esconde "Editar" e "Excluir", mantendo só "Fechar" (FEAT-29)', () => {
+    render(
+      <TransactionDetailDialog
+        transaction={transaction}
+        onOpenChange={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        canManage={false}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: /^editar$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^excluir$/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^fechar$/i })).toBeInTheDocument()
   })
 })
