@@ -87,6 +87,23 @@ cd backend
 
 Ver `backend/specs/FEAT-29-testes-integrados/plan.md` para detalhes.
 
+## Zerando os dados (sem derrubar o ambiente)
+
+Remove todos os itens da tabela `GastosApp-Local` (LocalStack) e todos
+os usuários do User Pool local (cognito-local), mantendo containers,
+tabela, User Pool/App Client e parâmetros intactos — útil pra repetir
+um teste manual do zero sem reprovisionar o ambiente inteiro. Diferente
+de "Parando/limpando" abaixo, que derruba os containers e apaga todo o
+estado.
+
+```bash
+cd backend/infra
+./scripts/local-reset.sh
+```
+
+Também dá pra rodar cada parte isoladamente: `./scripts/reset-dynamodb.sh`
+(só a tabela) ou `./scripts/reset-cognito.sh` (só os usuários).
+
 ## Parando/limpando
 
 ```bash
