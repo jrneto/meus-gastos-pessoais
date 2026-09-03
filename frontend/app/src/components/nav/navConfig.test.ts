@@ -9,7 +9,7 @@ describe('flattenNavItems', () => {
     expect(flat.map((item) => item.id)).toEqual(NAV_TREE.map((item) => item.id))
   })
 
-  it('inclui os 6 itens folha esperados (Início, Transações, Relatórios, Categorias, Membros, Configurações)', () => {
+  it('inclui os 6 itens folha esperados (Início, Transações, Relatórios, Categorias, Membros, Ajustes)', () => {
     const ids = flattenNavItems().map((item) => item.id)
 
     expect(ids).toEqual(['home', 'transactions', 'reports', 'categories', 'members', 'settings'])
@@ -19,7 +19,7 @@ describe('flattenNavItems', () => {
     expect(flattenNavItems()).toHaveLength(6)
   })
 
-  it('itens mobilePrimary são exatamente os 3 destinos esperados (Início, Transações, Configurações)', () => {
+  it('itens mobilePrimary são exatamente os 3 destinos esperados (Início, Transações, Ajustes)', () => {
     const mobilePrimaryIds = flattenNavItems()
       .filter((item) => item.mobilePrimary)
       .map((item) => item.id)
@@ -63,5 +63,13 @@ describe('flattenNavItems', () => {
     expect(transactions?.label).toBe('Transações')
     expect(transactions?.to).toBe('/transactions')
     expect(transactions?.children).toBeUndefined()
+  })
+
+  it('"Ajustes" está ativo, navegável e rotulado igual ao título da página (FEAT-30)', () => {
+    const settings = flattenNavItems().find((item) => item.id === 'settings')
+
+    expect(settings?.label).toBe('Ajustes')
+    expect(settings?.status).toBe('active')
+    expect(settings?.to).toBe('/settings')
   })
 })

@@ -36,17 +36,17 @@
       `AccountFooter.test.tsx` cobrindo: renderiza avatar/rótulo, clicar
       em "Sair" chama `POST /auth/logout`, limpa a sessão e navega pro
       login, chama `onBeforeLogout` (quando informado) antes de navegar
-- [ ] 6. Atualizar `components/nav/navConfig.ts`: item `settings` com
+- [x] 6. Atualizar `components/nav/navConfig.ts`: item `settings` com
       `label: 'Ajustes'` (era `'Configurações'`) e `status: 'active'`
       (era `'placeholder'`), e `navConfig.test.ts` refletindo o novo
       rótulo/status
-- [ ] 7. Atualizar `components/nav/DesktopSidebar.tsx`: renderizar
+- [x] 7. Atualizar `components/nav/DesktopSidebar.tsx`: renderizar
       `<AccountFooter />` após a lista de itens de navegação, com o
       divisor superior do protótipo; atualizar `DesktopSidebar.test.tsx`
       (rótulo "Ajustes" no lugar de "Configurações" nos testes
       existentes) e adicionar cobertura do rodapé "Sua conta / Sair"
       (renderiza e aciona logout)
-- [ ] 8. Atualizar `components/nav/NavMoreSheet.tsx`: renderizar
+- [x] 8. Atualizar `components/nav/NavMoreSheet.tsx`: renderizar
       `<AccountFooter onBeforeLogout={...} />` ao final do painel,
       fechando o painel (`onOpenChange(false)`) antes do logout;
       atualizar `NavMoreSheet.test.tsx` com a mesma cobertura do rodapé

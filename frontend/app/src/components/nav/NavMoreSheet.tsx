@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import '@/styles/modernist/modernist.css'
+import { AccountFooter } from './AccountFooter'
 import { NAV_TREE } from './navConfig'
 import { NavItemRow } from './NavItemRow'
 
@@ -53,6 +54,8 @@ export function NavMoreSheet({ open, onOpenChange }: NavMoreSheetProps) {
             <NavItemRow key={item.id} item={item} isActive={pathname === item.to} />
           ))}
         </div>
+
+        <AccountFooter onBeforeLogout={() => onOpenChange(false)} />
       </div>
     </div>
   )
