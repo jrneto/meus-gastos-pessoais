@@ -265,13 +265,48 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   manualmente via `AccountTriggerHandlerManualDebug.cs` (perfil resolvido
   e template montado corretamente; chamada real ao SES falhou por falta
   de equivalente local, capturada pelo catch defensivo, comportamento
-  esperado). 512 unit + 224 componente passando. **`terraform apply` de
-  hom e prod segue pendente de aprovação explícita separada** — sem ele,
-  a Lambda de trigger não tem o remetente configurado em produção/
-  homologação (ver "Status" em `spec.md`).
+  esperado). 512 unit + 224 componente passando. `terraform apply` de
+  hom e prod aplicado pelo usuário em 2026-09-03. **Validação real em
+  hom (2026-09-03) encontrou um bug — ver BUG logo abaixo, corrigido
+  em `fix/ses-client-region-lambda-trigger`.**
   Depende de: FEAT-33, FEAT-19 (já pronto).
 
 ## Bugs
+
+- [x] **BUG — Cliente SES quebrava a criação de conta inteira na Lambda
+  de trigger (não só o email de boas-vindas)** (encontrado em
+  2026-09-03, na primeira validação real da FEAT-37 em hom via
+  Postman) *(resolvido em `fix/ses-client-region-lambda-trigger`)*:
+  `AddSesSdk` (FEAT-36) montava o cliente `IAmazonSimpleEmailServiceV2`
+  reaproveitando `CognitoOptions.Region` — decisão que nunca quebrou
+  porque só a Lambda da API resolvia esse cliente até a FEAT-37 injetar
+  `IWelcomeEmailSender` direto no construtor de
+  `EnsureAccountCommandHandler`. A Lambda de trigger de conta
+  (`GastosApp.CognitoTriggers`) nunca configura Cognito de propósito
+  (decisão da FEAT-19) — `CognitoOptions.Region` fica `null` lá,
+  `RegionEndpoint.GetBySystemName(null)` lança `ArgumentNullException`
+  **durante a resolução de DI do handler, antes de `Handle()` rodar** —
+  ou seja, fora do `try/catch` que protegia só a chamada `SendAsync`.
+  Resultado real observado: `EnsureAccountCommand` abortava por
+  completo, `Account`/`Membership`/categorias padrão **nunca eram
+  criados** — não um efeito colateral isolado do email. Log real do
+  CloudWatch (`jrnexpenses-account-trigger-hom`) trazido pelo usuário
+  confirmou o diagnóstico. Correção em duas partes: (1) `SesOptions`
+  ganhou `Region` própria com fallback `"us-east-1"` (mesmo padrão já
+  usado por `DynamoDbOptions.Region`), desacoplando o cliente SES de
+  `CognitoOptions` de vez; (2) `EnsureAccountCommandHandler` passou a
+  resolver `IWelcomeEmailSender` tardiamente via `IServiceProvider`,
+  dentro do próprio `try/catch` — assim qualquer falha futura de
+  configuração de email (construção, não só envio) fica contida,
+  cumprindo de verdade o requisito "falha no email nunca bloqueia a
+  criação da conta". Reproduzido localmente antes e depois da correção
+  (usuário real registrado/confirmado, sem `Cognito:*` configurado,
+  espelhando `lambda-account-trigger.tf`): antes, `Account` não era
+  criado; depois, criado normalmente. Fallback do login (FEAT-19)
+  também mascarava o sintoma pro usuário final — a Lambda da API tem
+  `Cognito:Region` via Parameter Store, então o próximo login recriava
+  a conta com sucesso, incluindo o email de boas-vindas dessa vez.
+  513 unit (2 testes novos) + 224 componente passando.
 
 - [x] **BUG — Login não exige perfil completo quando o usuário é criado
   diretamente no Cognito** (levantado em 2026-08-31, fora do escopo de

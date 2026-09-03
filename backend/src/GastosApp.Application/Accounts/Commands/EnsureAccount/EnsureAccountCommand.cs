@@ -1,6 +1,7 @@
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.Application.Common.Results;
 using Mediator;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace GastosApp.Application.Accounts.Commands.EnsureAccount;
@@ -24,16 +25,26 @@ public sealed record EnsureAccountResult(string AccountId, bool AlreadyExisted);
 public sealed class EnsureAccountCommandHandler : ICommandHandler<EnsureAccountCommand, Result<EnsureAccountResult>>
 {
     private readonly IAccountRepository _accountRepository;
-    private readonly IWelcomeEmailSender _welcomeEmailSender;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<EnsureAccountCommandHandler> _logger;
 
+    // IWelcomeEmailSender é resolvido tardiamente (via IServiceProvider, não
+    // injeção direta no construtor) de propósito: o Mediator constrói todo o
+    // handler — incluindo a cadeia de dependências de IWelcomeEmailSender —
+    // ANTES de Handle() rodar. Com injeção direta, uma falha na CONSTRUÇÃO
+    // dessa cadeia (não só na chamada) escaparia do try/catch abaixo e
+    // abortaria EnsureAccountCommand inteiro — exatamente o bug real
+    // encontrado em produção na FEAT-37 (SES client falhando ao resolver
+    // região, ArgumentNullException na resolução de DI, conta nunca criada).
+    // Resolver dentro do try/catch garante que QUALQUER falha relacionada ao
+    // email — construção ou envio — nunca bloqueia a criação da conta.
     public EnsureAccountCommandHandler(
         IAccountRepository accountRepository,
-        IWelcomeEmailSender welcomeEmailSender,
+        IServiceProvider serviceProvider,
         ILogger<EnsureAccountCommandHandler> logger)
     {
         _accountRepository = accountRepository;
-        _welcomeEmailSender = welcomeEmailSender;
+        _serviceProvider = serviceProvider;
         _logger = logger;
     }
 
@@ -49,7 +60,8 @@ public sealed class EnsureAccountCommandHandler : ICommandHandler<EnsureAccountC
         {
             try
             {
-                await _welcomeEmailSender.SendAsync(command.UserId, command.Email, cancellationToken);
+                var welcomeEmailSender = _serviceProvider.GetRequiredService<IWelcomeEmailSender>();
+                await welcomeEmailSender.SendAsync(command.UserId, command.Email, cancellationToken);
             }
             catch (Exception ex)
             {
