@@ -50,14 +50,14 @@
       `<AccountFooter onBeforeLogout={...} />` ao final do painel,
       fechando o painel (`onOpenChange(false)`) antes do logout;
       atualizar `NavMoreSheet.test.tsx` com a mesma cobertura do rodapé
-- [ ] 9. Reescrever `routes/SettingsPage.tsx` para o Modernist: título
+- [x] 9. Reescrever `routes/SettingsPage.tsx` para o Modernist: título
       "Ajustes", linha "Exportar dados" / botão "Exportar CSV" (estado
       ocupado com `isExporting`, rótulo "Exportando..." + `disabled`),
       erro inline (`role="alert"`) quando `error` não é `null`, toast de
       sucesso "Transações exportadas." (via `success` do
       `useExportTransactions` + `Toast`), `<AppVersion />` mantido; sem
       nenhum botão "Sair" nem classe shadcn/ui/Tailwind remanescente
-- [ ] 10. Reescrever `routes/SettingsPage.test.tsx`: remover o teste do
+- [x] 10. Reescrever `routes/SettingsPage.test.tsx`: remover o teste do
       botão "Sair" (comportamento migrado pra `AccountFooter.test.tsx`
       na task 5); manter o teste de versão (`AppVersion`); adicionar
       cenários de exportação via MSW — sucesso (aciona download e
