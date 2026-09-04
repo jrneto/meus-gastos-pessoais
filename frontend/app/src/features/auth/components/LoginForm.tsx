@@ -1,19 +1,44 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { AccountPendingApprovalError } from '../errors/authErrors'
+import { AccountNotConfirmedError } from '../errors/authErrors'
 import { useLogin } from '../hooks/useLogin'
 import { useRegister } from '../hooks/useRegister'
 import { loginSchema, type LoginCredentials } from '../schemas/loginSchema'
 import { registerSchema, type RegisterFormData } from '../schemas/registerSchema'
 import { extractDigits, maskCpf } from '../utils/cpf'
 import { maskPhone } from '../utils/phoneMask'
+import { ConfirmationForm } from './ConfirmationForm'
 
-type AuthMode = 'login' | 'signup'
+type Screen = 'login' | 'signup' | 'confirmation'
 
 export function LoginForm() {
-  const [authMode, setAuthMode] = useState<AuthMode>('login')
-  const isSignupMode = authMode === 'signup'
+  const [screen, setScreen] = useState<Screen>('login')
+  const [confirmationEmail, setConfirmationEmail] = useState('')
+  const [autoResendOnEnter, setAutoResendOnEnter] = useState(false)
+  const [justConfirmedEmail, setJustConfirmedEmail] = useState<string | null>(null)
+
+  function goToConfirmation(email: string, autoResend: boolean) {
+    setConfirmationEmail(email)
+    setAutoResendOnEnter(autoResend)
+    setScreen('confirmation')
+  }
+
+  // A tela de confirmação ocupa o card inteiro, sem o seletor de modo
+  // "Entrar"/"Criar conta" (FEAT-31).
+  if (screen === 'confirmation') {
+    return (
+      <ConfirmationForm
+        email={confirmationEmail}
+        autoResendOnEnter={autoResendOnEnter}
+        onConfirmed={(email) => {
+          setJustConfirmedEmail(email)
+          setScreen('login')
+        }}
+        onBack={() => setScreen('login')}
+      />
+    )
+  }
 
   // O escopo `.ds-modernist` (tokens + reset) é aplicado uma vez no
   // wrapper de `LoginPage` — este componente só depende dele estar
@@ -22,37 +47,44 @@ export function LoginForm() {
     <div>
       <div className="seg" style={{ alignSelf: 'flex-start', marginBottom: 'var(--space-4)' }}>
         <label className="seg-opt">
-          <input
-            type="radio"
-            name="authmode"
-            checked={authMode === 'login'}
-            onChange={() => setAuthMode('login')}
-          />
+          <input type="radio" name="authmode" checked={screen === 'login'} onChange={() => setScreen('login')} />
           Entrar
         </label>
         <label className="seg-opt">
-          <input
-            type="radio"
-            name="authmode"
-            checked={authMode === 'signup'}
-            onChange={() => setAuthMode('signup')}
-          />
+          <input type="radio" name="authmode" checked={screen === 'signup'} onChange={() => setScreen('signup')} />
           Criar conta
         </label>
       </div>
 
-      {isSignupMode ? <SignupForm onDone={() => setAuthMode('login')} /> : <LoginModeForm />}
+      {screen === 'signup' ? (
+        <SignupForm onRegistered={(email) => goToConfirmation(email, false)} />
+      ) : (
+        <LoginModeForm
+          justConfirmedEmail={justConfirmedEmail}
+          onNeedsConfirmation={(email) => goToConfirmation(email, true)}
+        />
+      )}
     </div>
   )
 }
 
-function LoginModeForm() {
+function LoginModeForm({
+  justConfirmedEmail,
+  onNeedsConfirmation,
+}: {
+  justConfirmedEmail: string | null
+  onNeedsConfirmation: (email: string) => void
+}) {
   const { login, isLoading, error } = useLogin()
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
-  } = useForm<LoginCredentials>({ resolver: zodResolver(loginSchema) })
+  } = useForm<LoginCredentials>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: justConfirmedEmail ?? '' },
+  })
 
   return (
     <form
@@ -60,12 +92,50 @@ function LoginModeForm() {
       noValidate
       onSubmit={handleSubmit((data) => login(data))}
     >
+      {justConfirmedEmail && !error && (
+        <div
+          role="status"
+          style={{
+            border: '2px solid var(--color-accent)',
+            background: 'var(--color-accent-100)',
+            padding: '12px 14px',
+            display: 'flex',
+            gap: '10px',
+            alignItems: 'flex-start',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ flex: 'none', marginTop: '1px' }}>
+            <polyline
+              points="20 6 9 17 4 12"
+              stroke="var(--color-accent-700)"
+              strokeWidth="2.5"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span style={{ fontSize: '12.5px', lineHeight: 1.45, color: 'var(--color-accent-700)' }}>
+            Email confirmado. Sua conta está ativa — entre com seus dados.
+          </span>
+        </div>
+      )}
+
       {error && (
-        <p style={{ color: 'var(--color-accent-700)', fontSize: '13px' }} role="alert">
-          {error instanceof AccountPendingApprovalError
-            ? error.message
-            : 'Email ou senha inválidos.'}
-        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <p style={{ color: 'var(--color-accent-700)', fontSize: '13px' }} role="alert">
+            {error instanceof AccountNotConfirmedError ? error.message : 'Email ou senha inválidos.'}
+          </p>
+          {error instanceof AccountNotConfirmedError && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              style={{ alignSelf: 'flex-start', padding: 0, fontSize: '12.5px' }}
+              onClick={() => onNeedsConfirmation(watch('email'))}
+            >
+              Confirmar cadastro
+            </button>
+          )}
+        </div>
       )}
 
       <label className="field">
@@ -109,7 +179,7 @@ function LoginModeForm() {
   )
 }
 
-function SignupForm({ onDone }: { onDone: () => void }) {
+function SignupForm({ onRegistered }: { onRegistered: (email: string) => void }) {
   const { register: doRegister, isLoading, error, success } = useRegister()
   const {
     register,
@@ -121,21 +191,21 @@ function SignupForm({ onDone }: { onDone: () => void }) {
 
   const phoneDigits = watch('phoneDigits') ?? ''
   const cpfDigits = watch('cpfDigits') ?? ''
+  // Guarda o email submetido (não o `watch()` no momento do sucesso,
+  // que poderia já ter mudado) pra entregar pro `onRegistered`.
+  const submittedEmailRef = useRef('')
 
-  if (success) {
-    return (
-      <div className="flex w-full max-w-sm flex-col gap-4">
-        <p style={{ color: 'var(--color-success-700, #15803d)', fontSize: '13px' }} role="status">
-          Conta criada! Aguarde a aprovação do administrador para poder entrar.
-        </p>
-        <button type="button" className="btn btn-primary btn-block" onClick={onDone}>
-          Voltar para o login
-        </button>
-      </div>
-    )
-  }
+  // Cadastro bem-sucedido navega direto pra tela de confirmação (FEAT-31)
+  // — não existe mais uma tela intermediária de "aguarde aprovação".
+  useEffect(() => {
+    if (success) {
+      onRegistered(submittedEmailRef.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [success])
 
   async function onSubmit(data: RegisterFormData) {
+    submittedEmailRef.current = data.email
     await doRegister({
       email: data.email,
       password: data.password,
