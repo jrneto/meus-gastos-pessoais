@@ -7,10 +7,12 @@ import {
   EmailAlreadyExistsError,
   InvalidConfirmationCodeError,
   InvalidCredentialsError,
+  InvalidResetCodeError,
   NetworkError,
   RefreshFailedError,
   RegisterValidationError,
   UnknownAuthError,
+  WeakPasswordError,
 } from '../errors/authErrors'
 import { authApi } from './authApi'
 
@@ -20,6 +22,8 @@ const LOGIN_URL = 'http://localhost:5049/auth/login'
 const REGISTER_URL = 'http://localhost:5049/auth/register'
 const CONFIRM_URL = 'http://localhost:5049/auth/confirm'
 const RESEND_URL = 'http://localhost:5049/auth/resend-confirmation'
+const FORGOT_PASSWORD_URL = 'http://localhost:5049/auth/forgot-password'
+const RESET_PASSWORD_URL = 'http://localhost:5049/auth/reset-password'
 
 const registerPayload = {
   email: 'fulano@email.com',
@@ -174,6 +178,75 @@ describe('authApi.resendConfirmation', () => {
     server.use(http.post(RESEND_URL, () => HttpResponse.error()))
 
     await expect(authApi.resendConfirmation({ email: 'fulano@email.com' })).rejects.toBeInstanceOf(NetworkError)
+  })
+})
+
+describe('authApi.forgotPassword', () => {
+  it('em caso de sucesso, resolve sem lançar', async () => {
+    server.use(http.post(FORGOT_PASSWORD_URL, () => new HttpResponse(null, { status: 200 })))
+
+    await expect(authApi.forgotPassword({ email: 'fulano@email.com' })).resolves.toBeUndefined()
+  })
+
+  it('em erro de rede, lança NetworkError', async () => {
+    server.use(http.post(FORGOT_PASSWORD_URL, () => HttpResponse.error()))
+
+    await expect(authApi.forgotPassword({ email: 'fulano@email.com' })).rejects.toBeInstanceOf(NetworkError)
+  })
+})
+
+describe('authApi.resetPassword', () => {
+  const payload = { email: 'fulano@email.com', code: '123456', newPassword: 'Senha123@' }
+
+  it('em caso de sucesso, resolve sem lançar', async () => {
+    server.use(http.post(RESET_PASSWORD_URL, () => new HttpResponse(null, { status: 200 })))
+
+    await expect(authApi.resetPassword(payload)).resolves.toBeUndefined()
+  })
+
+  it('em 400 bad-request, lança WeakPasswordError', async () => {
+    server.use(
+      http.post(RESET_PASSWORD_URL, () =>
+        HttpResponse.json(
+          { status: 400, title: '...', detail: '...', type: 'https://gastosapp.dev/errors/bad-request' },
+          { status: 400 },
+        ),
+      ),
+    )
+
+    await expect(authApi.resetPassword(payload)).rejects.toBeInstanceOf(WeakPasswordError)
+  })
+
+  it('em 400 invalid-reset-code, lança InvalidResetCodeError', async () => {
+    server.use(
+      http.post(RESET_PASSWORD_URL, () =>
+        HttpResponse.json(
+          { status: 400, title: '...', detail: '...', type: 'https://gastosapp.dev/errors/invalid-reset-code' },
+          { status: 400 },
+        ),
+      ),
+    )
+
+    await expect(authApi.resetPassword(payload)).rejects.toBeInstanceOf(InvalidResetCodeError)
+  })
+
+  it('em 400 expired-reset-code, lança InvalidResetCodeError', async () => {
+    server.use(
+      http.post(RESET_PASSWORD_URL, () =>
+        HttpResponse.json(
+          { status: 400, title: '...', detail: '...', type: 'https://gastosapp.dev/errors/expired-reset-code' },
+          { status: 400 },
+        ),
+      ),
+    )
+
+    await expect(authApi.resetPassword(payload)).rejects.toBeInstanceOf(InvalidResetCodeError)
+  })
+
+  it('em erro de rede, lança NetworkError', async () => {
+    server.use(http.post(RESET_PASSWORD_URL, () => HttpResponse.error()))
+
+    await expect(authApi.resetPassword(payload)).rejects.toBeInstanceOf(NetworkError)
   })
 })
 
