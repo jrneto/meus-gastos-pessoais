@@ -63,3 +63,20 @@ export class InvalidConfirmationCodeError extends Error {
     this.name = 'InvalidConfirmationCodeError'
   }
 }
+
+// FEAT-32: usado por `POST /auth/reset-password` — texto mais curto que
+// `InvalidConfirmationCodeError` porque, aqui, o botão de retorno ao
+// passo do código já orienta o próximo passo (ver `NewPasswordStep`).
+export class InvalidResetCodeError extends Error {
+  constructor() {
+    super('Código inválido ou expirado.')
+    this.name = 'InvalidResetCodeError'
+  }
+}
+
+export class WeakPasswordError extends Error {
+  constructor() {
+    super('A senha deve ter no mínimo 8 caracteres, com letra maiúscula, minúscula, número e símbolo.')
+    this.name = 'WeakPasswordError'
+  }
+}

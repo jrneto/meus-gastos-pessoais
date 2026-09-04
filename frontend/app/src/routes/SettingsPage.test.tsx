@@ -49,10 +49,21 @@ describe('SettingsPage', () => {
   })
 
   it('mostra estado de carregamento (botão desabilitado, rótulo "Exportando...") durante a exportação', async () => {
+    // Resolução controlada manualmente pelo teste (em vez de um delay
+    // fixo): sob carga da suíte completa, um delay real de tempo fixo
+    // pode ser menor que a sobrecarga real do próprio `userEvent.click`
+    // nesse instante, deixando a requisição já resolvida antes da
+    // asserção rodar (achado ao investigar flakiness da FEAT-32 —
+    // ver `frontend/docs/backlog.md`). Resolver só quando o teste
+    // decidir elimina essa corrida por completo.
+    // Objeto (não `let` solto) porque o TS às vezes estreita demais o
+    // tipo de uma variável reatribuída só dentro de uma closure.
+    const pending: { resolve: (() => void) | null } = { resolve: null }
     server.use(
-      http.get(EXPORT_URL, async () => {
-        await new Promise((resolve) => setTimeout(resolve, 20))
-        return HttpResponse.text('data;descricao\r\n')
+      http.get(EXPORT_URL, () => {
+        return new Promise<Response>((resolve) => {
+          pending.resolve = () => resolve(HttpResponse.text('data;descricao\r\n'))
+        })
       }),
     )
     const user = userEvent.setup()
@@ -60,7 +71,10 @@ describe('SettingsPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Exportar CSV' }))
 
+    await waitFor(() => expect(pending.resolve).not.toBeNull())
     expect(screen.getByRole('button', { name: 'Exportando...' })).toBeDisabled()
+
+    pending.resolve?.()
     await waitFor(() => expect(screen.getByRole('button', { name: 'Exportar CSV' })).toBeEnabled())
   })
 

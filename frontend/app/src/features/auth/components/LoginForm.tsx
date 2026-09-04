@@ -9,14 +9,22 @@ import { registerSchema, type RegisterFormData } from '../schemas/registerSchema
 import { extractDigits, maskCpf } from '../utils/cpf'
 import { maskPhone } from '../utils/phoneMask'
 import { ConfirmationForm } from './ConfirmationForm'
+import { ForgotPasswordFlow } from './ForgotPasswordFlow'
 
-type Screen = 'login' | 'signup' | 'confirmation'
+type Screen = 'login' | 'signup' | 'confirmation' | 'forgot-password'
+
+// Aviso de sucesso exibido no login em modo "Entrar" ao voltar de um
+// outro passo do fluxo (email confirmado, FEAT-31; senha redefinida,
+// FEAT-32) — os dois casos são mutuamente exclusivos (só um caminho
+// leva de volta ao login por vez) e compartilham a mesma estrutura
+// visual, daí um único slot em vez de dois `useState` paralelos.
+type LoginBanner = { email: string; message: string } | null
 
 export function LoginForm() {
   const [screen, setScreen] = useState<Screen>('login')
   const [confirmationEmail, setConfirmationEmail] = useState('')
   const [autoResendOnEnter, setAutoResendOnEnter] = useState(false)
-  const [justConfirmedEmail, setJustConfirmedEmail] = useState<string | null>(null)
+  const [banner, setBanner] = useState<LoginBanner>(null)
 
   function goToConfirmation(email: string, autoResend: boolean) {
     setConfirmationEmail(email)
@@ -32,7 +40,21 @@ export function LoginForm() {
         email={confirmationEmail}
         autoResendOnEnter={autoResendOnEnter}
         onConfirmed={(email) => {
-          setJustConfirmedEmail(email)
+          setBanner({ email, message: 'Email confirmado. Sua conta está ativa — entre com seus dados.' })
+          setScreen('login')
+        }}
+        onBack={() => setScreen('login')}
+      />
+    )
+  }
+
+  // Mesmo padrão: o fluxo de recuperação de senha (FEAT-32) ocupa o
+  // card inteiro, sem o seletor de modo.
+  if (screen === 'forgot-password') {
+    return (
+      <ForgotPasswordFlow
+        onDone={(email) => {
+          setBanner({ email, message: 'Senha redefinida. Entre com a nova senha.' })
           setScreen('login')
         }}
         onBack={() => setScreen('login')}
@@ -60,8 +82,9 @@ export function LoginForm() {
         <SignupForm onRegistered={(email) => goToConfirmation(email, false)} />
       ) : (
         <LoginModeForm
-          justConfirmedEmail={justConfirmedEmail}
+          banner={banner}
           onNeedsConfirmation={(email) => goToConfirmation(email, true)}
+          onForgotPassword={() => setScreen('forgot-password')}
         />
       )}
     </div>
@@ -69,11 +92,13 @@ export function LoginForm() {
 }
 
 function LoginModeForm({
-  justConfirmedEmail,
+  banner,
   onNeedsConfirmation,
+  onForgotPassword,
 }: {
-  justConfirmedEmail: string | null
+  banner: LoginBanner
   onNeedsConfirmation: (email: string) => void
+  onForgotPassword: () => void
 }) {
   const { login, isLoading, error } = useLogin()
   const {
@@ -83,7 +108,7 @@ function LoginModeForm({
     formState: { errors },
   } = useForm<LoginCredentials>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: justConfirmedEmail ?? '' },
+    defaultValues: { email: banner?.email ?? '' },
   })
 
   return (
@@ -92,7 +117,7 @@ function LoginModeForm({
       noValidate
       onSubmit={handleSubmit((data) => login(data))}
     >
-      {justConfirmedEmail && !error && (
+      {banner && !error && (
         <div
           role="status"
           style={{
@@ -114,9 +139,7 @@ function LoginModeForm({
               strokeLinejoin="round"
             />
           </svg>
-          <span style={{ fontSize: '12.5px', lineHeight: 1.45, color: 'var(--color-accent-700)' }}>
-            Email confirmado. Sua conta está ativa — entre com seus dados.
-          </span>
+          <span style={{ fontSize: '12.5px', lineHeight: 1.45, color: 'var(--color-accent-700)' }}>{banner.message}</span>
         </div>
       )}
 
@@ -171,6 +194,15 @@ function LoginModeForm({
           {errors.password.message}
         </p>
       )}
+
+      <button
+        type="button"
+        onClick={onForgotPassword}
+        className="btn btn-ghost"
+        style={{ alignSelf: 'flex-start', padding: 0, fontSize: '12.5px' }}
+      >
+        Esqueci minha senha
+      </button>
 
       <button type="submit" className="btn btn-primary btn-block" disabled={isLoading}>
         {isLoading ? 'Entrando...' : 'Entrar'}

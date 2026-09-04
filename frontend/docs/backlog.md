@@ -155,7 +155,7 @@ vira `spec.md` própria via `/specify`.
   dois `.dc.html` foram atualizados juntos.
   Depende de: backend FEAT-35 (confirmação de cadastro via OTP).
 
-- [ ] **FEAT-32 — Recuperação de senha (fluxo completo)**
+- [x] **FEAT-32 — Recuperação de senha (fluxo completo)**
   Novo fluxo "Esqueci minha senha" a partir do link já existente na
   tela de login: passo 1/3 pede e-mail (`24-recuperar-senha.png`) e
   chama `POST /auth/forgot-password`; passo 2/3 reaproveita o
@@ -217,4 +217,55 @@ vira `spec.md` própria via `/specify`.
     a de observação/descrição
   Nenhum desses existe desde a FEAT-20 (popup de detalhe original, só
   despesa) — não é regressão de nenhuma feature recente.
+- **Flakiness pré-existente da suíte completa sob carga (React 18
+  batching + timing de mock do MSW), descoberta e parcialmente corrigida
+  durante a FEAT-32** — ao escrever `ForgotPasswordFlow.test.tsx`,
+  descoberto que testes que afirmam sobre um estado de loading
+  transitório (spinner, overlay, rótulo "…ando", botão desabilitado)
+  contra um mock do MSW **sem nenhum delay simulado** podem flacar sob
+  carga, porque o React 18 pode agrupar o `setState(true)` (início do
+  loading) e o `setState(false)` (fim) no mesmo lote quando a resposta
+  do mock resolve rápido demais — o React nunca comita o estado
+  intermediário, então nada há pra observar. Investigado a pedido do
+  usuário rodando a suíte completa repetidamente (não só o arquivo da
+  FEAT-32): confirmadas **duas famílias** do mesmo problema, afetando
+  arquivos de pelo menos 3 features sem relação com auth:
+  - **Detecção de sucesso via transição de `isLoading` num
+    `useEffect`** (`wasResendingRef`/`wasSubmittingRef`, sem `success`
+    explícito no hook) — usada por `ConfirmationForm`/
+    `useResendConfirmation` (FEAT-31) e
+    `ForgotPasswordEmailStep`/`ForgotPasswordCodeStep` (FEAT-32).
+  - **Renderização direta de `isLoading`** (`{isLoading && <Overlay/>}`,
+    `{isExporting ? 'Exportando...' : ...}`) com um delay fixo de tempo
+    real no mock (ex.: 20ms, 50ms) pra manter a chamada "ainda pendente"
+    até a asserção — o delay fixo não é confiável sob carga da suíte
+    completa (~130s, 622 testes): a sobrecarga real do próprio
+    `userEvent`/scheduler pode ultrapassá-lo. Achado em
+    `InviteMemberDialog.test.tsx` (FEAT-28), `SettingsPage.test.tsx`
+    (FEAT-30) e `CategoriesPage.test.tsx` (FEAT-29, corrida entre
+    `GET /categories` e `GET /members`, este com delay).
+  - **Corrigidos durante a FEAT-32** (não é fix de produção, só de
+    teste): os 3 arquivos acima passam a controlar manualmente a
+    resolução da Promise do mock (`new Promise((resolve) => { pending.resolve = () => resolve(...) }`),
+    resolvendo só quando o teste decide — elimina a corrida por
+    completo, sem depender de nenhum timer (real ou falso). Validado com
+    4 rodadas completas consecutivas 100% verdes (622/622) depois do
+    fix, contra pelo menos 1 falha (arquivo diferente a cada vez) em
+    cada uma das ~4 rodadas antes do fix.
+  - **Não descartado que existam outras instâncias não descobertas** —
+    a varredura feita (`grep` por rótulos "…ando"/`isLoading`/
+    `isExporting`/`ProcessingOverlay` em `*.test.tsx`) cobriu os
+    candidatos óbvios, mas não é uma garantia exaustiva; se a suíte
+    completa voltar a flacar num arquivo de loading state ainda não
+    corrigido, o padrão de correção é o mesmo dos 3 exemplos acima.
+  - **Correção mais estrutural, não feita agora** (fora do escopo da
+    FEAT-32): trocar a detecção por transição por um `success: boolean`
+    explícito no hook (mesmo padrão já usado por
+    `useConfirmAccount`/`useResetPassword`, que não sofrem desse
+    problema porque `success` tem uma transição real de valor
+    `false → true`, não colapsável pelo batching) — endureceria
+    `useResendConfirmation` (FEAT-31) e `useForgotPassword` (FEAT-32) de
+    uma vez, mas não resolveria a segunda família (renderização direta
+    de `isLoading`), que exigiria a técnica de Promise controlada em
+    cada teste, um por um.
 

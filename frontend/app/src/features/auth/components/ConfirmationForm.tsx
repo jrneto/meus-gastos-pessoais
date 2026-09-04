@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useConfirmAccount } from '../hooks/useConfirmAccount'
 import { useResendConfirmation } from '../hooks/useResendConfirmation'
 import { useResendCooldown } from '../hooks/useResendCooldown'
 import { confirmationCodeSchema } from '../schemas/confirmationSchema'
+import { OtpDigitsInput } from './OtpDigitsInput'
 
 const DIGIT_COUNT = 6
 const COOLDOWN_SECONDS = 60
@@ -93,8 +94,7 @@ export function ConfirmationForm({ email, autoResendOnEnter, onConfirmed, onBack
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConfirmed])
 
-  function handleDigitChange(index: number, rawValue: string) {
-    const value = rawValue.replace(/\D/g, '').slice(-1)
+  function handleDigitChange(index: number, value: string) {
     setDigits((current) => {
       const next = [...current]
       next[index] = value
@@ -102,15 +102,6 @@ export function ConfirmationForm({ email, autoResendOnEnter, onConfirmed, onBack
     })
     setClientError(null)
     setApiError(null)
-    if (value && index < DIGIT_COUNT - 1) {
-      inputRefs.current[index + 1]?.focus()
-    }
-  }
-
-  function handleDigitKeyDown(index: number, event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Backspace' && !digits[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus()
-    }
   }
 
   async function handleSubmit() {
@@ -151,27 +142,7 @@ export function ConfirmationForm({ email, autoResendOnEnter, onConfirmed, onBack
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${DIGIT_COUNT}, 1fr)`, gap: 'var(--space-2)' }}>
-        {digits.map((digit, index) => (
-          <input
-            // eslint-disable-next-line react/no-array-index-key
-            key={index}
-            ref={(el) => {
-              inputRefs.current[index] = el
-            }}
-            className="input"
-            type="text"
-            inputMode="numeric"
-            maxLength={1}
-            aria-label={`Dígito ${index + 1} do código`}
-            disabled={isExpired}
-            value={digit}
-            onChange={(event) => handleDigitChange(index, event.target.value)}
-            onKeyDown={(event) => handleDigitKeyDown(index, event)}
-            style={{ textAlign: 'center', font: '700 20px var(--font-heading)', padding: 0, height: '52px' }}
-          />
-        ))}
-      </div>
+      <OtpDigitsInput digits={digits} disabled={isExpired} inputRefs={inputRefs} onChange={handleDigitChange} />
 
       {displayedError && (
         <p style={{ color: 'var(--color-accent-700)', fontSize: '12.5px' }} role="alert">

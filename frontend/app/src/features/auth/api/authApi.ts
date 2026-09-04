@@ -5,10 +5,12 @@ import {
   EmailAlreadyExistsError,
   InvalidConfirmationCodeError,
   InvalidCredentialsError,
+  InvalidResetCodeError,
   NetworkError,
   RefreshFailedError,
   RegisterValidationError,
   UnknownAuthError,
+  WeakPasswordError,
 } from '../errors/authErrors'
 import type { LoginCredentials } from '../schemas/loginSchema'
 
@@ -47,6 +49,16 @@ export interface ConfirmPayload {
 
 export interface ResendConfirmationPayload {
   email: string
+}
+
+export interface ForgotPasswordPayload {
+  email: string
+}
+
+export interface ResetPasswordPayload {
+  email: string
+  code: string
+  newPassword: string
 }
 
 interface ProblemDetails {
@@ -133,6 +145,39 @@ async function resendConfirmation(payload: ResendConfirmationPayload): Promise<v
   }
 }
 
+// O backend sempre retorna 200 pra esse endpoint (email inexistente ou
+// não confirmado não é revelado, FEAT-36 decisão 1) — não há erro de
+// negócio a mapear aqui, só falha técnica.
+async function forgotPassword(payload: ForgotPasswordPayload): Promise<void> {
+  const response = await safeFetch(() => httpClient.post('/auth/forgot-password', payload))
+
+  if (!response.ok) {
+    throw new UnknownAuthError()
+  }
+}
+
+// Sem corpo em caso de sucesso (200) — mesmo padrão de `confirm`.
+async function resetPassword(payload: ResetPasswordPayload): Promise<void> {
+  const response = await safeFetch(() => httpClient.post('/auth/reset-password', payload))
+
+  if (response.status === 400) {
+    const type = await readProblemType(response)
+    if (type?.endsWith('bad-request')) {
+      throw new WeakPasswordError()
+    }
+    // `invalid-reset-code` (código incorreto), `expired-reset-code`
+    // (código expirado ou email inexistente, anti-enumeração) e
+    // qualquer outro 400 mapeiam pro mesmo erro genérico — ver
+    // plan.md: diferenciar arriscaria abrir um canal indireto de
+    // enumeração que o backend deliberadamente evitou (mesmo princípio
+    // já aplicado a `confirm`, FEAT-31).
+    throw new InvalidResetCodeError()
+  }
+  if (!response.ok) {
+    throw new UnknownAuthError()
+  }
+}
+
 async function me(token: string): Promise<MeResponse> {
   const response = await safeFetch(() =>
     httpClient.get('/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
@@ -168,4 +213,14 @@ async function logout(): Promise<void> {
   }
 }
 
-export const authApi = { login, register, me, refresh, logout, confirm, resendConfirmation }
+export const authApi = {
+  login,
+  register,
+  me,
+  refresh,
+  logout,
+  confirm,
+  resendConfirmation,
+  forgotPassword,
+  resetPassword,
+}
