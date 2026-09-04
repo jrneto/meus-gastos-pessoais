@@ -142,7 +142,7 @@ usuário; `03`/`04` (senha alterada, boas-vindas) não têm nenhuma
 contrapartida de tela. Mesma mecânica das demais seções: cada linha
 vira `spec.md` própria via `/specify`.
 
-- [ ] **FEAT-31 — Cadastro: confirmação por OTP**
+- [x] **FEAT-31 — Cadastro: confirmação por OTP**
   Depois de `POST /auth/register` (FEAT-21, já pronto) ter sucesso, em
   vez de ir direto pro login exibe a tela de código
   (`21-otp-cadastro.png`): 6 campos de dígito, contador de 60s
