@@ -271,6 +271,46 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   em `fix/ses-client-region-lambda-trigger`.**
   Depende de: FEAT-33, FEAT-19 (já pronto).
 
+- [ ] **FEAT-38 — Observabilidade: trace-id, session-id e
+  client-platform nos headers de API**
+  Introduz três headers de observabilidade em toda chamada de API —
+  `trace-id`, `session-id`, `client-platform`/`client-version` —
+  propagados e logados de forma estruturada, permitindo reconstruir
+  tanto uma requisição isolada quanto a jornada completa de uma sessão
+  de usuário através de múltiplos clients (web, mobile, admin). Hoje
+  os logs não têm correlação entre si — debugar um erro relatado por
+  um usuário exige garimpo manual no CloudWatch; com a expansão
+  planejada pra apps nativos (Android/iOS) e painel administrativo,
+  múltiplos clients vão bater na mesma API simultaneamente, tornando
+  essa lacuna mais custosa — resolver isso agora, antes de multiplicar
+  clients, evita retrofitting caro depois. Nomenclatura: headers em
+  minúsculo, separados por traço, sem prefixo `X-` — alinhado com a
+  RFC 6648 (que descontinuou `X-` em headers customizados) e com o
+  padrão de fato em HTTP/2+, onde headers trafegam em minúsculo no
+  wire format. `trace-id` é gerado no client (ou pelo API
+  Gateway/Lambda, se ausente) por requisição, propagado entre Lambdas
+  na mesma cadeia de execução e retornado na resposta (inclusive em
+  erros). `session-id` é um UUID gerado no client no momento do login
+  bem-sucedido, enviado em toda chamada durante a vida da sessão —
+  conceito de aplicação, independente do token JWT do Cognito (refresh
+  de token não gera novo `session-id`, só um novo login gera).
+  `client-platform` + `client-version` identificam a origem da chamada
+  (`web`, `android`, `ios`, `admin-web`) e a versão do client. Os três
+  headers (+ `userId` quando disponível) compõem um log estruturado
+  único por requisição, compatível com CloudWatch Logs Insights. Os
+  headers não ficam obrigatórios por enquanto, pra não quebrar o
+  frontend — anotar débito técnico pra torná-los obrigatórios no
+  futuro, após os ajustes necessários no frontend. Estratégia de
+  payload custo-consciente: log padrão sempre traz `trace-id` +
+  `session-id` + `client-platform` + metadados (sem payload completo);
+  payload completo é logado automaticamente em erros (4xx/5xx) e
+  opcionalmente ativável via parâmetro de log-level no Parameter Store
+  pra debug manual (idealmente por sessão específica, não
+  globalmente); campos sensíveis (senha, token, dados de cartão) nunca
+  são logados, truncados/redigidos quando necessário. Log groups
+  passam a ter retenção explícita configurada (nunca "Never Expire"):
+  7 dias em hom, 15 dias em produção.
+
 ## Bugs
 
 - [x] **BUG — Cliente SES quebrava a criação de conta inteira na Lambda
