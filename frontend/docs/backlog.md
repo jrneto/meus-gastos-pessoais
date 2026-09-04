@@ -113,7 +113,7 @@ backend correspondente, já pronto) conforme a coluna "Depende de".
   Depende de: backend FEAT-20 (membros/convites/permissões) — já
   pronto.
 
-- [ ] **FEAT-29 — Aplicar permissões por role na UI**
+- [x] **FEAT-29 — Aplicar permissões por role na UI**
   Com FEAT-28 trazendo o nível de acesso do usuário logado, esconder/
   desabilitar ações conforme role: `Leitura` sem botões de
   lançar/editar/excluir; `Lançar` só edita/exclui o que criou (já
@@ -122,7 +122,7 @@ backend correspondente, já pronto) conforme a coluna "Depende de".
   de orçamento de categoria (FEAT-22).
   Depende de: frontend FEAT-22, FEAT-23, FEAT-28.
 
-- [ ] **FEAT-30 — Ajustes (migrar para Modernist + exportação CSV)**
+- [x] **FEAT-30 — Ajustes (migrar para Modernist + exportação CSV)**
   Migra `SettingsPage` de shadcn/ui para Modernist (`18-ajustes.png`),
   incluindo o botão "Exportar CSV" consumindo `GET
   /transactions/export`.
