@@ -10,6 +10,7 @@ import { extractDigits, maskCpf } from '../utils/cpf'
 import { maskPhone } from '../utils/phoneMask'
 import { ConfirmationForm } from './ConfirmationForm'
 import { ForgotPasswordFlow } from './ForgotPasswordFlow'
+import { PasswordField } from './PasswordField'
 
 type Screen = 'login' | 'signup' | 'confirmation' | 'forgot-password'
 
@@ -101,6 +102,7 @@ function LoginModeForm({
   onForgotPassword: () => void
 }) {
   const { login, isLoading, error } = useLogin()
+  const [showPassword, setShowPassword] = useState(false)
   const {
     register,
     handleSubmit,
@@ -178,17 +180,15 @@ function LoginModeForm({
         </p>
       )}
 
-      <label className="field">
-        <span>Senha</span>
-        <input
-          className="input"
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          aria-invalid={!!errors.password}
-          {...register('password')}
-        />
-      </label>
+      <PasswordField
+        id="password"
+        label="Senha"
+        autoComplete="current-password"
+        ariaInvalid={!!errors.password}
+        registration={register('password')}
+        isVisible={showPassword}
+        onToggleVisibility={() => setShowPassword((visible) => !visible)}
+      />
       {errors.password && (
         <p style={{ color: 'var(--color-accent-700)', fontSize: '12px' }} role="alert">
           {errors.password.message}
@@ -213,6 +213,7 @@ function LoginModeForm({
 
 function SignupForm({ onRegistered }: { onRegistered: (email: string) => void }) {
   const { register: doRegister, isLoading, error, success } = useRegister()
+  const [showPassword, setShowPassword] = useState(false)
   const {
     register,
     handleSubmit,
@@ -313,16 +314,15 @@ function SignupForm({ onRegistered }: { onRegistered: (email: string) => void })
         </p>
       )}
 
-      <label className="field">
-        <span>Senha</span>
-        <input
-          className="input"
-          id="signup-password"
-          type="password"
-          autoComplete="new-password"
-          {...register('password')}
-        />
-      </label>
+      <PasswordField
+        id="signup-password"
+        label="Senha"
+        autoComplete="new-password"
+        ariaInvalid={!!errors.password}
+        registration={register('password')}
+        isVisible={showPassword}
+        onToggleVisibility={() => setShowPassword((visible) => !visible)}
+      />
       {errors.password && (
         <p style={{ color: 'var(--color-accent-700)', fontSize: '12px' }} role="alert">
           {errors.password.message}

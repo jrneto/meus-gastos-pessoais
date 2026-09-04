@@ -238,6 +238,25 @@ describe('ForgotPasswordFlow', () => {
     expect(apiCalls).toBe(1)
   })
 
+  it('Passo 3/3: botão "Mostrar/Ocultar" da nova senha também alterna a confirmação, sem botão próprio nela', async () => {
+    const user = userEvent.setup()
+    server.use(forgotPasswordOk())
+    renderFlow()
+
+    await goToNewPasswordStep(user)
+
+    const newPasswordInput = screen.getByLabelText('Nova senha')
+    const confirmInput = screen.getByLabelText('Confirmar nova senha')
+    expect(newPasswordInput).toHaveAttribute('type', 'password')
+    expect(confirmInput).toHaveAttribute('type', 'password')
+    expect(screen.getAllByRole('button', { name: 'Mostrar' })).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: 'Mostrar' }))
+
+    expect(newPasswordInput).toHaveAttribute('type', 'text')
+    expect(confirmInput).toHaveAttribute('type', 'text')
+  })
+
   it('Passo 3/3: senhas diferentes bloqueiam o submit no client', async () => {
     const user = userEvent.setup()
     server.use(forgotPasswordOk())

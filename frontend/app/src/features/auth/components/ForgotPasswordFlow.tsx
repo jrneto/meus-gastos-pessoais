@@ -8,6 +8,7 @@ import { useResetPassword } from '../hooks/useResetPassword'
 import { confirmationCodeSchema } from '../schemas/confirmationSchema'
 import { forgotPasswordEmailSchema, newPasswordSchema, type ForgotPasswordEmailData, type NewPasswordFormData } from '../schemas/forgotPasswordSchema'
 import { OtpDigitsInput } from './OtpDigitsInput'
+import { PasswordField } from './PasswordField'
 
 const DIGIT_COUNT = 6
 const COOLDOWN_SECONDS = 60
@@ -316,6 +317,7 @@ function NewPasswordStep({
   onBackToCode: () => void
 }) {
   const { resetPassword, isLoading, error, success: isReset } = useResetPassword()
+  const [showPassword, setShowPassword] = useState(false)
   const {
     register,
     handleSubmit,
@@ -361,34 +363,29 @@ function NewPasswordStep({
         </div>
       )}
 
-      <label className="field">
-        <span>Nova senha</span>
-        <input
-          className="input"
-          id="new-password"
-          type="password"
-          autoComplete="new-password"
-          aria-invalid={!!errors.newPassword}
-          {...register('newPassword')}
-        />
-      </label>
+      <PasswordField
+        id="new-password"
+        label="Nova senha"
+        autoComplete="new-password"
+        ariaInvalid={!!errors.newPassword}
+        registration={register('newPassword')}
+        isVisible={showPassword}
+        onToggleVisibility={() => setShowPassword((visible) => !visible)}
+      />
       {errors.newPassword && (
         <p style={{ color: 'var(--color-accent-700)', fontSize: '12px' }} role="alert">
           {errors.newPassword.message}
         </p>
       )}
 
-      <label className="field">
-        <span>Confirmar nova senha</span>
-        <input
-          className="input"
-          id="confirm-new-password"
-          type="password"
-          autoComplete="new-password"
-          aria-invalid={!!errors.confirmNewPassword}
-          {...register('confirmNewPassword')}
-        />
-      </label>
+      <PasswordField
+        id="confirm-new-password"
+        label="Confirmar nova senha"
+        autoComplete="new-password"
+        ariaInvalid={!!errors.confirmNewPassword}
+        registration={register('confirmNewPassword')}
+        isVisible={showPassword}
+      />
       {errors.confirmNewPassword && (
         <p style={{ color: 'var(--color-accent-700)', fontSize: '12px' }} role="alert">
           {errors.confirmNewPassword.message}
