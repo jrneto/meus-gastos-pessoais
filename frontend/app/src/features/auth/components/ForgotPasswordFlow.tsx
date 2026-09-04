@@ -118,6 +118,7 @@ function ForgotPasswordEmailStep({
       </button>
 
       <div>
+        <p className="card-kicker" style={{ margin: '0 0 var(--space-2)' }}>PASSO 1 DE 3 · RECUPERAÇÃO</p>
         <h1 style={{ font: '800 24px var(--font-heading)', margin: '0 0 var(--space-2)' }}>Recuperar senha</h1>
         <p style={{ fontSize: '13.5px', lineHeight: 1.55, opacity: 0.7, margin: 0 }}>
           Informe o e-mail da sua conta. Enviaremos um código de 6 dígitos para confirmar que é você.
@@ -243,6 +244,7 @@ function ForgotPasswordCodeStep({
       </button>
 
       <div>
+        <p className="card-kicker" style={{ margin: '0 0 var(--space-2)' }}>PASSO 2 DE 3 · RECUPERAÇÃO</p>
         <h1 style={{ font: '800 24px var(--font-heading)', margin: '0 0 var(--space-2)' }}>Verifique o código</h1>
         <p style={{ fontSize: '13.5px', lineHeight: 1.55, opacity: 0.7, margin: 0 }}>
           Enviamos um código de 6 dígitos para <strong>{email}</strong>.
@@ -334,6 +336,7 @@ function NewPasswordStep({
   return (
     <form className="flex w-full max-w-sm flex-col gap-4" noValidate onSubmit={handleSubmit(onSubmit)}>
       <div>
+        <p className="card-kicker" style={{ margin: '0 0 var(--space-2)' }}>PASSO 3 DE 3 · RECUPERAÇÃO</p>
         <h1 style={{ font: '800 24px var(--font-heading)', margin: '0 0 var(--space-2)' }}>Nova senha</h1>
         <p style={{ fontSize: '13.5px', lineHeight: 1.55, opacity: 0.7, margin: 0 }}>
           Escolha uma senha com pelo menos 8 caracteres, com letra maiúscula, minúscula, número e símbolo.
