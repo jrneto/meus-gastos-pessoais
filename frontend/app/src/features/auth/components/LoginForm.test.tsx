@@ -75,6 +75,20 @@ describe('LoginForm — modo Entrar', () => {
     expect(apiCalled).toBe(false)
   })
 
+  it('botão "Mostrar/Ocultar" alterna a visibilidade da senha', async () => {
+    const user = userEvent.setup()
+    renderLoginForm()
+
+    const passwordInput = screen.getByLabelText('Senha')
+    expect(passwordInput).toHaveAttribute('type', 'password')
+
+    await user.click(screen.getByRole('button', { name: 'Mostrar' }))
+    expect(passwordInput).toHaveAttribute('type', 'text')
+
+    await user.click(screen.getByRole('button', { name: 'Ocultar' }))
+    expect(passwordInput).toHaveAttribute('type', 'password')
+  })
+
   it('login com sucesso popula a authStore e não exibe alerta de erro', async () => {
     const user = userEvent.setup()
     server.use(
@@ -207,6 +221,18 @@ describe('LoginForm — modo Criar conta', () => {
     expect(screen.getByLabelText('Telefone')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Criar conta' })).toBeInTheDocument()
     expect(loginCalled).toBe(false)
+  })
+
+  it('botão "Mostrar/Ocultar" alterna a visibilidade da senha do cadastro', async () => {
+    const user = userEvent.setup()
+    renderLoginForm()
+    await user.click(screen.getByRole('radio', { name: 'Criar conta' }))
+
+    const passwordInput = screen.getByLabelText('Senha')
+    expect(passwordInput).toHaveAttribute('type', 'password')
+
+    await user.click(screen.getByRole('button', { name: 'Mostrar' }))
+    expect(passwordInput).toHaveAttribute('type', 'text')
   })
 
   it('aplica máscara progressiva em CPF e Telefone durante a digitação', async () => {
