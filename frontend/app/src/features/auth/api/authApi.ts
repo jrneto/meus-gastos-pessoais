@@ -1,8 +1,9 @@
 import { httpClient } from '@/lib/httpClient'
 import {
-  AccountPendingApprovalError,
+  AccountNotConfirmedError,
   CpfAlreadyExistsError,
   EmailAlreadyExistsError,
+  InvalidConfirmationCodeError,
   InvalidCredentialsError,
   NetworkError,
   RefreshFailedError,
@@ -39,6 +40,15 @@ export interface RegisterResponse {
   cpf: string
 }
 
+export interface ConfirmPayload {
+  email: string
+  code: string
+}
+
+export interface ResendConfirmationPayload {
+  email: string
+}
+
 interface ProblemDetails {
   type?: string
 }
@@ -62,7 +72,7 @@ async function login(credentials: LoginCredentials): Promise<LoginResponse> {
   if (response.status === 401) {
     const type = await readProblemType(response)
     if (type?.endsWith('user-not-confirmed')) {
-      throw new AccountPendingApprovalError()
+      throw new AccountNotConfirmedError()
     }
     throw new InvalidCredentialsError()
   }
@@ -92,6 +102,35 @@ async function register(payload: RegisterPayload): Promise<RegisterResponse> {
     throw new UnknownAuthError()
   }
   return response.json() as Promise<RegisterResponse>
+}
+
+// Sem corpo em caso de sucesso (200), mesmo padrão de `logout` — o
+// backend não devolve nenhum dado adicional (FEAT-35).
+async function confirm(payload: ConfirmPayload): Promise<void> {
+  const response = await safeFetch(() => httpClient.post('/auth/confirm', payload))
+
+  if (response.status === 400) {
+    // `invalid-confirmation-code` (código incorreto) e
+    // `expired-confirmation-code` (código expirado ou email
+    // inexistente, anti-enumeração) mapeiam pro mesmo erro — ver
+    // plan.md "decisão 3": diferenciar na UI arriscaria abrir um canal
+    // indireto de enumeração que o backend deliberadamente evitou.
+    throw new InvalidConfirmationCodeError()
+  }
+  if (!response.ok) {
+    throw new UnknownAuthError()
+  }
+}
+
+// O backend sempre retorna 200 pra esse endpoint (email inexistente ou
+// já confirmado não é revelado, FEAT-35 decisão 3) — não há erro de
+// negócio a mapear aqui, só falha técnica.
+async function resendConfirmation(payload: ResendConfirmationPayload): Promise<void> {
+  const response = await safeFetch(() => httpClient.post('/auth/resend-confirmation', payload))
+
+  if (!response.ok) {
+    throw new UnknownAuthError()
+  }
 }
 
 async function me(token: string): Promise<MeResponse> {
@@ -129,4 +168,4 @@ async function logout(): Promise<void> {
   }
 }
 
-export const authApi = { login, register, me, refresh, logout }
+export const authApi = { login, register, me, refresh, logout, confirm, resendConfirmation }

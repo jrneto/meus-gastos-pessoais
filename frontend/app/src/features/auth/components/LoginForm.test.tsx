@@ -8,6 +8,8 @@ import { LoginForm } from './LoginForm'
 
 const LOGIN_URL = 'http://localhost:5049/auth/login'
 const REGISTER_URL = 'http://localhost:5049/auth/register'
+const CONFIRM_URL = 'http://localhost:5049/auth/confirm'
+const RESEND_URL = 'http://localhost:5049/auth/resend-confirmation'
 
 function renderLoginForm() {
   return render(<LoginForm />)
@@ -83,7 +85,7 @@ describe('LoginForm — modo Entrar', () => {
     expect(useAuthStore.getState().token).toBeNull()
   })
 
-  it('exibe alerta de conta pendente de aprovação em caso de 401 user-not-confirmed', async () => {
+  it('exibe alerta de conta não confirmada e o CTA "Confirmar cadastro" em caso de 401 user-not-confirmed', async () => {
     const user = userEvent.setup()
     server.use(http.post(LOGIN_URL, () => problem(401, 'user-not-confirmed')))
 
@@ -94,9 +96,33 @@ describe('LoginForm — modo Entrar', () => {
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(
-      await screen.findByText('Sua conta ainda não foi aprovada. Aguarde a confirmação do administrador e tente novamente.'),
+      await screen.findByText('Confirme seu cadastro pelo código enviado por e-mail antes de entrar.'),
     ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Confirmar cadastro' })).toBeInTheDocument()
     expect(useAuthStore.getState().token).toBeNull()
+  })
+
+  it('clicar em "Confirmar cadastro" abre a tela de confirmação com o email do login e dispara reenvio automático', async () => {
+    const user = userEvent.setup()
+    let resendCalled = false
+    server.use(
+      http.post(LOGIN_URL, () => problem(401, 'user-not-confirmed')),
+      http.post(RESEND_URL, () => {
+        resendCalled = true
+        return new HttpResponse(null, { status: 200 })
+      }),
+    )
+
+    renderLoginForm()
+
+    await user.type(screen.getByLabelText('Email'), 'neto@email.com')
+    await user.type(screen.getByLabelText('Senha'), 'Senha123')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    await user.click(await screen.findByRole('button', { name: 'Confirmar cadastro' }))
+
+    expect(screen.getByText(/Enviamos um código de 6 dígitos para/)).toBeInTheDocument()
+    expect(screen.getByText('neto@email.com')).toBeInTheDocument()
+    await waitFor(() => expect(resendCalled).toBe(true))
   })
 })
 
@@ -138,7 +164,7 @@ describe('LoginForm — modo Criar conta', () => {
     expect(screen.getByLabelText('Telefone')).toHaveValue('(11) 99999-8888')
   })
 
-  it('cadastro com sucesso exibe confirmação e não chama a API de login', async () => {
+  it('cadastro com sucesso navega direto pra tela de confirmação (sem tela de "aguarde aprovação")', async () => {
     const user = userEvent.setup()
     let loginCalled = false
     server.use(
@@ -159,14 +185,13 @@ describe('LoginForm — modo Criar conta', () => {
     await fillValidSignupForm(user)
     await user.click(screen.getByRole('button', { name: 'Criar conta' }))
 
-    expect(
-      await screen.findByText('Conta criada! Aguarde a aprovação do administrador para poder entrar.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('fulano@email.com')).toBeInTheDocument()
+    expect(screen.getByLabelText('Dígito 1 do código')).toBeInTheDocument()
     expect(loginCalled).toBe(false)
     expect(useAuthStore.getState().token).toBeNull()
   })
 
-  it('voltar da confirmação de cadastro retorna ao modo "Entrar"', async () => {
+  it('voltar da tela de confirmação retorna ao modo "Entrar"', async () => {
     const user = userEvent.setup()
     server.use(
       http.post(REGISTER_URL, () =>
@@ -181,11 +206,40 @@ describe('LoginForm — modo Criar conta', () => {
     await user.click(screen.getByRole('radio', { name: 'Criar conta' }))
     await fillValidSignupForm(user)
     await user.click(screen.getByRole('button', { name: 'Criar conta' }))
-    await screen.findByText('Conta criada! Aguarde a aprovação do administrador para poder entrar.')
+    await screen.findByLabelText('Dígito 1 do código')
 
-    await user.click(screen.getByRole('button', { name: 'Voltar para o login' }))
+    await user.click(screen.getByRole('button', { name: '← Voltar' }))
 
     expect(screen.getByRole('button', { name: 'Entrar' })).toBeInTheDocument()
+  })
+
+  it('confirmar o código com sucesso volta ao login com o aviso e o email preenchido', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.post(REGISTER_URL, () =>
+        HttpResponse.json(
+          { userId: 'uuid-1', email: 'fulano@email.com', name: 'Fulano da Silva', phoneNumber: '11999998888', cpf: '12345678909' },
+          { status: 201 },
+        ),
+      ),
+      http.post(CONFIRM_URL, () => new HttpResponse(null, { status: 200 })),
+    )
+
+    renderLoginForm()
+    await user.click(screen.getByRole('radio', { name: 'Criar conta' }))
+    await fillValidSignupForm(user)
+    await user.click(screen.getByRole('button', { name: 'Criar conta' }))
+    await screen.findByLabelText('Dígito 1 do código')
+
+    for (let i = 1; i <= 6; i++) {
+      await user.type(screen.getByLabelText(`Dígito ${i} do código`), String(i))
+    }
+    await user.click(screen.getByRole('button', { name: 'Confirmar código' }))
+
+    expect(
+      await screen.findByText('Email confirmado. Sua conta está ativa — entre com seus dados.'),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Email')).toHaveValue('fulano@email.com')
   })
 
   it('em 409 email-already-exists, exibe mensagem específica', async () => {

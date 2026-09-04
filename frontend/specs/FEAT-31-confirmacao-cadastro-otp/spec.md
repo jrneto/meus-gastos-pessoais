@@ -256,42 +256,42 @@ ação disponível para o frontend ao ler `401` com
 
 ## Critérios de aceite
 
-- [ ] Cadastro com sucesso (201) navega direto para a tela de
+- [x] Cadastro com sucesso (201) navega direto para a tela de
       confirmação, sem passar pela antiga tela "aguarde aprovação"
-- [ ] Tela de confirmação tem 6 campos de dígito com avanço automático
+- [x] Tela de confirmação tem 6 campos de dígito com avanço automático
       de foco e suporte a Backspace entre campos
-- [ ] Submit com menos de 6 dígitos é bloqueado no client, sem chamar a
+- [x] Submit com menos de 6 dígitos é bloqueado no client, sem chamar a
       API
-- [ ] Código correto chama `POST /auth/confirm`, recebe 200 e volta ao
+- [x] Código correto chama `POST /auth/confirm`, recebe 200 e volta ao
       login em modo "Entrar" com o email preenchido e aviso "Email
       confirmado..."
-- [ ] Código incorreto ou expirado (qualquer 400 de `POST
+- [x] Código incorreto ou expirado (qualquer 400 de `POST
       /auth/confirm`) mostra erro inline único, sem resetar o contador
       nem limpar os dígitos
-- [ ] Contador regressivo de 60s, rotulado como cooldown de reenvio
+- [x] Contador regressivo de 60s, rotulado como cooldown de reenvio
       (não como expiração do código)
-- [ ] Contador chegando a zero desabilita os 6 campos e troca o botão
+- [x] Contador chegando a zero desabilita os 6 campos e troca o botão
       de confirmar por "Reenviar e-mail"
-- [ ] "Reenviar e-mail" chama `POST /auth/resend-confirmation`, limpa e
+- [x] "Reenviar e-mail" chama `POST /auth/resend-confirmation`, limpa e
       reabilita os campos, e reinicia o contador em 60s
-- [ ] "← Voltar" na tela de confirmação volta ao login em modo "Entrar"
+- [x] "← Voltar" na tela de confirmação volta ao login em modo "Entrar"
       sem chamar nenhuma API
-- [ ] Login com 401 `user-not-confirmed` exibe a nova mensagem
+- [x] Login com 401 `user-not-confirmed` exibe a nova mensagem
       ("Confirme seu cadastro...") com o botão "Confirmar cadastro"
-- [ ] Botão "Confirmar cadastro" do login abre a tela de confirmação
+- [x] Botão "Confirmar cadastro" do login abre a tela de confirmação
       com o email pré-preenchido e dispara `POST
       /auth/resend-confirmation` automaticamente, com o contador já em
       andamento
-- [ ] Login com 401 `invalid-credentials` continua com a mensagem já
+- [x] Login com 401 `invalid-credentials` continua com a mensagem já
       existente, sem regressão
-- [ ] Erro de rede em `POST /auth/confirm` ou `POST
+- [x] Erro de rede em `POST /auth/confirm` ou `POST
       /auth/resend-confirmation` mostra a mesma mensagem de rede já
       usada no restante do auth
-- [ ] Layout segue o Modernist, consistente com
+- [x] Layout segue o Modernist, consistente com
       `21-otp-cadastro.png`/`22-otp-expirado.png`/
       `23-login-email-confirmado.png`, responsivo (web e mobile, mesmo
-      componente)
-- [ ] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima:
+      componente) — validado ao vivo no Chrome contra os 3 screenshots
+- [x] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima:
       sucesso, código incorreto, contador zerado + reenvio, submit
       bloqueado por código incompleto, CTA do login, erro de rede
 
