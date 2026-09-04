@@ -278,55 +278,85 @@ Response 400 (senha fora da política):
 
 ## Critérios de aceite
 
-- [ ] Link "Esqueci minha senha" aparece no login (modo "Entrar") e
+- [x] Link "Esqueci minha senha" aparece no login (modo "Entrar") e
       abre o Passo 1/3
-- [ ] Passo 1/3: "Enviar código" chama `POST /auth/forgot-password` e
+- [x] Passo 1/3: "Enviar código" chama `POST /auth/forgot-password` e
       avança para o Passo 2/3 com 200, mesmo para e-mail inexistente,
       sem revelar a diferença (US2)
-- [ ] "← Voltar ao login" no Passo 1/3 volta ao login sem chamar API
-- [ ] Passo 2/3: 6 campos de dígito com avanço automático de foco e
+- [x] "← Voltar ao login" no Passo 1/3 volta ao login sem chamar API
+- [x] Passo 2/3: 6 campos de dígito com avanço automático de foco e
       Backspace entre campos, mesmo padrão da FEAT-31
-- [ ] Passo 2/3: "Confirmar código" com os 6 dígitos preenchidos avança
+- [x] Passo 2/3: "Confirmar código" com os 6 dígitos preenchidos avança
       pro Passo 3/3 sem chamar API (US3)
-- [ ] Passo 2/3: submit com menos de 6 dígitos é bloqueado no client
+- [x] Passo 2/3: submit com menos de 6 dígitos é bloqueado no client
       (US4)
-- [ ] Passo 2/3: contador de 60s rotulado como cooldown de reenvio (não
+- [x] Passo 2/3: contador de 60s rotulado como cooldown de reenvio (não
       como expiração do código)
-- [ ] Passo 2/3: contador chegando a zero desabilita os campos e troca o
+- [x] Passo 2/3: contador chegando a zero desabilita os campos e troca o
       botão por "Reenviar e-mail", que chama `POST /auth/forgot-
       password` de novo, limpa/reabilita os campos e reinicia o
       contador (US5)
-- [ ] "← Voltar" no Passo 2/3 volta ao Passo 1/3, preservando o e-mail
+- [x] "← Voltar" no Passo 2/3 volta ao Passo 1/3, preservando o e-mail
       digitado, sem chamar API (US6)
-- [ ] Passo 3/3: "Nova senha" e "Confirmar nova senha" validados pela
+- [x] Passo 3/3: "Nova senha" e "Confirmar nova senha" validados pela
       política completa do Cognito (mín. 8, maiúscula, minúscula,
       número, símbolo)
-- [ ] Passo 3/3: senhas diferentes bloqueiam o submit no client (US8)
-- [ ] Passo 3/3: "Salvar nova senha" chama `POST /auth/reset-password`
+- [x] Passo 3/3: senhas diferentes bloqueiam o submit no client (US8)
+- [x] Passo 3/3: "Salvar nova senha" chama `POST /auth/reset-password`
       com email/code/newPassword; sucesso (200) volta ao login com
       e-mail preenchido e aviso "Senha redefinida..." (US7)
-- [ ] Passo 3/3: erro de código (`invalid-reset-code`/`expired-reset-
+- [x] Passo 3/3: erro de código (`invalid-reset-code`/`expired-reset-
       code`) mostra erro inline único com link de volta ao Passo 2/3,
       perdendo a senha digitada (US9)
-- [ ] Passo 3/3: erro de senha fora da política (`bad-request`) mostra
+- [x] Passo 3/3: erro de senha fora da política (`bad-request`) mostra
       erro inline sem sair do passo (US10)
-- [ ] Erro de rede em qualquer chamada preserva o estado da tela atual
+- [x] Erro de rede em qualquer chamada preserva o estado da tela atual
       (US11)
-- [ ] `registerSchema` (cadastro) passa a validar a mesma política
+- [x] `registerSchema` (cadastro) passa a validar a mesma política
       completa de senha, compartilhada com o Passo 3/3 (US12)
-- [ ] Campos de senha desta feature nascem sem toggle de
+- [x] Campos de senha desta feature nascem sem toggle de
       mostrar/ocultar (fora do escopo, decisão 5)
-- [ ] Layout segue o Modernist, consistente com
+- [x] Layout segue o Modernist, consistente com
       `24-recuperar-senha.png`/`25-otp-recuperacao.png`/
       `26-nova-senha.png`/`27-login-senha-redefinida.png`, responsivo
-      (web e mobile, mesmo componente)
-- [ ] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima:
+      (web e mobile, mesmo componente) — validado ao vivo no Chrome
+      contra os 4 screenshots e o backend local real
+- [x] Cobertura de teste (Vitest + RTL + MSW) para os cenários acima:
       sucesso ponta a ponta, e-mail inexistente (sem diferença
       observável), código incompleto, contador zerado + reenvio, voltar
       entre passos, senhas não coincidem, código inválido/expirado,
       senha fora da política, erro de rede, política de senha no
       cadastro
-- [ ] 100% dos testes passando (unitário + componente)
+- [x] 100% dos testes passando (unitário + componente) — 622/622
+
+## Status
+
+Implementação concluída (28/28 tasks de `tasks.md`). Suíte completa:
+622 testes (100% passando), `tsc -b`/`oxlint`/`npm run build` limpos.
+Validado ao vivo no Chrome contra o backend local real (LocalStack +
+cognito-local): fluxo completo email → código → reenvio pós-cooldown →
+nova senha → login com a senha redefinida, ponta a ponta.
+
+**Achado durante a revisão visual:** faltava o kicker "PASSO N DE 3 ·
+RECUPERAÇÃO" acima do título de cada passo (presente nos 4 screenshots
+de referência, web e mobile) — corrigido reaproveitando a classe
+`.card-kicker` já existente no CSS Modernist.
+
+**Débito técnico descoberto e corrigido durante a implementação (fora
+do escopo original desta feature, autorizado pelo usuário):** ao
+escrever os testes desta feature, identificada uma fragilidade
+pré-existente na suíte completa do frontend — testes que afirmam sobre
+um estado de loading transitório contra um mock do MSW sem delay (ou
+com delay fixo insuficiente) podem flacar sob carga (React 18 pode
+agrupar o `setState` de início/fim do loading no mesmo lote quando a
+resposta resolve rápido/cedo demais). Investigado a pedido do usuário
+rodando a suíte completa repetidamente; corrigidos 3 arquivos de outras
+features (`InviteMemberDialog.test.tsx`, `SettingsPage.test.tsx`,
+`CategoriesPage.test.tsx`) com a técnica de Promise controlada
+manualmente pelo teste. Validado com múltiplas rodadas completas
+consecutivas 100% verdes depois do fix. Detalhes completos e o que
+ainda pode não ter sido descoberto em `frontend/docs/backlog.md`
+("Débitos técnicos e melhorias futuras").
 
 ## Fora do escopo
 
