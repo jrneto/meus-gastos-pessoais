@@ -171,14 +171,12 @@ vira `spec.md` própria via `/specify`.
   Depende de: backend FEAT-36 (recuperação de senha); frontend FEAT-31
   (componente de OTP compartilhado).
 
-- [ ] **FEAT-33 — Senha visível (mostrar/ocultar)**
+- [x] **FEAT-33 — Senha visível (mostrar/ocultar)**
   Botão "Mostrar/Ocultar" nos campos de senha de login, cadastro e nova
   senha (`20-cadastro-senha-visivel.png`) — toggle local de
   `type="password"`/`type="text"`, sem chamada de API nem novo estado
-  de servidor. *Candidato a Modo Leve* (ajuste de UI pontual, sem
-  mudança de contrato) — confirmar classificação no `/specify` em vez
-  de assumir de antemão. Pode ser feito antes ou em paralelo às
-  FEAT-31/32, já que não depende delas.
+  de servidor. Implementada em Modo Leve (classificação confirmada no
+  `/specify`), sem passar por spec própria em `specs/`.
   Depende de: nenhuma.
 
 ## Débitos técnicos e melhorias futuras
