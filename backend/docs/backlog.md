@@ -177,7 +177,7 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   cadastro/login validado em hom sem regressão (e-mail de confirmação
   chegou, mas caiu no spam — ver débito abaixo).
 
-- [ ] **FEAT-34 — Custom Message trigger do Cognito (e-mails de auth com HTML)**
+- [x] **FEAT-34 — Custom Message trigger do Cognito (e-mails de auth com HTML)**
   Novo handler em `GastosApp.CognitoTriggers` (ao lado do
   `AccountTriggerHandler` já existente) pro trigger `CustomMessage` do
   Cognito, cobrindo os `TriggerSource` `CustomMessage_SignUp`,
@@ -191,19 +191,22 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   não chama `ses:SendEmail` diretamente.
   Depende de: FEAT-33.
 
-- [ ] **FEAT-35 — Confirmação de cadastro via código (OTP)**
+- [x] **FEAT-35 — Confirmação de cadastro via código (OTP)** *(concluída,
+  ver `backend/specs/FEAT-35-confirmacao-cadastro-otp/`)*:
   `POST /auth/confirm` (`ConfirmSignUpAsync`) e `POST /auth/resend-
   confirmation` (`ResendConfirmationCodeAsync`). Novos erros em
-  `AuthErrors` (`invalid-confirmation-code` ← `CodeMismatchException`,
-  `expired-confirmation-code` ← `ExpiredCodeException`) — reaproveita
-  `AuthErrors.UserNotConfirmed`, já usado pelo login (`CognitoAuthService.
-  LoginAsync`) desde antes desta leva. Nenhuma mudança de TTL no
-  Cognito (ver decisão acima).
-  Depende de: FEAT-01 (auth) — já pronto. Recomendado depois de FEAT-34
-  pra já nascer com e-mail com marca própria, mas não é bloqueio
-  técnico (funciona com o e-mail padrão do Cognito também).
+  `AuthErrors` (`invalid-confirmation-code` ← `CodeMismatchException`/
+  `UserNotFoundException`, `expired-confirmation-code` ←
+  `ExpiredCodeException`) — reaproveita `AuthErrors.UserNotConfirmed`,
+  já usado pelo login (`CognitoAuthService.LoginAsync`) desde antes
+  desta leva. Nenhuma mudança de TTL no Cognito (ver decisão acima).
+  489 unit + 214 componente + 30 integrado passando (3 integrados
+  pulados em modo Local por limitação do `cognito-local`, ver débito
+  técnico abaixo — pendente validação real em hom via
+  `backend-integration-tests-hom.yml`).
 
-- [ ] **FEAT-36 — Recuperação de senha (esqueci minha senha)**
+- [x] **FEAT-36 — Recuperação de senha (esqueci minha senha)** *(concluída,
+  ver `backend/specs/FEAT-36-recuperacao-senha/`)*:
   `POST /auth/forgot-password` (`ForgotPasswordAsync`) e `POST /auth/
   reset-password` (`ConfirmForgotPasswordAsync`), com erros
   `invalid-reset-code`/`expired-reset-code` (`CodeMismatchException`/
@@ -218,22 +221,92 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   código do Cognito) com `{{data}}` da própria request;
   `{{dispositivo}}` pode ficar com o `User-Agent` cru como fallback (sem
   parsing de dispositivo no projeto hoje — refinar como débito futuro
-  se o usuário quiser).
+  se o usuário quiser). Sem rate limit/brute-force próprio (confia na
+  proteção nativa do Cognito, decisão confirmada no `/specify`); sem
+  personalização por nome no e-mail de "senha alterada" (reset não é
+  autenticado, evita IAM novo — template ajustado pra não depender de
+  `{{nome}}`). Novas interfaces `IEmailSender`/`IPasswordChangedEmailSender`
+  (Application) + `SesEmailService`/`SesPasswordChangedEmailSender`
+  (Infrastructure, `AWSSDK.SimpleEmailV2`) — `IEmailSender` já pensado
+  genérico o bastante pra FEAT-37 reaproveitar. 2 novos parâmetros SSM
+  `String` (`Ses/SenderEmail`, um por ambiente) criados em
+  `parameter-store.tf`, espelhando o remetente já calculado pelo
+  `email_configuration` do Cognito (decisão tomada durante o `/plan`,
+  spec.md original previa zero Terraform novo). Diferente da FEAT-35, o
+  `cognito-local` implementa `ForgotPassword`/`ConfirmForgotPassword`
+  sem divergência — os 4 testes integrados novos rodam sem guarda de
+  `IsLocal`. 502 unit + 224 componente + 34 integrado passando
+  (Native AOT via `run-local.sh` incluído).
   Depende de: FEAT-33 (SES). Não depende de FEAT-34/35.
 
-- [ ] **FEAT-37 — E-mail de boas-vindas** *(substitui a antiga FEAT-27
-  deste arquivo)*
-  O trigger `Post Confirmation` já existente (`AccountTriggerHandler`,
-  FEAT-19) passa a também enviar `04-boas-vindas.html` via
-  `ses:SendEmail` direto (mesmo padrão da FEAT-36), depois de
-  `EnsureAccountCommand` ter sucesso — precisa acrescentar
-  `ses:SendEmail` na IAM role já existente do Lambda de trigger
-  (`lambda-account-trigger.tf`). Falha no envio do e-mail não pode
-  bloquear a criação da conta (mesma filosofia defensiva já aplicada ao
-  `EnsureAccountCommand` no `AccountTriggerHandler` — só loga).
+- [x] **FEAT-37 — E-mail de boas-vindas** *(concluída, ver
+  `backend/specs/FEAT-37-email-boas-vindas/`)*: `EnsureAccountCommandHandler`
+  passa a enviar `04-boas-vindas.html` via `ses:SendEmail` direto (mesmo
+  padrão da FEAT-36) quando a conta é criada pela primeira vez
+  (`AlreadyExisted: false`) — não em `AccountTriggerHandler`, pra manter
+  a mesma fronteira já usada por `ResetPasswordCommandHandler` (o
+  próprio Command Handler decide o efeito colateral, com try/catch
+  defensivo próprio). Novos `IWelcomeEmailSender`/`SesWelcomeEmailSender`,
+  compondo `IEmailSender` + `IUserProfileRepository` pra resolver o nome
+  real (FEAT-26) — **sem fallback de saudação genérica** (decisão do
+  usuário: usuário confirmado sem `UserProfile` é uma anomalia, já
+  bloqueada no login pela FEAT-31; perfil ausente lança e é tratado como
+  qualquer outra falha de envio, só loga). IAM `ses:SendEmail` **já
+  estava concedido** à Lambda de trigger desde a FEAT-33 — a suposição
+  original deste item (precisar de IAM novo) não se confirmou. Único
+  Terraform necessário: `Ses__SenderEmail` no `environment{}` de
+  `lambda-account-trigger.tf` (hom/prod) — essa Lambda não lê Parameter
+  Store (FEAT-19), então o remetente do SES chega via variável de
+  ambiente, mesmo literal fixo já usado em `parameter-store.tf`. Domínio
+  errado no template (`jrnexpenses.com.br`) corrigido pra
+  `jrnexpenses.com`, nos dois arquivos (design system + cópia
+  embarcada). Teste integrado automatizado não é viável (mesma
+  limitação já aceita desde a FEAT-19 pro resto do trigger) — validado
+  manualmente via `AccountTriggerHandlerManualDebug.cs` (perfil resolvido
+  e template montado corretamente; chamada real ao SES falhou por falta
+  de equivalente local, capturada pelo catch defensivo, comportamento
+  esperado). 512 unit + 224 componente passando. `terraform apply` de
+  hom e prod aplicado pelo usuário em 2026-09-03. **Validação real em
+  hom (2026-09-03) encontrou um bug — ver BUG logo abaixo, corrigido
+  em `fix/ses-client-region-lambda-trigger`.**
   Depende de: FEAT-33, FEAT-19 (já pronto).
 
 ## Bugs
+
+- [x] **BUG — Cliente SES quebrava a criação de conta inteira na Lambda
+  de trigger (não só o email de boas-vindas)** (encontrado em
+  2026-09-03, na primeira validação real da FEAT-37 em hom via
+  Postman) *(resolvido em `fix/ses-client-region-lambda-trigger`)*:
+  `AddSesSdk` (FEAT-36) montava o cliente `IAmazonSimpleEmailServiceV2`
+  reaproveitando `CognitoOptions.Region` — decisão que nunca quebrou
+  porque só a Lambda da API resolvia esse cliente até a FEAT-37 injetar
+  `IWelcomeEmailSender` direto no construtor de
+  `EnsureAccountCommandHandler`. A Lambda de trigger de conta
+  (`GastosApp.CognitoTriggers`) nunca configura Cognito de propósito
+  (decisão da FEAT-19) — `CognitoOptions.Region` fica `null` lá,
+  `RegionEndpoint.GetBySystemName(null)` lança `ArgumentNullException`
+  **durante a resolução de DI do handler, antes de `Handle()` rodar** —
+  ou seja, fora do `try/catch` que protegia só a chamada `SendAsync`.
+  Resultado real observado: `EnsureAccountCommand` abortava por
+  completo, `Account`/`Membership`/categorias padrão **nunca eram
+  criados** — não um efeito colateral isolado do email. Log real do
+  CloudWatch (`jrnexpenses-account-trigger-hom`) trazido pelo usuário
+  confirmou o diagnóstico. Correção em duas partes: (1) `SesOptions`
+  ganhou `Region` própria com fallback `"us-east-1"` (mesmo padrão já
+  usado por `DynamoDbOptions.Region`), desacoplando o cliente SES de
+  `CognitoOptions` de vez; (2) `EnsureAccountCommandHandler` passou a
+  resolver `IWelcomeEmailSender` tardiamente via `IServiceProvider`,
+  dentro do próprio `try/catch` — assim qualquer falha futura de
+  configuração de email (construção, não só envio) fica contida,
+  cumprindo de verdade o requisito "falha no email nunca bloqueia a
+  criação da conta". Reproduzido localmente antes e depois da correção
+  (usuário real registrado/confirmado, sem `Cognito:*` configurado,
+  espelhando `lambda-account-trigger.tf`): antes, `Account` não era
+  criado; depois, criado normalmente. Fallback do login (FEAT-19)
+  também mascarava o sintoma pro usuário final — a Lambda da API tem
+  `Cognito:Region` via Parameter Store, então o próximo login recriava
+  a conta com sucesso, incluindo o email de boas-vindas dessa vez.
+  513 unit (2 testes novos) + 224 componente passando.
 
 - [x] **BUG — Login não exige perfil completo quando o usuário é criado
   diretamente no Cognito** (levantado em 2026-08-31, fora do escopo de
@@ -254,6 +327,41 @@ Itens levantados durante specify/plan/tasks/implementação/review ou
 Modo Leve, fora do escopo do que estava sendo feito no momento — ver
 "Débitos técnicos e oportunidades de melhoria" no `/CLAUDE.md` raiz do
 monorepo.
+
+- [ ] **DÉBITO — `TestAccountFixture` não verifica email de verdade no
+  Cognito real** (percebido na FEAT-36, ao investigar falhas de
+  `backend-integration-tests-hom.yml` — `backend/specs/FEAT-36-
+  recuperacao-senha/spec.md`, "Status"): `TestAccountFixture`
+  (`backend/tests/GastosApp.IntegrationTests/Support/
+  TestAccountFixture.cs`, usada por boa parte da suíte de testes
+  integrados, não só Auth) confirma a conta via `AdminConfirmSignUpAsync`
+  — isso marca `UserStatus=CONFIRMED`, mas **não** marca o atributo
+  `email_verified=true` no Cognito real (só o fluxo genuíno de
+  `ConfirmSignUp` com o código de verdade enviado por email faz isso,
+  via `auto_verified_attributes` do User Pool). Confirmado
+  empiricamente contra hom (`curl` direto + `AdminUpdateUserAttributes`
+  comparando antes/depois). Efeito prático: qualquer chamada a
+  `ForgotPasswordAsync` contra uma conta da fixture cai no catch
+  defensivo de `InvalidParameterException` (retorna 200 sem gerar
+  nenhum código real) — o cenário "usuário de fato confirmado" nunca é
+  exercitado por completo contra Cognito real por nenhum teste da
+  suíte, incluindo `ForgotPassword_EmailDeContaExistente_Retorna200`
+  (FEAT-36, US1), que só verifica o status HTTP (200), não se um
+  código de verdade foi gerado. **Tentativa de contorno pontual em
+  `ResetPassword_CodigoIncorreto_Retorna400`** (chamar
+  `AdminUpdateUserAttributes` manualmente no teste) **não se
+  sustentou**: a role de CI (`gastosapp-backend-cicd`) não tem essa
+  permissão concedida (escopo mínimo deliberado, ver
+  `backend/infra/CLAUDE.md`) — `AccessDeniedException` rodando de
+  verdade em `backend-integration-tests-hom.yml`. Decisão do usuário
+  (sem mexer em IAM): o teste passou a esperar `type` diferente por
+  ambiente (`invalid-reset-code` local, `expired-reset-code` fora de
+  Local) — aceita a limitação real em vez de contornar. Corrigir isso
+  de forma abrangente (`TestAccountFixture` passar a marcar
+  `email_verified=true` por padrão, e/ou conceder
+  `cognito-idp:AdminUpdateUserAttributes` à role de CI) afeta todos os
+  testes que usam a fixture e é uma mudança de IAM — avaliar impacto
+  mais amplo antes de aplicar.
 
 - [x] **DÉBITO — Módulos sem teste integrado ainda** (levantado na
   FEAT-29 — `backend/specs/FEAT-29-testes-integrados/`) *(resolvido,
@@ -310,6 +418,47 @@ monorepo.
   zone) e um record TXT de DMARC (`_dmarc.jrnexpenses.com`, política
   inicial `p=none` pra só monitorar antes de enforçar).
 
+- [ ] **DÉBITO — `POST /auth/register` não trata `InvalidPasswordException`
+  do Cognito** (percebido no `/specify` da FEAT-36 —
+  `backend/specs/FEAT-36-recuperacao-senha/`): `RegisterUserCommandValidator`
+  só valida `MinimumLength(8)` pra senha, sem cobrir o resto da política
+  real do Cognito (maiúscula+minúscula+número+símbolo, `cognito.tf` de
+  hom/prod). `CognitoAuthService.RegisterAsync` só captura
+  `UsernameExistsException` — uma senha com 8+ caracteres mas fora do
+  resto da política (ex.: só minúsculas) faz o SDK lançar
+  `InvalidPasswordException`, não tratada, propagando pro
+  `GlobalExceptionHandler` como 500 em vez de 400. A FEAT-36 resolveu o
+  mesmo problema para `POST /auth/reset-password` (reaproveitando
+  `AuthErrors.Validation`); aplicar o mesmo tratamento em `RegisterAsync`
+  fica pendente.
+
+- [x] **MELHORIA — Revisar throttling/brute-force do código de reset de
+  senha na FEAT-36** *(revisitado no `/specify` da FEAT-36 —
+  `backend/specs/FEAT-36-recuperacao-senha/`, decisão 3: manter sem
+  mecanismo próprio, confiando na proteção nativa do Cognito; a
+  vulnerabilidade documentada abaixo foi corrigida pela AWS em
+  abril/2021, sem recorrência pública conhecida desde então. Reavaliar
+  só se houver evidência de abuso real.)* (levantado no `/specify` da
+  FEAT-35 — `backend/specs/FEAT-35-confirmacao-cadastro-otp/`): o código do
+  Cognito (`ConfirmSignUp`/`ConfirmForgotPassword`) é sempre válido por
+  24h, fixo e não configurável (nem via console/API, nem via Terraform
+  — confirmado na documentação oficial da AWS). Pra `POST /auth/confirm`
+  (FEAT-35) isso é aceitável: possuir o código não dá acesso à conta,
+  só confirma o email — login continua exigindo a senha, nunca enviada
+  por email. Já pra `POST /auth/reset-password` (FEAT-36,
+  `ConfirmForgotPassword`), o cálculo muda: o código certo permite
+  definir uma senha nova diretamente, ou seja, é takeover de conta
+  completo. Existe pesquisa de segurança pública (Pentagrid, 2021)
+  documentando que o throttling do Cognito pra esse fluxo específico já
+  foi, na prática, bem mais fraco que o anunciado ("5 a 20
+  tentativas/hora") — até ~1.587 tentativas antes de bloquear, com o
+  código permanecendo válido mesmo após "limite excedido" — vulnerabi-
+  lidade corrigida pela AWS em abril/2021, sem recorrência pública
+  conhecida desde então. Retomar essa discussão ao especificar a
+  FEAT-36: vale medir/validar o throttling real do Cognito antes de
+  assumir que a proteção nativa é suficiente para um fluxo que troca
+  senha.
+
 - [ ] **MELHORIA — `terraform apply` via esteira de CI/CD** (levantado
   no `/plan` da FEAT-34 —
   `backend/specs/FEAT-34-custom-message-emails-auth/`): hoje todo
@@ -329,6 +478,36 @@ monorepo.
   deploy de código). Cross-cutting — beneficiaria qualquer feature
   futura que precise provisionar recurso novo, não só a FEAT-34, que
   seguiu com `apply` manual (decisão confirmada com o usuário).
+
+- [ ] **DÉBITO — `cognito-local` (v5.3.0, última versão publicada) não
+  reproduz 3 comportamentos do Cognito real usados por `ConfirmSignUp`/
+  `ResendConfirmationCode`** (descoberto na FEAT-35 —
+  `backend/specs/FEAT-35-confirmacao-cadastro-otp/`, rodando
+  `run-local.sh`): (1) `ResendConfirmationCode` não existe entre os
+  targets implementados do pacote (verificado inspecionando
+  `/usr/local/lib/node_modules/cognito-local/lib/targets/` dentro do
+  container) — a chamada ao SDK propaga como exceção não mapeada (500);
+  (2) `ConfirmSignUp` (`lib/targets/confirmSignUp.js`) nunca checa
+  `UserStatus`, só compara o `ConfirmationCode` salvo — o branch de
+  idempotência do Cognito real (`NotAuthorizedException` pra usuário já
+  `CONFIRMED`, que no real dispara antes de olhar o código) é
+  inalcançável contra o emulador, e `AdminConfirmSignUp` também não
+  limpa o `ConfirmationCode` salvo; (3) pra usuário inexistente,
+  `ConfirmSignUp` lança `NotAuthorizedError` (não `UserNotFoundError`,
+  como o Cognito real e a documentação do AWS SDK) — nosso catch de
+  "já confirmado" acaba absorvendo isso como sucesso. Não há correção
+  via upgrade: v5.3.0 já é a última release oficial (conferido via
+  GitHub API); existe um PR de terceiro (#468, "100% Cognito API
+  parity") mas está aberto, não mergeado, não publicado. Os 3 testes
+  afetados (`Confirm_UsuarioJaConfirmado_Retorna200Idempotente`,
+  `Confirm_EmailInexistente_Retorna400`, `ResendConfirmation_
+  UsuarioNaoConfirmado_Retorna200` em
+  `backend/tests/GastosApp.IntegrationTests/Auth/AuthFlowTests.cs`)
+  pulam a asserção em modo Local (guarda `IntegrationTestEnvironment.
+  Current.IsLocal`) e só validam de verdade contra Cognito real via
+  `backend-integration-tests-hom.yml`. Reavaliar se/quando o pacote
+  ganhar uma versão nova que cubra esses 3 casos, ou se outra feature
+  de auth precisar de mais paridade do emulador.
 
 ## Compliance (LGPD)
 

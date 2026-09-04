@@ -17,6 +17,16 @@ public sealed record LoginResponseDto(string AccessToken, int ExpiresIn, string 
 /// <summary>Corpo de erro RFC 9457 (ProblemDetails) devolvido por GastosApp.Api.Common.ResultHttpExtensions.</summary>
 public sealed record ProblemDetailsDto(string? Type, string? Title, int? Status, string? Detail);
 
+// Confirmação de cadastro via OTP (FEAT-35) — ver
+// backend/specs/FEAT-35-confirmacao-cadastro-otp/spec.md
+public sealed record ConfirmRequestDto(string Email, string Code);
+public sealed record ResendConfirmationRequestDto(string Email);
+
+// Recuperação de senha (FEAT-36) — ver
+// backend/specs/FEAT-36-recuperacao-senha/spec.md
+public sealed record ForgotPasswordRequestDto(string Email);
+public sealed record ResetPasswordRequestDto(string Email, string Code, string NewPassword);
+
 // Membros (FEAT-20) — ver backend/specs/FEAT-20-membros-convites-permissoes/spec.md
 public sealed record MemberRequestDto(string Email, string Role);
 public sealed record MemberRoleRequestDto(string Role);

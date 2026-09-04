@@ -70,6 +70,48 @@ Depois de confirmado, `POST /auth/login` com esse e-mail/senha funciona
 normalmente. Repita o comando (trocando `--username`) para cada novo
 usuário de teste que precisar de login.
 
+## Rodando as Lambdas de trigger do Cognito localmente (via Postman/curl)
+
+O `cognito-local` não invoca nenhuma Lambda de verdade (sem
+`LambdaConfig` no User Pool) — diferente do Cognito real, confirmar/
+registrar um usuário localmente não aciona `account-trigger` nem
+`custom-message-trigger`. Pra exercitar essas duas Lambdas manualmente
+sem depender de deploy, cada uma tem um par de scripts que builda o
+binário Native AOT publicado (mesma imagem base `provided.al2023` da
+Lambda real) e sobe via Lambda Runtime Interface Emulator (RIE) —
+mesma técnica de "Testes integrados locais" abaixo, mas pensada pra
+chamar manualmente (Postman/curl), não pra rodar suíte automatizada.
+
+**Diferença importante em relação à Api**: a Api usa
+`Amazon.Lambda.AspNetCoreServer.Hosting` (protocolo API Gateway — o
+body do POST pro RIE precisa simular um evento HTTP, ver
+`tests/GastosApp.IntegrationTests/Support/LambdaRieTransport.cs`).
+Essas duas Lambdas são handlers de evento do Cognito puros — o body do
+POST pro RIE é o **próprio evento do Cognito**, sem nenhum envelope.
+
+```bash
+cd backend
+
+# account-trigger (PostConfirmation, FEAT-19) — depende de LocalStack +
+# cognito-local (sobe/garante os dois sozinho), grava em GastosApp-Local
+./infra/lambda/local-env-up-account-trigger.sh
+# ...
+./infra/lambda/local-env-down-account-trigger.sh
+
+# custom-message-trigger (CustomMessage, FEAT-34) — não tem dependência
+# nenhuma (não toca DynamoDB/Cognito, só formata texto)
+./infra/lambda/local-env-up-custom-message-trigger.sh
+# ...
+./infra/lambda/local-env-down-custom-message-trigger.sh
+```
+
+Cada script `local-env-up-*` imprime, ao final, a porta (`9001` pro
+account-trigger, `9002` pro custom-message-trigger), o endpoint de
+invocação do RIE e um exemplo completo do evento esperado — cole esse
+JSON direto no body de um `POST` no Postman/curl. Os POCOs de cada
+evento (`CognitoPostConfirmationEvent.cs`/`CognitoCustomMessageEvent.cs`)
+são a fonte de verdade do formato exato.
+
 ## Testes integrados locais (FEAT-29)
 
 Sobe o binário Native AOT publicado num container da mesma família de
@@ -86,6 +128,23 @@ cd backend
 ```
 
 Ver `backend/specs/FEAT-29-testes-integrados/plan.md` para detalhes.
+
+## Zerando os dados (sem derrubar o ambiente)
+
+Remove todos os itens da tabela `GastosApp-Local` (LocalStack) e todos
+os usuários do User Pool local (cognito-local), mantendo containers,
+tabela, User Pool/App Client e parâmetros intactos — útil pra repetir
+um teste manual do zero sem reprovisionar o ambiente inteiro. Diferente
+de "Parando/limpando" abaixo, que derruba os containers e apaga todo o
+estado.
+
+```bash
+cd backend/infra
+./scripts/local-reset.sh
+```
+
+Também dá pra rodar cada parte isoladamente: `./scripts/reset-dynamodb.sh`
+(só a tabela) ou `./scripts/reset-cognito.sh` (só os usuários).
 
 ## Parando/limpando
 

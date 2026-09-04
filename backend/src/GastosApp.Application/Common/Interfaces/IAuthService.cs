@@ -13,6 +13,14 @@ public interface IAuthService
     // pra não deixar uma conta "pela metade" nem "queimar" o email numa tentativa
     // frustrada de cadastro.
     Task DeleteAsync(string email, CancellationToken cancellationToken = default);
+
+    // FEAT-35: confirmação de cadastro via código OTP enviado por email.
+    Task<Result> ConfirmSignUpAsync(string email, string code, CancellationToken cancellationToken = default);
+    Task<Result> ResendConfirmationCodeAsync(string email, CancellationToken cancellationToken = default);
+
+    // FEAT-36: recuperação de senha via código OTP enviado por email.
+    Task<Result> ForgotPasswordAsync(string email, CancellationToken cancellationToken = default);
+    Task<Result> ConfirmForgotPasswordAsync(string email, string code, string newPassword, CancellationToken cancellationToken = default);
 }
 
 public record RegisterResult(string UserId, string Email);

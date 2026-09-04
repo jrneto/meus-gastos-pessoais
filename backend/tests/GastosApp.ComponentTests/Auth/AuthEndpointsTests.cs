@@ -21,6 +21,7 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
     {
         _factory = factory;
         _factory.ResetAuthServiceMock();
+        _factory.ResetPasswordChangedEmailSenderMock();
         _factory.ResetAccountRepositoryMock();
         _factory.ResetMembershipRepositoryMock();
         _factory.ResetUserProfileRepositoryMock();
@@ -462,5 +463,183 @@ public sealed class AuthEndpointsTests : IClassFixture<ComponentTestWebApplicati
 
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/internal-server-error");
+    }
+
+    [Fact]
+    public async Task Confirm_ComCodigoCorreto_Retorna200SemCorpo()
+    {
+        _factory.AuthServiceMock
+            .ConfirmSignUpAsync("neto@email.com", "123456", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Success()));
+
+        var response = await _client.PostAsJsonAsync("/auth/confirm", new { email = "neto@email.com", code = "123456" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await response.Content.ReadAsStringAsync()).Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("", "123456")]
+    [InlineData("neto@email.com", "")]
+    public async Task Confirm_ComParametrosInvalidos_Retorna400SemChamarAuthService(string email, string code)
+    {
+        var response = await _client.PostAsJsonAsync("/auth/confirm", new { email, code });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/validation-error");
+
+        await _factory.AuthServiceMock.DidNotReceiveWithAnyArgs()
+            .ConfirmSignUpAsync(default!, default!, default);
+    }
+
+    [Theory]
+    [MemberData(nameof(ConfirmErrorCases))]
+    public async Task Confirm_QuandoAuthServiceRetornaErro_PropagaProblemDetails(Error error, string expectedType)
+    {
+        _factory.AuthServiceMock
+            .ConfirmSignUpAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Failure(error)));
+
+        var response = await _client.PostAsJsonAsync("/auth/confirm", new { email = "neto@email.com", code = "000000" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be(expectedType);
+    }
+
+    public static IEnumerable<object[]> ConfirmErrorCases()
+    {
+        yield return [AuthErrors.InvalidConfirmationCode, "https://gastosapp.dev/errors/invalid-confirmation-code"];
+        yield return [AuthErrors.ExpiredConfirmationCode, "https://gastosapp.dev/errors/expired-confirmation-code"];
+    }
+
+    [Fact]
+    public async Task ResendConfirmation_ComEmailValido_Retorna200SemCorpo()
+    {
+        _factory.AuthServiceMock
+            .ResendConfirmationCodeAsync("neto@email.com", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Success()));
+
+        var response = await _client.PostAsJsonAsync("/auth/resend-confirmation", new { email = "neto@email.com" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await response.Content.ReadAsStringAsync()).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ResendConfirmation_ComEmailVazio_Retorna400SemChamarAuthService()
+    {
+        var response = await _client.PostAsJsonAsync("/auth/resend-confirmation", new { email = "" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/validation-error");
+
+        await _factory.AuthServiceMock.DidNotReceiveWithAnyArgs()
+            .ResendConfirmationCodeAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task ForgotPassword_ComEmailValido_Retorna200SemCorpo()
+    {
+        _factory.AuthServiceMock
+            .ForgotPasswordAsync("neto@email.com", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Success()));
+
+        var response = await _client.PostAsJsonAsync("/auth/forgot-password", new { email = "neto@email.com" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await response.Content.ReadAsStringAsync()).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ForgotPassword_ComEmailVazio_Retorna400SemChamarAuthService()
+    {
+        var response = await _client.PostAsJsonAsync("/auth/forgot-password", new { email = "" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/validation-error");
+
+        await _factory.AuthServiceMock.DidNotReceiveWithAnyArgs()
+            .ForgotPasswordAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task ResetPassword_ComParametrosCorretos_Retorna200EEnviaEmail()
+    {
+        _factory.AuthServiceMock
+            .ConfirmForgotPasswordAsync("neto@email.com", "123456", "NovaSenha@123", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Success()));
+
+        var response = await _client.PostAsJsonAsync("/auth/reset-password",
+            new { email = "neto@email.com", code = "123456", newPassword = "NovaSenha@123" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await response.Content.ReadAsStringAsync()).Should().BeEmpty();
+
+        await _factory.PasswordChangedEmailSenderMock.Received(1)
+            .SendAsync("neto@email.com", Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("", "123456", "NovaSenha@123")]
+    [InlineData("neto@email.com", "", "NovaSenha@123")]
+    [InlineData("neto@email.com", "123456", "")]
+    public async Task ResetPassword_ComParametrosInvalidos_Retorna400SemChamarAuthService(
+        string email, string code, string newPassword)
+    {
+        var response = await _client.PostAsJsonAsync("/auth/reset-password", new { email, code, newPassword });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/validation-error");
+
+        await _factory.AuthServiceMock.DidNotReceiveWithAnyArgs()
+            .ConfirmForgotPasswordAsync(default!, default!, default!, default);
+    }
+
+    [Theory]
+    [MemberData(nameof(ResetPasswordErrorCases))]
+    public async Task ResetPassword_QuandoAuthServiceRetornaErro_PropagaProblemDetails(Error error, string expectedType)
+    {
+        _factory.AuthServiceMock
+            .ConfirmForgotPasswordAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Failure(error)));
+
+        var response = await _client.PostAsJsonAsync("/auth/reset-password",
+            new { email = "neto@email.com", code = "000000", newPassword = "NovaSenha@123" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be(expectedType);
+
+        await _factory.PasswordChangedEmailSenderMock.DidNotReceiveWithAnyArgs()
+            .SendAsync(default!, default, default);
+    }
+
+    public static IEnumerable<object[]> ResetPasswordErrorCases()
+    {
+        yield return [AuthErrors.InvalidResetCode, "https://gastosapp.dev/errors/invalid-reset-code"];
+        yield return [AuthErrors.ExpiredResetCode, "https://gastosapp.dev/errors/expired-reset-code"];
+        yield return [AuthErrors.Validation("Senha deve ter no mínimo 8 caracteres, com letra maiúscula, minúscula, número e símbolo."), "https://gastosapp.dev/errors/bad-request"];
+    }
+
+    [Fact]
+    public async Task ResetPassword_QuandoEmailFalha_AindaAssimRetorna200()
+    {
+        _factory.AuthServiceMock
+            .ConfirmForgotPasswordAsync("neto@email.com", "123456", "NovaSenha@123", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Success()));
+        _factory.PasswordChangedEmailSenderMock
+            .SendAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("Falha simulada de envio")));
+
+        var response = await _client.PostAsJsonAsync("/auth/reset-password",
+            new { email = "neto@email.com", code = "123456", newPassword = "NovaSenha@123" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await response.Content.ReadAsStringAsync()).Should().BeEmpty();
     }
 }

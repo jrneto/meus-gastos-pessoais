@@ -1,19 +1,67 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { AccountPendingApprovalError } from '../errors/authErrors'
+import { AccountNotConfirmedError } from '../errors/authErrors'
 import { useLogin } from '../hooks/useLogin'
 import { useRegister } from '../hooks/useRegister'
 import { loginSchema, type LoginCredentials } from '../schemas/loginSchema'
 import { registerSchema, type RegisterFormData } from '../schemas/registerSchema'
 import { extractDigits, maskCpf } from '../utils/cpf'
 import { maskPhone } from '../utils/phoneMask'
+import { ConfirmationForm } from './ConfirmationForm'
+import { ForgotPasswordFlow } from './ForgotPasswordFlow'
+import { PasswordField } from './PasswordField'
 
-type AuthMode = 'login' | 'signup'
+type Screen = 'login' | 'signup' | 'confirmation' | 'forgot-password'
+
+// Aviso de sucesso exibido no login em modo "Entrar" ao voltar de um
+// outro passo do fluxo (email confirmado, FEAT-31; senha redefinida,
+// FEAT-32) — os dois casos são mutuamente exclusivos (só um caminho
+// leva de volta ao login por vez) e compartilham a mesma estrutura
+// visual, daí um único slot em vez de dois `useState` paralelos.
+type LoginBanner = { email: string; message: string } | null
 
 export function LoginForm() {
-  const [authMode, setAuthMode] = useState<AuthMode>('login')
-  const isSignupMode = authMode === 'signup'
+  const [screen, setScreen] = useState<Screen>('login')
+  const [confirmationEmail, setConfirmationEmail] = useState('')
+  const [autoResendOnEnter, setAutoResendOnEnter] = useState(false)
+  const [banner, setBanner] = useState<LoginBanner>(null)
+
+  function goToConfirmation(email: string, autoResend: boolean) {
+    setConfirmationEmail(email)
+    setAutoResendOnEnter(autoResend)
+    setScreen('confirmation')
+  }
+
+  // A tela de confirmação ocupa o card inteiro, sem o seletor de modo
+  // "Entrar"/"Criar conta" (FEAT-31).
+  if (screen === 'confirmation') {
+    return (
+      <ConfirmationForm
+        email={confirmationEmail}
+        autoResendOnEnter={autoResendOnEnter}
+        onConfirmed={(email) => {
+          setBanner({ email, message: 'Email confirmado. Sua conta está ativa — entre com seus dados.' })
+          setScreen('login')
+        }}
+        onBack={() => setScreen('login')}
+      />
+    )
+  }
+
+  // Mesmo padrão: o fluxo de recuperação de senha (FEAT-32) ocupa o
+  // card inteiro, sem o seletor de modo.
+  if (screen === 'forgot-password') {
+    return (
+      <ForgotPasswordFlow
+        onDone={(email) => {
+          setBanner({ email, message: 'Senha redefinida. Entre com a nova senha.' })
+          setScreen('login')
+        }}
+        onBack={() => setScreen('login')}
+      />
+    )
+  }
 
   // O escopo `.ds-modernist` (tokens + reset) é aplicado uma vez no
   // wrapper de `LoginPage` — este componente só depende dele estar
@@ -22,37 +70,48 @@ export function LoginForm() {
     <div>
       <div className="seg" style={{ alignSelf: 'flex-start', marginBottom: 'var(--space-4)' }}>
         <label className="seg-opt">
-          <input
-            type="radio"
-            name="authmode"
-            checked={authMode === 'login'}
-            onChange={() => setAuthMode('login')}
-          />
+          <input type="radio" name="authmode" checked={screen === 'login'} onChange={() => setScreen('login')} />
           Entrar
         </label>
         <label className="seg-opt">
-          <input
-            type="radio"
-            name="authmode"
-            checked={authMode === 'signup'}
-            onChange={() => setAuthMode('signup')}
-          />
+          <input type="radio" name="authmode" checked={screen === 'signup'} onChange={() => setScreen('signup')} />
           Criar conta
         </label>
       </div>
 
-      {isSignupMode ? <SignupForm onDone={() => setAuthMode('login')} /> : <LoginModeForm />}
+      {screen === 'signup' ? (
+        <SignupForm onRegistered={(email) => goToConfirmation(email, false)} />
+      ) : (
+        <LoginModeForm
+          banner={banner}
+          onNeedsConfirmation={(email) => goToConfirmation(email, true)}
+          onForgotPassword={() => setScreen('forgot-password')}
+        />
+      )}
     </div>
   )
 }
 
-function LoginModeForm() {
+function LoginModeForm({
+  banner,
+  onNeedsConfirmation,
+  onForgotPassword,
+}: {
+  banner: LoginBanner
+  onNeedsConfirmation: (email: string) => void
+  onForgotPassword: () => void
+}) {
   const { login, isLoading, error } = useLogin()
+  const [showPassword, setShowPassword] = useState(false)
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
-  } = useForm<LoginCredentials>({ resolver: zodResolver(loginSchema) })
+  } = useForm<LoginCredentials>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: banner?.email ?? '' },
+  })
 
   return (
     <form
@@ -60,12 +119,48 @@ function LoginModeForm() {
       noValidate
       onSubmit={handleSubmit((data) => login(data))}
     >
+      {banner && !error && (
+        <div
+          role="status"
+          style={{
+            border: '2px solid var(--color-accent)',
+            background: 'var(--color-accent-100)',
+            padding: '12px 14px',
+            display: 'flex',
+            gap: '10px',
+            alignItems: 'flex-start',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ flex: 'none', marginTop: '1px' }}>
+            <polyline
+              points="20 6 9 17 4 12"
+              stroke="var(--color-accent-700)"
+              strokeWidth="2.5"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span style={{ fontSize: '12.5px', lineHeight: 1.45, color: 'var(--color-accent-700)' }}>{banner.message}</span>
+        </div>
+      )}
+
       {error && (
-        <p style={{ color: 'var(--color-accent-700)', fontSize: '13px' }} role="alert">
-          {error instanceof AccountPendingApprovalError
-            ? error.message
-            : 'Email ou senha inválidos.'}
-        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <p style={{ color: 'var(--color-accent-700)', fontSize: '13px' }} role="alert">
+            {error instanceof AccountNotConfirmedError ? error.message : 'Email ou senha inválidos.'}
+          </p>
+          {error instanceof AccountNotConfirmedError && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              style={{ alignSelf: 'flex-start', padding: 0, fontSize: '12.5px' }}
+              onClick={() => onNeedsConfirmation(watch('email'))}
+            >
+              Confirmar cadastro
+            </button>
+          )}
+        </div>
       )}
 
       <label className="field">
@@ -85,22 +180,29 @@ function LoginModeForm() {
         </p>
       )}
 
-      <label className="field">
-        <span>Senha</span>
-        <input
-          className="input"
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          aria-invalid={!!errors.password}
-          {...register('password')}
-        />
-      </label>
+      <PasswordField
+        id="password"
+        label="Senha"
+        autoComplete="current-password"
+        ariaInvalid={!!errors.password}
+        registration={register('password')}
+        isVisible={showPassword}
+        onToggleVisibility={() => setShowPassword((visible) => !visible)}
+      />
       {errors.password && (
         <p style={{ color: 'var(--color-accent-700)', fontSize: '12px' }} role="alert">
           {errors.password.message}
         </p>
       )}
+
+      <button
+        type="button"
+        onClick={onForgotPassword}
+        className="btn btn-ghost"
+        style={{ alignSelf: 'flex-start', padding: 0, fontSize: '12.5px' }}
+      >
+        Esqueci minha senha
+      </button>
 
       <button type="submit" className="btn btn-primary btn-block" disabled={isLoading}>
         {isLoading ? 'Entrando...' : 'Entrar'}
@@ -109,8 +211,9 @@ function LoginModeForm() {
   )
 }
 
-function SignupForm({ onDone }: { onDone: () => void }) {
+function SignupForm({ onRegistered }: { onRegistered: (email: string) => void }) {
   const { register: doRegister, isLoading, error, success } = useRegister()
+  const [showPassword, setShowPassword] = useState(false)
   const {
     register,
     handleSubmit,
@@ -121,21 +224,21 @@ function SignupForm({ onDone }: { onDone: () => void }) {
 
   const phoneDigits = watch('phoneDigits') ?? ''
   const cpfDigits = watch('cpfDigits') ?? ''
+  // Guarda o email submetido (não o `watch()` no momento do sucesso,
+  // que poderia já ter mudado) pra entregar pro `onRegistered`.
+  const submittedEmailRef = useRef('')
 
-  if (success) {
-    return (
-      <div className="flex w-full max-w-sm flex-col gap-4">
-        <p style={{ color: 'var(--color-success-700, #15803d)', fontSize: '13px' }} role="status">
-          Conta criada! Aguarde a aprovação do administrador para poder entrar.
-        </p>
-        <button type="button" className="btn btn-primary btn-block" onClick={onDone}>
-          Voltar para o login
-        </button>
-      </div>
-    )
-  }
+  // Cadastro bem-sucedido navega direto pra tela de confirmação (FEAT-31)
+  // — não existe mais uma tela intermediária de "aguarde aprovação".
+  useEffect(() => {
+    if (success) {
+      onRegistered(submittedEmailRef.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [success])
 
   async function onSubmit(data: RegisterFormData) {
+    submittedEmailRef.current = data.email
     await doRegister({
       email: data.email,
       password: data.password,
@@ -211,16 +314,15 @@ function SignupForm({ onDone }: { onDone: () => void }) {
         </p>
       )}
 
-      <label className="field">
-        <span>Senha</span>
-        <input
-          className="input"
-          id="signup-password"
-          type="password"
-          autoComplete="new-password"
-          {...register('password')}
-        />
-      </label>
+      <PasswordField
+        id="signup-password"
+        label="Senha"
+        autoComplete="new-password"
+        ariaInvalid={!!errors.password}
+        registration={register('password')}
+        isVisible={showPassword}
+        onToggleVisibility={() => setShowPassword((visible) => !visible)}
+      />
       {errors.password && (
         <p style={{ color: 'var(--color-accent-700)', fontSize: '12px' }} role="alert">
           {errors.password.message}

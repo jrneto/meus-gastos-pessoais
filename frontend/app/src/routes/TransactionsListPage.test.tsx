@@ -9,6 +9,14 @@ import { TransactionsListPage } from './TransactionsListPage'
 
 const TRANSACTIONS_URL = 'http://localhost:5049/transactions'
 const CATEGORIES_URL = 'http://localhost:5049/categories'
+const ME_URL = 'http://localhost:5049/auth/me'
+const MEMBERS_URL = 'http://localhost:5049/members'
+
+const currentUser = {
+  userId: 'user-1',
+  email: 'titular@email.com',
+  name: 'Titular da Conta',
+}
 
 const category = {
   id: 'cat-1',
@@ -42,7 +50,15 @@ describe('TransactionsListPage', () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession()
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
-    server.use(http.get(TRANSACTIONS_URL, () => HttpResponse.json({ items: [], nextCursor: null })))
+    server.use(
+      http.get(TRANSACTIONS_URL, () => HttpResponse.json({ items: [], nextCursor: null })),
+      // Papel Titular por padrão (acesso irrestrito) — testes de papéis
+      // restritos (Leitura/Lancar) sobrescrevem com server.use() (FEAT-29).
+      http.get(ME_URL, () => HttpResponse.json(currentUser)),
+      http.get(MEMBERS_URL, () =>
+        HttpResponse.json({ items: [{ email: currentUser.email, role: 'Titular' }] }),
+      ),
+    )
   })
 
   it('exibe o título "Transações" (FEAT-16)', () => {
@@ -51,10 +67,10 @@ describe('TransactionsListPage', () => {
     expect(screen.getByRole('heading', { name: 'Transações' })).toBeInTheDocument()
   })
 
-  it('exibe o botão "+ Nova receita" ao lado do "+ Nova despesa" (FEAT-24)', () => {
+  it('exibe o botão "+ Nova receita" ao lado do "+ Nova despesa" (FEAT-24)', async () => {
     renderPage()
 
-    expect(screen.getByRole('button', { name: /nova receita/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /nova receita/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /nova despesa/i })).toBeInTheDocument()
   })
 
@@ -64,7 +80,7 @@ describe('TransactionsListPage', () => {
 
     renderPage()
 
-    await user.click(screen.getByRole('button', { name: /nova despesa/i }))
+    await user.click(await screen.findByRole('button', { name: /nova despesa/i }))
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
@@ -157,7 +173,7 @@ describe('TransactionsListPage', () => {
 
     renderPage()
 
-    await user.click(screen.getByRole('button', { name: /nova receita/i }))
+    await user.click(await screen.findByRole('button', { name: /nova receita/i }))
 
     expect(await screen.findByText('Nova receita')).toBeInTheDocument()
     await user.type(screen.getByLabelText('Descrição'), 'Salário mensal')
@@ -206,5 +222,114 @@ describe('TransactionsListPage', () => {
     await user.click(screen.getByRole('button', { name: /^excluir$/i }))
 
     await waitFor(() => expect(screen.queryByText('Almoço no restaurante')).not.toBeInTheDocument())
+  })
+
+  it('papel Leitura não vê "+ Nova despesa"/"+ Nova receita", nem "Editar"/"Excluir" no detalhe (FEAT-29)', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.get(MEMBERS_URL, () =>
+        HttpResponse.json({ items: [{ email: currentUser.email, role: 'Leitura' }] }),
+      ),
+      http.get(TRANSACTIONS_URL, () => HttpResponse.json({ items: [item], nextCursor: null })),
+      http.get(CATEGORIES_URL, () => HttpResponse.json({ items: [category] })),
+    )
+
+    renderPage()
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /nova despesa/i })).not.toBeInTheDocument(),
+    )
+    expect(screen.queryByRole('button', { name: /nova receita/i })).not.toBeInTheDocument()
+
+    await user.click(await screen.findByText('Almoço no restaurante'))
+    await screen.findByText('Detalhe da despesa')
+    expect(screen.queryByRole('button', { name: /^editar$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^excluir$/i })).not.toBeInTheDocument()
+  })
+
+  it('papel Lancar vê "+ Nova despesa"/"+ Nova receita", e "Editar"/"Excluir" só na transação própria (FEAT-29)', async () => {
+    const user = userEvent.setup()
+    const ownTransaction = { ...item, id: 'tx-1', createdByUserId: 'user-1' }
+    const otherMemberTransaction = {
+      ...item,
+      id: 'tx-2',
+      description: 'Despesa de outro membro',
+      createdByUserId: 'user-2',
+      createdByLabel: 'outro@email.com',
+    }
+    server.use(
+      http.get(MEMBERS_URL, () =>
+        HttpResponse.json({ items: [{ email: currentUser.email, role: 'Lancar' }] }),
+      ),
+      http.get(TRANSACTIONS_URL, () =>
+        HttpResponse.json({ items: [ownTransaction, otherMemberTransaction], nextCursor: null }),
+      ),
+      http.get(CATEGORIES_URL, () => HttpResponse.json({ items: [category] })),
+    )
+
+    renderPage()
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /nova despesa/i })).toBeInTheDocument(),
+    )
+    expect(screen.getByRole('button', { name: /nova receita/i })).toBeInTheDocument()
+
+    await user.click(await screen.findByText('Almoço no restaurante'))
+    await screen.findByText('Detalhe da despesa')
+    expect(screen.getByRole('button', { name: /^editar$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^excluir$/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^fechar$/i }))
+
+    await user.click(await screen.findByText('Despesa de outro membro'))
+    await screen.findByText('Detalhe da despesa')
+    expect(screen.queryByRole('button', { name: /^editar$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^excluir$/i })).not.toBeInTheDocument()
+  })
+
+  it('papéis Total/Titular têm acesso irrestrito, mesmo em transação de outro membro (FEAT-29)', async () => {
+    const user = userEvent.setup()
+    const otherMemberTransaction = {
+      ...item,
+      createdByUserId: 'user-2',
+      createdByLabel: 'outro@email.com',
+    }
+    server.use(
+      http.get(MEMBERS_URL, () =>
+        HttpResponse.json({ items: [{ email: currentUser.email, role: 'Total' }] }),
+      ),
+      http.get(TRANSACTIONS_URL, () =>
+        HttpResponse.json({ items: [otherMemberTransaction], nextCursor: null }),
+      ),
+      http.get(CATEGORIES_URL, () => HttpResponse.json({ items: [category] })),
+    )
+
+    renderPage()
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /nova despesa/i })).toBeInTheDocument(),
+    )
+
+    await user.click(await screen.findByText('Almoço no restaurante'))
+    await screen.findByText('Detalhe da despesa')
+    expect(screen.getByRole('button', { name: /^editar$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^excluir$/i })).toBeInTheDocument()
+  })
+
+  it('nenhum botão de escrita aparece enquanto o papel ainda está carregando (FEAT-29)', async () => {
+    server.use(
+      http.get(MEMBERS_URL, async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        return HttpResponse.json({ items: [{ email: currentUser.email, role: 'Titular' }] })
+      }),
+    )
+
+    renderPage()
+
+    expect(screen.queryByRole('button', { name: /nova despesa/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /nova receita/i })).not.toBeInTheDocument()
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /nova despesa/i })).toBeInTheDocument(),
+    )
   })
 })

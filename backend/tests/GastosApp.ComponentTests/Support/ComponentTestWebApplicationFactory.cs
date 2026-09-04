@@ -15,6 +15,7 @@ namespace GastosApp.ComponentTests.Support;
 public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<Program>
 {
     public IAuthService AuthServiceMock { get; private set; } = Substitute.For<IAuthService>();
+    public IPasswordChangedEmailSender PasswordChangedEmailSenderMock { get; private set; } = Substitute.For<IPasswordChangedEmailSender>();
     public ITransactionRepository TransactionRepositoryMock { get; private set; } = Substitute.For<ITransactionRepository>();
     public ICategoryRepository CategoryRepositoryMock { get; private set; } = Substitute.For<ICategoryRepository>();
     public IAccountRepository AccountRepositoryMock { get; private set; } = BuildDefaultAccountRepositoryMock();
@@ -22,6 +23,7 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
     public IUserProfileRepository UserProfileRepositoryMock { get; private set; } = BuildDefaultUserProfileRepositoryMock();
 
     public void ResetAuthServiceMock() => AuthServiceMock = Substitute.For<IAuthService>();
+    public void ResetPasswordChangedEmailSenderMock() => PasswordChangedEmailSenderMock = Substitute.For<IPasswordChangedEmailSender>();
     public void ResetTransactionRepositoryMock() => TransactionRepositoryMock = Substitute.For<ITransactionRepository>();
     public void ResetCategoryRepositoryMock() => CategoryRepositoryMock = Substitute.For<ICategoryRepository>();
     public void ResetAccountRepositoryMock() => AccountRepositoryMock = BuildDefaultAccountRepositoryMock();
@@ -95,6 +97,9 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
         {
             services.RemoveAll<IAuthService>();
             services.AddScoped(_ => AuthServiceMock);
+
+            services.RemoveAll<IPasswordChangedEmailSender>();
+            services.AddScoped(_ => PasswordChangedEmailSenderMock);
 
             services.RemoveAll<ITransactionRepository>();
             services.AddScoped(_ => TransactionRepositoryMock);

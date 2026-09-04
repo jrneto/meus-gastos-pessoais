@@ -38,6 +38,18 @@ public class RegisterUserCommandValidatorTests
     }
 
     [Theory]
+    [InlineData("{{usuarioTitular")]   // variável de template do Postman não resolvida
+    [InlineData("nao-e-um-email")]
+    [InlineData("email@")]
+    [InlineData("@email.com")]
+    public void Validate_ShouldBeInvalid_WhenEmailFormatIsInvalid(string email)
+    {
+        var result = _validator.Validate(ValidCommand(email: email));
+
+        result.IsValid.Should().BeFalse();
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("1234567")]

@@ -2,6 +2,7 @@ import { PanelLeft, PanelLeftClose } from 'lucide-react'
 import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import '@/styles/modernist/modernist.css'
+import { AccountFooter } from './AccountFooter'
 import { NAV_TREE } from './navConfig'
 import { NavItemRow } from './NavItemRow'
 
@@ -35,6 +36,8 @@ export function DesktopSidebar() {
       {NAV_TREE.map((item) => (
         <NavItemRow key={item.id} item={item} isActive={pathname === item.to} collapsed={collapsed} />
       ))}
+
+      <AccountFooter collapsed={collapsed} />
     </nav>
   )
 }

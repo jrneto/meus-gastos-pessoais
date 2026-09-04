@@ -8,6 +8,8 @@ import { TransactionFormDialog } from '@/features/transactions/components/Transa
 import { TransactionList } from '@/features/transactions/components/TransactionList'
 import type { TransactionQueryItem } from '@/features/transactions/api/transactionsApi'
 import { useTransactionsQuery } from '@/features/transactions/hooks/useTransactionsQuery'
+import { canCreateTransaction, canManageTransaction } from '@/lib/permissions/rules'
+import { useMyRole } from '@/lib/permissions/useMyRole'
 
 type TransactionFormTarget =
   | { mode: 'create'; tipo: 'despesa' | 'receita' }
@@ -26,6 +28,11 @@ export function TransactionsListPage() {
   const [formTarget, setFormTarget] = useState<TransactionFormTarget>(null)
   const [detailTarget, setDetailTarget] = useState<TransactionQueryItem | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<TransactionQueryItem | null>(null)
+  const { role, userId } = useMyRole()
+  const canCreate = canCreateTransaction(role)
+  const canManageDetailTarget = detailTarget
+    ? canManageTransaction(role, detailTarget.createdByUserId === userId)
+    : false
 
   function handleEditFromDetail(item: TransactionQueryItem) {
     setDetailTarget(null)
@@ -52,22 +59,24 @@ export function TransactionsListPage() {
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <h1 style={{ fontSize: '30px', margin: 0 }}>Transações</h1>
-        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setFormTarget({ mode: 'create', tipo: 'receita' })}
-          >
-            + Nova receita
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => setFormTarget({ mode: 'create', tipo: 'despesa' })}
-          >
-            + Nova despesa
-          </button>
-        </div>
+        {canCreate && (
+          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setFormTarget({ mode: 'create', tipo: 'receita' })}
+            >
+              + Nova receita
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setFormTarget({ mode: 'create', tipo: 'despesa' })}
+            >
+              + Nova despesa
+            </button>
+          </div>
+        )}
       </div>
       <TransactionFilters onApply={query.applyFilters} initialValues={initialFilters} />
       <TransactionList
@@ -92,6 +101,7 @@ export function TransactionsListPage() {
         onOpenChange={(open) => !open && setDetailTarget(null)}
         onEdit={handleEditFromDetail}
         onDelete={handleDeleteFromDetail}
+        canManage={canManageDetailTarget}
       />
       <TransactionDeleteDialog
         key={deleteTarget?.id ?? 'closed'}

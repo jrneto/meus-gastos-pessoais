@@ -24,6 +24,10 @@ namespace GastosApp.Api.Common;
 // só reproduzido rodando de fato na Lambda).
 [JsonSerializable(typeof(RegisterRequest))]
 [JsonSerializable(typeof(LoginRequest))]
+[JsonSerializable(typeof(ConfirmRequest))]
+[JsonSerializable(typeof(ResendConfirmationRequest))]
+[JsonSerializable(typeof(ForgotPasswordRequest))]
+[JsonSerializable(typeof(ResetPasswordRequest))]
 [JsonSerializable(typeof(RegisterTransactionRequest))]
 [JsonSerializable(typeof(UpdateTransactionRequest))]
 [JsonSerializable(typeof(RegisterUserResult))]

@@ -1,13 +1,19 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { useAuthStore } from '@/features/auth/store/authStore'
+import { server } from '@/test/msw/server'
 import { DesktopSidebar } from './DesktopSidebar'
+
+const LOGOUT_URL = 'http://localhost:5049/auth/logout'
 
 function renderSidebar(initialPath: string) {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
       <Routes>
+        <Route path="/login" element={<div>Login Page</div>} />
         <Route
           path="*"
           element={
@@ -23,6 +29,11 @@ function renderSidebar(initialPath: string) {
 }
 
 describe('DesktopSidebar', () => {
+  beforeEach(() => {
+    useAuthStore.getState().clearSession()
+    useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
+  })
+
   it('renderiza os 5 itens de menu, sem grupos/subitens (FEAT-15)', () => {
     renderSidebar('/')
 
@@ -32,7 +43,7 @@ describe('DesktopSidebar', () => {
     expect(screen.queryByText('Listagem / Filtros')).not.toBeInTheDocument()
     expect(screen.getByText('Relatórios')).toBeInTheDocument()
     expect(screen.getByText('Categorias')).toBeInTheDocument()
-    expect(screen.getByText('Configurações')).toBeInTheDocument()
+    expect(screen.getByText('Ajustes')).toBeInTheDocument()
   })
 
   it('destaca o item correspondente à rota atual', () => {
@@ -63,6 +74,42 @@ describe('DesktopSidebar', () => {
     expect(screen.getByTitle('Início')).toBeInTheDocument()
     expect(screen.getByTitle('Relatórios')).toBeInTheDocument()
     expect(screen.getByTitle('Categorias')).toBeInTheDocument()
-    expect(screen.getByTitle('Configurações')).toBeInTheDocument()
+    expect(screen.getByTitle('Ajustes')).toBeInTheDocument()
+  })
+
+  it('tem o rodapé "Sua conta / Sair" (FEAT-30)', () => {
+    renderSidebar('/')
+
+    expect(screen.getByText('VC')).toBeInTheDocument()
+    expect(screen.getByText('Sua conta')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sair/i })).toBeInTheDocument()
+  })
+
+  it('colapsar esconde o texto "Sua conta" mas mantém o logout acessível pelo avatar', async () => {
+    const user = userEvent.setup()
+    renderSidebar('/')
+
+    await user.click(screen.getByRole('button', { name: /colapsar menu/i }))
+
+    expect(screen.queryByText('Sua conta')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sair/i })).toBeInTheDocument()
+  })
+
+  it('clicar em "Sair" chama POST /auth/logout, limpa a sessão e navega para /login', async () => {
+    let logoutCalled = false
+    server.use(
+      http.post(LOGOUT_URL, () => {
+        logoutCalled = true
+        return new HttpResponse(null, { status: 200 })
+      }),
+    )
+    const user = userEvent.setup()
+    renderSidebar('/')
+
+    await user.click(screen.getByRole('button', { name: /sair/i }))
+
+    expect(logoutCalled).toBe(true)
+    expect(useAuthStore.getState().token).toBeNull()
+    expect(await screen.findByText('Login Page')).toBeInTheDocument()
   })
 })

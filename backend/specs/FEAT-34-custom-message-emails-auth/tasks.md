@@ -144,11 +144,11 @@ validação em hom).
       divergência da decisão técnica 5 do `plan.md`; corrigido (assunto
       passou a ser texto fixo, sem `{{codigo}}`) e revalidado via task 26.
       `{{nome}}` ficou pendente nesta rodada porque a API de hom ainda
-      roda o código de `develop` (sem a mudança desta branch que manda
-      `name` pro Cognito) — o deploy da API só dispara em push pra
-      `develop`. `{{codigo}}`/`{{email}}`/HTML/URLs validados OK.
-      Validação end-to-end de `{{nome}}` fica pendente pra depois do
-      merge+deploy (ver seção "Status" do `spec.md`).
+      rodava o código de `develop` (sem a mudança desta branch que manda
+      `name` pro Cognito). `{{codigo}}`/`{{email}}`/HTML/URLs validados
+      OK. **`{{nome}}` confirmado numa segunda rodada** pelo usuário,
+      após deploy da API em hom já com a mudança: "Olá, José Reato
+      Neto." resolvido corretamente (ver seção "Status" do `spec.md`).
 - [x] 26. Validar `CustomMessage_ResendCode`: disparar reenvio via
       console/CLI do Cognito (`aws cognito-idp resend-confirmation-code`)
       contra o User Pool de hom, conferir mesmo template/variáveis.

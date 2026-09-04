@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { server } from '@/test/msw/server'
 import { useAuthStore } from '../store/authStore'
@@ -8,6 +8,10 @@ import { LoginForm } from './LoginForm'
 
 const LOGIN_URL = 'http://localhost:5049/auth/login'
 const REGISTER_URL = 'http://localhost:5049/auth/register'
+const CONFIRM_URL = 'http://localhost:5049/auth/confirm'
+const RESEND_URL = 'http://localhost:5049/auth/resend-confirmation'
+const FORGOT_PASSWORD_URL = 'http://localhost:5049/auth/forgot-password'
+const RESET_PASSWORD_URL = 'http://localhost:5049/auth/reset-password'
 
 function renderLoginForm() {
   return render(<LoginForm />)
@@ -17,12 +21,32 @@ function problem(status: number, type: string) {
   return HttpResponse.json({ status, title: '...', detail: '...', type: `https://gastosapp.dev/errors/${type}` }, { status })
 }
 
+// Ver comentário equivalente em `ForgotPasswordFlow.test.tsx`: um
+// pequeno delay é necessário nos mocks de `forgot-password`/
+// `reset-password` pra evitar que o React 18 agrupe o `setState` de
+// loading e nunca comite a transição que `ForgotPasswordFlow` observa.
+const TICK = 10
+
+function forgotPasswordOk() {
+  return http.post(FORGOT_PASSWORD_URL, async () => {
+    await delay(TICK)
+    return new HttpResponse(null, { status: 200 })
+  })
+}
+
+function resetPasswordOk() {
+  return http.post(RESET_PASSWORD_URL, async () => {
+    await delay(TICK)
+    return new HttpResponse(null, { status: 200 })
+  })
+}
+
 async function fillValidSignupForm(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Nome'), 'Fulano da Silva')
   await user.type(screen.getByLabelText('CPF'), '12345678909')
   await user.type(screen.getByLabelText('Telefone'), '11999998888')
   await user.type(screen.getByLabelText('Email'), 'fulano@email.com')
-  await user.type(screen.getByLabelText('Senha'), 'Senha123')
+  await user.type(screen.getByLabelText('Senha'), 'Senha123@')
 }
 
 describe('LoginForm — modo Entrar', () => {
@@ -49,6 +73,20 @@ describe('LoginForm — modo Entrar', () => {
     expect(await screen.findByText('Informe um email válido.')).toBeInTheDocument()
     expect(screen.getByText('A senha deve ter no mínimo 8 caracteres.')).toBeInTheDocument()
     expect(apiCalled).toBe(false)
+  })
+
+  it('botão "Mostrar/Ocultar" alterna a visibilidade da senha', async () => {
+    const user = userEvent.setup()
+    renderLoginForm()
+
+    const passwordInput = screen.getByLabelText('Senha')
+    expect(passwordInput).toHaveAttribute('type', 'password')
+
+    await user.click(screen.getByRole('button', { name: 'Mostrar' }))
+    expect(passwordInput).toHaveAttribute('type', 'text')
+
+    await user.click(screen.getByRole('button', { name: 'Ocultar' }))
+    expect(passwordInput).toHaveAttribute('type', 'password')
   })
 
   it('login com sucesso popula a authStore e não exibe alerta de erro', async () => {
@@ -83,7 +121,7 @@ describe('LoginForm — modo Entrar', () => {
     expect(useAuthStore.getState().token).toBeNull()
   })
 
-  it('exibe alerta de conta pendente de aprovação em caso de 401 user-not-confirmed', async () => {
+  it('exibe alerta de conta não confirmada e o CTA "Confirmar cadastro" em caso de 401 user-not-confirmed', async () => {
     const user = userEvent.setup()
     server.use(http.post(LOGIN_URL, () => problem(401, 'user-not-confirmed')))
 
@@ -94,9 +132,68 @@ describe('LoginForm — modo Entrar', () => {
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(
-      await screen.findByText('Sua conta ainda não foi aprovada. Aguarde a confirmação do administrador e tente novamente.'),
+      await screen.findByText('Confirme seu cadastro pelo código enviado por e-mail antes de entrar.'),
     ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Confirmar cadastro' })).toBeInTheDocument()
     expect(useAuthStore.getState().token).toBeNull()
+  })
+
+  it('clicar em "Confirmar cadastro" abre a tela de confirmação com o email do login e dispara reenvio automático', async () => {
+    const user = userEvent.setup()
+    let resendCalled = false
+    server.use(
+      http.post(LOGIN_URL, () => problem(401, 'user-not-confirmed')),
+      http.post(RESEND_URL, () => {
+        resendCalled = true
+        return new HttpResponse(null, { status: 200 })
+      }),
+    )
+
+    renderLoginForm()
+
+    await user.type(screen.getByLabelText('Email'), 'neto@email.com')
+    await user.type(screen.getByLabelText('Senha'), 'Senha123')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    await user.click(await screen.findByRole('button', { name: 'Confirmar cadastro' }))
+
+    expect(screen.getByText(/Enviamos um código de 6 dígitos para/)).toBeInTheDocument()
+    expect(screen.getByText('neto@email.com')).toBeInTheDocument()
+    await waitFor(() => expect(resendCalled).toBe(true))
+  })
+
+  it('clicar em "Esqueci minha senha" abre o Passo 1/3 do fluxo de recuperação', async () => {
+    const user = userEvent.setup()
+    renderLoginForm()
+
+    await user.click(screen.getByRole('button', { name: 'Esqueci minha senha' }))
+
+    expect(screen.getByText('Recuperar senha')).toBeInTheDocument()
+    expect(screen.getByLabelText('E-mail')).toBeInTheDocument()
+  })
+
+  it('fluxo completo de recuperação de senha: email → código → nova senha → volta ao login com o aviso', async () => {
+    const user = userEvent.setup()
+    server.use(forgotPasswordOk(), resetPasswordOk())
+
+    renderLoginForm()
+    await user.click(screen.getByRole('button', { name: 'Esqueci minha senha' }))
+
+    await user.type(screen.getByLabelText('E-mail'), 'neto@email.com')
+    await user.click(screen.getByRole('button', { name: 'Enviar código' }))
+    await screen.findByLabelText('Dígito 1 do código')
+
+    for (let i = 1; i <= 6; i++) {
+      await user.type(screen.getByLabelText(`Dígito ${i} do código`), String(i))
+    }
+    await user.click(screen.getByRole('button', { name: 'Confirmar código' }))
+    await screen.findByLabelText('Nova senha')
+
+    await user.type(screen.getByLabelText('Nova senha'), 'Senha123@')
+    await user.type(screen.getByLabelText('Confirmar nova senha'), 'Senha123@')
+    await user.click(screen.getByRole('button', { name: 'Salvar nova senha' }))
+
+    expect(await screen.findByText('Senha redefinida. Entre com a nova senha.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Email')).toHaveValue('neto@email.com')
   })
 })
 
@@ -126,6 +223,18 @@ describe('LoginForm — modo Criar conta', () => {
     expect(loginCalled).toBe(false)
   })
 
+  it('botão "Mostrar/Ocultar" alterna a visibilidade da senha do cadastro', async () => {
+    const user = userEvent.setup()
+    renderLoginForm()
+    await user.click(screen.getByRole('radio', { name: 'Criar conta' }))
+
+    const passwordInput = screen.getByLabelText('Senha')
+    expect(passwordInput).toHaveAttribute('type', 'password')
+
+    await user.click(screen.getByRole('button', { name: 'Mostrar' }))
+    expect(passwordInput).toHaveAttribute('type', 'text')
+  })
+
   it('aplica máscara progressiva em CPF e Telefone durante a digitação', async () => {
     const user = userEvent.setup()
     renderLoginForm()
@@ -138,7 +247,7 @@ describe('LoginForm — modo Criar conta', () => {
     expect(screen.getByLabelText('Telefone')).toHaveValue('(11) 99999-8888')
   })
 
-  it('cadastro com sucesso exibe confirmação e não chama a API de login', async () => {
+  it('cadastro com sucesso navega direto pra tela de confirmação (sem tela de "aguarde aprovação")', async () => {
     const user = userEvent.setup()
     let loginCalled = false
     server.use(
@@ -159,14 +268,13 @@ describe('LoginForm — modo Criar conta', () => {
     await fillValidSignupForm(user)
     await user.click(screen.getByRole('button', { name: 'Criar conta' }))
 
-    expect(
-      await screen.findByText('Conta criada! Aguarde a aprovação do administrador para poder entrar.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('fulano@email.com')).toBeInTheDocument()
+    expect(screen.getByLabelText('Dígito 1 do código')).toBeInTheDocument()
     expect(loginCalled).toBe(false)
     expect(useAuthStore.getState().token).toBeNull()
   })
 
-  it('voltar da confirmação de cadastro retorna ao modo "Entrar"', async () => {
+  it('voltar da tela de confirmação retorna ao modo "Entrar"', async () => {
     const user = userEvent.setup()
     server.use(
       http.post(REGISTER_URL, () =>
@@ -181,11 +289,40 @@ describe('LoginForm — modo Criar conta', () => {
     await user.click(screen.getByRole('radio', { name: 'Criar conta' }))
     await fillValidSignupForm(user)
     await user.click(screen.getByRole('button', { name: 'Criar conta' }))
-    await screen.findByText('Conta criada! Aguarde a aprovação do administrador para poder entrar.')
+    await screen.findByLabelText('Dígito 1 do código')
 
-    await user.click(screen.getByRole('button', { name: 'Voltar para o login' }))
+    await user.click(screen.getByRole('button', { name: '← Voltar' }))
 
     expect(screen.getByRole('button', { name: 'Entrar' })).toBeInTheDocument()
+  })
+
+  it('confirmar o código com sucesso volta ao login com o aviso e o email preenchido', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.post(REGISTER_URL, () =>
+        HttpResponse.json(
+          { userId: 'uuid-1', email: 'fulano@email.com', name: 'Fulano da Silva', phoneNumber: '11999998888', cpf: '12345678909' },
+          { status: 201 },
+        ),
+      ),
+      http.post(CONFIRM_URL, () => new HttpResponse(null, { status: 200 })),
+    )
+
+    renderLoginForm()
+    await user.click(screen.getByRole('radio', { name: 'Criar conta' }))
+    await fillValidSignupForm(user)
+    await user.click(screen.getByRole('button', { name: 'Criar conta' }))
+    await screen.findByLabelText('Dígito 1 do código')
+
+    for (let i = 1; i <= 6; i++) {
+      await user.type(screen.getByLabelText(`Dígito ${i} do código`), String(i))
+    }
+    await user.click(screen.getByRole('button', { name: 'Confirmar código' }))
+
+    expect(
+      await screen.findByText('Email confirmado. Sua conta está ativa — entre com seus dados.'),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Email')).toHaveValue('fulano@email.com')
   })
 
   it('em 409 email-already-exists, exibe mensagem específica', async () => {

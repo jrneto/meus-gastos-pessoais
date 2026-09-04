@@ -33,11 +33,18 @@ export const NAV_TREE: NavItem[] = [
   { id: 'categories', label: 'Categorias', icon: Tag, to: '/categories', status: 'active' },
   { id: 'members', label: 'Membros', icon: Users, to: '/members', status: 'active' },
   {
+    // FEAT-30: rótulo alinhado ao protótipo (`.dc.html`, bloco `isSet`
+    // rotula o próprio item de menu como "Ajustes", igual ao título da
+    // página) — antes "Configurações", inconsistente com o título
+    // "Ajustes" da página por trás. `status: 'active'`: era o único
+    // item ainda `placeholder` (comentário acima já dizia que nenhum
+    // deveria ficar assim desde a FEAT-15); sem efeito visual em
+    // `NavItemRow` hoje, só metadado.
     id: 'settings',
-    label: 'Configurações',
+    label: 'Ajustes',
     icon: Settings,
     to: '/settings',
-    status: 'placeholder',
+    status: 'active',
     mobilePrimary: true,
   },
 ]

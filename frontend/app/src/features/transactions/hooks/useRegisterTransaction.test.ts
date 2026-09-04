@@ -3,7 +3,12 @@ import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { NetworkError, SessionExpiredError, ValidationError } from '../errors/transactionErrors'
+import {
+  ForbiddenError,
+  NetworkError,
+  SessionExpiredError,
+  ValidationError,
+} from '../errors/transactionErrors'
 import type { TransactionFormOutput } from '../schemas/transactionSchema'
 import { useRegisterTransaction } from './useRegisterTransaction'
 
@@ -143,5 +148,18 @@ describe('useRegisterTransaction', () => {
     })
 
     expect(result.current.error).toBeInstanceOf(NetworkError)
+  })
+
+  it('em caso de 403, expõe ForbiddenError', async () => {
+    server.use(http.post(TRANSACTIONS_URL, () => new HttpResponse(null, { status: 403 })))
+
+    const { result } = renderHook(() => useRegisterTransaction('despesa'))
+
+    await act(async () => {
+      await result.current.registerTransaction(validTransaction)
+    })
+
+    expect(result.current.error).toBeInstanceOf(ForbiddenError)
+    expect(result.current.success).toBe(false)
   })
 })

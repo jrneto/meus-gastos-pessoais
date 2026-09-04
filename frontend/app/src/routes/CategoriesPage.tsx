@@ -4,6 +4,8 @@ import { CategoryForm } from '@/features/categories/components/CategoryForm'
 import { CategoryList } from '@/features/categories/components/CategoryList'
 import { useCategories } from '@/lib/categories/useCategories'
 import type { CategoryItem } from '@/lib/categories/types'
+import { canWriteCategories } from '@/lib/permissions/rules'
+import { useMyRole } from '@/lib/permissions/useMyRole'
 
 type CategoryFormTarget = { mode: 'create' } | { mode: 'edit'; id: string } | null
 
@@ -11,6 +13,8 @@ export function CategoriesPage() {
   const { items: fetchedItems, isLoading, error } = useCategories()
   const [items, setItems] = useState<CategoryItem[]>([])
   const [formTarget, setFormTarget] = useState<CategoryFormTarget>(null)
+  const { role } = useMyRole()
+  const canWrite = canWriteCategories(role)
 
   useEffect(() => {
     setItems(fetchedItems)
@@ -44,13 +48,15 @@ export function CategoriesPage() {
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <h1 style={{ fontSize: '30px', margin: 0 }}>Categorias e orçamentos</h1>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => setFormTarget((current) => (current?.mode === 'create' ? null : { mode: 'create' }))}
-        >
-          + Nova categoria
-        </button>
+        {canWrite && (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setFormTarget((current) => (current?.mode === 'create' ? null : { mode: 'create' }))}
+          >
+            + Nova categoria
+          </button>
+        )}
       </div>
 
       {formTarget?.mode === 'create' && (
@@ -68,6 +74,7 @@ export function CategoriesPage() {
         }
         onSaved={handleSaved}
         onNotFound={handleNotFound}
+        canWrite={canWrite}
       />
     </div>
   )

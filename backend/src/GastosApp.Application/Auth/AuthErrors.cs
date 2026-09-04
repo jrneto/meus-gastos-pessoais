@@ -18,5 +18,13 @@ public static class AuthErrors
 
     public static Error ProfileIncomplete => Error.Forbidden("profile-incomplete", "Cadastro incompleto. Este usuário não possui perfil (nome, telefone e CPF) cadastrado.");
 
+    public static Error InvalidConfirmationCode => Error.Validation("invalid-confirmation-code", "Código de confirmação inválido.");
+
+    public static Error ExpiredConfirmationCode => Error.Validation("expired-confirmation-code", "Código de confirmação expirado.");
+
+    public static Error InvalidResetCode => Error.Validation("invalid-reset-code", "Código de recuperação inválido.");
+
+    public static Error ExpiredResetCode => Error.Validation("expired-reset-code", "Código de recuperação expirado.");
+
     public static Error Validation(string message) => Error.Validation("bad-request", message);
 }

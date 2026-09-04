@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -41,16 +41,27 @@ describe('InviteMemberDialog', () => {
   })
 
   it('enviar mostra o overlay de processamento e desabilita os botões', async () => {
+    // Resolução controlada manualmente pelo teste (em vez de um delay
+    // fixo): sob carga da suíte completa, um delay real de tempo fixo
+    // pode não ser suficiente pra manter a janela de loading visível
+    // até a asserção rodar (achado ao investigar flakiness da FEAT-32
+    // — ver `frontend/docs/backlog.md`). Resolver só quando o teste
+    // decidir elimina essa corrida por completo.
     const user = userEvent.setup()
+    let resolveInvite: (() => void) | null = null
     server.use(
-      http.post(MEMBERS_URL, async () => {
-        await new Promise((resolve) => setTimeout(resolve, 50))
-        return HttpResponse.json({
-          id: 'mem-2',
-          email: 'convidado@email.com',
-          role: 'Lancar',
-          status: 'ConvitePendente',
-          createdAt: '2025-06-16T09:00:00Z',
+      http.post(MEMBERS_URL, () => {
+        return new Promise<Response>((resolve) => {
+          resolveInvite = () =>
+            resolve(
+              HttpResponse.json({
+                id: 'mem-2',
+                email: 'convidado@email.com',
+                role: 'Lancar',
+                status: 'ConvitePendente',
+                createdAt: '2025-06-16T09:00:00Z',
+              }),
+            )
         })
       }),
     )
@@ -59,9 +70,16 @@ describe('InviteMemberDialog', () => {
     await user.type(screen.getByLabelText('E-mail'), 'convidado@email.com')
     await user.click(screen.getByRole('button', { name: /enviar convite/i }))
 
-    expect(await screen.findByText('Enviando convite')).toBeInTheDocument()
+    await waitFor(() => expect(resolveInvite).not.toBeNull())
+    expect(screen.getByText('Enviando convite')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /cancelar/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /enviar convite/i })).toBeDisabled()
+
+    // Resolve e drena antes do fim do teste — evita "setState após
+    // desmontar" quando o RTL desmonta automaticamente no cleanup.
+    await act(async () => {
+      resolveInvite?.()
+    })
   })
 
   it('sucesso chama onInvited e fecha o popup', async () => {

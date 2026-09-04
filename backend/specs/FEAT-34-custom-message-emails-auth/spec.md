@@ -189,17 +189,13 @@ senha), nunca a resposta de uma rota.
 - [x] `CustomMessage_SignUp`: e-mail chega com o HTML de
       `01-confirmacao-cadastro.html`, `{{codigo}}`/`{{nome}}`/`{{email}}`
       resolvidos corretamente — validado manualmente em hom via `POST
-      /auth/register`. `{{codigo}}`/`{{email}}`/HTML/URLs confirmados ao
-      vivo; `{{nome}}` confirmado via teste automatizado
-      (`CustomMessageTriggerHandlerTests`) — validação end-to-end em hom
-      fica pendente até o merge desta branch pra `develop` (a API de hom
-      só reflete o código de `develop`, que ainda não manda `name` pro
-      Cognito nesta rodada de testes)
+      /auth/register`, incluindo `{{nome}}` (confirmado em uma segunda
+      rodada, após deploy da API em hom com a mudança de `name` já
+      incorporada: "Olá, José Reato Neto." no corpo do e-mail)
 - [x] `CustomMessage_ResendCode`: mesmo template, `{{codigo}}`/`{{nome}}`/
       `{{email}}` resolvidos — validado manualmente (reenvio via
       `aws cognito-idp resend-confirmation-code`, já que `POST
-      /auth/resend-confirmation` ainda não existe). Mesma ressalva de
-      `{{nome}}` pendente pós-merge.
+      /auth/resend-confirmation` ainda não existe)
 - [x] `CustomMessage_ForgotPassword`: e-mail chega com o HTML de
       `02-recuperacao-senha.html`, `{{codigo}}`/`{{nome}}`/`{{email}}`
       resolvidos — validado manualmente via `aws cognito-idp
@@ -282,13 +278,13 @@ da esteira normal) pra permitir revalidar antes do merge, e revalidado
 com sucesso via `CustomMessage_ResendCode`.
 
 `{{nome}}` foi validado por teste automatizado
-(`CustomMessageTriggerHandlerTests`) e pela leitura direta do schema do
-User Pool de hom (atributo `name` já suportado nativamente, não precisa
-de mudança de Terraform), mas a validação end-to-end em hom ficou
-pendente: a API de hom, no momento dos testes, ainda rodava o código de
-`develop` (sem a mudança desta branch), então o Cognito não tinha
-`name` armazenado para o usuário de teste. Fica como validação
-pendente pra depois do merge desta branch + deploy da API em hom.
+(`CustomMessageTriggerHandlerTests`) e, numa primeira rodada em hom,
+ainda não pôde ser confirmado end-to-end porque a API de hom rodava o
+código de `develop` (sem a mudança desta branch). **Confirmado
+manualmente pelo usuário numa segunda rodada**, após deploy da API em
+hom já com a mudança de `name` incorporada: cadastro com e-mail pessoal
+recebeu "Olá, José Reato Neto." corretamente resolvido no corpo do
+e-mail, junto com código e demais campos.
 
 Suíte completa (`dotnet test GastosApp.sln --filter
 "Category!=Integration"`): 479 (UnitTests) + 207 (ComponentTests) = 686

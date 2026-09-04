@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { isValidCpf } from '../utils/cpf'
+import { passwordPolicySchema } from './passwordPolicySchema'
 
 // Schema do modo "Criar conta" da tela de Login (FEAT-21). Espelha as
 // regras já validadas pelo backend (`RegisterUserCommandValidator`,
@@ -7,7 +8,10 @@ import { isValidCpf } from '../utils/cpf'
 // antes do submit — a API continua sendo a fonte de verdade final.
 // `phoneDigits`/`cpfDigits` guardam só dígitos: a máscara de exibição
 // (`maskPhone`/`maskCpf`) é aplicada só no `value` do input, nunca no
-// estado do formulário.
+// estado do formulário. `password` usa `passwordPolicySchema`
+// (compartilhado com o campo de nova senha da recuperação, FEAT-32) —
+// até a FEAT-32 este campo só validava o mínimo de 8 caracteres,
+// divergindo da política real do Cognito.
 export const registerSchema = z.object({
   name: z
     .string()
@@ -20,7 +24,7 @@ export const registerSchema = z.object({
     .regex(/^\d{11}$/, 'CPF deve ter 11 dígitos.')
     .refine(isValidCpf, 'CPF inválido.'),
   email: z.string().email('Informe um email válido.'),
-  password: z.string().min(8, 'A senha deve ter no mínimo 8 caracteres.'),
+  password: passwordPolicySchema,
 })
 
 export type RegisterFormData = z.infer<typeof registerSchema>

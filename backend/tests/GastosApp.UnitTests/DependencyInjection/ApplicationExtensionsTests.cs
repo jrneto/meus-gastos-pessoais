@@ -1,6 +1,10 @@
 using FluentAssertions;
 using FluentValidation;
+using GastosApp.Application.Auth.Commands.Confirm;
+using GastosApp.Application.Auth.Commands.ForgotPassword;
 using GastosApp.Application.Auth.Commands.Register;
+using GastosApp.Application.Auth.Commands.ResendConfirmation;
+using GastosApp.Application.Auth.Commands.ResetPassword;
 using GastosApp.Application.Categories.Commands.CreateCategory;
 using GastosApp.Application.Categories.Commands.UpdateCategory;
 using GastosApp.Application.Categories.Queries.GetCategories;
@@ -52,6 +56,10 @@ public class ApplicationExtensionsTests
     [InlineData(typeof(IValidator<GetSummaryQuery>), typeof(GetSummaryQueryValidator))]
     [InlineData(typeof(IValidator<GetReportsQuery>), typeof(GetReportsQueryValidator))]
     [InlineData(typeof(IValidator<ExportTransactionsQuery>), typeof(ExportTransactionsQueryValidator))]
+    [InlineData(typeof(IValidator<ConfirmSignUpCommand>), typeof(ConfirmSignUpCommandValidator))]
+    [InlineData(typeof(IValidator<ResendConfirmationCodeCommand>), typeof(ResendConfirmationCodeCommandValidator))]
+    [InlineData(typeof(IValidator<ForgotPasswordCommand>), typeof(ForgotPasswordCommandValidator))]
+    [InlineData(typeof(IValidator<ResetPasswordCommand>), typeof(ResetPasswordCommandValidator))]
     public void AddApplicationServices_ShouldRegisterEveryValidator_ExplicitlyNotByAssemblyScan(
         Type validatorInterface, Type expectedImplementation)
     {
@@ -64,7 +72,7 @@ public class ApplicationExtensionsTests
     }
 
     [Fact]
-    public void AddApplicationServices_ShouldNotRegisterAnyOtherValidator_BeyondTheKnownTwelve()
+    public void AddApplicationServices_ShouldNotRegisterAnyOtherValidator_BeyondTheKnownSixteen()
     {
         // Defensivo: se uma nova classe AbstractValidator<T> for criada no
         // projeto sem entrar na lista acima (e sem ser registrada em
@@ -72,7 +80,9 @@ public class ApplicationExtensionsTests
         // não pega isso sozinho — mas documenta a lista fechada esperada,
         // pra quem for adicionar um validator novo saber que precisa mexer
         // nos dois lugares (registro + este teste).
-        var expectedValidatorCount = 12;
+        // FEAT-35: 12 + ConfirmSignUpCommandValidator + ResendConfirmationCodeCommandValidator = 14.
+        // FEAT-36: 14 + ForgotPasswordCommandValidator + ResetPasswordCommandValidator = 16.
+        var expectedValidatorCount = 16;
 
         var validatorTypesInAssembly = typeof(ApplicationExtensions).Assembly.GetTypes()
             .Count(t => !t.IsAbstract && t.BaseType is { IsGenericType: true } baseType

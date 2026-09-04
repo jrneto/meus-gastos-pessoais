@@ -96,6 +96,33 @@ ver "Testes integrados" abaixo).
   ver débito técnico correspondente em `backend/docs/backlog.md`.
 - Ver `backend/specs/FEAT-33-infra-email-transacional-ses/` para a
   spec/plano completos.
+- **`Ses/SenderEmail` no Parameter Store** (FEAT-36): o email de "senha
+  alterada" (`POST /auth/reset-password`) é enviado direto pela API via
+  `ses:SendEmail` — fora do fluxo nativo do Cognito, então o backend
+  precisa do remetente à mão em runtime. `/GastosApp/Ses/SenderEmail`
+  (prod) e `/GastosApp/Hom/Ses/SenderEmail` (hom), tipo `String`,
+  espelham o mesmo valor já calculado pelo `email_configuration` do
+  User Pool (`parameter-store.tf` de cada ambiente). Sem equivalente
+  local: LocalStack Community não emula SES (só o SSM genérico), e o
+  envio deste email é best-effort (falha só loga, não derruba a
+  resposta de sucesso do reset) — ver
+  `backend/specs/FEAT-36-recuperacao-senha/`.
+- **`Ses__SenderEmail` como variável de ambiente na Lambda de trigger de
+  conta** (FEAT-37): o email de boas-vindas (`Post Confirmation`,
+  `AccountTriggerHandler`) é enviado direto via `ses:SendEmail`, mesmo
+  padrão da FEAT-36 — mas essa Lambda (`GastosApp.CognitoTriggers`) não
+  lê Parameter Store (decisão da FEAT-19, ver `Function.cs`), então o
+  remetente não pode vir de lá como na API. Em vez disso,
+  `Ses__SenderEmail` é declarado direto no bloco `environment{}` de
+  `aws_lambda_function.account_trigger` (`lambda-account-trigger.tf` de
+  cada ambiente), com o mesmo literal fixo já usado em
+  `aws_ssm_parameter.ses_sender_email`/`email_configuration` do Cognito
+  — evita o mesmo diff perpétuo já descoberto na FEAT-36. Mesma
+  limitação de ambiente local (sem SES no LocalStack Community): a
+  chamada real cai no `catch` defensivo de `EnsureAccountCommandHandler`
+  (só loga), validado manualmente via
+  `AccountTriggerHandlerManualDebug.cs` — ver
+  `backend/specs/FEAT-37-email-boas-vindas/`.
 
 ## CI/CD (GitHub Actions)
 

@@ -176,9 +176,18 @@ public sealed class TestAccountFixture : IAsyncDisposable
             secondaryTransport, secondaryEmail, secondaryCpf, secondaryUserId, secondaryAccessToken);
     }
 
-    private async Task<string> ResolveUserPoolIdAsync(CancellationToken cancellationToken)
+    private Task<string> ResolveUserPoolIdAsync(CancellationToken cancellationToken) =>
+        ResolveUserPoolIdAsync(_env, cancellationToken);
+
+    /// <summary>
+    /// Exposto como público/estático (FEAT-35) pra ser reaproveitado por
+    /// testes que precisam de limpeza manual no Cognito sem passar pela
+    /// fixture inteira (ex.: <c>ResendConfirmation_UsuarioNaoConfirmado_Retorna200</c>,
+    /// que precisa de uma conta deliberadamente NÃO confirmada).
+    /// </summary>
+    public static async Task<string> ResolveUserPoolIdAsync(IntegrationTestEnvironment env, CancellationToken cancellationToken = default)
     {
-        using var ssm = AwsClientFactory.CreateSsmClient(_env);
+        using var ssm = AwsClientFactory.CreateSsmClient(env);
 
         // Mesmo padrão de paginação de AwsParameterStoreExtensions
         // (Infrastructure) — GetParametersByPath pagina em lotes de até
@@ -188,7 +197,7 @@ public sealed class TestAccountFixture : IAsyncDisposable
         {
             var response = await ssm.GetParametersByPathAsync(new GetParametersByPathRequest
             {
-                Path = _env.ParameterStorePath,
+                Path = env.ParameterStorePath,
                 Recursive = true,
                 WithDecryption = true,
                 NextToken = nextToken
@@ -202,8 +211,8 @@ public sealed class TestAccountFixture : IAsyncDisposable
         } while (!string.IsNullOrEmpty(nextToken));
 
         throw new InvalidOperationException(
-            $"Parâmetro 'Cognito/UserPoolId' não encontrado sob '{_env.ParameterStorePath}' " +
-            $"(modo {_env.Mode}) — confirme se o Parameter Store do ambiente está seedado.");
+            $"Parâmetro 'Cognito/UserPoolId' não encontrado sob '{env.ParameterStorePath}' " +
+            $"(modo {env.Mode}) — confirme se o Parameter Store do ambiente está seedado.");
     }
 
     /// <summary>

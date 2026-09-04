@@ -2,6 +2,7 @@ import { httpClient } from '@/lib/httpClient'
 import type { CategoryItem } from '@/lib/categories/types'
 import {
   CategoryInUseError,
+  ForbiddenError,
   NameConflictError,
   NetworkError,
   NotFoundError,
@@ -40,6 +41,9 @@ async function assertWriteOk(response: Response): Promise<void> {
   if (response.status === 401) {
     throw new SessionExpiredError()
   }
+  if (response.status === 403) {
+    throw new ForbiddenError()
+  }
   if (response.status === 404) {
     throw new NotFoundError()
   }
@@ -55,6 +59,9 @@ async function assertWriteOk(response: Response): Promise<void> {
 async function assertDeleteOk(response: Response): Promise<void> {
   if (response.status === 401) {
     throw new SessionExpiredError()
+  }
+  if (response.status === 403) {
+    throw new ForbiddenError()
   }
   if (response.status === 404) {
     throw new NotFoundError()
