@@ -459,31 +459,25 @@ Native AOT de verdade (risco real: `JsonDocument`/buffer de stream sob
 - `backend/docs/data-model.md` — sem mudança (nenhum item novo no
   DynamoDB).
 
-## Pontos que precisam de confirmação antes do `/tasks`
+## Pontos confirmados com o usuário durante este `/plan`
 
-1. **Escopo da retenção de log group**: o spec.md fala em "log groups
-   da API"; este plano assume que isso cobre as **3** Lambdas do
-   backend por ambiente (API principal + os 2 triggers do Cognito), não
-   só a API principal — pela mesma retenção/custo valer igualmente pras
-   três. Confirmar se é isso mesmo ou se a intenção era só a Lambda da
-   API.
+1. **Retenção de log group cobre as 3 Lambdas do backend por
+   ambiente** (API principal + os 2 triggers do Cognito), não só a API
+   principal — confirmado.
 2. **`JsonFormatter` do Serilog aplicado em todo ambiente, inclusive
-   dev local** — console local passa a mostrar uma linha JSON por
-   evento em vez de texto simples. Alternativa possível: formatter
-   humano em `Development`, JSON só fora dele (mais uma ramificação de
-   configuração, sem ganho de compatibilidade com CloudWatch, que só
-   importa em hom/prod). Confirmar se a simplicidade de um formatter
-   único vale a perda de legibilidade no console local.
+   dev local** — console local também passa a mostrar uma linha JSON
+   por evento em vez de texto simples, sem ramificação por ambiente —
+   confirmado.
 3. **Log de payload completo não é verificável por teste automatizado
    de ponta a ponta** (nem componente, nem integrado) — só a decisão
    "o que logar" é testada isoladamente (`RequestLogEntryBuilderTests`).
    Verificar de fato que uma linha JSON chega no CloudWatch com os
    campos esperados fica para validação manual em hom, mesmo espírito
    já aceito em outras features (ex.: FEAT-36, fluxo "código real por
-   email" não testável). Sinalizar isso já no `/tasks` como validação
-   manual explícita, não só teste automatizado.
-4. **Nomes exatos dos parâmetros/arquivos novos** (`LoggingOptions`,
-   `RequestObservabilityMiddleware`, `RequestLogEntryBuilder`,
-   `SensitiveFieldRedactor`, `/GastosApp/Logging/
-   FullPayloadLoggingEnabled`) — sem ocorrência prévia no código, vale
-   uma checada rápida antes do `/tasks`.
+   email" não testável) — confirmado, será sinalizado no `/tasks` como
+   validação manual explícita.
+4. **Nomes propostos para os arquivos/parâmetros novos**
+   (`LoggingOptions`, `RequestObservabilityMiddleware`,
+   `RequestLogEntryBuilder`, `SensitiveFieldRedactor`,
+   `/GastosApp/Logging/FullPayloadLoggingEnabled`) — confirmados,
+   seguem para o `/tasks` como estão.
