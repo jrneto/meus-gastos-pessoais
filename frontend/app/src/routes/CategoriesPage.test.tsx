@@ -186,6 +186,13 @@ describe('CategoriesPage', () => {
   )
 
   it('nenhum botão de escrita aparece enquanto o papel ainda está carregando (FEAT-29)', async () => {
+    // Resolução de `/members` controlada manualmente pelo teste (em vez
+    // de um delay fixo de 50ms): sob carga da suíte completa, um delay
+    // real de tempo fixo pode não ser suficiente pra manter essa
+    // requisição "ainda pendente" até a asserção rodar (mesma classe de
+    // flakiness investigada na FEAT-32 — ver `frontend/docs/backlog.md`).
+    // Resolver só quando o teste decidir elimina essa corrida por completo.
+    const pendingMembers: { resolve: (() => void) | null } = { resolve: null }
     server.use(
       http.get(CATEGORIES_URL, () =>
         HttpResponse.json({
@@ -200,9 +207,11 @@ describe('CategoriesPage', () => {
           ],
         }),
       ),
-      http.get(MEMBERS_URL, async () => {
-        await new Promise((resolve) => setTimeout(resolve, 50))
-        return HttpResponse.json({ items: [{ email: currentUser.email, role: 'Titular' }] })
+      http.get(MEMBERS_URL, () => {
+        return new Promise<Response>((resolve) => {
+          pendingMembers.resolve = () =>
+            resolve(HttpResponse.json({ items: [{ email: currentUser.email, role: 'Titular' }] }))
+        })
       }),
     )
 
@@ -212,6 +221,7 @@ describe('CategoriesPage', () => {
     expect(screen.queryByRole('button', { name: /nova categoria/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /editar categoria/i })).not.toBeInTheDocument()
 
+    pendingMembers.resolve?.()
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /nova categoria/i })).toBeInTheDocument(),
     )
