@@ -6,7 +6,7 @@ const validData = {
   phoneDigits: '11999998888',
   cpfDigits: '12345678909',
   email: 'fulano@email.com',
-  password: 'Senha123',
+  password: 'Senha123@',
 }
 
 describe('registerSchema', () => {
@@ -50,7 +50,27 @@ describe('registerSchema', () => {
   })
 
   it('rejeita senha com menos de 8 caracteres', () => {
-    const result = registerSchema.safeParse({ ...validData, password: '1234567' })
+    const result = registerSchema.safeParse({ ...validData, password: 'Ab1@' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejeita senha sem letra maiúscula', () => {
+    const result = registerSchema.safeParse({ ...validData, password: 'senha123@' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejeita senha sem letra minúscula', () => {
+    const result = registerSchema.safeParse({ ...validData, password: 'SENHA123@' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejeita senha sem número', () => {
+    const result = registerSchema.safeParse({ ...validData, password: 'SenhaSegura@' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejeita senha sem símbolo', () => {
+    const result = registerSchema.safeParse({ ...validData, password: 'Senha1234' })
     expect(result.success).toBe(false)
   })
 })
