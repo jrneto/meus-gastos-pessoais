@@ -128,14 +128,19 @@ describe('ConfirmationForm', () => {
 
     fireEvent.click(resendButton)
 
-    await waitFor(() => expect(screen.getByLabelText('Dígito 1 do código')).not.toBeDisabled())
+    // As duas asserções ficam no mesmo `waitFor`: "reabilitado" e "com
+    // foco" vêm de commits/efeitos diferentes (ver review da FEAT-31 —
+    // o foco só é aplicado num `useEffect` que reage à mudança de
+    // `isExpired`, um passo depois do commit que reabilita o campo).
+    // Checá-las em `waitFor`s separados é uma corrida: a primeira pode
+    // resolver antes desse efeito rodar, derrubando a segunda de forma
+    // intermitente.
+    await waitFor(() => {
+      expect(screen.getByLabelText('Dígito 1 do código')).not.toBeDisabled()
+      expect(screen.getByLabelText('Dígito 1 do código')).toHaveFocus()
+    })
     expect(screen.getByLabelText('Dígito 1 do código')).toHaveValue('')
     expect(screen.getByText('1:00')).toBeInTheDocument()
-    // Regressão: o foco só deve ser aplicado depois que o input já
-    // está de fato habilitado no DOM (ver review da FEAT-31) —
-    // chamar .focus() um tick antes, com o campo ainda `disabled`, é
-    // um no-op silencioso.
-    expect(screen.getByLabelText('Dígito 1 do código')).toHaveFocus()
   })
 
   it('autoResendOnEnter dispara resendConfirmation no mount, sem interação do usuário', async () => {
