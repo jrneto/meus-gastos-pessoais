@@ -155,7 +155,7 @@ vira `spec.md` própria via `/specify`.
   dois `.dc.html` foram atualizados juntos.
   Depende de: backend FEAT-35 (confirmação de cadastro via OTP).
 
-- [ ] **FEAT-32 — Recuperação de senha (fluxo completo)**
+- [x] **FEAT-32 — Recuperação de senha (fluxo completo)**
   Novo fluxo "Esqueci minha senha" a partir do link já existente na
   tela de login: passo 1/3 pede e-mail (`24-recuperar-senha.png`) e
   chama `POST /auth/forgot-password`; passo 2/3 reaproveita o
