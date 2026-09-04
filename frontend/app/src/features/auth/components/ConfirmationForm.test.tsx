@@ -131,6 +131,11 @@ describe('ConfirmationForm', () => {
     await waitFor(() => expect(screen.getByLabelText('Dígito 1 do código')).not.toBeDisabled())
     expect(screen.getByLabelText('Dígito 1 do código')).toHaveValue('')
     expect(screen.getByText('1:00')).toBeInTheDocument()
+    // Regressão: o foco só deve ser aplicado depois que o input já
+    // está de fato habilitado no DOM (ver review da FEAT-31) —
+    // chamar .focus() um tick antes, com o campo ainda `disabled`, é
+    // um no-op silencioso.
+    expect(screen.getByLabelText('Dígito 1 do código')).toHaveFocus()
   })
 
   it('autoResendOnEnter dispara resendConfirmation no mount, sem interação do usuário', async () => {

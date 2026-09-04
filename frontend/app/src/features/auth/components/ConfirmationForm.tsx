@@ -30,6 +30,7 @@ export function ConfirmationForm({ email, autoResendOnEnter, onConfirmed, onBack
   const [apiError, setApiError] = useState<string | null>(null)
   const inputRefs = useRef<Array<HTMLInputElement | null>>([])
   const wasResendingRef = useRef(false)
+  const wasExpiredRef = useRef(false)
 
   const { confirm, isLoading: isConfirming, error: confirmError, success: isConfirmed } = useConfirmAccount()
   const { resend, isLoading: isResending, error: resendError } = useResendConfirmation()
@@ -55,7 +56,11 @@ export function ConfirmationForm({ email, autoResendOnEnter, onConfirmed, onBack
   // Detecta a transição isLoading=true → false do reenvio pra saber
   // quando ele terminou: sucesso limpa os campos e reinicia o
   // cooldown; falha só exibe o erro (useResendConfirmation nunca
-  // relança, sempre resolve).
+  // relança, sempre resolve). Não foca o primeiro input aqui — nesse
+  // exato instante os inputs ainda estão `disabled` no DOM committado
+  // (isExpired só vira `false` depois do re-render disparado por
+  // `restart()`), então `.focus()` seria um no-op silencioso. Quem
+  // cuida do foco é o efeito de `isExpired` logo abaixo.
   useEffect(() => {
     if (wasResendingRef.current && !isResending) {
       if (resendError) {
@@ -65,12 +70,21 @@ export function ConfirmationForm({ email, autoResendOnEnter, onConfirmed, onBack
         setClientError(null)
         setApiError(null)
         restart()
-        inputRefs.current[0]?.focus()
       }
     }
     wasResendingRef.current = isResending
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isResending, resendError])
+
+  // Foca o primeiro input quando os campos voltam a ficar habilitados
+  // (transição true → false de `isExpired`, disparada pelo `restart()`
+  // acima) — só então o DOM já reflete `disabled=false`.
+  useEffect(() => {
+    if (wasExpiredRef.current && !isExpired) {
+      inputRefs.current[0]?.focus()
+    }
+    wasExpiredRef.current = isExpired
+  }, [isExpired])
 
   useEffect(() => {
     if (isConfirmed) {
