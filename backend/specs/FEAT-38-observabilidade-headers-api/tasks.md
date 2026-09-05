@@ -24,11 +24,11 @@
 
 - [x] 12. ~~Ajustar `retention_in_days` de `14` para `15`~~ Mantido em `14` — 15 não é valor válido na API da AWS, decisão do usuário em `aws_cloudwatch_log_group.lambda` (`backend/infra/terraform/environments/prod/lambda.tf`), `aws_cloudwatch_log_group.account_trigger_lambda` (`backend/infra/terraform/environments/prod/lambda-account-trigger.tf`) e `aws_cloudwatch_log_group.custom_message_trigger_lambda` (`backend/infra/terraform/environments/prod/lambda-custom-message-trigger.tf`)
 
-- [ ] 13. Ajustar `retention_in_days` de `14` para `7` nos 3 log groups equivalentes de homologação (`backend/infra/terraform/environments/hom/lambda.tf`, `lambda-account-trigger.tf`, `lambda-custom-message-trigger.tf`)
+- [x] 13. Ajustar `retention_in_days` de `14` para `7` nos 3 log groups equivalentes de homologação (`backend/infra/terraform/environments/hom/lambda.tf`, `lambda-account-trigger.tf`, `lambda-custom-message-trigger.tf`)
 
-- [ ] 14. Atualizar `cors_configuration` de `aws_apigatewayv2_api.main` em `backend/infra/terraform/environments/prod/api-gateway.tf` — `allow_headers` ganha `"trace-id", "session-id", "client-platform", "client-version"` (mantendo `"Authorization", "Content-Type"`), novo `expose_headers = ["trace-id"]`
+- [x] 14. Atualizar `cors_configuration` de `aws_apigatewayv2_api.main` em `backend/infra/terraform/environments/prod/api-gateway.tf` — `allow_headers` ganha `"trace-id", "session-id", "client-platform", "client-version"` (mantendo `"Authorization", "Content-Type"`), novo `expose_headers = ["trace-id"]`
 
-- [ ] 15. Aplicar a mesma mudança de `cors_configuration` em `backend/infra/terraform/environments/hom/api-gateway.tf`
+- [x] 15. Aplicar a mesma mudança de `cors_configuration` em `backend/infra/terraform/environments/hom/api-gateway.tf`
 
 - [ ] 16. Rodar `terraform fmt` e `terraform validate` (ou `terraform plan`, sem aplicar) nos dois ambientes (`environments/prod`, `environments/hom`) e confirmar que os únicos recursos alterados são os das tasks 10-15 — aplicação em si (`terraform apply`) segue o fluxo normal de deploy, fora do escopo desta task, e exige aprovação explícita do usuário antes de rodar
 

@@ -28,7 +28,7 @@ resource "aws_iam_role" "custom_message_trigger_lambda_exec" {
 
 resource "aws_cloudwatch_log_group" "custom_message_trigger_lambda" {
   name              = "/aws/lambda/jrnexpenses-custom-message-trigger-hom"
-  retention_in_days = 14
+  retention_in_days = 7 # FEAT-38 — retenção explícita menor em hom (prod segue em 14)
 }
 
 resource "aws_iam_role_policy" "custom_message_trigger_lambda_exec" {
