@@ -27,8 +27,15 @@ if (!builder.Environment.IsEnvironment("Testing"))
         parameterStoreSection["SecretKey"]);
 }
 
+// Enrich.FromLogContext(): obrigatório pra LogContext.PushProperty
+// (RequestObservabilityMiddleware, FEAT-38) realmente aparecer no log
+// emitido. JsonFormatter (pacote Serilog base, sem dependência nova):
+// log passa a ser uma linha JSON por evento, parseável por CloudWatch
+// Logs Insights sem configuração adicional — aplicado igual em todo
+// ambiente, inclusive dev local (decisão confirmada no plan.md).
 Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
+    .Enrich.FromLogContext()
+    .WriteTo.Console(new Serilog.Formatting.Json.JsonFormatter())
     .CreateLogger();
 
 builder.Host.UseSerilog();
@@ -80,6 +87,12 @@ builder.Services.AddAWSLambdaHosting(
     new SourceGeneratorLambdaJsonSerializer<LambdaEventJsonSerializerContext>());
 
 var app = builder.Build();
+
+// Antes até de UseExceptionHandler() (FEAT-38) — assim, quando next()
+// retorna pro middleware, o status code final já reflete o resultado
+// (200/4xx do Result pattern, ou 500 já escrito pelo
+// GlobalExceptionHandler), sem duplicar lógica de log no catch.
+app.UseMiddleware<RequestObservabilityMiddleware>();
 
 app.UseExceptionHandler();
 
