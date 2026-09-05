@@ -68,9 +68,9 @@
 
 - [x] 34. Rodar `dotnet build backend/GastosApp.sln` e `dotnet test backend/GastosApp.sln` (suíte completa unit + componente) sem regressão
 
-- [ ] 35. Criar `backend/tests/GastosApp.IntegrationTests/Observability/ObservabilityFlowTests.cs` com `Health_QualquerRequisicao_RecebeHeaderTraceIdNaResposta` — chama `GET /health` sem enviar `trace-id`, confirma que a resposta traz o header gerado pela API
+- [x] 35. Criar `backend/tests/GastosApp.IntegrationTests/Observability/ObservabilityFlowTests.cs` com `Health_QualquerRequisicao_RecebeHeaderTraceIdNaResposta` — chama `GET /health` sem enviar `trace-id`, confirma que a resposta traz o header gerado pela API
 
-- [ ] 36. Rodar `backend/infra/lambda/run-local.sh` (binário Native AOT via Runtime Interface Emulator) e os testes integrados relevantes (`ObservabilityFlowTests`, `--filter Category=Integration`) localmente, confirmando que passam — validação obrigatória do risco Native AOT (`JsonDocument`, buffer de stream) antes de dar a feature por concluída
+- [x] 36. Rodar `backend/infra/lambda/run-local.sh` (binário Native AOT via Runtime Interface Emulator) e os testes integrados relevantes (`ObservabilityFlowTests`, `--filter Category=Integration`) localmente, confirmando que passam — validação obrigatória do risco Native AOT (`JsonDocument`, buffer de stream) antes de dar a feature por concluída
 
 - [ ] 37. Rodar `./scripts/export-openapi.sh` e conferir via `git diff` que `backend/docs/openapi.json` **não muda** (headers de middleware cross-cutting não são representados pelo gerador de OpenAPI do projeto — ver `plan.md`, "Mapeamento de erro")
 
