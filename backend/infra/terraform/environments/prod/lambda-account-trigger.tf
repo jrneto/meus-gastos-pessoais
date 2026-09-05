@@ -22,7 +22,10 @@ resource "aws_iam_role" "account_trigger_lambda_exec" {
 }
 
 resource "aws_cloudwatch_log_group" "account_trigger_lambda" {
-  name              = "/aws/lambda/jrnexpenses-account-trigger"
+  name = "/aws/lambda/jrnexpenses-account-trigger"
+  # FEAT-38: mantido em 14 (não 15 — não é um valor válido de
+  # retention_in_days na API da AWS; decisão do usuário, ver lambda.tf
+  # de prod pro contexto completo). Só hom mudou (14 → 7).
   retention_in_days = 14
 }
 

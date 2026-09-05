@@ -40,8 +40,9 @@ depois.
    como débito técnico/melhoria futura. FEAT-38 cobre só a Lambda da
    API principal.
 3. **Mudanças de infraestrutura (Terraform) entram no escopo da spec/
-   plan** — retenção explícita de log group (7 dias hom, 15 dias prod)
-   e o parâmetro de log-level no Parameter Store. Segue o fluxo normal
+   plan** — retenção explícita de log group (7 dias hom; prod
+   permanece em 14, ver nota na implementação) e o parâmetro de
+   log-level no Parameter Store. Segue o fluxo normal
    do projeto: a aprovação explícita do usuário para o `terraform
    apply` de fato acontece só no momento da implementação, não aqui.
 
@@ -99,8 +100,12 @@ trafegam em minúsculo no wire format.
   são logados, mesmo com o payload completo ativado — truncados/
   redigidos antes de qualquer log.
 - Log groups da API (produção e homologação) passam a ter retenção
-  explícita configurada (nunca "Never Expire"): 7 dias em homologação,
-  15 dias em produção.
+  explícita configurada (nunca "Never Expire"): 7 dias em homologação.
+  Produção permanece em 14 dias (já era o valor configurado) — 15,
+  originalmente cogitado, não é um valor aceito pela API da AWS pra
+  `retention_in_days` (só um conjunto fixo: 1, 3, 5, 7, 14, 30, 60...);
+  decisão do usuário foi manter 14 em vez de subir pro próximo válido
+  (30).
 
 ## User Stories
 
@@ -181,7 +186,8 @@ ou `type` de erro por causa desta feature.
 - [ ] Campos sensíveis (senha, token, dados de cartão) nunca aparecem
       no log, mesmo com payload completo ativado (US4)
 - [ ] Log groups de produção e homologação da API com retenção
-      explícita (15 dias prod, 7 dias hom), nunca "Never Expire"
+      explícita (14 dias prod — mantido, 15 não é valor válido; 7 dias
+      hom), nunca "Never Expire"
 - [ ] Nenhum endpoint existente exige os headers novos — suíte de
       testes existente (unitário, componente, integrado) continua
       passando sem alteração de contrato

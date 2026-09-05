@@ -291,18 +291,20 @@ app.UseExceptionHandler();
   `arn:...parameter/GastosApp/Hom/*` (hom) via `ssm:GetParametersByPath`
   (`lambda.tf`), que já inclui qualquer parâmetro novo sob esses
   prefixos.
-- **Retenção de log group, 6 recursos existentes ajustados** (2
-  ambientes × 3 Lambdas do backend — API principal, trigger de conta,
-  trigger de Custom Message — todos hoje em `retention_in_days = 14`,
-  ver "Pontos que precisam de confirmação", item 1):
+- **Retenção de log group, 3 recursos de hom ajustados** (as 3 Lambdas
+  do backend — API principal, trigger de conta, trigger de Custom
+  Message — todas hoje em `retention_in_days = 14`):
   - Hom: `environments/hom/lambda.tf`,
     `environments/hom/lambda-account-trigger.tf`,
     `environments/hom/lambda-custom-message-trigger.tf` →
     `retention_in_days = 7`
-  - Prod: `environments/prod/lambda.tf`,
-    `environments/prod/lambda-account-trigger.tf`,
-    `environments/prod/lambda-custom-message-trigger.tf` →
-    `retention_in_days = 15`
+  - **Prod permanece em `retention_in_days = 14`, sem mudança** — achado
+    durante a implementação (task 12 do `tasks.md`): a API da AWS só
+    aceita um conjunto fixo de valores pra `retention_in_days` (1, 3, 5,
+    7, 14, 30, 60...), e **15 não é um deles** (`terraform validate`
+    rejeitou nas 3 Lambdas de prod). Decisão do usuário: manter 14 em
+    vez de subir pro próximo valor válido (30). `spec.md` atualizado
+    pra refletir isso.
 - **CORS do API Gateway (HTTP API) — mudança necessária pro header
   chegar de verdade num browser**: `cors_configuration` de
   `aws_apigatewayv2_api.main` (`environments/{hom,prod}/api-gateway.tf`)
@@ -448,8 +450,8 @@ Native AOT de verdade (risco real: `JsonDocument`/buffer de stream sob
 - `backend/infra/CLAUDE.md` — nova seção curta sobre os 2 parâmetros
   `Logging/FullPayloadLoggingEnabled` (mesmo padrão das seções já
   existentes de Cognito/CORS/SES no Parameter Store) e sobre a
-  retenção de log group ter deixado de ser uniforme entre hom/prod (7 x
-  15 dias).
+  retenção de log group ter deixado de ser uniforme entre hom/prod (7
+  hom, 14 prod — prod sem mudança, ver "Recursos AWS").
 - `backend/docs/backlog.md` — ao final da implementação, os 3 débitos
   técnicos já previstos no spec.md (headers obrigatórios no futuro; log
   segmentado por `session-id`; propagação de `trace-id` pra Lambda de

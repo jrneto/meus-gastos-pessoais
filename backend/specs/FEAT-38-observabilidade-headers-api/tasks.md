@@ -18,11 +18,11 @@
 
 - [x] 9. Rodar `dotnet build backend/GastosApp.sln` e confirmar que compila sem erro (Native AOT trim warnings incluídos)
 
-- [ ] 10. Adicionar `aws_ssm_parameter.logging_full_payload_enabled` (`/GastosApp/Logging/FullPayloadLoggingEnabled`, tipo `String`, valor `"false"`) em `backend/infra/terraform/environments/prod/parameter-store.tf`
+- [x] 10. Adicionar `aws_ssm_parameter.logging_full_payload_enabled` (`/GastosApp/Logging/FullPayloadLoggingEnabled`, tipo `String`, valor `"false"`) em `backend/infra/terraform/environments/prod/parameter-store.tf`
 
-- [ ] 11. Adicionar o mesmo recurso (`/GastosApp/Hom/Logging/FullPayloadLoggingEnabled`) em `backend/infra/terraform/environments/hom/parameter-store.tf`
+- [x] 11. Adicionar o mesmo recurso (`/GastosApp/Hom/Logging/FullPayloadLoggingEnabled`) em `backend/infra/terraform/environments/hom/parameter-store.tf`
 
-- [ ] 12. Ajustar `retention_in_days` de `14` para `15` em `aws_cloudwatch_log_group.lambda` (`backend/infra/terraform/environments/prod/lambda.tf`), `aws_cloudwatch_log_group.account_trigger_lambda` (`backend/infra/terraform/environments/prod/lambda-account-trigger.tf`) e `aws_cloudwatch_log_group.custom_message_trigger_lambda` (`backend/infra/terraform/environments/prod/lambda-custom-message-trigger.tf`)
+- [x] 12. ~~Ajustar `retention_in_days` de `14` para `15`~~ Mantido em `14` — 15 não é valor válido na API da AWS, decisão do usuário em `aws_cloudwatch_log_group.lambda` (`backend/infra/terraform/environments/prod/lambda.tf`), `aws_cloudwatch_log_group.account_trigger_lambda` (`backend/infra/terraform/environments/prod/lambda-account-trigger.tf`) e `aws_cloudwatch_log_group.custom_message_trigger_lambda` (`backend/infra/terraform/environments/prod/lambda-custom-message-trigger.tf`)
 
 - [ ] 13. Ajustar `retention_in_days` de `14` para `7` nos 3 log groups equivalentes de homologação (`backend/infra/terraform/environments/hom/lambda.tf`, `lambda-account-trigger.tf`, `lambda-custom-message-trigger.tf`)
 
