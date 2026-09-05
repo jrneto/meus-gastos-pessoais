@@ -256,6 +256,17 @@ manual em hom/prod após o deploy — mesmo espírito já aceito em outras
 features (ex.: FEAT-35/36, fluxo de código real por email não
 testável).
 
+**Achado no `/review` pós-implementação, corrigido**: `userId` no log
+era extraído só via `FindFirst("sub")`, diferente do padrão já usado em
+`AuthEndpoints.cs`/`ResolveAccountEndpointFilter.cs`
+(`FindFirst("sub") ?? FindFirst(ClaimTypes.NameIdentifier)`) —
+dependendo do mapeamento de claims do `JwtBearerHandler`, `userId`
+poderia ficar sempre `null` no log de requisições autenticadas reais em
+hom/prod (não pego pelos testes de componente, que criam o claim
+`"sub"` direto via `TestAuthHandler`, sem passar pelo `JwtBearerHandler`
+real). Corrigido para usar o mesmo fallback. 534 unit + 228 componente
+confirmados sem regressão após a correção.
+
 ## Fora do escopo
 
 - Tornar os headers obrigatórios (fica como débito técnico, ver acima)
