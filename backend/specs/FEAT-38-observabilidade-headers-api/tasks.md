@@ -30,7 +30,7 @@
 
 - [x] 15. Aplicar a mesma mudança de `cors_configuration` em `backend/infra/terraform/environments/hom/api-gateway.tf`
 
-- [ ] 16. Rodar `terraform fmt` e `terraform validate` (ou `terraform plan`, sem aplicar) nos dois ambientes (`environments/prod`, `environments/hom`) e confirmar que os únicos recursos alterados são os das tasks 10-15 — aplicação em si (`terraform apply`) segue o fluxo normal de deploy, fora do escopo desta task, e exige aprovação explícita do usuário antes de rodar
+- [x] 16. Rodar `terraform fmt`/`validate` e (com credenciais AWS válidas) `terraform plan` real e `terraform validate` (ou `terraform plan`, sem aplicar) nos dois ambientes (`environments/prod`, `environments/hom`) e confirmar que os únicos recursos alterados são os das tasks 10-15 — aplicação em si (`terraform apply`) segue o fluxo normal de deploy, fora do escopo desta task, e exige aprovação explícita do usuário antes de rodar
 
 - [ ] 17. Criar `backend/tests/GastosApp.UnitTests/Api/SensitiveFieldRedactorTests.cs` com `Redact_ShouldMaskPassword_WhenPresentAtTopLevel`
 
