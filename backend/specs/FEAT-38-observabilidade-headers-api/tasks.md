@@ -56,17 +56,17 @@
 
 - [x] 28. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~RequestLogEntryBuilderTests` e confirmar tudo passando
 
-- [ ] 29. Criar `backend/tests/GastosApp.ComponentTests/Observability/RequestObservabilityMiddlewareTests.cs` (mesmo padrão de `Cors/CorsTests.cs`, `IClassFixture<ComponentTestWebApplicationFactory>`) com `Requisicao_ComTraceIdEnviado_EcoaMesmoValorNaResposta`
+- [x] 29. Criar `backend/tests/GastosApp.ComponentTests/Observability/RequestObservabilityMiddlewareTests.cs` (mesmo padrão de `Cors/CorsTests.cs`, `IClassFixture<ComponentTestWebApplicationFactory>`) com `Requisicao_ComTraceIdEnviado_EcoaMesmoValorNaResposta`
 
-- [ ] 30. Adicionar `Requisicao_SemTraceIdEnviado_RecebeTraceIdGeradoNaResposta` no mesmo arquivo
+- [x] 30. Adicionar `Requisicao_SemTraceIdEnviado_RecebeTraceIdGeradoNaResposta` no mesmo arquivo
 
-- [ ] 31. Adicionar `Requisicao_ComErro_AindaAssimRecebeHeaderTraceId` (ex.: rota protegida sem JWT → 401) no mesmo arquivo
+- [x] 31. Adicionar `Requisicao_ComErro_AindaAssimRecebeHeaderTraceId` (ex.: rota protegida sem JWT → 401) no mesmo arquivo
 
-- [ ] 32. Adicionar `Requisicao_ComSessionIdClientPlatformClientVersionAusentes_ContinuaFuncionandoNormalmente` no mesmo arquivo
+- [x] 32. Adicionar `Requisicao_ComSessionIdClientPlatformClientVersionAusentes_ContinuaFuncionandoNormalmente` no mesmo arquivo
 
-- [ ] 33. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~RequestObservabilityMiddlewareTests` e confirmar tudo passando
+- [x] 33. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~RequestObservabilityMiddlewareTests` e confirmar tudo passando
 
-- [ ] 34. Rodar `dotnet build backend/GastosApp.sln` e `dotnet test backend/GastosApp.sln` (suíte completa unit + componente) sem regressão
+- [x] 34. Rodar `dotnet build backend/GastosApp.sln` e `dotnet test backend/GastosApp.sln` (suíte completa unit + componente) sem regressão
 
 - [ ] 35. Criar `backend/tests/GastosApp.IntegrationTests/Observability/ObservabilityFlowTests.cs` com `Health_QualquerRequisicao_RecebeHeaderTraceIdNaResposta` — chama `GET /health` sem enviar `trace-id`, confirma que a resposta traz o header gerado pela API
 
