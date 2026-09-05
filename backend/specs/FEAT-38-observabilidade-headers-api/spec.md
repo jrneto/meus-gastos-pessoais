@@ -169,41 +169,92 @@ ou `type` de erro por causa desta feature.
 
 ## Critérios de aceite
 
-- [ ] Qualquer chamada a qualquer endpoint aceita os quatro headers
+- [x] Qualquer chamada a qualquer endpoint aceita os quatro headers
       opcionais sem exigir nenhum deles (US1, US2)
-- [ ] Toda resposta da API (sucesso ou erro) inclui o header
+- [x] Toda resposta da API (sucesso ou erro) inclui o header
       `trace-id`, ecoando o valor recebido ou um valor gerado pela API
       quando ausente (US1, US2, US3)
-- [ ] Toda requisição gera uma linha de log estruturado com `trace-id`,
+- [x] Toda requisição gera uma linha de log estruturado com `trace-id`,
       `session-id`, `client-platform`, `client-version` e `userId`
       (quando disponível), consultável via CloudWatch Logs Insights
       (US1, US2)
-- [ ] Resposta de erro (4xx/5xx) sempre loga o payload completo da
+- [x] Resposta de erro (4xx/5xx) sempre loga o payload completo da
       requisição, independentemente do toggle de log-level (US3)
-- [ ] Payload completo de requisição bem-sucedida (2xx) só é logado
+- [x] Payload completo de requisição bem-sucedida (2xx) só é logado
       com o parâmetro global de log-level ativado no Parameter Store
       (US4, US5)
-- [ ] Campos sensíveis (senha, token, dados de cartão) nunca aparecem
+- [x] Campos sensíveis (senha, token, dados de cartão) nunca aparecem
       no log, mesmo com payload completo ativado (US4)
-- [ ] Log groups de produção e homologação da API com retenção
+- [x] Log groups de produção e homologação da API com retenção
       explícita (14 dias prod — mantido, 15 não é valor válido; 7 dias
       hom), nunca "Never Expire"
-- [ ] Nenhum endpoint existente exige os headers novos — suíte de
+- [x] Nenhum endpoint existente exige os headers novos — suíte de
       testes existente (unitário, componente, integrado) continua
       passando sem alteração de contrato
-- [ ] Débito técnico registrado em `backend/docs/backlog.md`: tornar
+- [x] Débito técnico registrado em `backend/docs/backlog.md`: tornar
       os quatro headers obrigatórios no futuro, após os ajustes
       necessários no frontend (decisão 1 do backlog original)
-- [ ] Débito técnico registrado em `backend/docs/backlog.md`: log de
+- [x] Débito técnico registrado em `backend/docs/backlog.md`: log de
       payload completo segmentado por `session-id` específico, não só
       globalmente (decisão 1 do `/specify`)
-- [ ] Débito técnico registrado em `backend/docs/backlog.md`: propagar
+- [x] Débito técnico registrado em `backend/docs/backlog.md`: propagar
       `trace-id` para a Lambda de triggers do Cognito via
       `ClientMetadata`, correlacionando as duas Lambdas (decisão 2 do
       `/specify`)
-- [ ] `backend/docs/openapi.json` regenerado, caso a mudança de
+- [x] `backend/docs/openapi.json` regenerado, caso a mudança de
       headers seja representável no contrato OpenAPI gerado
       automaticamente pelo projeto
+
+## Status
+
+Implementação concluída (todas as 41 tasks de `tasks.md`). Suíte
+completa: 534 unit + 228 componente + 35 integrado (todos passando,
+inclusive contra o binário Native AOT via `run-local.sh`).
+
+**Bug real encontrado e corrigido pelos próprios testes desta feature**
+(não fazia parte do `plan.md`): o filtro de content-type que decide se
+um corpo entra no log (`RequestLogEntryBuilder`) só reconhecia
+`application/json` — mas toda resposta de erro deste projeto usa
+`application/problem+json` (RFC 9457, `ResultHttpExtensions`/
+`GlobalExceptionHandler`). Sem o sufixo `+json` (RFC 6839, "structured
+syntax suffix"), **nenhuma resposta de erro real teria o corpo logado**
+— justamente o critério de aceite mais importante ("resposta de erro
+sempre loga o payload completo"). Corrigido com
+`RequestLogEntryBuilder.IsJsonContentType` (aceita `application/json`
+OU qualquer content-type terminado em `+json`), reusado também no lado
+da requisição pelo middleware.
+
+**Divergência de infraestrutura, corrigida durante a implementação**: a
+retenção de log group de produção prevista originalmente (15 dias) não
+é um valor aceito pela API da AWS para `retention_in_days` (só um
+conjunto fixo: 1, 3, 5, 7, 14, 30, 60...) — `terraform validate`
+rejeitou nas 3 Lambdas de prod. Decisão do usuário: manter produção em
+14 dias (valor já vigente) em vez de subir pro próximo válido (30).
+Homologação seguiu como planejado (7 dias, valor válido). `spec.md` e
+`plan.md` atualizados para refletir isso.
+
+`terraform plan` real rodado nos dois ambientes (credenciais AWS
+disponibilizadas durante a implementação): só os recursos esperados
+aparecem no diff (CORS do API Gateway, parâmetro `Logging/
+FullPayloadLoggingEnabled` novo, 3 log groups de hom) — mais 2 itens
+conhecidos sem relação com esta feature (drift de
+`environment.variables` da Lambda, setado pelo CI/CD fora do Terraform
+de propósito; e o gotcha de leitura de IAM Role já documentado em
+`backend/infra/CLAUDE.md`).
+
+Os 3 débitos técnicos previstos (headers obrigatórios no futuro, log
+segmentado por `session-id`, propagação de `trace-id` pra Lambda de
+triggers do Cognito) foram registrados em `backend/docs/backlog.md`.
+
+**Conteúdo do log em CloudWatch não é verificável por teste
+automatizado de ponta a ponta** (nem componente, nem integrado) — só a
+decisão "o que logar" é testada isoladamente
+(`RequestLogEntryBuilderTests`/`SensitiveFieldRedactorTests`). Que uma
+linha JSON de verdade chega no CloudWatch com os campos esperados
+(inclusive o formato `JsonFormatter` do Serilog) fica para validação
+manual em hom/prod após o deploy — mesmo espírito já aceito em outras
+features (ex.: FEAT-35/36, fluxo de código real por email não
+testável).
 
 ## Fora do escopo
 

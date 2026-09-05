@@ -74,10 +74,10 @@
 
 - [x] 37. Rodar `./scripts/export-openapi.sh` e conferir via `git diff` que `backend/docs/openapi.json` **não muda** (headers de middleware cross-cutting não são representados pelo gerador de OpenAPI do projeto — ver `plan.md`, "Mapeamento de erro")
 
-- [ ] 38. Atualizar `backend/infra/CLAUDE.md` — nova seção curta sobre `Logging/FullPayloadLoggingEnabled` no Parameter Store (mesmo padrão das seções já existentes de Cognito/CORS/SES) e sobre a retenção de log group ter deixado de ser uniforme entre hom/prod (7 x 15 dias, FEAT-38)
+- [x] 38. Atualizar `backend/infra/CLAUDE.md` — nova seção curta sobre `Logging/FullPayloadLoggingEnabled` no Parameter Store (mesmo padrão das seções já existentes de Cognito/CORS/SES) e sobre a retenção de log group ter deixado de ser uniforme entre hom/prod (7 x 15 dias, FEAT-38)
 
-- [ ] 39. Registrar em `backend/docs/backlog.md`, seção "Débitos técnicos e melhorias futuras", os 3 itens já previstos no `spec.md`: (a) tornar os 4 headers obrigatórios no futuro, após ajustes no frontend; (b) segmentar o log de payload completo por `session-id` específico, não só globalmente; (c) propagar `trace-id` pra Lambda de triggers do Cognito via `ClientMetadata`
+- [x] 39. Registrar em `backend/docs/backlog.md`, seção "Débitos técnicos e melhorias futuras", os 3 itens já previstos no `spec.md`: (a) tornar os 4 headers obrigatórios no futuro, após ajustes no frontend; (b) segmentar o log de payload completo por `session-id` específico, não só globalmente; (c) propagar `trace-id` pra Lambda de triggers do Cognito via `ClientMetadata`
 
-- [ ] 40. Marcar os critérios de aceite concluídos em `backend/specs/FEAT-38-observabilidade-headers-api/spec.md` e preencher uma seção "Status", resumindo o que foi implementado — incluir nota explícita de que o conteúdo do log em CloudWatch (redação, payload condicional) foi validado manualmente em hom, não por teste automatizado de ponta a ponta (ponto confirmado no `plan.md`)
+- [x] 40. Marcar os critérios de aceite concluídos em `backend/specs/FEAT-38-observabilidade-headers-api/spec.md` e preencher uma seção "Status", resumindo o que foi implementado — incluir nota explícita de que o conteúdo do log em CloudWatch (redação, payload condicional) foi validado manualmente em hom, não por teste automatizado de ponta a ponta (ponto confirmado no `plan.md`)
 
-- [ ] 41. Atualizar `backend/docs/backlog.md` — marcar o item da FEAT-38 como concluído, seguindo a convenção já usada para features anteriores (ver commit da FEAT-37)
+- [x] 41. Atualizar `backend/docs/backlog.md` — marcar o item da FEAT-38 como concluído, seguindo a convenção já usada para features anteriores (ver commit da FEAT-37)
