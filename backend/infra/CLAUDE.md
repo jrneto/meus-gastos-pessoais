@@ -124,6 +124,41 @@ ver "Testes integrados" abaixo).
   `AccountTriggerHandlerManualDebug.cs` — ver
   `backend/specs/FEAT-37-email-boas-vindas/`.
 
+## Observabilidade (headers de API, FEAT-38)
+
+Toda chamada de API aceita 4 headers opcionais de observabilidade
+(`trace-id`, `session-id`, `client-platform`, `client-version`) —
+`RequestObservabilityMiddleware` (`GastosApp.Api/Middlewares/`),
+registrado antes até de `UseExceptionHandler()`. `trace-id` é sempre
+ecoado na resposta (gerado pela API quando ausente); o log estruturado
+(JSON via Serilog `JsonFormatter`, todo ambiente inclusive dev local)
+inclui payload completo em erro (4xx/5xx, qualquer content-type JSON —
+inclusive `application/problem+json`) ou quando o toggle abaixo está
+ligado.
+
+- **`Logging/FullPayloadLoggingEnabled` no Parameter Store** (`String`,
+  `"true"`/`"false"`, default `"false"`):
+  `/GastosApp/Logging/FullPayloadLoggingEnabled` (prod),
+  `/GastosApp/Hom/Logging/FullPayloadLoggingEnabled` (hom) — mesmo
+  padrão dos demais parâmetros Cognito/CORS/SES já existentes. Lido uma
+  única vez por cold start (`LoggingOptions`, mesma limitação dos
+  demais `Options` deste projeto) — ligar/desligar não tem efeito
+  imediato em Lambdas já "quentes", só nas próximas que passarem por
+  cold start.
+- **CORS do API Gateway** (`cors_configuration` de
+  `aws_apigatewayv2_api.main`, `api-gateway.tf` de cada ambiente)
+  precisou ganhar os 4 headers novos em `allow_headers` + `trace-id` em
+  `expose_headers` — sem isso, o preflight do navegador recusaria esses
+  headers antes de chegar na Lambda.
+- **Retenção de log group deixou de ser uniforme entre hom/prod**: hom
+  passou a 7 dias (`retention_in_days`), prod permanece em 14 (15,
+  cogitado originalmente, não é um valor aceito pela API da AWS — só um
+  conjunto fixo: 1, 3, 5, 7, 14, 30, 60...). Aplica-se às 3 Lambdas do
+  backend por ambiente (API principal + os 2 triggers do Cognito).
+
+Ver `backend/specs/FEAT-38-observabilidade-headers-api/` para a
+spec/plano completos.
+
 ## CI/CD (GitHub Actions)
 
 `backend-feature-pr.yml` (PR automático branch→develop),

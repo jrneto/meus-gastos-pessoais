@@ -57,3 +57,15 @@ resource "aws_ssm_parameter" "ses_sender_email" {
   type  = "String"
   value = "jrn.expenses <no-reply@jrnexpenses.com>"
 }
+
+# Toggle global de log de payload completo (FEAT-38) — liga/desliga log
+# verboso (corpo de requisição/resposta) pra debug manual, sem exigir
+# redeploy. Não é segredo (só "true"/"false"), custo zero (Parameter
+# Store Standard, free tier). Lido uma única vez por cold start da
+# Lambda (LoggingOptions), mesma limitação de reload dos demais Options
+# deste projeto — ver backend/infra/CLAUDE.md.
+resource "aws_ssm_parameter" "logging_full_payload_enabled" {
+  name  = "/GastosApp/Logging/FullPayloadLoggingEnabled"
+  type  = "String"
+  value = "false"
+}

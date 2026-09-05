@@ -21,7 +21,12 @@ resource "aws_iam_role" "lambda_exec" {
 }
 
 resource "aws_cloudwatch_log_group" "lambda" {
-  name              = "/aws/lambda/gastos-app-api"
+  name = "/aws/lambda/gastos-app-api"
+  # FEAT-38: mantido em 14 (não 15, como o spec.md original pedia — a API
+  # da AWS só aceita um conjunto fixo de valores pra retention_in_days,
+  # e 15 não é um deles; decisão do usuário foi manter o valor atual em
+  # produção em vez de subir para o próximo válido, 30). Hom passou a
+  # ter retenção menor (7 dias, ver lambda.tf de hom) — só hom mudou.
   retention_in_days = 14
 }
 

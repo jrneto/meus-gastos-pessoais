@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using LoggingOptions = GastosApp.Infrastructure.Configuration.LoggingOptions; // desambigua de Amazon.LoggingOptions (using Amazon; acima)
 
 namespace GastosApp.Infrastructure.DependencyInjection
 {
@@ -46,6 +47,17 @@ namespace GastosApp.Infrastructure.DependencyInjection
             // documentado em AddCognitoSdk: Configure<T>(IConfiguration) usa
             // reflection para popular as propriedades e falha silenciosamente
             // sob Native AOT (sem lançar exceção, só não preenche nada).
+            services.AddSingleton(_ =>
+            {
+                var section = configuration.GetSection(LoggingOptions.SectionName);
+                var options = new LoggingOptions
+                {
+                    FullPayloadLoggingEnabled = section["FullPayloadLoggingEnabled"] == "true"
+                };
+
+                return Options.Create(options);
+            });
+
             services.AddSingleton(_ =>
             {
                 var section = configuration.GetSection(DynamoDbOptions.SectionName);

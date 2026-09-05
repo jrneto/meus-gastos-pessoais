@@ -271,6 +271,41 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   em `fix/ses-client-region-lambda-trigger`.**
   Depende de: FEAT-33, FEAT-19 (já pronto).
 
+- [x] **FEAT-38 — Observabilidade: trace-id, session-id e
+  client-platform nos headers de API** *(concluída, ver
+  `backend/specs/FEAT-38-observabilidade-headers-api/`)*: quatro
+  headers de observabilidade opcionais em toda chamada de API —
+  `trace-id`, `session-id`, `client-platform`, `client-version` —
+  lidos e logados de forma estruturada por
+  `RequestObservabilityMiddleware`, registrado antes até do
+  `GlobalExceptionHandler` (assim o status code final já vem pronto
+  quando decide o que logar). Nomenclatura: minúsculo, separado por
+  traço, sem prefixo `X-` (RFC 6648 + padrão de fato em HTTP/2+).
+  `trace-id` é gerado pela própria API quando o client não envia, e
+  sempre ecoado no header de resposta — inclusive em erro. `session-id`
+  (UUID do login), `client-platform` e `client-version` só enriquecem o
+  log, sem eco na resposta. Log estruturado em JSON (Serilog
+  `Enrich.FromLogContext()` + `JsonFormatter`, todo ambiente inclusive
+  dev local), compatível com CloudWatch Logs Insights: payload completo
+  (JSON, incluindo `application/problem+json`) sempre em erro (4xx/5xx)
+  ou com o toggle `Logging/FullPayloadLoggingEnabled` do Parameter
+  Store ativado (só global, não por sessão — ver débito abaixo); campos
+  sensíveis (senha, token, código, cartão) mascarados via
+  `SensitiveFieldRedactor` (`JsonDocument`/`Utf8JsonWriter`, AOT-safe).
+  CORS do API Gateway (`allow_headers`/`expose_headers`) atualizado nos
+  dois ambientes — sem isso o preflight do navegador recusaria os
+  headers novos antes de chegar na Lambda. Retenção de log group: hom
+  passou a 7 dias; **produção permanece em 14** (15, valor original da
+  spec, não é aceito pela API da AWS pra `retention_in_days` — decisão
+  do usuário foi manter o valor atual em vez de subir pro próximo
+  válido, 30). Headers continuam opcionais, pra não quebrar o frontend
+  atual. 534 unit + 228 componente + 35 integrado passando (Native AOT
+  via `run-local.sh` incluído). `openapi.json` confirmado sem diff
+  (headers de middleware cross-cutting não são representados pelo
+  gerador de OpenAPI do projeto).
+  Depende de: nenhuma (cross-cutting, aplica-se a toda a API já
+  existente).
+
 ## Bugs
 
 - [x] **BUG — Cliente SES quebrava a criação de conta inteira na Lambda
@@ -508,6 +543,40 @@ monorepo.
   `backend-integration-tests-hom.yml`. Reavaliar se/quando o pacote
   ganhar uma versão nova que cubra esses 3 casos, ou se outra feature
   de auth precisar de mais paridade do emulador.
+
+- [ ] **DÉBITO — Headers de observabilidade continuam opcionais**
+  (decisão do backlog original da FEAT-38, `backend/specs/
+  FEAT-38-observabilidade-headers-api/spec.md`): `trace-id`,
+  `session-id`, `client-platform` e `client-version` não são exigidos
+  hoje, pra não quebrar o frontend atual (que ainda não os envia).
+  Tornar os 4 obrigatórios (400 se ausentes) fica pendente até o
+  frontend (web, e futuros mobile/admin) passar a enviá-los em toda
+  chamada — reavaliar quando isso acontecer.
+
+- [ ] **DÉBITO — Log de payload completo só tem toggle global, não por
+  sessão específica** (decisão do `/specify` da FEAT-38,
+  `backend/specs/FEAT-38-observabilidade-headers-api/spec.md`): o
+  parâmetro `Logging/FullPayloadLoggingEnabled` do Parameter Store liga
+  payload completo pra **toda a API**, não só pra investigar a sessão
+  de um usuário específico — o que o backlog original da FEAT-38
+  cogitava ("idealmente por sessão específica, não globalmente"). Um
+  mecanismo mais granular (ex.: outro parâmetro/lista no Parameter
+  Store com o `session-id` alvo, filtrado dentro de
+  `RequestObservabilityMiddleware`) evitaria poluir o log de todo mundo
+  ao depurar um caso pontual — mais escopo/complexidade, deixado de
+  fora da primeira versão.
+
+- [ ] **DÉBITO — `trace-id` não é propagado pra Lambda de triggers do
+  Cognito** (decisão do `/specify` da FEAT-38, `backend/specs/
+  FEAT-38-observabilidade-headers-api/spec.md`): `RequestObservability
+  Middleware` cobre só a Lambda da API principal. Quando um request
+  (registro, confirmação, `forgot-password`) dispara indiretamente a
+  Lambda de triggers (`GastosApp.CognitoTriggers` — email de
+  boas-vindas, etc.), não há `trace-id` em comum entre as duas Lambdas
+  nos logs. Correlacionar exigiria propagar o `trace-id` via
+  `ClientMetadata` nas chamadas ao Cognito (`SignUp`/`ConfirmSignUp`/
+  `ForgotPassword`) e lê-lo do lado do trigger — recurso nativo do
+  Cognito, não implementado nesta feature.
 
 ## Compliance (LGPD)
 
