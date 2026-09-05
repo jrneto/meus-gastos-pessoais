@@ -32,29 +32,29 @@
 
 - [x] 16. Rodar `terraform fmt`/`validate` e (com credenciais AWS válidas) `terraform plan` real e `terraform validate` (ou `terraform plan`, sem aplicar) nos dois ambientes (`environments/prod`, `environments/hom`) e confirmar que os únicos recursos alterados são os das tasks 10-15 — aplicação em si (`terraform apply`) segue o fluxo normal de deploy, fora do escopo desta task, e exige aprovação explícita do usuário antes de rodar
 
-- [ ] 17. Criar `backend/tests/GastosApp.UnitTests/Api/SensitiveFieldRedactorTests.cs` com `Redact_ShouldMaskPassword_WhenPresentAtTopLevel`
+- [x] 17. Criar `backend/tests/GastosApp.UnitTests/Api/SensitiveFieldRedactorTests.cs` com `Redact_ShouldMaskPassword_WhenPresentAtTopLevel`
 
-- [ ] 18. Adicionar `Redact_ShouldMaskMultipleSensitiveFields_WhenPresentTogether` (Theory: `password`, `newPassword`, `code`, `token`, `refreshToken`) no mesmo arquivo
+- [x] 18. Adicionar `Redact_ShouldMaskMultipleSensitiveFields_WhenPresentTogether` (Theory: `password`, `newPassword`, `code`, `token`, `refreshToken`) no mesmo arquivo
 
-- [ ] 19. Adicionar `Redact_ShouldMaskNestedSensitiveField_WhenPresentInsideObject` no mesmo arquivo
+- [x] 19. Adicionar `Redact_ShouldMaskNestedSensitiveField_WhenPresentInsideObject` no mesmo arquivo
 
-- [ ] 20. Adicionar `Redact_ShouldNotChangeNonSensitiveFields` no mesmo arquivo
+- [x] 20. Adicionar `Redact_ShouldNotChangeNonSensitiveFields` no mesmo arquivo
 
-- [ ] 21. Adicionar `Redact_ShouldReturnOriginal_WhenBodyIsNotValidJson` e `Redact_ShouldReturnOriginal_WhenBodyIsNullOrEmpty` no mesmo arquivo
+- [x] 21. Adicionar `Redact_ShouldReturnOriginal_WhenBodyIsNotValidJson` e `Redact_ShouldReturnOriginal_WhenBodyIsNullOrEmpty` no mesmo arquivo
 
-- [ ] 22. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~SensitiveFieldRedactorTests` e confirmar tudo passando
+- [x] 22. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~SensitiveFieldRedactorTests` e confirmar tudo passando
 
-- [ ] 23. Criar `backend/tests/GastosApp.UnitTests/Api/RequestLogEntryBuilderTests.cs` com `Build_ShouldIncludeBody_WhenStatusCodeIsError` (Theory: 400, 404, 500) — mesmo com toggle desligado
+- [x] 23. Criar `backend/tests/GastosApp.UnitTests/Api/RequestLogEntryBuilderTests.cs` com `Build_ShouldIncludeBody_WhenStatusCodeIsError` (Theory: 400, 404, 500) — mesmo com toggle desligado
 
-- [ ] 24. Adicionar `Build_ShouldNotIncludeBody_WhenSuccessAndToggleDisabled` e `Build_ShouldIncludeBody_WhenSuccessAndToggleEnabled` no mesmo arquivo
+- [x] 24. Adicionar `Build_ShouldNotIncludeBody_WhenSuccessAndToggleDisabled` e `Build_ShouldIncludeBody_WhenSuccessAndToggleEnabled` no mesmo arquivo
 
-- [ ] 25. Adicionar `Build_ShouldNotIncludeBody_WhenContentTypeIsNotJson` (Theory: `text/csv`, `null`, mesmo em erro/toggle ligado) no mesmo arquivo
+- [x] 25. Adicionar `Build_ShouldNotIncludeBody_WhenContentTypeIsNotJson` (Theory: `text/csv`, `null`, mesmo em erro/toggle ligado) no mesmo arquivo
 
-- [ ] 26. Adicionar `Build_ShouldTruncateBody_WhenLongerThanMaxLength` no mesmo arquivo
+- [x] 26. Adicionar `Build_ShouldTruncateBody_WhenLongerThanMaxLength` no mesmo arquivo
 
-- [ ] 27. Adicionar `Build_ShouldIncludeAllFourObservabilityFields_WhenPresent` e `Build_ShouldAllowNullFields_WhenSessionIdClientPlatformClientVersionAbsent` no mesmo arquivo
+- [x] 27. Adicionar `Build_ShouldIncludeAllFourObservabilityFields_WhenPresent` e `Build_ShouldAllowNullFields_WhenSessionIdClientPlatformClientVersionAbsent` no mesmo arquivo
 
-- [ ] 28. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~RequestLogEntryBuilderTests` e confirmar tudo passando
+- [x] 28. Rodar `dotnet test backend/GastosApp.sln --filter FullyQualifiedName~RequestLogEntryBuilderTests` e confirmar tudo passando
 
 - [ ] 29. Criar `backend/tests/GastosApp.ComponentTests/Observability/RequestObservabilityMiddlewareTests.cs` (mesmo padrão de `Cors/CorsTests.cs`, `IClassFixture<ComponentTestWebApplicationFactory>`) com `Requisicao_ComTraceIdEnviado_EcoaMesmoValorNaResposta`
 

@@ -91,17 +91,16 @@ public sealed class RequestObservabilityMiddleware
             : value;
     }
 
-    // Só bufferiza/lê o corpo da requisição quando Content-Type é
-    // application/json — evita ler à toa corpo vazio (GET) ou de outro
-    // formato. EnableBuffering() + reset de Position: o corpo continua
-    // legível normalmente pelo model binding do endpoint, mais adiante.
+    // Só bufferiza/lê o corpo da requisição quando Content-Type é JSON —
+    // evita ler à toa corpo vazio (GET) ou de outro formato.
+    // EnableBuffering() + reset de Position: o corpo continua legível
+    // normalmente pelo model binding do endpoint, mais adiante.
     private static async Task<string?> CaptureRequestBodyIfJsonAsync(HttpRequest request)
     {
         if (request.ContentLength is null or 0)
             return null;
 
-        if (request.ContentType is null ||
-            !request.ContentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase))
+        if (!RequestLogEntryBuilder.IsJsonContentType(request.ContentType))
         {
             return null;
         }

@@ -60,7 +60,7 @@ public static class RequestLogEntryBuilder
         return entry;
     }
 
-    // Só corpo application/json (ou vazio) é candidato a log — exclui CSV
+    // Só corpo JSON (ou vazio) é candidato a log — exclui CSV
     // (GET /transactions/export), binários e qualquer outro content-type:
     // evita truncar/poluir o log com payload não-JSON, e não precisa de
     // regra de redação pra formato que a redação (JSON) não sabe
@@ -70,7 +70,7 @@ public static class RequestLogEntryBuilder
         if (string.IsNullOrEmpty(body))
             return body;
 
-        if (contentType is null || !contentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase))
+        if (!IsJsonContentType(contentType))
             return null;
 
         var redacted = SensitiveFieldRedactor.Redact(body);
@@ -79,4 +79,15 @@ public static class RequestLogEntryBuilder
             ? redacted[..MaxLoggedBodyLength] + TruncatedSuffix
             : redacted;
     }
+
+    // "application/json" cobre corpo de sucesso; toda resposta de erro
+    // desta API usa "application/problem+json" (RFC 9457, ver
+    // ResultHttpExtensions/GlobalExceptionHandler) — sem o sufixo
+    // "+json" (RFC 6839, "structured syntax suffix"), NENHUMA resposta
+    // de erro real teria o corpo logado, justamente o cenário mais
+    // importante do critério de aceite (achado pelos testes desta task).
+    public static bool IsJsonContentType(string? contentType) =>
+        contentType is not null &&
+        (contentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase) ||
+         contentType.Contains("+json", StringComparison.OrdinalIgnoreCase));
 }
