@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Claims;
 using System.Text;
 using GastosApp.Api.Common;
 using GastosApp.Infrastructure.Configuration;
@@ -70,7 +71,12 @@ public sealed class RequestObservabilityMiddleware
                 context.Response.StatusCode,
                 stopwatch.ElapsedMilliseconds,
                 traceId, sessionId, clientPlatform, clientVersion,
-                userId: context.User.FindFirst("sub")?.Value,
+                // Mesmo fallback já usado em AuthEndpoints.cs/
+                // ResolveAccountEndpointFilter.cs — dependendo do
+                // mapeamento de claims do JwtBearerHandler, "sub" pode
+                // chegar como ClaimTypes.NameIdentifier.
+                userId: context.User.FindFirst("sub")?.Value
+                    ?? context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
                 fullPayloadLoggingEnabled: loggingOptions.Value.FullPayloadLoggingEnabled,
                 requestContentType: context.Request.ContentType,
                 requestBody: requestBody,
