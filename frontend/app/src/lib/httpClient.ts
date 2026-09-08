@@ -1,3 +1,6 @@
+import { getAppVersion } from './appVersion'
+import { getSessionId } from './sessionId'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 // Paths que nunca passam pelo interceptor de auth (nem Authorization
@@ -5,6 +8,11 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 // /auth/refresh é a própria chamada de renovação — deixá-la disparar
 // um refresh recursivamente causaria loop infinito.
 const AUTH_INTERCEPTOR_EXCLUDED_PATHS = ['/auth/login', '/auth/refresh']
+
+// Headers de observabilidade (backend/specs/FEAT-38), todos opcionais
+// do ponto de vista da API — client-platform é fixo (única origem web
+// hoje), sem lista fechada de valores exigida pelo backend.
+const CLIENT_PLATFORM = 'web'
 
 export interface AuthPlugin {
   getAccessToken: () => string | null
@@ -49,7 +57,19 @@ function isAuthInterceptorExcluded(path: string): boolean {
 function buildHeaders(init: RequestInit | undefined): HeadersInit {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    // trace-id identifica esta requisição isolada — um valor novo por
+    // chamada (diferente de session-id, que persiste durante o uso).
+    'trace-id': crypto.randomUUID(),
+    'client-platform': CLIENT_PLATFORM,
+    'client-version': getAppVersion(),
     ...(init?.headers as Record<string, string> | undefined),
+  }
+
+  // Ausente antes do login/bootstrap terminar — omitido nesse caso
+  // (a API não exige o header, ver FEAT-38), nunca enviado vazio.
+  const sessionId = getSessionId()
+  if (sessionId) {
+    headers['session-id'] = sessionId
   }
 
   const token = authPlugin?.getAccessToken()
