@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { server } from '@/test/msw/server'
+import { getSessionId, startNewSession } from '@/lib/sessionId'
 import { useAuthStore } from '../store/authStore'
 import { useLogout } from './useLogout'
 
@@ -10,6 +11,7 @@ const LOGOUT_URL = 'http://localhost:5049/auth/logout'
 describe('useLogout', () => {
   beforeEach(() => {
     useAuthStore.getState().setSession('tok-123', 'user-1', 3600)
+    startNewSession()
   })
 
   it('chama POST /auth/logout e limpa a sessão local', async () => {
@@ -29,6 +31,7 @@ describe('useLogout', () => {
 
     expect(logoutCalled).toBe(true)
     expect(useAuthStore.getState().token).toBeNull()
+    expect(getSessionId()).toBeNull()
   })
 
   it('falha em /auth/logout não impede o logout local', async () => {
@@ -41,5 +44,6 @@ describe('useLogout', () => {
     })
 
     expect(useAuthStore.getState().token).toBeNull()
+    expect(getSessionId()).toBeNull()
   })
 })

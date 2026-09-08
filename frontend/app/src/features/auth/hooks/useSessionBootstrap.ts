@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ensureSessionId } from '@/lib/sessionId'
 import { authApi } from '../api/authApi'
 import { useAuthStore } from '../store/authStore'
 
@@ -23,6 +24,11 @@ export function useSessionBootstrap(): UseSessionBootstrapResult {
       try {
         const result = await authApi.refresh()
         if (active) {
+          // Reaproveita o session-id já guardado nesta aba (F5) ou gera
+          // um novo se não houver (aba/navegador reaberto depois de
+          // fechado) — nunca um login explícito, então nunca força um
+          // valor novo quando já existe um. Ver lib/sessionId.ts.
+          ensureSessionId()
           setSession(result.accessToken, result.userId, result.expiresIn)
         }
       } catch {

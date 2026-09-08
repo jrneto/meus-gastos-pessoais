@@ -2,6 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { server } from '@/test/msw/server'
+import { getSessionId, startNewSession } from '@/lib/sessionId'
 import { useAuthStore } from '../store/authStore'
 import { useSessionBootstrap } from './useSessionBootstrap'
 
@@ -26,6 +27,33 @@ describe('useSessionBootstrap', () => {
     await waitFor(() => expect(result.current.isBootstrapping).toBe(false))
     expect(useAuthStore.getState().token).toBe('tok-novo')
     expect(useAuthStore.getState().userId).toBe('user-1')
+  })
+
+  it('em caso de sucesso, gera um session-id quando a aba ainda não tinha nenhum (ex.: reaberta depois de fechada)', async () => {
+    server.use(
+      http.post(REFRESH_URL, () =>
+        HttpResponse.json({ accessToken: 'tok-novo', expiresIn: 3600, userId: 'user-1' }),
+      ),
+    )
+
+    const { result } = renderHook(() => useSessionBootstrap())
+
+    await waitFor(() => expect(result.current.isBootstrapping).toBe(false))
+    expect(getSessionId()).toBeTruthy()
+  })
+
+  it('em caso de sucesso, reaproveita o session-id já existente na aba (ex.: F5)', async () => {
+    const existingSessionId = startNewSession()
+    server.use(
+      http.post(REFRESH_URL, () =>
+        HttpResponse.json({ accessToken: 'tok-novo', expiresIn: 3600, userId: 'user-1' }),
+      ),
+    )
+
+    const { result } = renderHook(() => useSessionBootstrap())
+
+    await waitFor(() => expect(result.current.isBootstrapping).toBe(false))
+    expect(getSessionId()).toBe(existingSessionId)
   })
 
   it('em 401, mantém a authStore vazia e termina isBootstrapping', async () => {

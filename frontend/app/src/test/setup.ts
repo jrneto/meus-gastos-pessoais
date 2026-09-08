@@ -8,5 +8,10 @@ import { server } from './msw/server'
 vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:5049')
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-afterEach(() => server.resetHandlers())
+afterEach(() => {
+  server.resetHandlers()
+  // sessionId.ts guarda o session-id de observabilidade aqui — sem
+  // isso, o valor gerado num teste vazaria para o próximo.
+  sessionStorage.clear()
+})
 afterAll(() => server.close())
