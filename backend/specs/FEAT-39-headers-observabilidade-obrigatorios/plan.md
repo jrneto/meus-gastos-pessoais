@@ -273,20 +273,16 @@ real:
 - `backend/infra/CLAUDE.md` / `backend/docs/data-model.md` — sem
   mudança (nenhum recurso AWS, nenhum item de DynamoDB envolvido).
 
-## Pontos que precisam de confirmação antes do `/tasks`
+## Pontos confirmados com o usuário durante este `/plan`
 
 1. **Assimetria de log no caminho de rejeição** (item 5 das decisões
    técnicas): request body capturado/logado quando JSON, response body
-   não capturado. Confirmar se essa simplificação é aceitável, ou se
-   vale reconstruir o corpo da resposta (ex.: serializar o
-   `ProblemDetails` também para o log, sem precisar do buffer de
-   stream) para manter os dois lados simétricos.
+   não capturado (evita reintroduzir o buffer de `Response.Body` que
+   este atalho existe pra evitar) — confirmado.
 2. **Código do erro**: `missing-observability-headers` (usado no
    `type`, `https://gastosapp.dev/errors/missing-observability-headers`)
-   — confirmar o nome, mesmo padrão kebab-case dos códigos já existentes
-   em `AuthErrors`/`ValidationBehavior`.
+   — confirmado, mesmo padrão kebab-case dos códigos já existentes em
+   `AuthErrors`/`ValidationBehavior`.
 3. **Exceção de rota via string literal `/health`** (não por metadado
-   do endpoint) — confirmar que é aceitável a manutenção manual desse
-   literal caso `/health` ganhe variações no futuro (ex.: `/health/live`),
-   em vez de um mecanismo mais genérico (ex.: atributo/metadado no
-   próprio endpoint marcando "isento de headers obrigatórios").
+   do endpoint) — confirmado; segue simples, sem mecanismo genérico de
+   atributo/metadado por enquanto.
