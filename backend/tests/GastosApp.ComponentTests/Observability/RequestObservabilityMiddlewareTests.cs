@@ -13,7 +13,12 @@ public sealed class RequestObservabilityMiddlewareTests : IClassFixture<Componen
 
     public RequestObservabilityMiddlewareTests(ComponentTestWebApplicationFactory factory)
     {
-        _client = factory.CreateClient();
+        // factory.Server.CreateClient() (não factory.CreateClient()) —
+        // este arquivo testa exatamente presença/ausência dos headers de
+        // observabilidade, então precisa de controle total sobre eles;
+        // factory.CreateClient() aplicaria por padrão os 3 obrigatórios
+        // via ComponentTestWebApplicationFactory.ConfigureClient (FEAT-39).
+        _client = factory.Server.CreateClient();
     }
 
     [Fact]
