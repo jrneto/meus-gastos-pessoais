@@ -273,6 +273,28 @@ real:
 - `backend/infra/CLAUDE.md` / `backend/docs/data-model.md` — sem
   mudança (nenhum recurso AWS, nenhum item de DynamoDB envolvido).
 
+## Nota adicionada durante a implementação
+
+Ao rodar a suíte completa de componente pela primeira vez com a
+validação nova, **188 dos 235 testes falharam** — não só os da própria
+FEAT-39. Motivo: qualquer teste de componente que chama uma rota não
+isenta sem enviar os 3 headers (praticamente toda a suíte de
+Auth/Transactions/Categories/Members/Summary/Reports) passava a ser
+rejeitado com 400 antes mesmo de chegar no `TestAuthHandler`/handler
+real, quebrando a asserção original de cada teste. Não estava previsto
+em `plan.md`/`tasks.md` (a task de ajuste de suíte só cobria o próprio
+arquivo de teste da FEAT-38). Resolvido, com aprovação do usuário,
+centralizando os 3 headers como padrão em
+`ComponentTestWebApplicationFactory.ConfigureClient` (hook `protected
+virtual` do `WebApplicationFactory<T>`, o mesmo que a classe base já
+usa para setar `BaseAddress`) — cobre todo `HttpClient` criado via
+`factory.CreateClient()` sem precisar editar cada teste existente.
+`RequestObservabilityMiddlewareTests` (que testa exatamente
+presença/ausência desses headers) passou a usar
+`factory.Server.CreateClient()` em vez de `factory.CreateClient()`,
+pulando esse hook de propósito para manter controle total sobre os
+headers em cada caso.
+
 ## Pontos confirmados com o usuário durante este `/plan`
 
 1. **Assimetria de log no caminho de rejeição** (item 5 das decisões
