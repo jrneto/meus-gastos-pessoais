@@ -8,6 +8,7 @@ using GastosApp.Infrastructure.Configuration;
 using GastosApp.Infrastructure.DependencyInjection;
 using Scalar.AspNetCore;
 using Serilog;
+using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,7 +34,22 @@ if (!builder.Environment.IsEnvironment("Testing"))
 // log passa a ser uma linha JSON por evento, parseável por CloudWatch
 // Logs Insights sem configuração adicional — aplicado igual em todo
 // ambiente, inclusive dev local (decisão confirmada no plan.md).
+//
+// MinimumLevel.Override: espelha manualmente a seção "Logging:LogLevel"
+// de appsettings.json — esse Log.Logger é montado direto (sem
+// .ReadFrom.Configuration(), que depende de reflection e quebra
+// silenciosamente sob Native AOT, mesmo motivo de CognitoOptions/
+// DynamoDbOptions em InfrastructureServiceCollectionExtensions.cs), então
+// appsettings.json NUNCA é lido pelo Serilog — mudar o nível por lá não
+// tem efeito nenhum; qualquer ajuste de nível precisa vir aqui. Sem isso,
+// o hosting interno do ASP.NET Core ("Request starting"/"Request
+// finished", categoria Microsoft.AspNetCore.Hosting.Diagnostics) loga em
+// Information a cada requisição — ruído duplicado com a linha própria
+// "Requisição concluída" do RequestObservabilityMiddleware, sem nenhum
+// dado de negócio a mais.
 Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
     .WriteTo.Console(new Serilog.Formatting.Json.JsonFormatter())
     .CreateLogger();
