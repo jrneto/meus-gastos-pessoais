@@ -26,6 +26,16 @@ public sealed class RequestObservabilityMiddleware
         IOptions<LoggingOptions> loggingOptions,
         ILogger<RequestObservabilityMiddleware> logger)
     {
+        // Preflight de CORS: sempre 204, sem corpo, sem userId — nenhum
+        // dado de negócio a mais. Logar cada um só infla custo de
+        // armazenamento no CloudWatch à toa; UseCors (adiante no pipeline)
+        // resolve o preflight sozinho, sem passar pelos endpoints reais.
+        if (HttpMethods.IsOptions(context.Request.Method))
+        {
+            await _next(context);
+            return;
+        }
+
         var traceId = Truncate(context.Request.Headers[ObservabilityHeaderNames.TraceId].ToString())
             ?? Guid.NewGuid().ToString();
         var sessionId = Truncate(context.Request.Headers[ObservabilityHeaderNames.SessionId].ToString());

@@ -59,4 +59,20 @@ public sealed class RequestObservabilityMiddlewareTests : IClassFixture<Componen
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task Preflight_RequisicaoOptions_NaoPassaPelaObservabilidadeENaoRecebeTraceId()
+    {
+        // Preflight de CORS é sempre 204 sem valor de negócio — o
+        // middleware dá early-return antes de setar o header trace-id
+        // ou gerar o log "Requisição concluída" (evita custo de
+        // armazenamento à toa no CloudWatch com uma linha por preflight).
+        using var request = new HttpRequestMessage(HttpMethod.Options, "/health");
+        request.Headers.Add("Origin", "http://localhost:5173");
+        request.Headers.Add("Access-Control-Request-Method", "GET");
+
+        var response = await _client.SendAsync(request);
+
+        response.Headers.Contains(ObservabilityHeaderNames.TraceId).Should().BeFalse();
+    }
 }
