@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Security.Claims;
 using System.Text;
 using GastosApp.Api.Common;
+using GastosApp.Application.Common.Results;
 using GastosApp.Infrastructure.Configuration;
 using Microsoft.Extensions.Options;
 using Serilog.Context;
@@ -36,16 +37,35 @@ public sealed class RequestObservabilityMiddleware
             return;
         }
 
-        var traceId = Truncate(context.Request.Headers[ObservabilityHeaderNames.TraceId].ToString())
-            ?? Guid.NewGuid().ToString();
+        var rawTraceId = Truncate(context.Request.Headers[ObservabilityHeaderNames.TraceId].ToString());
         var sessionId = Truncate(context.Request.Headers[ObservabilityHeaderNames.SessionId].ToString());
         var clientPlatform = Truncate(context.Request.Headers[ObservabilityHeaderNames.ClientPlatform].ToString());
         var clientVersion = Truncate(context.Request.Headers[ObservabilityHeaderNames.ClientVersion].ToString());
+
+        // Fallback de geração (FEAT-38) preservado só para o valor
+        // ecoado na resposta/log (FEAT-39) — nunca "resgata" a
+        // requisição da validação abaixo: um trace-id ausente conta como
+        // ausente igual aos outros dois, numa rota não isenta.
+        var traceId = rawTraceId ?? Guid.NewGuid().ToString();
 
         // Setado ANTES de next() — seguro mesmo se algo mais adiante
         // lançar: Response.Headers pode ser escrito a qualquer momento
         // antes do corpo começar a ser gravado (não acontece ainda aqui).
         context.Response.Headers[ObservabilityHeaderNames.TraceId] = traceId;
+
+        // FEAT-39: trace-id/client-platform/client-version passam a ser
+        // obrigatórios em toda rota não isenta — GET /health continua
+        // aceitando qualquer combinação (checagem manual de versão via
+        // curl simples, ver ObservabilityHeaderValidator).
+        if (!ObservabilityHeaderValidator.IsExemptPath(context.Request.Path))
+        {
+            var missingHeaders = ObservabilityHeaderValidator.GetMissingHeaders(rawTraceId, clientPlatform, clientVersion);
+            if (missingHeaders.Count > 0)
+            {
+                await RejectMissingHeadersAsync(context, logger, traceId, sessionId, clientPlatform, clientVersion, missingHeaders);
+                return; // next() nunca é chamado — nenhum Command/Query roda
+            }
+        }
 
         var requestBody = await CaptureRequestBodyIfJsonAsync(context.Request);
 
@@ -95,6 +115,53 @@ public sealed class RequestObservabilityMiddleware
 
             logger.LogInformation("Requisição concluída: {@RequestLog}", entry);
         }
+    }
+
+    // FEAT-39: request sem 1+ dos 3 headers obrigatórios (trace-id,
+    // client-platform, client-version) numa rota não isenta — rejeitada
+    // antes de next(), nenhum Command/Query chega a rodar. Reaproveita
+    // Result/ResultHttpExtensions (mesma fábrica de ProblemDetails usada
+    // em qualquer outro 400 do projeto) em vez de montar um Results.Json
+    // manual aqui.
+    private static async Task RejectMissingHeadersAsync(
+        HttpContext context,
+        ILogger logger,
+        string traceId,
+        string? sessionId,
+        string? clientPlatform,
+        string? clientVersion,
+        IReadOnlyList<string> missingHeaders)
+    {
+        var stopwatch = Stopwatch.StartNew();
+
+        var requestBody = await CaptureRequestBodyIfJsonAsync(context.Request);
+
+        var error = ObservabilityHeaderValidator.BuildMissingHeadersError(missingHeaders);
+        var httpResult = Result.Failure(error).ToHttpResult(() => Results.Ok());
+        await httpResult.ExecuteAsync(context);
+
+        stopwatch.Stop();
+
+        // Preserva o invariante da FEAT-38 de que toda requisição gera
+        // uma linha de log, mesmo esta sendo rejeitada antes de next().
+        // responseBody: null de propósito — reconstruí-lo exigiria o
+        // mesmo buffer de Response.Body que este atalho existe pra
+        // evitar; o corpo do erro já é 100% previsível a partir do
+        // próprio detail do ProblemDetails (ver plan.md, decisão técnica 5).
+        var entry = RequestLogEntryBuilder.Build(
+            context.Request.Method,
+            context.Request.Path,
+            context.Response.StatusCode,
+            stopwatch.ElapsedMilliseconds,
+            traceId, sessionId, clientPlatform, clientVersion,
+            userId: null, // UseAuthentication() ainda não rodou nesta rejeição
+            fullPayloadLoggingEnabled: false, // irrelevante: 400 já força log de payload
+            requestContentType: context.Request.ContentType,
+            requestBody: requestBody,
+            responseContentType: context.Response.ContentType,
+            responseBody: null);
+
+        logger.LogInformation("Requisição concluída: {@RequestLog}", entry);
     }
 
     private static string? Truncate(string? value)
