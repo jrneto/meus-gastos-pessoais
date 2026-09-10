@@ -36,11 +36,18 @@ public sealed class LambdaRieTransport : IApiTransport, IDisposable
         string path,
         object? body = null,
         string? bearerToken = null,
+        IReadOnlyCollection<string>? omitObservabilityHeaders = null,
         CancellationToken cancellationToken = default)
     {
         var headers = new Dictionary<string, string> { ["content-type"] = "application/json" };
         if (!string.IsNullOrEmpty(bearerToken))
             headers["authorization"] = $"Bearer {bearerToken}";
+
+        foreach (var (name, value) in ObservabilityHeaderDefaults.Values)
+        {
+            if (omitObservabilityHeaders?.Contains(name, StringComparer.OrdinalIgnoreCase) != true)
+                headers[name] = value;
+        }
 
         string? requestBody = body is null ? null : JsonSerializer.Serialize(body, JsonDefaults.Options);
 

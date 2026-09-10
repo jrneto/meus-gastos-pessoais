@@ -41,6 +41,7 @@ public sealed class DirectHttpTransport : IApiTransport, IDisposable
         string path,
         object? body = null,
         string? bearerToken = null,
+        IReadOnlyCollection<string>? omitObservabilityHeaders = null,
         CancellationToken cancellationToken = default)
     {
         string? json = body is null ? null : JsonSerializer.Serialize(body, JsonDefaults.Options);
@@ -55,6 +56,12 @@ public sealed class DirectHttpTransport : IApiTransport, IDisposable
 
             if (!string.IsNullOrEmpty(bearerToken))
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+
+            foreach (var (name, value) in ObservabilityHeaderDefaults.Values)
+            {
+                if (omitObservabilityHeaders?.Contains(name, StringComparer.OrdinalIgnoreCase) != true)
+                    request.Headers.TryAddWithoutValidation(name, value);
+            }
 
             using var response = await _client.SendAsync(request, cancellationToken);
 
