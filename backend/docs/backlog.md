@@ -544,14 +544,32 @@ monorepo.
   ganhar uma versão nova que cubra esses 3 casos, ou se outra feature
   de auth precisar de mais paridade do emulador.
 
-- [ ] **DÉBITO — Headers de observabilidade continuam opcionais**
+- [x] **DÉBITO — Headers de observabilidade continuam opcionais**
   (decisão do backlog original da FEAT-38, `backend/specs/
-  FEAT-38-observabilidade-headers-api/spec.md`): `trace-id`,
-  `session-id`, `client-platform` e `client-version` não são exigidos
-  hoje, pra não quebrar o frontend atual (que ainda não os envia).
-  Tornar os 4 obrigatórios (400 se ausentes) fica pendente até o
-  frontend (web, e futuros mobile/admin) passar a enviá-los em toda
-  chamada — reavaliar quando isso acontecer.
+  FEAT-38-observabilidade-headers-api/spec.md`) *(resolvido parcialmente
+  pela FEAT-39, ver `backend/specs/
+  FEAT-39-headers-observabilidade-obrigatorios/`)*: `trace-id`,
+  `client-platform` e `client-version` passaram a ser obrigatórios (400
+  se ausentes) em toda rota não isenta, já que o frontend web já os
+  envia em toda chamada desde a FEAT-38
+  (`frontend/app/src/lib/httpClient.ts`). `session-id` **não** entrou no
+  escopo — ver débito específico logo abaixo.
+
+- [ ] **DÉBITO — `session-id` continua opcional indefinidamente**
+  (percebido no `/specify` da FEAT-39, `backend/specs/
+  FEAT-39-headers-observabilidade-obrigatorios/spec.md`): diferente de
+  `trace-id`/`client-platform`/`client-version` (obrigatórios desde a
+  FEAT-39), `session-id` não pode virar obrigatório sem quebrar fluxos
+  legítimos — é gerado no frontend só depois de um login explícito bem-
+  sucedido (`startNewSession`, `frontend/app/src/lib/sessionId.ts`), então
+  `POST /auth/login` e o bootstrap silencioso via `POST /auth/refresh`
+  (recarregar a página, cookie httpOnly) são sempre chamados sem ele;
+  além disso, é tratado como best-effort no frontend — pode voltar a
+  faltar mesmo já autenticado se `sessionStorage` não estiver disponível
+  (ex.: alguns modos de navegação privada). Sem plano concreto de
+  resolução no momento — provavelmente nunca vira obrigatório do jeito
+  que está, exigiria repensar o próprio mecanismo de geração no client
+  antes.
 
 - [ ] **DÉBITO — Log de payload completo só tem toggle global, não por
   sessão específica** (decisão do `/specify` da FEAT-38,
