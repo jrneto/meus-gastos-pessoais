@@ -295,6 +295,16 @@ presença/ausência desses headers) passou a usar
 pulando esse hook de propósito para manter controle total sobre os
 headers em cada caso.
 
+Mesma classe de problema apareceu na suíte integrada:
+`IApiTransport.SendAsync` (`DirectHttpTransport`/`LambdaRieTransport`)
+não enviava nenhum header customizado — ~86 chamadas em 8 arquivos
+(`Auth`/`Categories`/`Members`/`Reports`/`Summary`/`Export`/
+`Transactions`FlowTests) seriam rejeitadas com 400. Resolvido, também
+com aprovação do usuário, adicionando os 3 headers por padrão nas duas
+implementações de `IApiTransport`, com um novo parâmetro opcional
+`omitObservabilityHeaders` em `SendAsync` só para o teste que precisa
+simular a ausência de um header específico (`ObservabilityFlowTests`).
+
 ## Pontos confirmados com o usuário durante este `/plan`
 
 1. **Assimetria de log no caminho de rejeição** (item 5 das decisões
