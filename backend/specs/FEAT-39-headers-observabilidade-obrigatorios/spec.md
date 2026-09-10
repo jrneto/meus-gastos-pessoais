@@ -160,29 +160,73 @@ feature.
 
 ## Critérios de aceite
 
-- [ ] Toda rota da API, exceto `GET /health`, responde 400 quando
+- [x] Toda rota da API, exceto `GET /health`, responde 400 quando
       `trace-id`, `client-platform` ou `client-version` estiver ausente
       (US2, US3)
-- [ ] O `detail` da resposta 400 identifica todos os headers
+- [x] O `detail` da resposta 400 identifica todos os headers
       obrigatórios ausentes na requisição, não só o primeiro (US2, US3)
-- [ ] `GET /health` continua funcionando sem exigir nenhum dos quatro
+- [x] `GET /health` continua funcionando sem exigir nenhum dos quatro
       headers (US4)
-- [ ] `session-id` continua não sendo exigido em nenhuma rota (US5)
-- [ ] Toda resposta, inclusive o 400 de header ausente, continua
+- [x] `session-id` continua não sendo exigido em nenhuma rota (US5)
+- [x] Toda resposta, inclusive o 400 de header ausente, continua
       trazendo o header `trace-id` — ecoado do request quando presente,
       gerado pela API quando ausente (US2, US3)
-- [ ] Suíte de testes existente ajustada para continuar passando com os
+- [x] Suíte de testes existente ajustada para continuar passando com os
       headers agora obrigatórios (unitário, componente, integrado)
-- [ ] `backend/docs/openapi.json` regenerado, caso a mudança seja
+- [x] `backend/docs/openapi.json` regenerado, caso a mudança seja
       representável no contrato OpenAPI gerado automaticamente pelo
       projeto (mesma ressalva já registrada pela FEAT-38: headers de
       middleware cross-cutting podem não ser representados pelo
       gerador)
-- [ ] Débito técnico atualizado em `backend/docs/backlog.md`: item
+- [x] Débito técnico atualizado em `backend/docs/backlog.md`: item
       atual sobre headers opcionais ("Headers de observabilidade
       continuam opcionais") refinado para refletir que só `session-id`
       permanece opcional, e por quê (login/refresh sem sessão ainda,
       modo de navegação privada)
+
+## Status
+
+Implementação concluída (todas as 19 tasks de `tasks.md`). Suíte
+completa: 551 unit + 235 componente + 36 integrado (todos passando,
+inclusive contra o binário Native AOT via `run-local.sh`).
+
+**Desvios relevantes do plano original, encontrados durante a
+implementação** (nenhum previsto em `plan.md`/`tasks.md`, todos
+confirmados com o usuário antes de aplicar):
+
+1. **Regressão em cascata na suíte de componente** — a primeira rodada
+   da suíte completa acusou 188 de 235 testes falhando: qualquer teste
+   de componente de qualquer módulo (Auth/Transactions/Categories/
+   Members/Summary/Reports) que chamasse uma rota não isenta sem os 3
+   headers passava a receber 400 antes de chegar no `TestAuthHandler`.
+   Resolvido centralizando os headers como padrão em
+   `ComponentTestWebApplicationFactory.ConfigureClient` (hook `protected
+   virtual` do próprio `WebApplicationFactory<T>`) — zero edição nos
+   testes já existentes.
+   `RequestObservabilityMiddlewareTests` (que testa exatamente
+   presença/ausência desses headers) passou a usar
+   `factory.Server.CreateClient()` em vez de `factory.CreateClient()`,
+   pulando esse hook de propósito.
+2. **Mesmo problema na suíte integrada** — `IApiTransport.SendAsync`
+   (`DirectHttpTransport`/`LambdaRieTransport`) não enviava nenhum
+   header customizado; ~86 chamadas em 8 arquivos de teste ficariam
+   quebradas. Resolvido do mesmo jeito (headers padrão nos dois
+   transportes), com um novo parâmetro opcional
+   `omitObservabilityHeaders` em `SendAsync` só para o teste que precisa
+   simular a ausência de um header específico.
+3. **`export-openapi.sh` também quebrava** — o próprio `curl` do script
+   pra `/openapi/v1.json` (não é `/health`) recebia 400 em vez do
+   contrato, chegando a corromper `openapi.json` com o corpo do erro
+   (revertido antes de commitar). Fix trivial: `curl -H` com os 3
+   headers. `openapi.json` regenerado depois confirmou vir **idêntico**
+   ao anterior — a validação de middleware cross-cutting não é
+   representada pelo gerador de OpenAPI do projeto, mesma ressalva já
+   registrada pela FEAT-38.
+
+Nenhum dos três desvios mudou o comportamento da API em si — todos
+foram ajustes de infraestrutura de teste/tooling, necessários porque a
+mudança de contrato afeta qualquer chamador que não envie os headers
+(inclusive os da própria suíte do projeto).
 
 ## Fora do escopo
 
