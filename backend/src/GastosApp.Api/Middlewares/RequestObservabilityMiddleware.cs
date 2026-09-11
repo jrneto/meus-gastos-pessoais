@@ -92,7 +92,18 @@ public sealed class RequestObservabilityMiddleware
             stopwatch.Stop();
 
             var responseBytes = capturedResponseBody.ToArray();
-            await originalResponseBody.WriteAsync(responseBytes);
+            // Kestrel proíbe qualquer WriteAsync (mesmo array vazio) em
+            // respostas sem corpo (204, 304, HEAD) — lança
+            // InvalidOperationException("Writing to the response body is
+            // invalid for responses with status code 204."), corrompendo
+            // a conexão no meio (bug real, achado depurando localmente
+            // um DELETE /categories — endpoint nunca escreve nada em
+            // capturedResponseBody nesse caso, então responseBytes já
+            // vem vazio; só pular o write quando não há nada a copiar).
+            if (responseBytes.Length > 0)
+            {
+                await originalResponseBody.WriteAsync(responseBytes);
+            }
             context.Response.Body = originalResponseBody;
 
             var entry = RequestLogEntryBuilder.Build(
