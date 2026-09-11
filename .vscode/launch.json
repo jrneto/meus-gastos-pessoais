@@ -2,15 +2,25 @@
   "version": "0.2.0",
   "configurations": [
     // Sobe a Api via Kestrel (JIT normal, breakpoint funciona igual a
-    // qualquer projeto ASP.NET Core) — binda em http://localhost:5049
-    // (e https://localhost:7236), lendo o perfil de
-    // Properties/launchSettings.json (confirmado ao vivo via VS Code —
-    // um teste anterior via `dotnet <dll>` puro no terminal, fora do VS
-    // Code, tinha dado 5000, mas o VS Code lê launchSettings.json e usa
-    // 5049 de verdade; corrigido depois de reproduzir o problema com o
-    // usuário). Pré-requisito: LocalStack + cognito-local no ar
+    // qualquer projeto ASP.NET Core) — binda em http://localhost:5049,
+    // lendo o perfil de Properties/launchSettings.json (confirmado ao
+    // vivo via VS Code — um teste anterior via `dotnet <dll>` puro no
+    // terminal, fora do VS Code, tinha dado 5000, mas o VS Code lê
+    // launchSettings.json e usa 5049 de verdade; corrigido depois de
+    // reproduzir o problema com o usuário). Pré-requisito: LocalStack +
+    // cognito-local no ar
     // (`docker compose -f backend/infra/docker-compose.yml up -d`) —
     // appsettings.Development.json já aponta pra eles.
+    //
+    // launchSettingsProfile: "http" fixado explicitamente — sem isso, a
+    // extensão C# resolvia sozinha (sem `dotnet run --launch-profile`
+    // de por meio) e acabava caindo no profile "https", que expõe
+    // https://localhost:7236 além da 5049. Com as duas portas ativas,
+    // `app.UseHttpsRedirection()` (Program.cs, incondicional) redireciona
+    // 307 qualquer chamada http→https, e o navegador recusa seguir
+    // redirect em preflight de CORS — aparecia como "erro de CORS" no
+    // frontend local sem nenhuma mudança real de código (achado
+    // depurando localmente, 2026-09-11).
     {
       "name": "GastosApp.Api",
       "type": "coreclr",
@@ -22,6 +32,7 @@
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
+      "launchSettingsProfile": "http",
       "console": "internalConsole",
       "stopAtEntry": false
     },
