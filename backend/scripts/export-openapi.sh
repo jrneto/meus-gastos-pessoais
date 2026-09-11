@@ -30,15 +30,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# trace-id/client-platform/client-version são obrigatórios desde a
+# FEAT-39 em toda rota não isenta (/openapi/v1.json não é /health) — sem
+# eles, a própria chamada deste script recebe 400 em vez do contrato.
+OBSERVABILITY_HEADERS=(-H "trace-id: export-openapi-script" -H "client-platform: script" -H "client-version: 0.0.0")
+
 echo "Aguardando a API subir em $URL..."
 for i in $(seq 1 30); do
-  if curl -sf -o /dev/null "$URL"; then
+  if curl -sf -o /dev/null "${OBSERVABILITY_HEADERS[@]}" "$URL"; then
     break
   fi
   sleep 1
 done
 
-STATUS=$(curl -s -o "$OUT" -w "%{http_code}" "$URL")
+STATUS=$(curl -s -o "$OUT" -w "%{http_code}" "${OBSERVABILITY_HEADERS[@]}" "$URL")
 if [ "$STATUS" != "200" ]; then
   echo "Falha ao exportar o contrato: HTTP $STATUS. Log da API em /tmp/export-openapi.log" >&2
   exit 1

@@ -24,4 +24,25 @@ public sealed class ObservabilityFlowTests
         response.Headers.Should().ContainKey("trace-id");
         response.Headers["trace-id"].Should().NotBeNullOrWhiteSpace();
     }
+
+    // FEAT-39: trace-id/client-platform/client-version passam a ser
+    // obrigatórios em toda rota não isenta — validado contra o binário
+    // Native AOT real (risco: Result.Failure(...).ToHttpResult(...)
+    // .ExecuteAsync(...) fora do fluxo normal de endpoint). /transactions
+    // é só uma rota não isenta qualquer, não é o alvo do teste.
+    [Fact]
+    public async Task RotaNaoIsenta_SemClientVersion_Retorna400()
+    {
+        using var transport = ApiTransportFactory.Create();
+
+        var response = await transport.SendAsync(
+            HttpMethod.Get, "/transactions", omitObservabilityHeaders: ["client-version"]);
+
+        response.StatusCode.Should().Be(400);
+        var problem = response.Deserialize<ProblemDetailsResponse>();
+        problem.Type.Should().Be("https://gastosapp.dev/errors/missing-observability-headers");
+        problem.Detail.Should().Contain("client-version");
+    }
+
+    private sealed record ProblemDetailsResponse(string Type, string Detail);
 }
