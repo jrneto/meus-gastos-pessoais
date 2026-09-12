@@ -181,7 +181,7 @@ vira `spec.md` própria via `/specify`.
 
 ## Infraestrutura (2026-09-12)
 
-- [ ] **FEAT-34 — Extração da infra Terraform do frontend para o
+- [x] **FEAT-34 — Extração da infra Terraform do frontend para o
   repositório `infra-jrnexpenses`** *(spec em
   `frontend/specs/FEAT-34-extracao-infra-repo-apartado/`; feature irmã
   da FEAT-40 do backend)*: separa plataforma (CloudFront + OAC, ACM,
@@ -199,6 +199,10 @@ vira `spec.md` própria via `/specify`.
   registrados em `backend/docs/backlog.md`.
   Depende de: nenhuma (o repositório `infra-jrnexpenses` é criado pelo
   usuário na etapa 0).
+  Concluída em 2026-09-12 — todas as etapas do lado frontend (0-4)
+  entregues; ver seção "Status" em `spec.md`. Pendente só o que é
+  compartilhado com a FEAT-40 (docs raiz, PR `develop → main` do
+  `infra-jrnexpenses`).
 
 ## Débitos técnicos e melhorias futuras
 
