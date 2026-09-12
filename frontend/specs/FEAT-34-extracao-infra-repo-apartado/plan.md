@@ -11,8 +11,8 @@ Não há camada de aplicação envolvida (`frontend/app/` não é tocado). As
 |---|---|---|
 | `frontend/infra/terraform/cicd/` | **movida como arquivos** → `infra-jrnexpenses/terraform/cicd/frontend/` | continua fora de state (guardrail IAM); o objeto `gastosapp-frontend/cicd/terraform.tfstate` (vazio) fica órfão |
 | `frontend/infra/terraform/dns/` | **movida com state** → `infra-jrnexpenses/terraform/dns/` | `gastosapp-frontend/dns/…` → `infra-jrnexpenses/dns/terraform.tfstate` |
-| `frontend/infra/terraform/environments/hom/` | **dividida**: OAC + distribuição + ACM + WAF → `infra-jrnexpenses/terraform/frontend/hom/`; bucket + PAB + SSE + policy **ficam** | monorepo mantém `gastosapp-frontend/hom/…`; infra ganha `infra-jrnexpenses/frontend/hom/terraform.tfstate` |
-| `frontend/infra/terraform/environments/prod/` | idem → `infra-jrnexpenses/terraform/frontend/prod/` | monorepo mantém `gastosapp-frontend/prod/…`; infra ganha `infra-jrnexpenses/frontend/prod/terraform.tfstate` |
+| `frontend/infra/terraform/environments/hom/` | **dividida**: OAC + distribuição + ACM + WAF → `infra-jrnexpenses/terraform/environments/hom/`; bucket + PAB + SSE + policy **ficam** | monorepo mantém `gastosapp-frontend/hom/…`; infra ganha `infra-jrnexpenses/hom/terraform.tfstate` (**um state por ambiente** — a FEAT-40 move os recursos do backend de hom para este mesmo state) |
+| `frontend/infra/terraform/environments/prod/` | idem → `infra-jrnexpenses/terraform/environments/prod/` | monorepo mantém `gastosapp-frontend/prod/…`; infra ganha `infra-jrnexpenses/prod/terraform.tfstate` (idem) |
 
 Bucket de state: o mesmo de sempre (`gastosapp-terraform-state-648443184523`,
 `us-east-1`, `use_lockfile = true`), init parcial via `-backend-config`
@@ -34,17 +34,24 @@ infra-jrnexpenses/
     ├── cicd/
     │   └── frontend/             # oidc.tf, iam-role.tf, iam-policy.tf, variables.tf, versions.tf, outputs.tf (referência)
     ├── dns/                      # route53.tf, remote_state.tf, variables.tf, versions.tf
-    └── frontend/
-        ├── hom/                  # versions.tf, variables.tf, data.tf, acm.tf, cloudfront.tf, waf.tf, outputs.tf
+    └── environments/
+        ├── hom/                  # versions.tf, variables.tf, data.tf, acm.tf, cloudfront.tf, waf.tf, outputs.tf (+ .tf do backend, FEAT-40)
         └── prod/                 # idem
 ```
 
-`terraform/cicd/backend/`, `terraform/bootstrap/` e `terraform/backend/{hom,prod}/`
-são escopo da FEAT-40 — a estrutura já nasce com espaço para eles.
+**Um state por ambiente**: `terraform/environments/{hom,prod}/` é a
+plataforma inteira do ambiente (frontend + backend). Esta feature
+popula só a parte do frontend; `terraform/cicd/backend/`,
+`terraform/bootstrap/` e os `.tf` do backend dentro de
+`environments/{hom,prod}/` são escopo da FEAT-40. Para não colidir na
+fusão, os arquivos do frontend usam prefixo no nome (`frontend-acm.tf`,
+`frontend-cloudfront.tf`, `frontend-waf.tf`, `frontend-data.tf`,
+`frontend-outputs.tf`); `versions.tf` e `variables.tf` são
+compartilhados (a FEAT-40 só acrescenta variáveis).
 
 ## 2. Contratos técnicos entre states
 
-### 2.1 Outputs que a infra expõe (por ambiente, `terraform/frontend/{hom,prod}/outputs.tf`)
+### 2.1 Outputs que a infra expõe (por ambiente, `terraform/environments/{hom,prod}/frontend-outputs.tf`)
 
 | Output | Valor | Consumidor |
 |---|---|---|
@@ -62,7 +69,7 @@ data "terraform_remote_state" "infra" {
   backend = "s3"
   config = {
     bucket = var.state_bucket        # gastosapp-terraform-state-648443184523
-    key    = var.infra_state_key     # infra-jrnexpenses/frontend/<env>/terraform.tfstate
+    key    = var.infra_state_key     # infra-jrnexpenses/<env>/terraform.tfstate
     region = var.aws_region
   }
 }
@@ -103,8 +110,8 @@ repontados **por etapa**:
 | Etapa | `hom_state_key` | `prod_state_key` |
 |---|---|---|
 | 2 (move `dns/`) | `gastosapp-frontend/hom/terraform.tfstate` (monorepo, inalterado) | `gastosapp-frontend/prod/terraform.tfstate` |
-| 3 (move hom) | `infra-jrnexpenses/frontend/hom/terraform.tfstate` | inalterado |
-| 4 (move prod) | inalterado | `infra-jrnexpenses/frontend/prod/terraform.tfstate` |
+| 3 (move hom) | `infra-jrnexpenses/hom/terraform.tfstate` | inalterado |
+| 4 (move prod) | inalterado | `infra-jrnexpenses/prod/terraform.tfstate` |
 
 `route53.tf` e `remote_state.tf` não mudam (mesmos nomes de output).
 
@@ -200,7 +207,7 @@ Usuário cria `infra-jrnexpenses` no GitHub (privado, branch default
 `scripts/migration/.gitkeep`, `terraform/.gitkeep`. Sem Terraform
 executado. `CLAUDE.md` do repo novo cobre: apply manual/local com
 aprovação por execução; bucket/keys de state e ordem de dependência
-(`frontend/{hom,prod}` → `dns/`; monorepo → `frontend/{hom,prod}`);
+(`environments/{hom,prod}` → `dns/`; monorepo → `environments/{hom,prod}`);
 guardrail IAM; plano Free do CloudFront manual; princípio "infra nunca
 lê state do monorepo".
 
@@ -226,11 +233,13 @@ deixar ponteiro. Nenhum comando Terraform.
 5. Commit infra + PR monorepo (só remoção + README/CLAUDE.md de infra).
 
 ### Etapa 3 — frontend hom
-1. Infra: `terraform/frontend/hom/` — `versions.tf` (key nova),
-   `variables.tf` (`aws_region`, `hom_domain_name`, `frontend_bucket_name`),
-   `data.tf` (2.3), `acm.tf`/`waf.tf` copiados sem alteração,
-   `cloudfront.tf` com a única mudança da linha `origin.domain_name`,
-   `outputs.tf` (2.1). `init`.
+1. Infra: `terraform/environments/hom/` — `versions.tf` (key
+   `infra-jrnexpenses/hom/terraform.tfstate`), `variables.tf`
+   (`aws_region`, `hom_domain_name`, `frontend_bucket_name`),
+   `frontend-data.tf` (2.3), `frontend-acm.tf`/`frontend-waf.tf`
+   copiados sem alteração de conteúdo, `frontend-cloudfront.tf` com a
+   única mudança da linha `origin.domain_name`, `frontend-outputs.tf`
+   (2.1). `init`.
 2. Mecanismo §3 com `wave-3-frontend-hom.sh` (4 endereços) → push infra
    → `apply` de outputs → `plan` = No changes.
 3. Monorepo `environments/hom/`: apagar `acm.tf`, `cloudfront.tf`,
@@ -263,6 +272,21 @@ a terminar) — esta feature só deixa nota no PR.
 
 ## 5. Decisões técnicas
 
+- **Um state por ambiente (frontend + backend), não por contexto** —
+  decisão do usuário em 2026-09-12. Racional: "a plataforma de hom" é
+  uma unidade operacional; o state resultante não tem IAM (as roles
+  ficam no monorepo), então não há motivo de guardrail para separar; a
+  migração não muda (cada etapa continua movendo um state de origem —
+  as etapas 5/6 da FEAT-40 só fazem `state pull` de um destino já
+  populado em vez de vazio); e Cognito/records de `api*` passam a poder
+  referenciar recursos do frontend no mesmo state no futuro. Custo:
+  raio de impacto maior por `apply` (um `plan` de CORS em prod também
+  faz refresh de CloudFront/WAF) — aceitável com apply manual e revisão
+  linha a linha. Colisão de nomes verificada em 2026-09-12: nenhuma
+  entre os recursos/outputs que saem dos dois contextos; só
+  `variable "aws_region"` é comum (declarada uma vez). Continuam
+  separados: `dns/` (persistente), `cicd/{frontend,backend}`
+  (referência) e `bootstrap/` (state local).
 - **Nomes lógicos preservados** (`aws_acm_certificate.hom` × `.frontend`,
   `aws_wafv2_web_acl.hom` × `.frontend`): `state mv addr → addr` mantém o
   diff de revisão trivial. Unificar nomes entre hom/prod é refactor
@@ -288,32 +312,28 @@ a terminar) — esta feature só deixa nota no PR.
 
 **Nenhum recurso AWS é criado, alterado ou destruído.** Únicos efeitos
 na conta: 3 objetos novos no bucket de state (`infra-jrnexpenses/dns/`,
-`…/frontend/hom/`, `…/frontend/prod/` + seus `.tflock` transitórios), 3
+`…/hom/`, `…/prod/` + seus `.tflock` transitórios), 3
 objetos existentes reescritos com menos recursos, e chamadas de leitura
 (`plan`, `data "aws_s3_bucket"`). Custo: zero. IAM: nada. Workflows e
 GitHub Environments: intocados.
 
 Mapeamento de erros de negócio: não se aplica.
 
-## 7. Pontos a confirmar antes do `/tasks`
+## 7. Decisões confirmadas com o usuário (2026-09-12)
 
-1. **`data "aws_s3_bucket"` × string literal** para a origem da
-   distribuição (2.3) — a spec fala em "domínio construído a partir do
-   nome"; o data source cumpre a invariante (não lê state do monorepo)
-   com menos risco. Confirmar.
-2. **Validação do deploy de hom na etapa 3**: `frontend-deploy-hom.yml`
-   só dispara em push em `develop` tocando `frontend/app/**`. Opções:
-   (a) aguardar o próximo deploy real; (b) fazer um push trivial em
-   `frontend/app/` (ex.: comentário) só para exercitar o pipeline;
-   (c) verificar no `/tasks` se o workflow aceita `workflow_dispatch`.
-   Recomendo (c) e, se não aceitar, (a).
-3. **State órfão `gastosapp-frontend/dns/terraform.tfstate`** (e o de
-   `cicd/`): deixar (versionado, custo ~0) ou apagar do S3 ao final da
-   FEAT-40? Recomendo deixar até a FEAT-40 fechar e apagar os dois de
-   uma vez, com aprovação.
-4. **Layout `terraform/cicd/frontend/` + `terraform/cicd/backend/`**
-   (dois configs de referência lado a lado) em vez de um `cicd/` único —
-   os dois declaram o OIDC provider de jeitos diferentes (resource ×
-   locals); fundir é trabalho fora do escopo. Confirmar.
-5. **Repositório privado, branch `main`, sem CI** no `infra-jrnexpenses`
-   (CI de `fmt`/`validate` já está no backlog como melhoria). Confirmar.
+1. **Origem da distribuição via `data "aws_s3_bucket"`** por nome (2.3),
+   não string literal.
+2. **Validação do deploy de hom (etapa 3)**: no `/tasks`, verificar se
+   `frontend-deploy-hom.yml` aceita `workflow_dispatch`; se sim,
+   disparar manualmente após a etapa; se não, aguardar o próximo push
+   real em `frontend/app/**`. Smoke manual no site é feito de qualquer
+   jeito.
+3. **States órfãos** (`gastosapp-frontend/dns/…` e `…/cicd/…`): deixar no
+   bucket; limpeza única dos órfãos dos dois contextos ao final da
+   FEAT-40, com aprovação.
+4. **`terraform/cicd/frontend/` + `terraform/cicd/backend/`** separados
+   (referência, fora de state); fusão fora do escopo.
+5. **Repositório privado, branch `main`, sem CI**; `.terraform.lock.hcl`
+   continua gitignored (prática atual mantida).
+6. **Um state por ambiente** (`terraform/environments/{hom,prod}/`, keys
+   `infra-jrnexpenses/{hom,prod}/terraform.tfstate`) — ver §5.

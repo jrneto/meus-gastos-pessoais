@@ -85,7 +85,11 @@ state que contém Cognito/DynamoDB de produção.
   (`<bucket>.s3.us-east-1.amazonaws.com`, mesmo valor que
   `bucket_regional_domain_name` retorna hoje) — sem diff no plan.
 - **States da infra ganham `key`s novas** no mesmo bucket
-  (`infra-jrnexpenses/frontend/{hom,prod}/terraform.tfstate`,
+  (`infra-jrnexpenses/{hom,prod}/terraform.tfstate` — **um state por
+  ambiente**, decisão do usuário em 2026-09-12: os recursos de backend
+  que a FEAT-40 move depois entram nesses mesmos states, em
+  `terraform/environments/{hom,prod}/`; não há separação por contexto
+  no repositório novo —
   `infra-jrnexpenses/dns/terraform.tfstate`); os states do monorepo
   mantêm as `key`s atuais e só perdem os recursos movidos. A camada
   `dns/` reponta seus `terraform_remote_state` para as `key`s novas à
@@ -178,15 +182,15 @@ recurso está registrado.
   repontarem), a pasta foi removida do monorepo e `terraform plan` =
   "No changes" em `dns/`
 
-**US4 — Plataforma de hom movida para `infra-jrnexpenses/terraform/frontend/hom/`**
+**US4 — Plataforma de hom movida para `infra-jrnexpenses/terraform/environments/hom/`**
 - Given o state `gastosapp-frontend/hom/terraform.tfstate` contém
   plataforma e workload juntos
 - When a etapa de hom é concluída
 - Then OAC, distribuição, ACM `hom.jrnexpenses.com` e WAF
   `gastosapp-hom-web-acl` estão em
-  `infra-jrnexpenses/frontend/hom/terraform.tfstate`; o monorepo mantém
+  `infra-jrnexpenses/hom/terraform.tfstate`; o monorepo mantém
   só bucket, PAB, SSE e bucket policy; `dns/` lê o state novo de hom; e
-  `terraform plan` = "No changes" na infra (`frontend/hom` e `dns`) e no
+  `terraform plan` = "No changes" na infra (`environments/hom` e `dns`) e no
   monorepo (`environments/hom`)
 
 **US5 — Bucket policy lê a distribuição via `terraform_remote_state`**
@@ -205,7 +209,7 @@ recurso está registrado.
 - When a etapa de prod é concluída, em janela combinada com o usuário
 - Then OAC, distribuição `E2YCZNS0F94SCU`, ACM `jrnexpenses.com` (+ SAN
   `www`) e WAF `CreatedByCloudFront-8ee8deea` estão em
-  `infra-jrnexpenses/frontend/prod/terraform.tfstate`, `dns/` lê o state
+  `infra-jrnexpenses/prod/terraform.tfstate`, `dns/` lê o state
   novo de prod, e `terraform plan` = "No changes" nos dois lados e em
   `dns/`
 
@@ -244,12 +248,12 @@ recurso está registrado.
 - [ ] `terraform state list` de `infra-jrnexpenses/terraform/dns/`
       contém a hosted zone e os 8 records; `frontend/infra/terraform/dns/`
       não existe mais; `plan` = "No changes"
-- [ ] `terraform state list` de `infra-jrnexpenses/terraform/frontend/hom/`
+- [ ] `terraform state list` de `infra-jrnexpenses/terraform/environments/hom/`
       contém exatamente OAC, distribuição, ACM e WAF de hom;
       `terraform state list` de `frontend/infra/terraform/environments/hom/`
       contém exatamente bucket, PAB, SSE e bucket policy
 - [ ] `terraform plan` = "No changes" em
-      `infra-jrnexpenses/terraform/frontend/hom/`,
+      `infra-jrnexpenses/terraform/environments/hom/`,
       `infra-jrnexpenses/terraform/dns/` e
       `frontend/infra/terraform/environments/hom/` após a etapa de hom
 - [ ] O mesmo para prod, após a etapa de prod
@@ -281,8 +285,9 @@ recurso está registrado.
 - Pipeline de CI para `terraform fmt`/`validate`/`plan` no repositório
   novo — apply continua manual; pode virar melhoria futura se o usuário
   quiser
-- Consolidar states (ex.: juntar frontend e backend de um mesmo ambiente
-  em um único state) — otimização futura, não pré-requisito
+- Consolidar mais do que um state por ambiente (ex.: absorver `dns/`
+  nos states de ambiente, ou mover os records de `api*`/SES do backend
+  para `dns/`) — otimização futura, não pré-requisito
 - Criar módulos Terraform reutilizáveis ou lógica condicional de
   ambiente — hom e prod continuam como configurações paralelas
 - Trazer `cicd/` para dentro de state (`import` da role/OIDC) — continua
