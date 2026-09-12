@@ -1,3 +1,4 @@
+import { clearSessionId } from '@/lib/sessionId'
 import { authApi } from '../api/authApi'
 import { useAuthStore } from '../store/authStore'
 
@@ -21,6 +22,7 @@ export function useLogout(): UseLogoutResult {
       // Falha ao encerrar a sessão no backend não impede o logout local.
     } finally {
       clearSession()
+      clearSessionId()
     }
   }
 

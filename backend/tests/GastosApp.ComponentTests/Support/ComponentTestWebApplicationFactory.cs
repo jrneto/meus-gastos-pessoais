@@ -1,3 +1,4 @@
+using GastosApp.Api.Common;
 using GastosApp.Application.Common.Interfaces;
 using GastosApp.Domain.Accounts;
 using GastosApp.Domain.Users;
@@ -126,5 +127,24 @@ public sealed class ComponentTestWebApplicationFactory : WebApplicationFactory<P
                 options.DefaultChallengeScheme = TestAuthHandler.SchemeName;
             });
         });
+    }
+
+    // FEAT-39: trace-id/client-platform/client-version passam a ser
+    // obrigatórios em toda rota não isenta — sem isso, praticamente toda
+    // a suíte de componente (Auth/Transactions/Categories/Members/...)
+    // seria rejeitada com 400 antes mesmo de chegar no TestAuthHandler.
+    // Ponto de extensão oficial do WebApplicationFactory<T> (mesmo hook
+    // que ele já usa pra setar BaseAddress) — cobre todo HttpClient criado
+    // via factory.CreateClient(), sem precisar editar cada teste.
+    // Testes que precisam simular ausência de algum desses headers (ver
+    // RequestObservabilityMiddlewareTests) usam factory.Server.CreateClient()
+    // em vez de factory.CreateClient(), pulando este hook de propósito.
+    protected override void ConfigureClient(HttpClient client)
+    {
+        base.ConfigureClient(client);
+
+        client.DefaultRequestHeaders.Add(ObservabilityHeaderNames.TraceId, "component-tests-trace-id");
+        client.DefaultRequestHeaders.Add(ObservabilityHeaderNames.ClientPlatform, "component-tests");
+        client.DefaultRequestHeaders.Add(ObservabilityHeaderNames.ClientVersion, "0.0.0-test");
     }
 }

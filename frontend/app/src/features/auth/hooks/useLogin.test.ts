@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { server } from '@/test/msw/server'
+import { getSessionId, startNewSession } from '@/lib/sessionId'
 import { InvalidCredentialsError, NetworkError } from '../errors/authErrors'
 import { useAuthStore } from '../store/authStore'
 import { useLogin } from './useLogin'
@@ -31,6 +32,24 @@ describe('useLogin', () => {
     expect(result.current.isLoading).toBe(false)
     expect(useAuthStore.getState().token).toBe('tok-123')
     expect(useAuthStore.getState().userId).toBe('user-1')
+  })
+
+  it('em caso de sucesso, gera um session-id novo — mesmo que já houvesse um da aba', async () => {
+    const previousSessionId = startNewSession()
+    server.use(
+      http.post(LOGIN_URL, () =>
+        HttpResponse.json({ accessToken: 'tok-123', expiresIn: 3600, userId: 'user-1' }),
+      ),
+    )
+
+    const { result } = renderHook(() => useLogin())
+
+    await act(async () => {
+      await result.current.login(credentials)
+    })
+
+    expect(getSessionId()).toBeTruthy()
+    expect(getSessionId()).not.toBe(previousSessionId)
   })
 
   it('em caso de 401, expõe InvalidCredentialsError e não popula a store', async () => {

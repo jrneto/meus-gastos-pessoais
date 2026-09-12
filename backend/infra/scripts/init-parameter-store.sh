@@ -1,7 +1,7 @@
 #!/bin/bash
 # Popula (de forma idempotente) o prefixo /GastosApp/ no SSM Parameter
-# Store do LocalStack, com os mesmos parâmetros de Cognito que hoje
-# existem em produção/homologação (ver
+# Store do LocalStack, com os mesmos parâmetros de Cognito/Logging que
+# hoje existem em produção/homologação (ver
 # backend/infra/terraform/environments/hom/parameter-store.tf), mais
 # ServiceURL/AccessKey/SecretKey — só usados quando presentes, sinalizam
 # "modo local" pro backend (ver AddCognitoSdk/AddCognitoAuth, FEAT-18).
@@ -36,5 +36,6 @@ put_param "/GastosApp/Cognito/Region" "$REGION"
 put_param "/GastosApp/Cognito/ServiceURL" "http://localhost:9229"
 put_param "/GastosApp/Cognito/AccessKey" "test"
 put_param "/GastosApp/Cognito/SecretKey" "test"
+put_param "/GastosApp/Logging/FullPayloadLoggingEnabled" "true"
 
 echo "Parâmetros escritos com sucesso."

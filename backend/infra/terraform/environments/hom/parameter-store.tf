@@ -52,3 +52,12 @@ resource "aws_ssm_parameter" "ses_sender_email" {
   type  = "String"
   value = "jrn.expenses (homologação) <no-reply@hom.jrnexpenses.com>"
 }
+
+# Toggle global de log de payload completo (FEAT-38) — mesmo propósito do
+# equivalente de produção (ver parameter-store.tf de prod), sob o
+# prefixo /GastosApp/Hom/ deste ambiente.
+resource "aws_ssm_parameter" "logging_full_payload_enabled" {
+  name  = "/GastosApp/Hom/Logging/FullPayloadLoggingEnabled"
+  type  = "String"
+  value = "false"
+}

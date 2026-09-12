@@ -8,10 +8,14 @@ resource "aws_apigatewayv2_api" "main" {
   protocol_type = "HTTP"
 
   cors_configuration {
-    allow_origins     = var.frontend_origins
-    allow_methods     = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    allow_headers     = ["Authorization", "Content-Type"]
-    allow_credentials = true # cookie httpOnly do refresh token (FEAT-15/FEAT-12)
+    allow_origins = var.frontend_origins
+    allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    # trace-id/session-id/client-platform/client-version (FEAT-38): sem
+    # isso aqui, o preflight OPTIONS do navegador recusa esses headers
+    # antes até de chegar na Lambda.
+    allow_headers     = ["Authorization", "Content-Type", "trace-id", "session-id", "client-platform", "client-version"]
+    allow_credentials = true         # cookie httpOnly do refresh token (FEAT-15/FEAT-12)
+    expose_headers    = ["trace-id"] # senão o JS do browser não consegue ler o header de resposta
   }
 }
 

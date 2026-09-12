@@ -1,10 +1,71 @@
 import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '@/test/msw/server'
+import { startNewSession } from './sessionId'
 import { httpClient, registerAuthPlugin } from './httpClient'
 
 const BASE_URL = 'http://localhost:5049'
 const RESOURCE_URL = `${BASE_URL}/protected/resource`
+
+describe('httpClient — headers de observabilidade (FEAT-38)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('envia trace-id (um valor novo por chamada), client-platform e client-version em toda requisição', async () => {
+    const received: { traceIds: string[]; platform: string | null; version: string | null } = {
+      traceIds: [],
+      platform: null,
+      version: null,
+    }
+    server.use(
+      http.get(RESOURCE_URL, ({ request }) => {
+        received.traceIds.push(request.headers.get('trace-id')!)
+        received.platform = request.headers.get('client-platform')
+        received.version = request.headers.get('client-version')
+        return HttpResponse.json({ ok: true })
+      }),
+    )
+    vi.stubEnv('VITE_APP_VERSION', 'v1.4.0')
+
+    await httpClient.get('/protected/resource')
+    await httpClient.get('/protected/resource')
+
+    expect(received.traceIds).toHaveLength(2)
+    expect(received.traceIds[0]).not.toBe(received.traceIds[1])
+    expect(received.platform).toBe('web')
+    expect(received.version).toBe('v1.4.0')
+  })
+
+  it('não envia session-id quando ainda não há sessão', async () => {
+    let receivedSessionId: string | null = 'not-called'
+    server.use(
+      http.get(RESOURCE_URL, ({ request }) => {
+        receivedSessionId = request.headers.get('session-id')
+        return HttpResponse.json({ ok: true })
+      }),
+    )
+
+    await httpClient.get('/protected/resource')
+
+    expect(receivedSessionId).toBeNull()
+  })
+
+  it('envia session-id quando há uma sessão iniciada', async () => {
+    const sessionId = startNewSession()
+    let receivedSessionId: string | null = null
+    server.use(
+      http.get(RESOURCE_URL, ({ request }) => {
+        receivedSessionId = request.headers.get('session-id')
+        return HttpResponse.json({ ok: true })
+      }),
+    )
+
+    await httpClient.get('/protected/resource')
+
+    expect(receivedSessionId).toBe(sessionId)
+  })
+})
 
 describe('httpClient — plugin de auth', () => {
   beforeEach(() => {

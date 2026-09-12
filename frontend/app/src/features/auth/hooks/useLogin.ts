@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { startNewSession } from '@/lib/sessionId'
 import { authApi } from '../api/authApi'
 import type { LoginCredentials } from '../schemas/loginSchema'
 import { useAuthStore } from '../store/authStore'
@@ -19,6 +20,10 @@ export function useLogin(): UseLoginResult {
     setError(null)
     try {
       const result = await authApi.login(credentials)
+      // Login explícito sempre gera um session-id novo, mesmo que já
+      // exista um da aba (ex.: logout seguido de login de novo) — ver
+      // lib/sessionId.ts.
+      startNewSession()
       setSession(result.accessToken, result.userId, result.expiresIn)
     } catch (err) {
       setError(err as Error)
