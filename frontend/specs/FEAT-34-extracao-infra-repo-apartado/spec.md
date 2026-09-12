@@ -275,7 +275,7 @@ recurso está registrado.
       atualizados (feito); `/CLAUDE.md` raiz e `/docs/architecture.md`
       **pendentes** — atualizados uma vez só pela FEAT-40 (última a
       terminar), conforme decisão do `plan.md` §4 (etapa 7)
-- [ ] `frontend/docs/backlog.md` atualizado: FEAT-34 marcada como concluída
+- [x] `frontend/docs/backlog.md` atualizado: FEAT-34 marcada como concluída
 
 ## Status (2026-09-12)
 
