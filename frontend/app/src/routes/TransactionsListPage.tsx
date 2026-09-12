@@ -89,7 +89,7 @@ export function TransactionsListPage() {
         onRowClick={setDetailTarget}
       />
       <TransactionFormDialog
-        key={formTarget ? (formTarget.mode === 'edit' ? formTarget.id : `create-${formTarget.tipo}`) : 'closed'}
+        key={formTarget ? (formTarget.mode === 'edit' ? formTarget.id : `create-${formTarget.tipo}`) : 'form-closed'}
         open={formTarget !== null}
         transactionId={formTarget?.mode === 'edit' ? formTarget.id : undefined}
         tipo={formTarget?.mode === 'create' ? formTarget.tipo : undefined}
@@ -104,7 +104,7 @@ export function TransactionsListPage() {
         canManage={canManageDetailTarget}
       />
       <TransactionDeleteDialog
-        key={deleteTarget?.id ?? 'closed'}
+        key={deleteTarget?.id ?? 'delete-closed'}
         transaction={deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         onDeleted={(id) => {
