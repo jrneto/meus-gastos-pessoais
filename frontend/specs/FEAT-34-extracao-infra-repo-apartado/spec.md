@@ -239,41 +239,100 @@ recurso está registrado.
 
 ## Critérios de aceite
 
-- [ ] Repositório `infra-jrnexpenses` criado pelo usuário, com commit
+- [x] Repositório `infra-jrnexpenses` criado pelo usuário, com commit
       inicial contendo `CLAUDE.md`, `README.md`, `.gitignore` e
       `terraform/` (etapa 0, compartilhada com a FEAT-40)
-- [ ] `cicd/` do frontend vive em `infra-jrnexpenses`; pasta removida de
+- [x] `cicd/` do frontend vive em `infra-jrnexpenses`; pasta removida de
       `frontend/infra/terraform/`; nenhum state remoto alterado nessa
       etapa
-- [ ] `terraform state list` de `infra-jrnexpenses/terraform/dns/`
+- [x] `terraform state list` de `infra-jrnexpenses/terraform/dns/`
       contém a hosted zone e os 8 records; `frontend/infra/terraform/dns/`
-      não existe mais; `plan` = "No changes"
-- [ ] `terraform state list` de `infra-jrnexpenses/terraform/environments/hom/`
+      não existe mais; `plan` = "No changes" (contagem real: 9 instâncias
+      de record — ver "Status" abaixo)
+- [x] `terraform state list` de `infra-jrnexpenses/terraform/environments/hom/`
       contém exatamente OAC, distribuição, ACM e WAF de hom;
       `terraform state list` de `frontend/infra/terraform/environments/hom/`
       contém exatamente bucket, PAB, SSE e bucket policy
-- [ ] `terraform plan` = "No changes" em
+- [x] `terraform plan` = "No changes" em
       `infra-jrnexpenses/terraform/environments/hom/`,
       `infra-jrnexpenses/terraform/dns/` e
       `frontend/infra/terraform/environments/hom/` após a etapa de hom
-- [ ] O mesmo para prod, após a etapa de prod
-- [ ] Monorepo lê o ARN da distribuição via `terraform_remote_state`
+- [x] O mesmo para prod, após a etapa de prod
+- [x] Monorepo lê o ARN da distribuição via `terraform_remote_state`
       (output `cloudfront_distribution_arn`, ou equivalente definido no
       `plan.md`); a infra não contém `terraform_remote_state` apontando
       para state do monorepo; `dns/` lê os states novos da infra
-- [ ] Nenhum recurso AWS criado, destruído, recriado ou alterado —
+- [x] Nenhum recurso AWS criado, destruído, recriado ou alterado —
       confirmado pelos `plan` acima e pela ausência de `apply` com
       mudanças em qualquer etapa
-- [ ] Nenhuma alteração em `.github/workflows/*` nem nos GitHub
+- [x] Nenhuma alteração em `.github/workflows/*` nem nos GitHub
       Environments `hom`/`prod`; `frontend-deploy-hom.yml` verde após a
       etapa de hom; `https://hom.jrnexpenses.com` respondendo, incluindo
       F5 em rota interna (smoke manual)
-- [ ] Nenhum `terraform state push`/`apply` executado sem aprovação
+- [x] Nenhum `terraform state push`/`apply` executado sem aprovação
       explícita do usuário no momento da execução
-- [ ] `frontend/infra/CLAUDE.md`, `frontend/infra/terraform/README.md`,
-      `/CLAUDE.md` raiz e `/docs/architecture.md` atualizados (etapa
-      final, compartilhada com a FEAT-40)
+- [~] `frontend/infra/CLAUDE.md`, `frontend/infra/terraform/README.md`
+      atualizados (feito); `/CLAUDE.md` raiz e `/docs/architecture.md`
+      **pendentes** — atualizados uma vez só pela FEAT-40 (última a
+      terminar), conforme decisão do `plan.md` §4 (etapa 7)
 - [ ] `frontend/docs/backlog.md` atualizado: FEAT-34 marcada como concluída
+
+## Status (2026-09-12)
+
+Todas as etapas do lado frontend concluídas: 0 (esqueleto), 1 (`cicd/`),
+2 (`dns/`), 3 (hom) e 4 (prod). Nenhum recurso AWS foi criado, destruído
+ou recriado em nenhuma etapa — só movimentação de state Terraform e
+reorganização de código, com `terraform plan` = "No changes" conferido
+em cada ponta a cada passo.
+
+**O que foi movido para `infra-jrnexpenses`**:
+- `terraform/cicd/frontend/` (referência, fora de state)
+- `terraform/dns/` — hosted zone `jrnexpenses.com.` + 9 instâncias de
+  record (`apex_a`, `apex_aaaa`, `www_a`, `www_aaaa`,
+  `acm_validation["jrnexpenses.com"]`, `acm_validation["www.jrnexpenses.com"]`,
+  `hom_a`, `hom_aaaa`, `acm_validation_hom["hom.jrnexpenses.com"]`) —
+  a spec original citava "8 records"; a contagem real de instâncias é 9
+  (2 delas vêm do mesmo bloco `for_each` de validação ACM de prod)
+- `terraform/environments/hom/` — OAC, distribuição `ELE195A1APCLB`,
+  ACM `hom.jrnexpenses.com`, WAF `aws_wafv2_web_acl.hom`
+- `terraform/environments/prod/` — OAC, distribuição `E2YCZNS0F94SCU`,
+  ACM `jrnexpenses.com` (+ SAN `www`), WAF `CreatedByCloudFront-8ee8deea`
+
+**O que ficou no monorepo**: em cada ambiente, só
+`aws_s3_bucket.frontend` + `aws_s3_bucket_public_access_block.frontend`
++ `aws_s3_bucket_server_side_encryption_configuration.frontend` +
+`aws_s3_bucket_policy.frontend` (workload).
+
+**States órfãos pendentes de limpeza** (deixados no bucket, vazios,
+decisão do usuário — ver `plan.md` §7.3): `gastosapp-frontend/dns/terraform.tfstate`
+(só `data.*` agora) e `gastosapp-frontend/cicd/terraform.tfstate` (já
+era vazio). Limpeza única dos órfãos dos dois contextos (frontend +
+backend) ao final da FEAT-40, com aprovação.
+
+**Achados durante a execução**:
+- Duas vezes (etapas 2 e 4), o `state push` aprovado foi executado por
+  engano na pasta/arquivo errado (repetindo um push já feito do lado
+  infra em vez do lado monorepo) — identificado ao conferir
+  `terraform state list`/`plan` logo em seguida, corrigido sem nenhum
+  `apply` de recurso ter rodado no intervalo. Nenhum impacto real; vale
+  redobrar a atenção ao caminho exato do comando em migrações futuras
+  (FEAT-40).
+- O classificador de automação do Claude Code bloqueia
+  `terraform state push`/`apply` executados via ferramenta (mesmo após
+  aprovação explícita do usuário no chat) de forma inconsistente —
+  parte das execuções passou direto, parte exigiu que o usuário rodasse
+  o comando manualmente no terminal. Sem impacto no resultado, só no
+  fluxo de execução.
+- Validação de pipeline (US7/critério de hom) exigiu uma decisão à
+  parte sobre como gerar um push trivial em `develop` tocando
+  `frontend/app/**` sem infringir o fluxo de branch+PR do `CLAUDE.md`
+  raiz — resolvida com uma branch `fix/valida-pipeline-hom` dedicada,
+  PR automático e merge manual (ver histórico da conversa/commits).
+
+**Pendências reais para fechar a FEAT-34**: nenhuma do lado frontend —
+faltam só os itens explicitamente compartilhados com a FEAT-40 (PR
+`develop → main` do `infra-jrnexpenses`, e a atualização de
+`/CLAUDE.md` raiz + `/docs/architecture.md`).
 
 ## Fora do escopo
 
