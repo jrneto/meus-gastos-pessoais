@@ -202,14 +202,23 @@ referência). Todos os `plan`/`apply` rodam com `agent-toolkit`. O
 ## 4. Etapas (o `tasks.md` detalha cada uma)
 
 ### Etapa 0 — repositório + esqueleto (compartilhada com a FEAT-40)
-Usuário cria `infra-jrnexpenses` no GitHub (privado, branch default
-`main`). Commit inicial: `CLAUDE.md`, `README.md`, `.gitignore`,
-`scripts/migration/.gitkeep`, `terraform/.gitkeep`. Sem Terraform
-executado. `CLAUDE.md` do repo novo cobre: apply manual/local com
-aprovação por execução; bucket/keys de state e ordem de dependência
+**Parte manual já feita em 2026-09-12**: repositório
+`github.com/jrneto/infra-jrnexpenses` criado (commit `a69eee0`, só
+`README.md` de uma linha + `.gitignore` do template Terraform do
+GitHub), clonado em `D:\git_jrneto\infra-jrnexpenses`, branches `main`
+(default) e `develop` já existentes no remoto.
+
+Falta o esqueleto (primeiro commit de conteúdo): `CLAUDE.md`,
+`README.md` real, `scripts/migration/.gitkeep`, `terraform/.gitkeep` e
+ajuste do `.gitignore` — o template do GitHub **não** ignora
+`.terraform.lock.hcl` (o monorepo ignora; decisão §7.5 é manter a
+prática, então acrescentar a linha) e ignora `override.tf`/
+`*_override.tf` (manter, inofensivo). Sem Terraform executado.
+`CLAUDE.md` do repo novo cobre: apply manual/local com aprovação por
+execução; bucket/keys de state e ordem de dependência
 (`environments/{hom,prod}` → `dns/`; monorepo → `environments/{hom,prod}`);
 guardrail IAM; plano Free do CloudFront manual; princípio "infra nunca
-lê state do monorepo".
+lê state do monorepo"; fluxo de branches do repo (§7.7).
 
 ### Etapa 1 — `cicd/` do frontend (só arquivos)
 Copiar `frontend/infra/terraform/cicd/*.tf` → `terraform/cicd/frontend/`
@@ -333,7 +342,14 @@ Mapeamento de erros de negócio: não se aplica.
    FEAT-40, com aprovação.
 4. **`terraform/cicd/frontend/` + `terraform/cicd/backend/`** separados
    (referência, fora de state); fusão fora do escopo.
-5. **Repositório privado, branch `main`, sem CI**; `.terraform.lock.hcl`
-   continua gitignored (prática atual mantida).
+5. **Repositório privado, sem CI**; `.terraform.lock.hcl` continua
+   gitignored (prática atual mantida — acrescentar ao `.gitignore` do
+   template, que não a cobre).
 6. **Um state por ambiente** (`terraform/environments/{hom,prod}/`, keys
    `infra-jrnexpenses/{hom,prod}/terraform.tfstate`) — ver §5.
+7. **Fluxo de branches no `infra-jrnexpenses`** (repo já nasceu com
+   `develop` + `main`): commits **direto em `develop`**, um por etapa
+   (esqueleto, `dns/`, hom, prod); ao fechar cada FEAT (34 e depois 40)
+   abre-se PR `develop → main` manual — `main` reflete o que está
+   aplicado e validado, mesmo princípio do monorepo, sem workflow que
+   abra o PR sozinho. Clone local: `D:\git_jrneto\infra-jrnexpenses`.
