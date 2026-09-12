@@ -1,4 +1,4 @@
-# FEAT-33: Extração da infra Terraform do frontend para o repositório `infra-jrnexpenses`
+# FEAT-34: Extração da infra Terraform do frontend para o repositório `infra-jrnexpenses`
 
 ## Objetivo
 
@@ -269,7 +269,7 @@ recurso está registrado.
 - [ ] `frontend/infra/CLAUDE.md`, `frontend/infra/terraform/README.md`,
       `/CLAUDE.md` raiz e `/docs/architecture.md` atualizados (etapa
       final, compartilhada com a FEAT-40)
-- [ ] `frontend/docs/backlog.md` atualizado: FEAT-33 marcada como concluída
+- [ ] `frontend/docs/backlog.md` atualizado: FEAT-34 marcada como concluída
 
 ## Fora do escopo
 
