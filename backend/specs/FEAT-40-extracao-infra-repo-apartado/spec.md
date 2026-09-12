@@ -44,7 +44,7 @@ workflows nem nos GitHub Environments.
 
 A parte do frontend (CloudFront, OAC, ACM, WAF, hosted zone e records da
 camada `dns/`, `cicd/` do frontend) é a
-`frontend/specs/FEAT-33-extracao-infra-repo-apartado/`. As duas specs
+`frontend/specs/FEAT-34-extracao-infra-repo-apartado/`. As duas specs
 compartilham o repositório de destino, a governança e o mecanismo de
 migração, mas cada uma lista só as suas etapas e é entregue em branch/PR
 próprios. Ordem combinada entre as duas: frontend antes do backend (hom
@@ -145,7 +145,7 @@ cada recurso está registrado.
 
 ## User Stories
 
-**US1 — Repositório `infra-jrnexpenses` criado com esqueleto (compartilhada com a FEAT-33 do frontend)**
+**US1 — Repositório `infra-jrnexpenses` criado com esqueleto (compartilhada com a FEAT-34 do frontend)**
 - Given o repositório `infra-jrnexpenses` ainda não existe
 - When o usuário cria o repositório no GitHub e a etapa 0 é concluída
 - Then ele contém commit inicial com `CLAUDE.md` (governança: apply
@@ -154,16 +154,17 @@ cada recurso está registrado.
   `.gitignore` de Terraform e a árvore `terraform/` vazia, sem nenhum
   state remoto tocado
 
-**US2 — `bootstrap/` e `cicd/` movidos como arquivos (compartilhada com a FEAT-33)**
+**US2 — `bootstrap/` e `cicd/` movidos como arquivos (compartilhada com a FEAT-34)**
 - Given `backend/infra/terraform/bootstrap/` (state local) e
   `backend/infra/terraform/cicd/` (referência, state vazio) existem no
   monorepo
 - When a etapa 1 é concluída
 - Then ambos vivem em `infra-jrnexpenses/terraform/` (o
   `terraform.tfstate` local do bootstrap copiado fisicamente, continua
-  gitignored), o JSON de referência da role de CI/CD no README reflete a
-  policy atual (6 funções, 4 statements), as pastas foram removidas do
-  monorepo e nenhum state remoto foi alterado
+  gitignored), as pastas foram removidas do monorepo e nenhum state
+  remoto foi alterado — o `cicd/` vai **como está**, inclusive o JSON de
+  referência desatualizado do README (débito registrado à parte em
+  `backend/docs/backlog.md`)
 
 **US3 — Plataforma de hom movida para `infra-jrnexpenses/terraform/backend/hom/`**
 - Given o state `gastosapp/hom/terraform.tfstate` contém plataforma e
@@ -215,7 +216,7 @@ cada recurso está registrado.
 - Then o usuário é consultado, revisa a lista de endereços/`plan` e
   aprova explicitamente antes da execução — nada roda de forma autônoma
 
-**US8 — Documentação coerente ao fim (compartilhada com a FEAT-33)**
+**US8 — Documentação coerente ao fim (compartilhada com a FEAT-34)**
 - Given `backend/infra/CLAUDE.md`, `backend/infra/terraform/README.md`,
   `/CLAUDE.md` raiz e `/docs/architecture.md` descrevem toda a infra como
   vivendo no monorepo
@@ -228,10 +229,10 @@ cada recurso está registrado.
 
 - [ ] Repositório `infra-jrnexpenses` criado pelo usuário, com commit
       inicial contendo `CLAUDE.md`, `README.md`, `.gitignore` e
-      `terraform/` (etapa 0, compartilhada com a FEAT-33)
+      `terraform/` (etapa 0, compartilhada com a FEAT-34)
 - [ ] `bootstrap/` e `cicd/` do backend vivem em `infra-jrnexpenses`;
       pastas removidas de `backend/infra/terraform/`; nenhum state remoto
-      alterado nessa etapa; JSON da role de CI/CD no README atualizado
+      alterado nessa etapa
 - [ ] `terraform state list` de `infra-jrnexpenses/terraform/backend/hom/`
       contém exatamente os recursos de plataforma de hom listados em US3;
       `terraform state list` de `backend/infra/terraform/environments/hom/`
@@ -258,13 +259,13 @@ cada recurso está registrado.
       explícita do usuário no momento da execução
 - [ ] `backend/infra/CLAUDE.md`, `backend/infra/terraform/README.md`,
       `/CLAUDE.md` raiz e `/docs/architecture.md` atualizados (etapa
-      final, compartilhada com a FEAT-33)
+      final, compartilhada com a FEAT-34)
 - [ ] `backend/docs/backlog.md` atualizado: FEAT-40 marcada como concluída
 
 ## Fora do escopo
 
 - A parte do frontend (CloudFront, OAC, ACM, WAF, `dns/`, `cicd/` do
-  frontend) — é a `frontend/specs/FEAT-33-extracao-infra-repo-apartado/`
+  frontend) — é a `frontend/specs/FEAT-34-extracao-infra-repo-apartado/`
 - Qualquer mudança de valor/configuração dos recursos movidos (retenção
   de log, throttling, CORS, política de senha etc.) — só movimentação
 - Pipeline de CI para `terraform fmt`/`validate`/`plan` no repositório
@@ -278,6 +279,9 @@ cada recurso está registrado.
   ambiente — hom e prod continuam como configurações paralelas, como hoje
 - Trazer `cicd/` para dentro de state (`import` da role/OIDC) — continua
   bloqueado pelo guardrail de IAM, permanece referência
+- Corrigir o JSON desatualizado da role de CI/CD no README do `cicd/` —
+  débito registrado em `backend/docs/backlog.md`, tratado no repositório
+  novo depois da migração
 - Preservar histórico git dos `.tf` no repositório novo — decisão: nasce
   limpo
 - Qualquer alteração em workflows de deploy, GitHub Environments ou no
