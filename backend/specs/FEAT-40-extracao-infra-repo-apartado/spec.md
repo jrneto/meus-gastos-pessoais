@@ -77,9 +77,19 @@ state que contém Cognito/DynamoDB de produção.
   a partir do nome da função (o `lambda_config` do Cognito e a
   `integration_uri` do API Gateway) — valores idênticos aos atuais, sem
   diff no plan.
-- **States da infra ganham `key`s novas** no mesmo bucket
-  (`infra-jrnexpenses/backend/{hom,prod}/terraform.tfstate`); os states
-  do monorepo mantêm as `key`s atuais e só perdem os recursos movidos.
+- **Um state por ambiente no repositório novo, não por contexto**
+  (decisão do usuário em 2026-09-12, no `/plan` da FEAT-34):
+  `terraform/environments/{hom,prod}/` contém a plataforma inteira do
+  ambiente — os recursos do frontend (CloudFront/OAC/ACM/WAF, movidos
+  pela FEAT-34) e os do backend (movidos por esta feature) vivem no
+  mesmo state, keys `infra-jrnexpenses/{hom,prod}/terraform.tfstate`.
+  Os `.tf` do backend entram nessas pastas com prefixo `backend-` no
+  nome do arquivo (`backend-cognito.tf`, `backend-dynamodb.tf`…);
+  `versions.tf`/`variables.tf` são compartilhados. Colisão de nomes
+  lógicos entre os dois contextos já verificada: nenhuma (só
+  `variable "aws_region"`, declarada uma vez). Continuam separados:
+  `dns/`, `cicd/{frontend,backend}` e `bootstrap/`. Os states do
+  monorepo mantêm as `key`s atuais e só perdem os recursos movidos.
 - **Mecanismo de movimentação**: `terraform state pull` nos dois lados →
   `terraform state mv -state=… -state-out=…` offline (não chama AWS, não
   esbarra no guardrail de IAM, cobre recursos não importáveis como
@@ -166,7 +176,7 @@ cada recurso está registrado.
   referência desatualizado do README (débito registrado à parte em
   `backend/docs/backlog.md`)
 
-**US3 — Plataforma de hom movida para `infra-jrnexpenses/terraform/backend/hom/`**
+**US3 — Plataforma de hom movida para `infra-jrnexpenses/terraform/environments/hom/`**
 - Given o state `gastosapp/hom/terraform.tfstate` contém plataforma e
   workload juntos
 - When a etapa de hom é concluída
@@ -175,9 +185,10 @@ cada recurso está registrado.
   `api-hom`, validação, domain name, api mapping, `data.aws_route53_zone`
   e os records DNS (`api_hom_acm_validation`, `api_hom_a`,
   `ses_verification`, `ses_dkim[0..2]`) estão no state
-  `infra-jrnexpenses/backend/hom/terraform.tfstate`, e o monorepo mantém
-  só as 3 Lambdas, 3 roles, 3 policies, 3 log groups e 3 permissions —
-  com `terraform plan` = "No changes" nos dois lados
+  `infra-jrnexpenses/hom/terraform.tfstate` (ao lado dos recursos do
+  frontend já movidos pela FEAT-34), e o monorepo mantém só as 3
+  Lambdas, 3 roles, 3 policies, 3 log groups e 3 permissions — com
+  `terraform plan` = "No changes" nos dois lados
 
 **US4 — Monorepo de hom lê a plataforma via `terraform_remote_state`**
 - Given as policies das Lambdas e as `aws_lambda_permission` de hom
@@ -199,7 +210,7 @@ cada recurso está registrado.
   `aws_acm_certificate.api` sem `aws_acm_certificate_validation`, e a
   `aws_lambda_function.api` de prod mantida **sem** bloco
   `environment{}`) estão em
-  `infra-jrnexpenses/backend/prod/terraform.tfstate`, com `terraform
+  `infra-jrnexpenses/prod/terraform.tfstate`, com `terraform
   plan` = "No changes" nos dois lados
 
 **US6 — Nenhuma regressão no deploy e na API**
@@ -233,12 +244,13 @@ cada recurso está registrado.
 - [ ] `bootstrap/` e `cicd/` do backend vivem em `infra-jrnexpenses`;
       pastas removidas de `backend/infra/terraform/`; nenhum state remoto
       alterado nessa etapa
-- [ ] `terraform state list` de `infra-jrnexpenses/terraform/backend/hom/`
-      contém exatamente os recursos de plataforma de hom listados em US3;
+- [ ] `terraform state list` de `infra-jrnexpenses/terraform/environments/hom/`
+      contém todos os recursos de plataforma de hom listados em US3
+      (além dos do frontend, movidos pela FEAT-34);
       `terraform state list` de `backend/infra/terraform/environments/hom/`
       contém exatamente Lambdas, roles, policies, log groups e permissions
 - [ ] `terraform plan` = "No changes" em
-      `infra-jrnexpenses/terraform/backend/hom/` e em
+      `infra-jrnexpenses/terraform/environments/hom/` e em
       `backend/infra/terraform/environments/hom/` após a etapa de hom
 - [ ] O mesmo para prod, após a etapa de prod
 - [ ] Monorepo lê ARNs/nomes da plataforma via `terraform_remote_state`
@@ -271,10 +283,11 @@ cada recurso está registrado.
 - Pipeline de CI para `terraform fmt`/`validate`/`plan` no repositório
   novo — apply continua manual; pode virar melhoria futura se o usuário
   quiser
-- Consolidar states (ex.: juntar backend e frontend de um mesmo ambiente
-  em um único state, ou substituir o `data "aws_route53_zone"` do backend
-  pela `aws_route53_zone.main` de `dns/` agora que vivem no mesmo repo) —
-  otimização futura, não pré-requisito
+- Consolidar mais do que um state por ambiente (ex.: substituir o
+  `data "aws_route53_zone"` do backend pela `aws_route53_zone.main` de
+  `dns/`, ou mover os records de `api*`/SES para `dns/`, agora que vivem
+  no mesmo repo) — melhoria já registrada em `backend/docs/backlog.md`,
+  não pré-requisito
 - Criar módulos Terraform reutilizáveis ou lógica condicional de
   ambiente — hom e prod continuam como configurações paralelas, como hoje
 - Trazer `cicd/` para dentro de state (`import` da role/OIDC) — continua
