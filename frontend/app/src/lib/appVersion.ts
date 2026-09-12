@@ -7,3 +7,7 @@
 export function getAppVersion(): string {
   return import.meta.env.VITE_APP_VERSION ?? 'dev-local'
 }
+
+// Touch trivial para validar frontend-deploy-hom.yml após a migração de
+// infra da FEAT-34 etapa 3 (CloudFront/OAC/ACM/WAF movidos para
+// infra-jrnexpenses) — sem mudança de comportamento.
