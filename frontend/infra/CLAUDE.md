@@ -70,13 +70,13 @@ backend) e o registro do domínio em si. Passo a passo de
 ## Gotchas conhecidos
 
 - **OIDC Provider + Role fora do Terraform**: criados manualmente no
-  console (`frontend/infra/terraform/cicd/` mantido só como
-  referência) — `apply`/`import` falham com `AccessDenied` em ações de
-  IAM (`Create`/`Get`/`List` de OpenIDConnectProvider/Role/RolePolicy);
-  o perfil `agent-toolkit` não tem essas permissões mesmo sendo
+  console (código de referência movido para
+  `infra-jrnexpenses/terraform/cicd/frontend/` na FEAT-34, etapa 1) —
+  `apply`/`import` falham com `AccessDenied` em ações de IAM
+  (`Create`/`Get`/`List` de OpenIDConnectProvider/Role/RolePolicy); o
+  perfil `agent-toolkit` não tem essas permissões mesmo sendo
   "Admin-Desenvolvedor" (guardrail intencional contra federação de
-  identidade). Detalhes/ARNs: `frontend/infra/terraform/README.md`,
-  seção "cicd/".
+  identidade). Detalhes/ARNs: `README.md` do `infra-jrnexpenses`.
 - **Assinatura ao plano Free do CloudFront** (hom e prod) é manual no
   console — ver acima.
 
