@@ -5,8 +5,7 @@ Leve vs Fluxo Completo e a regra de organização de specs.
 
 ## Estado atual
 
-Hosting (S3 + CloudFront + ACM + WAF WebACL) e DNS (hosted zone +
-records em Route 53) estão em produção
+Hosting (S3 + CloudFront + ACM + WAF WebACL) está em produção
 (`jrnexpenses.com`/`www.jrnexpenses.com`) e homologação
 (`hom.jrnexpenses.com`), geridos por Terraform em
 `frontend/infra/terraform/`, em **duas configurações independentes**
@@ -14,13 +13,14 @@ records em Route 53) estão em produção
 com seu próprio state, ambas no bucket de state do backend
 (`gastosapp-terraform-state-648443184523`, `key`s distintas):
 
-- **`dns/`** — camada **persistente**, nunca destruída por um futuro
-  pipeline de destroy/recreate. Gerencia a hosted zone
-  `jrnexpenses.com.` (`lifecycle { prevent_destroy = true }`) e os
-  records de prod (6, incl. `www`) e hom (A/AAAA + CNAME de validação
-  ACM, sem `www.hom`). Lê CloudFront/ACM via `terraform_remote_state`
-  de cada `environments/{prod,hom}` — se a infra principal for
-  recriada, os records se atualizam sozinhos ao rodar `apply` aqui.
+- **`dns/`** — movida para o repositório `infra-jrnexpenses`
+  (`terraform/dns/`) na FEAT-34, etapa 2
+  (`frontend/specs/FEAT-34-extracao-infra-repo-apartado/`). Gerencia a
+  hosted zone `jrnexpenses.com.` (`lifecycle { prevent_destroy = true }`)
+  e os records de prod (6, incl. `www`) e hom (A/AAAA + CNAME de
+  validação ACM, sem `www.hom`). Lê CloudFront/ACM via
+  `terraform_remote_state` de cada `environments/{prod,hom}` deste
+  monorepo (as `key`s ainda apontam pra cá — migram nas etapas 3 e 4).
 - **`environments/prod/`** — camada **efêmera**, destruível/recriável.
   Bucket S3, distribuição CloudFront, certificado ACM
   (`jrnexpenses.com`), WAF WebACL. Trazida via `terraform import`

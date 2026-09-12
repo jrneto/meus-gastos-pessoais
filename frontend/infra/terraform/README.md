@@ -8,19 +8,17 @@ criado, recriado ou destruído nessa migração. `environments/hom/` foi
 criado do zero via `apply` (ver
 `frontend/specs/FEAT-08-ambiente-homologacao/`).
 
-Três configurações independentes, cada uma com seu próprio state, todas
+Duas configurações independentes, cada uma com seu próprio state, ambas
 no bucket `gastosapp-terraform-state-648443184523` (reaproveitado do
 backend, `key`s distintas — nenhum novo bootstrap é criado):
 
-- **`dns/`** — camada **persistente**, nunca destruída pelo pipeline de
-  CI/CD futuro (`destroy`/recreate da infra de aplicação). Gerencia a
-  hosted zone `jrnexpenses.com.` (protegida com `prevent_destroy`), os 6
-  records DNS de produção e os 3 de homologação (`hom.jrnexpenses.com`).
-  Lê o domínio do CloudFront e os dados de validação de certificado ACM
-  de cada ambiente via `terraform_remote_state` (um data source por
-  ambiente, desacoplados entre si) — assim, se a infra de um ambiente for
-  recriada no futuro, os records dele se atualizam sozinhos ao rodar
-  `apply` aqui.
+- **`dns/`** — movida para o repositório `infra-jrnexpenses`
+  (`terraform/dns/`) na FEAT-34, etapa 2. Gerenciava a hosted zone
+  `jrnexpenses.com.` e os records de prod/hom; hoje lê o domínio do
+  CloudFront e os dados de validação ACM de cada ambiente via
+  `terraform_remote_state` — as `key`s continuam apontando para
+  `environments/{prod,hom}/` deste monorepo até essas etapas também
+  migrarem (FEAT-34, etapas 3 e 4).
 - **`environments/prod/`** — camada **efêmera**, destruível/recriável
   pelo pipeline futuro. Gerencia o bucket S3, a distribuição CloudFront,
   o certificado ACM (`jrnexpenses.com`) e o WAF WebACL de produção.
@@ -72,33 +70,14 @@ terraform import aws_cloudfront_distribution.main E2YCZNS0F94SCU
 terraform plan   # deve bater "No changes" — ajuste o HCL até chegar lá
 ```
 
-### 2. `dns/`
-
-```bash
-cd ../../dns
-terraform init \
-  -backend-config="bucket=gastosapp-terraform-state-648443184523" \
-  -backend-config="region=us-east-1"
-
-terraform import aws_route53_zone.main Z053098817OJTJ5LWHAZW
-
-terraform import aws_route53_record.apex_a Z053098817OJTJ5LWHAZW_jrnexpenses.com_A
-terraform import aws_route53_record.apex_aaaa Z053098817OJTJ5LWHAZW_jrnexpenses.com_AAAA
-terraform import aws_route53_record.www_a Z053098817OJTJ5LWHAZW_www.jrnexpenses.com_A
-terraform import aws_route53_record.www_aaaa Z053098817OJTJ5LWHAZW_www.jrnexpenses.com_AAAA
-
-# CNAMEs de validação ACM (nomes exatos dos records a confirmar lendo o
-# certificado real antes de rodar — ver acm.tf de environments/prod)
-terraform import 'aws_route53_record.acm_validation["jrnexpenses.com"]' Z053098817OJTJ5LWHAZW__f91e552da643f7310e2ef48005c54b0d.jrnexpenses.com_CNAME
-terraform import 'aws_route53_record.acm_validation["www.jrnexpenses.com"]' Z053098817OJTJ5LWHAZW__632a98ba4517a08bda86576acc344e22.www.jrnexpenses.com_CNAME
-
-terraform plan   # deve bater "No changes" — ajuste o HCL até chegar lá
-```
-
 Cada `import`/`apply` é confirmado individualmente no momento da
 execução — nenhum roda de forma autônoma (ver spec, US8).
 
-### 3. `environments/hom/` (criação do zero, não import)
+`dns/` não vive mais aqui — passo de import equivalente, quando
+necessário (ex.: reconstrução em conta nova), fica documentado no
+`README.md` do `infra-jrnexpenses`.
+
+### 2. `environments/hom/` (criação do zero, não import)
 
 ```bash
 cd frontend/infra/terraform/environments/hom
@@ -114,8 +93,9 @@ terraform apply
 criados do zero (não importados), o certificado ACM nasce
 `PENDING_VALIDATION` e o CloudFront recusa associá-lo enquanto não
 virar `ISSUED` — mas a validação depende do CNAME em `dns/`, que por
-sua vez normalmente viria depois. Ordem que funciona (usada na
-FEAT-08):
+sua vez normalmente viria depois. Ordem usada na FEAT-08 (histórica —
+`dns/` vivia neste monorepo na época; hoje é
+`infra-jrnexpenses/terraform/dns/`):
 
 ```bash
 # 1) primeiro apply em hom/ — cria bucket, WAF, OAC e o certificado
@@ -125,7 +105,7 @@ terraform apply
 
 # 2) aplicar só o CNAME de validação do ACM em dns/ (a distribuição
 #    ainda não existe, então -target evita erro nos records hom_a/hom_aaaa)
-cd ../../dns
+cd <infra-jrnexpenses>/terraform/dns
 terraform apply -target='aws_route53_record.acm_validation_hom["hom.jrnexpenses.com"]'
 
 # 3) aguardar o certificado virar ISSUED (alguns minutos)
@@ -134,11 +114,11 @@ aws acm describe-certificate --region us-east-1 \
   --query 'Certificate.Status' --output text
 
 # 4) completar o apply em hom/ — cria a distribuição + bucket policy
-cd ../environments/hom
+cd <monorepo>/frontend/infra/terraform/environments/hom
 terraform apply
 
 # 5) apply completo em dns/ — cria hom_a/hom_aaaa (distribuição já existe)
-cd ../../dns
+cd <infra-jrnexpenses>/terraform/dns
 terraform apply
 ```
 
