@@ -43,7 +43,7 @@ resource "aws_s3_bucket_policy" "frontend" {
         Resource  = "${aws_s3_bucket.frontend.arn}/*"
         Condition = {
           ArnLike = {
-            "AWS:SourceArn" = aws_cloudfront_distribution.main.arn
+            "AWS:SourceArn" = data.terraform_remote_state.infra.outputs.cloudfront_distribution_arn
           }
         }
       }

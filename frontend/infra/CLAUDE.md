@@ -7,11 +7,15 @@ Leve vs Fluxo Completo e a regra de organização de specs.
 
 Hosting (S3 + CloudFront + ACM + WAF WebACL) está em produção
 (`jrnexpenses.com`/`www.jrnexpenses.com`) e homologação
-(`hom.jrnexpenses.com`), geridos por Terraform em
-`frontend/infra/terraform/`, em **duas configurações independentes**
-(mesmo princípio `bootstrap/`/config principal do backend), cada uma
-com seu próprio state, ambas no bucket de state do backend
-(`gastosapp-terraform-state-648443184523`, `key`s distintas):
+(`hom.jrnexpenses.com`). Desde a FEAT-34 (extração de infra para
+`infra-jrnexpenses`, em andamento — etapas 1-3 concluídas, etapa 4
+pendente), a infra de hom está dividida: **workload** (bucket S3) segue
+gerido por Terraform aqui, em `frontend/infra/terraform/`; **plataforma**
+(CloudFront/OAC/ACM/WAF, `dns/`) vive em `infra-jrnexpenses`. Prod
+ainda tem tudo neste monorepo (etapa 4). Duas configurações
+independentes neste monorepo, cada uma com seu próprio state, ambas no
+bucket de state do backend (`gastosapp-terraform-state-648443184523`,
+`key`s distintas):
 
 - **`dns/`** — movida para o repositório `infra-jrnexpenses`
   (`terraform/dns/`) na FEAT-34, etapa 2
@@ -19,23 +23,30 @@ com seu próprio state, ambas no bucket de state do backend
   hosted zone `jrnexpenses.com.` (`lifecycle { prevent_destroy = true }`)
   e os records de prod (6, incl. `www`) e hom (A/AAAA + CNAME de
   validação ACM, sem `www.hom`). Lê CloudFront/ACM via
-  `terraform_remote_state` de cada `environments/{prod,hom}` deste
-  monorepo (as `key`s ainda apontam pra cá — migram nas etapas 3 e 4).
-- **`environments/prod/`** — camada **efêmera**, destruível/recriável.
-  Bucket S3, distribuição CloudFront, certificado ACM
-  (`jrnexpenses.com`), WAF WebACL. Trazida via `terraform import`
-  (nenhum recurso recriado).
-- **`environments/hom/`** — mesma estrutura, provisionada do zero
-  (`bucket S3 gastosapp-frontend-hom`, CloudFront, OAC, ACM
-  `hom.jrnexpenses.com`), **+ WAF WebACL próprio** (`aws_wafv2_web_acl.hom`,
-  mesmos 3 Managed Rule Groups de prod — prod não tem `waf.tf` porque o
-  dele foi importado já associado à distribuição). Assinada ao plano
-  flat-rate **Free** do CloudFront (2º dos 3 planos Free da conta,
+  `terraform_remote_state` de cada `environments/{prod,hom}` — a `key`
+  de hom já aponta para `infra-jrnexpenses/hom/terraform.tfstate`
+  (etapa 3); a de prod ainda aponta para este monorepo (etapa 4
+  pendente).
+- **`environments/prod/`** — ainda **completa** neste monorepo: bucket
+  S3, distribuição CloudFront, certificado ACM (`jrnexpenses.com`), WAF
+  WebACL. Migração da plataforma para `infra-jrnexpenses` é a FEAT-34,
+  etapa 4 (pendente — segue o mesmo padrão de hom, com janela combinada
+  com o usuário).
+- **`environments/hom/`** — desde a FEAT-34, etapa 3, gerencia **só o
+  workload** (bucket S3 `gastosapp-frontend-hom` + PAB + SSE + bucket
+  policy). A **plataforma** (OAC, distribuição CloudFront, ACM
+  `hom.jrnexpenses.com`, WAF `aws_wafv2_web_acl.hom` com os mesmos 3
+  Managed Rule Groups de prod) vive em
+  `infra-jrnexpenses/terraform/environments/hom/` — a bucket policy
+  deste monorepo lê o ARN da distribuição de lá via
+  `data.terraform_remote_state.infra` (`remote_state.tf`). Assinatura ao
+  plano flat-rate **Free** do CloudFront (2º dos 3 planos Free da conta,
   cobre distribuição+WAF+DDoS a US$0/mês, dentro de 1M req/100GB por
   mês) — assinatura feita **manualmente no console** (recurso Terraform
   `aws_pricingplanmanager_subscription` ainda não lançado em nenhuma
   versão do provider, [PR #49235](https://github.com/hashicorp/terraform-provider-aws/pull/49235)
-  aberto; trazer via `import` quando disponível, prod e hom).
+  aberto; trazer via `import` quando disponível, prod e hom — hoje seria
+  no repositório novo).
 - CORS do backend para `hom.jrnexpenses.com` já liberado
   (`backend/infra/terraform/environments/hom/variables.tf`,
   `frontend_origins`).

@@ -16,16 +16,21 @@ backend, `key`s distintas — nenhum novo bootstrap é criado):
   (`terraform/dns/`) na FEAT-34, etapa 2. Gerenciava a hosted zone
   `jrnexpenses.com.` e os records de prod/hom; hoje lê o domínio do
   CloudFront e os dados de validação ACM de cada ambiente via
-  `terraform_remote_state` — as `key`s continuam apontando para
-  `environments/{prod,hom}/` deste monorepo até essas etapas também
-  migrarem (FEAT-34, etapas 3 e 4).
+  `terraform_remote_state` — a `key` de hom já aponta para
+  `infra-jrnexpenses/hom/terraform.tfstate` (etapa 3); a de prod ainda
+  aponta para este monorepo até a etapa 4 migrar.
 - **`environments/prod/`** — camada **efêmera**, destruível/recriável
   pelo pipeline futuro. Gerencia o bucket S3, a distribuição CloudFront,
-  o certificado ACM (`jrnexpenses.com`) e o WAF WebACL de produção.
-- **`environments/hom/`** — mesma estrutura de `environments/prod/`, mais
-  um WAF WebACL próprio (aqui criado via `resource`, não importado).
-  Distribuição assinada ao plano flat-rate **Free** do CloudFront
-  (manualmente, ver seção abaixo) — custo US$0/mês.
+  o certificado ACM (`jrnexpenses.com`) e o WAF WebACL de produção
+  (migração para `infra-jrnexpenses` é a FEAT-34, etapa 4 — ainda não
+  feita).
+- **`environments/hom/`** — desde a FEAT-34, etapa 3, gerencia **só o
+  workload**: bucket S3 + public access block + encryption + bucket
+  policy. OAC, distribuição CloudFront, certificado ACM
+  (`hom.jrnexpenses.com`) e WAF WebACL (a **plataforma**) vivem em
+  `infra-jrnexpenses/terraform/environments/hom/` — a bucket policy lê
+  o ARN da distribuição de lá via `terraform_remote_state`
+  (`remote_state.tf`).
 - **`cicd/`** — OIDC Provider + IAM Role usados pelos workflows de
   deploy do GitHub Actions (`frontend/specs/FEAT-09-cicd-github-actions/`)
   — movido para o repositório `infra-jrnexpenses`
@@ -77,7 +82,7 @@ execução — nenhum roda de forma autônoma (ver spec, US8).
 necessário (ex.: reconstrução em conta nova), fica documentado no
 `README.md` do `infra-jrnexpenses`.
 
-### 2. `environments/hom/` (criação do zero, não import)
+### 2. `environments/hom/` (hoje: só workload — bucket + policy)
 
 ```bash
 cd frontend/infra/terraform/environments/hom
@@ -85,17 +90,20 @@ terraform init \
   -backend-config="bucket=gastosapp-terraform-state-648443184523" \
   -backend-config="region=us-east-1"
 
-terraform plan   # revisar antes de aplicar
-terraform apply
+terraform plan   # deve bater "No changes" — a plataforma (CloudFront/
+                  # ACM/WAF) é lida via terraform_remote_state de
+                  # infra-jrnexpenses/terraform/environments/hom/,
+                  # não gerenciada aqui
 ```
 
-**Dependência circular ACM → DNS → CloudFront**: como os recursos são
-criados do zero (não importados), o certificado ACM nasce
-`PENDING_VALIDATION` e o CloudFront recusa associá-lo enquanto não
-virar `ISSUED` — mas a validação depende do CNAME em `dns/`, que por
-sua vez normalmente viria depois. Ordem usada na FEAT-08 (histórica —
-`dns/` vivia neste monorepo na época; hoje é
-`infra-jrnexpenses/terraform/dns/`):
+**Histórico (FEAT-08, antes da FEAT-34 etapa 3)**: quando esta config
+ainda era dona da plataforma inteira (bucket + OAC + distribuição
+CloudFront + ACM + WAF, criados do zero via `apply`, não `import`),
+existia uma dependência circular ACM → DNS → CloudFront — o certificado
+ACM nasce `PENDING_VALIDATION` e o CloudFront recusa associá-lo
+enquanto não virar `ISSUED`, mas a validação depende do CNAME em
+`dns/`, que por sua vez normalmente viria depois. Ordem usada na época
+(`dns/` também vivia neste monorepo):
 
 ```bash
 # 1) primeiro apply em hom/ — cria bucket, WAF, OAC e o certificado
@@ -105,7 +113,7 @@ terraform apply
 
 # 2) aplicar só o CNAME de validação do ACM em dns/ (a distribuição
 #    ainda não existe, então -target evita erro nos records hom_a/hom_aaaa)
-cd <infra-jrnexpenses>/terraform/dns
+cd ../../dns
 terraform apply -target='aws_route53_record.acm_validation_hom["hom.jrnexpenses.com"]'
 
 # 3) aguardar o certificado virar ISSUED (alguns minutos)
@@ -114,22 +122,25 @@ aws acm describe-certificate --region us-east-1 \
   --query 'Certificate.Status' --output text
 
 # 4) completar o apply em hom/ — cria a distribuição + bucket policy
-cd <monorepo>/frontend/infra/terraform/environments/hom
+cd ../environments/hom
 terraform apply
 
 # 5) apply completo em dns/ — cria hom_a/hom_aaaa (distribuição já existe)
-cd <infra-jrnexpenses>/terraform/dns
+cd ../../dns
 terraform apply
 ```
 
-**Checkpoint manual pós-`apply`**: a distribuição de hom nasce em
-cobrança pay-as-you-go. No console AWS (CloudFront → Distributions →
-`gastosapp-cdn-hom` → **Manage plan**), assinar o plano **Free**
-(2º dos 3 disponíveis na conta) para zerar o custo — isso cobre a
-distribuição + o WAF WebACL associado. Sem esse passo manual, a
-distribuição fica com cobrança padrão. O recurso Terraform equivalente
+Se a plataforma de hom precisar ser recriada do zero no futuro (ex.:
+conta AWS nova), esse mesmo procedimento se aplica a
+`infra-jrnexpenses/terraform/environments/hom/` (que hoje concentra
+OAC/distribuição/ACM/WAF) em conjunto com `infra-jrnexpenses/terraform/dns/`
+— **checkpoint manual pós-`apply`** nesse caso: a distribuição nasce em
+cobrança pay-as-you-go; no console AWS (CloudFront → Distributions →
+`gastosapp-cdn-hom` → **Manage plan**), assinar o plano **Free** (2º
+dos 3 disponíveis na conta) para zerar o custo — cobre distribuição +
+WAF associado. O recurso Terraform equivalente
 (`aws_pricingplanmanager_subscription`) ainda não existe em nenhuma
-versão publicada do provider — ver `frontend/infra/CLAUDE.md`.
+versão publicada do provider — ver `CLAUDE.md` do `infra-jrnexpenses`.
 
 ## `cicd/` — movido para `infra-jrnexpenses`
 
