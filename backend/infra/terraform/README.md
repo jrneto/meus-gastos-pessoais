@@ -9,12 +9,16 @@ Provisiona a infraestrutura AWS do backend: tabela DynamoDB (`GastosApp`
 (ver `backend/specs/FEAT-09-terraform-cognito-parameter-store/` e
 `backend/specs/FEAT-10-deploy-lambda-aot-api-gateway/`).
 
-Quatro configurações independentes:
+Duas configurações independentes neste diretório (`bootstrap/` e
+`cicd/` migraram para o repositório `infra-jrnexpenses` na FEAT-40,
+etapa 5 — ver pointers abaixo):
 
-- `bootstrap/` — cria o bucket S3 que guarda o state remoto das demais
-  configurações. Mantém o **próprio state local** (não tem como o
-  bucket gerenciar o state que o cria). Aplicado uma única vez por
-  conta AWS (ou raramente, se precisar recriar o bucket).
+- `bootstrap/` — **migrado para
+  [`infra-jrnexpenses/terraform/bootstrap/`](https://github.com/jrneto/infra-jrnexpenses/tree/develop/terraform/bootstrap)**
+  (FEAT-40, etapa 5). Continua criando o bucket S3 que guarda o state
+  remoto de todas as configurações do projeto (as deste diretório e as
+  do repositório novo), com **próprio state local** — passo a passo
+  no README de lá.
 - `environments/prod/` — ambiente de **produção**
   (`api.jrnexpenses.com`), state próprio no bucket criado pelo
   `bootstrap/` (`key = gastosapp/prod/terraform.tfstate`), usando o
@@ -23,11 +27,9 @@ Quatro configurações independentes:
   (`api-hom.jrnexpenses.com`, FEAT-13), isolado de produção (tabela,
   Cognito, Parameter Store, Lambda e API Gateway próprios), state
   próprio no mesmo bucket (`key = gastosapp/hom/terraform.tfstate`).
-- `cicd/` — OIDC Provider (reaproveitado, não criado) + IAM Role usados
-  pelos workflows de deploy do GitHub Actions
-  (`backend/specs/FEAT-14-cicd-github-actions/`). **Provavelmente fora
-  do state hoje** — mesmo gap de permissão já documentado para o
-  frontend (ver seção dedicada abaixo).
+- `cicd/` — **migrado para
+  [`infra-jrnexpenses/terraform/cicd/backend/`](https://github.com/jrneto/infra-jrnexpenses/tree/develop/terraform/cicd/backend)**
+  (FEAT-40, etapa 5) — ver seção dedicada abaixo.
 
 Essa organização por ambiente replica o padrão já adotado pelo
 Terraform do frontend (`frontend/infra/terraform/environments/prod/`).
@@ -208,112 +210,27 @@ produção, exposta em `https://api-hom.jrnexpenses.com`:
 Ver `backend/specs/FEAT-13-ambiente-homologacao/` para a spec e o plano
 técnico completos.
 
-## `cicd/` — OIDC Provider (reaproveitado) + IAM Role do backend (FEAT-14)
+## `cicd/` — OIDC Provider (reaproveitado) + IAM Role do backend (FEAT-14, migrado na FEAT-40)
 
-`backend/infra/terraform/cicd/` contém a IAM Role
-(`gastosapp-backend-cicd`) assumida via OIDC pelos workflows de deploy
-(`.github/workflows/backend-deploy-{hom,prod}.yml`), com permissão
-mínima (`lambda:UpdateFunctionCode`/`UpdateFunctionConfiguration`/
-`GetFunction`/`GetFunctionConfiguration`) escopada só às duas funções
-Lambda deste projeto. **Não cria um novo OIDC Provider** — `oidc.tf`
-usa `data "aws_iam_openid_connect_provider"` para referenciar o
-Provider já existente na conta (criado manualmente para o frontend na
-FEAT-09, é um recurso único por conta/URL de emissor).
+**Migrado para
+[`infra-jrnexpenses/terraform/cicd/backend/`](https://github.com/jrneto/infra-jrnexpenses/tree/develop/terraform/cicd/backend)**
+(FEAT-40, etapa 5) — mesmos arquivos, sem alteração de conteúdo,
+`key` do state (`gastosapp-backend/cicd/terraform.tfstate`) mantida
+dormente. Continua fora de qualquer state (guardrail de IAM do perfil
+usado para aplicar Terraform, ver `README.md`/`CLAUDE.md` do
+repositório novo): a IAM Role `gastosapp-backend-cicd` e a policy
+inline foram criadas manualmente no console AWS, com o JSON gerado a
+partir de `iam-role.tf`/`iam-policy.tf`; o README de lá documenta o
+JSON de referência (com um débito conhecido de estar desatualizado,
+não corrigido nesta migração — ver `backend/docs/backlog.md`) e o
+passo a passo de `import`, se a permissão de leitura de IAM for
+liberada no futuro.
 
-**Gap confirmado (2026-08-08, mesmo já documentado em
-`frontend/infra/terraform/README.md`, seção "cicd/")**: `terraform
-plan` falha já na leitura do OIDC Provider existente —
-`AccessDenied: User: .../josereato-admin is not authorized to perform:
-iam:ListOpenIDConnectProviders` — mesmo com o perfil
-`AWSReservedSSO_Perfil-Admin-Desenvolvedor`. Nenhum recurso chegou a
-ser criado (a falha é no `plan`, antes de qualquer `apply`). Mesmo
-guardrail identificado no frontend, agora confirmado também para ações
-de **leitura** sobre OIDC, não só criação.
-
-A Role precisa ser criada **manualmente no console AWS**, com o JSON
-abaixo (gerado a partir de `iam-role.tf`/`iam-policy.tf`, byte a byte
-igual ao que o Terraform aplicaria):
-
-**Trust policy** (`gastosapp-backend-cicd`):
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Federated": "arn:aws:iam::648443184523:oidc-provider/token.actions.githubusercontent.com"
-      },
-      "Action": "sts:AssumeRoleWithWebIdentity",
-      "Condition": {
-        "StringEquals": {
-          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-        },
-        "StringLike": {
-          "token.actions.githubusercontent.com:sub": [
-            "repo:jrneto/meus-gastos-pessoais:environment:backend-hom",
-            "repo:jrneto/meus-gastos-pessoais:environment:backend-prod"
-          ]
-        }
-      }
-    }
-  ]
-}
-```
-
-**Policy inline** (`gastosapp-backend-cicd-deploy`):
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "UpdateBackendLambdaCode",
-      "Effect": "Allow",
-      "Action": [
-        "lambda:UpdateFunctionCode",
-        "lambda:UpdateFunctionConfiguration",
-        "lambda:GetFunction",
-        "lambda:GetFunctionConfiguration"
-      ],
-      "Resource": [
-        "arn:aws:lambda:us-east-1:648443184523:function:gastos-app-api-hom",
-        "arn:aws:lambda:us-east-1:648443184523:function:gastos-app-api"
-      ]
-    }
-  ]
-}
-```
-
-Passo a passo no console: IAM → Roles → Create role → Custom trust
-policy (cola o JSON de trust acima) → Add permissions → Create inline
-policy (cola o JSON de policy acima, nome
-`gastosapp-backend-cicd-deploy`) → nome da Role:
-`gastosapp-backend-cicd`.
-
-**Role criada manualmente pelo usuário (2026-08-08)**:
-`arn:aws:iam::648443184523:role/gastosapp-backend-cicd`.
-`terraform import` tentado logo em seguida — **também falhou**
-(`AccessDenied` em `iam:ListOpenIDConnectProviders` e, testado à parte,
-`iam:GetRole` também negado) — o guardrail cobre leitura de IAM/OIDC de
-forma geral, não só escrita. A Role fica fora do state por enquanto,
-mesma situação de `gastosapp-frontend-cicd`.
-
-Se a permissão de leitura for liberada no futuro, importar pra trazer
-ao state:
-
-```bash
-cd backend/infra/terraform/cicd
-terraform import aws_iam_role.backend_cicd gastosapp-backend-cicd
-terraform import aws_iam_role_policy.backend_cicd \
-  gastosapp-backend-cicd:gastosapp-backend-cicd-deploy
-terraform plan   # deve dar "No changes" se o console bateu com o .tf
-```
-
-**Uso pelos workflows**: o ARN da Role é cadastrado como variável
-`CICD_ROLE_ARN` nos GitHub Environments `backend-hom`/`backend-prod`
-(distintos dos `hom`/`prod` já usados pelo frontend, pra não competir
-pela mesma variável com uma Role diferente) — não depende do state do
-Terraform para funcionar, só do recurso existir de fato na conta.
+**Uso pelos workflows**: o ARN da Role continua cadastrado como
+variável `CICD_ROLE_ARN` nos GitHub Environments
+`backend-hom`/`backend-prod` (neste monorepo) — não depende de state
+Terraform para funcionar, só do recurso existir de fato na conta;
+nenhum workflow foi alterado por esta migração.
 
 **Convenção de tag `backend-v*`**: como o repositório é compartilhado
 com o frontend (que usa `vX.Y.Z`), as releases do backend usam o
