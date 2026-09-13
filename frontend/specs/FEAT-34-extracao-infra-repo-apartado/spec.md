@@ -26,7 +26,7 @@ CI executa Terraform — ver `frontend/infra/CLAUDE.md`):
 
 | Configuração | State | Conteúdo |
 |---|---|---|
-| `dns/` | `gastosapp-frontend/dns/terraform.tfstate` | hosted zone `jrnexpenses.com.` (`prevent_destroy`) + 8 records (apex/www A/AAAA, hom A/AAAA, 2 `for_each` de validação ACM); lê os states de `environments/{prod,hom}` via `terraform_remote_state` |
+| `dns/` | `gastosapp-frontend/dns/terraform.tfstate` | hosted zone `jrnexpenses.com.` (`prevent_destroy`) + 9 instâncias de record (apex/www A/AAAA, hom A/AAAA, 2 `for_each` de validação ACM — 3 instâncias no total); lê os states de `environments/{prod,hom}` via `terraform_remote_state` |
 | `environments/prod/` | `gastosapp-frontend/prod/terraform.tfstate` | bucket `gastosapp-frontend-prod` (+ PAB, SSE, policy), OAC, distribuição `E2YCZNS0F94SCU`, ACM `jrnexpenses.com`, WAF `CreatedByCloudFront-8ee8deea` |
 | `environments/hom/` | `gastosapp-frontend/hom/terraform.tfstate` | idem para hom (`gastosapp-frontend-hom`, `ELE195A1APCLB`, ACM `hom.jrnexpenses.com`, WAF `gastosapp-hom-web-acl`) |
 | `cicd/` | `gastosapp-frontend/cicd/terraform.tfstate` (**vazio**) | OIDC provider + role `gastosapp-frontend-cicd` — referência, fora de state por causa do guardrail de IAM |
@@ -173,7 +173,7 @@ recurso está registrado.
 
 **US3 — Camada `dns/` movida para `infra-jrnexpenses/terraform/dns/`**
 - Given o state `gastosapp-frontend/dns/terraform.tfstate` contém a
-  hosted zone e os 8 records
+  hosted zone e 9 instâncias de record
 - When a etapa de DNS é concluída
 - Then zona e records estão em `infra-jrnexpenses/dns/terraform.tfstate`,
   a zona mantém `lifecycle { prevent_destroy = true }`, os
@@ -246,9 +246,9 @@ recurso está registrado.
       `frontend/infra/terraform/`; nenhum state remoto alterado nessa
       etapa
 - [x] `terraform state list` de `infra-jrnexpenses/terraform/dns/`
-      contém a hosted zone e os 8 records; `frontend/infra/terraform/dns/`
-      não existe mais; `plan` = "No changes" (contagem real: 9 instâncias
-      de record — ver "Status" abaixo)
+      contém a hosted zone e 9 instâncias de record;
+      `frontend/infra/terraform/dns/` não existe mais; `plan` = "No
+      changes"
 - [x] `terraform state list` de `infra-jrnexpenses/terraform/environments/hom/`
       contém exatamente OAC, distribuição, ACM e WAF de hom;
       `terraform state list` de `frontend/infra/terraform/environments/hom/`
@@ -271,10 +271,12 @@ recurso está registrado.
       F5 em rota interna (smoke manual)
 - [x] Nenhum `terraform state push`/`apply` executado sem aprovação
       explícita do usuário no momento da execução
-- [~] `frontend/infra/CLAUDE.md`, `frontend/infra/terraform/README.md`
-      atualizados (feito); `/CLAUDE.md` raiz e `/docs/architecture.md`
-      **pendentes** — atualizados uma vez só pela FEAT-40 (última a
-      terminar), conforme decisão do `plan.md` §4 (etapa 7)
+- [x] `frontend/infra/CLAUDE.md`, `frontend/infra/terraform/README.md`
+      atualizados; `/CLAUDE.md` raiz e `/docs/architecture.md`
+      atualizados **para a parte do frontend** no `/review` de
+      2026-09-13 (a parte do backend/Cognito/DynamoDB nesses dois
+      documentos continua pendente da FEAT-40, que também vai mover
+      infra pro mesmo `infra-jrnexpenses`)
 - [x] `frontend/docs/backlog.md` atualizado: FEAT-34 marcada como concluída
 
 ## Status (2026-09-12)
@@ -290,9 +292,10 @@ em cada ponta a cada passo.
 - `terraform/dns/` — hosted zone `jrnexpenses.com.` + 9 instâncias de
   record (`apex_a`, `apex_aaaa`, `www_a`, `www_aaaa`,
   `acm_validation["jrnexpenses.com"]`, `acm_validation["www.jrnexpenses.com"]`,
-  `hom_a`, `hom_aaaa`, `acm_validation_hom["hom.jrnexpenses.com"]`) —
-  a spec original citava "8 records"; a contagem real de instâncias é 9
-  (2 delas vêm do mesmo bloco `for_each` de validação ACM de prod)
+  `hom_a`, `hom_aaaa`, `acm_validation_hom["hom.jrnexpenses.com"]`) — a
+  spec original citava "8 records" (contando blocos `for_each`, não
+  instâncias); corrigido para "9 instâncias" em toda a spec no `/review`
+  de 2026-09-13
 - `terraform/environments/hom/` — OAC, distribuição `ELE195A1APCLB`,
   ACM `hom.jrnexpenses.com`, WAF `aws_wafv2_web_acl.hom`
 - `terraform/environments/prod/` — OAC, distribuição `E2YCZNS0F94SCU`,
@@ -329,10 +332,14 @@ backend) ao final da FEAT-40, com aprovação.
   raiz — resolvida com uma branch `fix/valida-pipeline-hom` dedicada,
   PR automático e merge manual (ver histórico da conversa/commits).
 
-**Pendências reais para fechar a FEAT-34**: nenhuma do lado frontend —
-faltam só os itens explicitamente compartilhados com a FEAT-40 (PR
-`develop → main` do `infra-jrnexpenses`, e a atualização de
-`/CLAUDE.md` raiz + `/docs/architecture.md`).
+**Pendências reais para fechar a FEAT-34**: nenhuma do lado frontend.
+PR `develop → main` do `infra-jrnexpenses` já mergeado
+([#1](https://github.com/jrneto/infra-jrnexpenses/pull/1)); PR
+`FEAT-34-extracao-infra-repo-apartado → develop` do monorepo já
+mergeado ([#121](https://github.com/jrneto/meus-gastos-pessoais/pull/121));
+`/CLAUDE.md` raiz e `/docs/architecture.md` atualizados para a parte do
+frontend no `/review`. Falta só a parte do backend nesses dois
+documentos, escopo da FEAT-40.
 
 ## Fora do escopo
 
