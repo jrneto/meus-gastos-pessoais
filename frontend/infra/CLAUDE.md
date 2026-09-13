@@ -5,37 +5,48 @@ Leve vs Fluxo Completo e a regra de organização de specs.
 
 ## Estado atual
 
-Hosting (S3 + CloudFront + ACM + WAF WebACL) e DNS (hosted zone +
-records em Route 53) estão em produção
+Hosting (S3 + CloudFront + ACM + WAF WebACL) está em produção
 (`jrnexpenses.com`/`www.jrnexpenses.com`) e homologação
-(`hom.jrnexpenses.com`), geridos por Terraform em
-`frontend/infra/terraform/`, em **duas configurações independentes**
-(mesmo princípio `bootstrap/`/config principal do backend), cada uma
-com seu próprio state, ambas no bucket de state do backend
+(`hom.jrnexpenses.com`). Desde a FEAT-34 (extração de infra para
+`infra-jrnexpenses`, etapas 1-4 concluídas — falta só a etapa 7, de
+fechamento de docs), a infra está dividida em dois repositórios:
+**workload** (bucket S3 + PAB + SSE + bucket policy, por ambiente)
+segue gerido por Terraform aqui, em `frontend/infra/terraform/`;
+**plataforma** (CloudFront/OAC/ACM/WAF, `dns/`, `cicd/`) vive em
+`infra-jrnexpenses`. Duas configurações independentes neste monorepo,
+cada uma com seu próprio state, ambas no bucket de state do backend
 (`gastosapp-terraform-state-648443184523`, `key`s distintas):
 
-- **`dns/`** — camada **persistente**, nunca destruída por um futuro
-  pipeline de destroy/recreate. Gerencia a hosted zone
-  `jrnexpenses.com.` (`lifecycle { prevent_destroy = true }`) e os
-  records de prod (6, incl. `www`) e hom (A/AAAA + CNAME de validação
-  ACM, sem `www.hom`). Lê CloudFront/ACM via `terraform_remote_state`
-  de cada `environments/{prod,hom}` — se a infra principal for
-  recriada, os records se atualizam sozinhos ao rodar `apply` aqui.
-- **`environments/prod/`** — camada **efêmera**, destruível/recriável.
-  Bucket S3, distribuição CloudFront, certificado ACM
-  (`jrnexpenses.com`), WAF WebACL. Trazida via `terraform import`
-  (nenhum recurso recriado).
-- **`environments/hom/`** — mesma estrutura, provisionada do zero
-  (`bucket S3 gastosapp-frontend-hom`, CloudFront, OAC, ACM
-  `hom.jrnexpenses.com`), **+ WAF WebACL próprio** (`aws_wafv2_web_acl.hom`,
-  mesmos 3 Managed Rule Groups de prod — prod não tem `waf.tf` porque o
-  dele foi importado já associado à distribuição). Assinada ao plano
+- **`dns/`** — movida para o repositório `infra-jrnexpenses`
+  (`terraform/dns/`) na FEAT-34, etapa 2
+  (`frontend/specs/FEAT-34-extracao-infra-repo-apartado/`). Gerencia a
+  hosted zone `jrnexpenses.com.` (`lifecycle { prevent_destroy = true }`)
+  e os records de prod (6, incl. `www`) e hom (A/AAAA + CNAME de
+  validação ACM, sem `www.hom`). Lê CloudFront/ACM via
+  `terraform_remote_state` de cada `environments/{prod,hom}`, ambas as
+  `key`s já apontando para `infra-jrnexpenses/{hom,prod}/terraform.tfstate`
+  (etapas 3 e 4).
+- **`environments/prod/`** — desde a FEAT-34, etapa 4, gerencia **só o
+  workload** (bucket S3 `gastosapp-frontend-prod` + PAB + SSE + bucket
+  policy). A **plataforma** (OAC, distribuição CloudFront
+  `E2YCZNS0F94SCU`, ACM `jrnexpenses.com` + SAN `www`, WAF
+  `CreatedByCloudFront-8ee8deea`) vive em
+  `infra-jrnexpenses/terraform/environments/prod/`.
+- **`environments/hom/`** — mesma estrutura desde a etapa 3: bucket S3
+  `gastosapp-frontend-hom` + PAB + SSE + bucket policy. A plataforma
+  (OAC, distribuição `ELE195A1APCLB`, ACM `hom.jrnexpenses.com`, WAF
+  `aws_wafv2_web_acl.hom` com os mesmos 3 Managed Rule Groups de prod)
+  vive em `infra-jrnexpenses/terraform/environments/hom/`.
+- Em ambos, a bucket policy deste monorepo lê o ARN da distribuição via
+  `data.terraform_remote_state.infra` (`remote_state.tf`) — a infra
+  nunca lê state do monorepo, só o inverso. Assinatura ao plano
   flat-rate **Free** do CloudFront (2º dos 3 planos Free da conta,
   cobre distribuição+WAF+DDoS a US$0/mês, dentro de 1M req/100GB por
   mês) — assinatura feita **manualmente no console** (recurso Terraform
   `aws_pricingplanmanager_subscription` ainda não lançado em nenhuma
   versão do provider, [PR #49235](https://github.com/hashicorp/terraform-provider-aws/pull/49235)
-  aberto; trazer via `import` quando disponível, prod e hom).
+  aberto; trazer via `import` quando disponível — hoje seria no
+  `infra-jrnexpenses`, prod e hom).
 - CORS do backend para `hom.jrnexpenses.com` já liberado
   (`backend/infra/terraform/environments/hom/variables.tf`,
   `frontend_origins`).
@@ -44,6 +55,13 @@ com seu próprio state, ambas no bucket de state do backend
 o record de `api.jrnexpenses.com`/`api-hom.jrnexpenses.com` (contexto
 backend) e o registro do domínio em si. Passo a passo de
 `init`/`import`: `frontend/infra/terraform/README.md`.
+
+**Pendente**: `/CLAUDE.md` raiz (seção "Infraestrutura" e a afirmação
+"não existe infraestrutura compartilhada entre contextos") e
+`/docs/architecture.md` ainda descrevem toda a infra como vivendo no
+monorepo — são atualizados uma vez só pela `backend/specs/FEAT-40-extracao-infra-repo-apartado/`
+(a última das duas a terminar, já que cobre o mesmo repositório
+`infra-jrnexpenses` para o lado backend).
 
 ## CI/CD (GitHub Actions)
 
@@ -70,13 +88,13 @@ backend) e o registro do domínio em si. Passo a passo de
 ## Gotchas conhecidos
 
 - **OIDC Provider + Role fora do Terraform**: criados manualmente no
-  console (`frontend/infra/terraform/cicd/` mantido só como
-  referência) — `apply`/`import` falham com `AccessDenied` em ações de
-  IAM (`Create`/`Get`/`List` de OpenIDConnectProvider/Role/RolePolicy);
-  o perfil `agent-toolkit` não tem essas permissões mesmo sendo
+  console (código de referência movido para
+  `infra-jrnexpenses/terraform/cicd/frontend/` na FEAT-34, etapa 1) —
+  `apply`/`import` falham com `AccessDenied` em ações de IAM
+  (`Create`/`Get`/`List` de OpenIDConnectProvider/Role/RolePolicy); o
+  perfil `agent-toolkit` não tem essas permissões mesmo sendo
   "Admin-Desenvolvedor" (guardrail intencional contra federação de
-  identidade). Detalhes/ARNs: `frontend/infra/terraform/README.md`,
-  seção "cicd/".
+  identidade). Detalhes/ARNs: `README.md` do `infra-jrnexpenses`.
 - **Assinatura ao plano Free do CloudFront** (hom e prod) é manual no
   console — ver acima.
 

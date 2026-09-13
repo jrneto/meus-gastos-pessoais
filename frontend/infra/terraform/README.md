@@ -8,32 +8,32 @@ criado, recriado ou destruído nessa migração. `environments/hom/` foi
 criado do zero via `apply` (ver
 `frontend/specs/FEAT-08-ambiente-homologacao/`).
 
-Três configurações independentes, cada uma com seu próprio state, todas
+Duas configurações independentes, cada uma com seu próprio state, ambas
 no bucket `gastosapp-terraform-state-648443184523` (reaproveitado do
 backend, `key`s distintas — nenhum novo bootstrap é criado):
 
-- **`dns/`** — camada **persistente**, nunca destruída pelo pipeline de
-  CI/CD futuro (`destroy`/recreate da infra de aplicação). Gerencia a
-  hosted zone `jrnexpenses.com.` (protegida com `prevent_destroy`), os 6
-  records DNS de produção e os 3 de homologação (`hom.jrnexpenses.com`).
-  Lê o domínio do CloudFront e os dados de validação de certificado ACM
-  de cada ambiente via `terraform_remote_state` (um data source por
-  ambiente, desacoplados entre si) — assim, se a infra de um ambiente for
-  recriada no futuro, os records dele se atualizam sozinhos ao rodar
-  `apply` aqui.
-- **`environments/prod/`** — camada **efêmera**, destruível/recriável
-  pelo pipeline futuro. Gerencia o bucket S3, a distribuição CloudFront,
-  o certificado ACM (`jrnexpenses.com`) e o WAF WebACL de produção.
-- **`environments/hom/`** — mesma estrutura de `environments/prod/`, mais
-  um WAF WebACL próprio (aqui criado via `resource`, não importado).
-  Distribuição assinada ao plano flat-rate **Free** do CloudFront
-  (manualmente, ver seção abaixo) — custo US$0/mês.
+- **`dns/`** — movida para o repositório `infra-jrnexpenses`
+  (`terraform/dns/`) na FEAT-34, etapa 2. Gerenciava a hosted zone
+  `jrnexpenses.com.` e os records de prod/hom; hoje lê o domínio do
+  CloudFront e os dados de validação ACM de cada ambiente via
+  `terraform_remote_state`, ambas as `key`s já apontando para
+  `infra-jrnexpenses/{hom,prod}/terraform.tfstate` (etapas 3 e 4).
+- **`environments/prod/`** — desde a FEAT-34, etapa 4, gerencia **só o
+  workload**: bucket S3 + public access block + encryption + bucket
+  policy. OAC, distribuição CloudFront, certificado ACM
+  (`jrnexpenses.com`, SAN `www`) e WAF WebACL (a **plataforma**) vivem
+  em `infra-jrnexpenses/terraform/environments/prod/` — a bucket policy
+  lê o ARN da distribuição de lá via `terraform_remote_state`
+  (`remote_state.tf`).
+- **`environments/hom/`** — mesma estrutura de `environments/prod/`
+  desde a etapa 3: só bucket S3 + PAB + encryption + bucket policy. A
+  plataforma de hom vive em
+  `infra-jrnexpenses/terraform/environments/hom/`.
 - **`cicd/`** — OIDC Provider + IAM Role usados pelos workflows de
-  deploy do GitHub Actions (`frontend/specs/FEAT-09-cicd-github-actions/`).
-  **Não está no state hoje** — os recursos existem na conta, criados
-  manualmente no console, mas o Terraform não consegue gerenciá-los
-  (create/import) com as credenciais atuais. Código mantido como
-  referência do estado desejado. Ver seção dedicada abaixo.
+  deploy do GitHub Actions (`frontend/specs/FEAT-09-cicd-github-actions/`)
+  — movido para o repositório `infra-jrnexpenses`
+  (`terraform/cicd/frontend/`) na FEAT-34, etapa 1. Ver seção dedicada
+  abaixo.
 
 ## Pré-requisitos
 
@@ -43,80 +43,34 @@ backend, `key`s distintas — nenhum novo bootstrap é criado):
 - Nenhuma permissão de criação é necessária para o `import` em si — só
   leitura dos recursos e escrita no bucket de state já existente
 
-## Ordem de execução (primeira vez)
-
-`terraform import` não exige que as referências entre recursos já
-estejam resolvidas — só liga um ID real da AWS ao endereço do recurso no
-state. Ainda assim, siga esta ordem (evita confusão ao revisar o
-`plan` depois):
-
-### 1. `environments/prod/`
+## Init (hoje: cada config gerencia só workload — bucket + policy)
 
 ```bash
-cd frontend/infra/terraform/environments/prod
+cd frontend/infra/terraform/environments/{hom,prod}
 terraform init \
   -backend-config="bucket=gastosapp-terraform-state-648443184523" \
   -backend-config="region=us-east-1"
 
-terraform import aws_s3_bucket.frontend gastosapp-frontend-prod
-terraform import aws_s3_bucket_public_access_block.frontend gastosapp-frontend-prod
-terraform import aws_s3_bucket_server_side_encryption_configuration.frontend gastosapp-frontend-prod
-terraform import aws_s3_bucket_policy.frontend gastosapp-frontend-prod
-
-terraform import aws_acm_certificate.frontend arn:aws:acm:us-east-1:648443184523:certificate/a29d5ddb-d617-400f-95d1-aca8b9d3a64a
-
-terraform import aws_wafv2_web_acl.frontend dad6fab1-e0cb-48e6-aa48-57459260f456/CreatedByCloudFront-8ee8deea/CLOUDFRONT
-
-terraform import aws_cloudfront_origin_access_control.frontend E1ZY2CM7WZ1H6
-terraform import aws_cloudfront_distribution.main E2YCZNS0F94SCU
-
-terraform plan   # deve bater "No changes" — ajuste o HCL até chegar lá
+terraform plan   # deve bater "No changes" — a plataforma (CloudFront/
+                  # OAC/ACM/WAF) é lida via terraform_remote_state de
+                  # infra-jrnexpenses/terraform/environments/{hom,prod}/,
+                  # não gerenciada aqui
 ```
 
-### 2. `dns/`
+`dns/` não vive mais aqui — passo de `init`/import equivalente, quando
+necessário (ex.: reconstrução em conta nova), fica documentado no
+`README.md` do `infra-jrnexpenses`.
 
-```bash
-cd ../../dns
-terraform init \
-  -backend-config="bucket=gastosapp-terraform-state-648443184523" \
-  -backend-config="region=us-east-1"
-
-terraform import aws_route53_zone.main Z053098817OJTJ5LWHAZW
-
-terraform import aws_route53_record.apex_a Z053098817OJTJ5LWHAZW_jrnexpenses.com_A
-terraform import aws_route53_record.apex_aaaa Z053098817OJTJ5LWHAZW_jrnexpenses.com_AAAA
-terraform import aws_route53_record.www_a Z053098817OJTJ5LWHAZW_www.jrnexpenses.com_A
-terraform import aws_route53_record.www_aaaa Z053098817OJTJ5LWHAZW_www.jrnexpenses.com_AAAA
-
-# CNAMEs de validação ACM (nomes exatos dos records a confirmar lendo o
-# certificado real antes de rodar — ver acm.tf de environments/prod)
-terraform import 'aws_route53_record.acm_validation["jrnexpenses.com"]' Z053098817OJTJ5LWHAZW__f91e552da643f7310e2ef48005c54b0d.jrnexpenses.com_CNAME
-terraform import 'aws_route53_record.acm_validation["www.jrnexpenses.com"]' Z053098817OJTJ5LWHAZW__632a98ba4517a08bda86576acc344e22.www.jrnexpenses.com_CNAME
-
-terraform plan   # deve bater "No changes" — ajuste o HCL até chegar lá
-```
-
-Cada `import`/`apply` é confirmado individualmente no momento da
-execução — nenhum roda de forma autônoma (ver spec, US8).
-
-### 3. `environments/hom/` (criação do zero, não import)
-
-```bash
-cd frontend/infra/terraform/environments/hom
-terraform init \
-  -backend-config="bucket=gastosapp-terraform-state-648443184523" \
-  -backend-config="region=us-east-1"
-
-terraform plan   # revisar antes de aplicar
-terraform apply
-```
-
-**Dependência circular ACM → DNS → CloudFront**: como os recursos são
-criados do zero (não importados), o certificado ACM nasce
+**Histórico (antes da FEAT-34)**: até a etapa 3 (hom) e a etapa 4
+(prod), cada config aqui era dona da plataforma inteira. `prod` foi
+trazida via `terraform import` de infra já existente, criada
+manualmente no console (`frontend/specs/FEAT-07-terraform-import-infra/`);
+`hom` foi criada do zero via `apply`
+(`frontend/specs/FEAT-08-ambiente-homologacao/`), com uma dependência
+circular ACM → DNS → CloudFront — o certificado ACM nasce
 `PENDING_VALIDATION` e o CloudFront recusa associá-lo enquanto não
-virar `ISSUED` — mas a validação depende do CNAME em `dns/`, que por
-sua vez normalmente viria depois. Ordem que funciona (usada na
-FEAT-08):
+virar `ISSUED`, mas a validação depende do CNAME em `dns/` (que também
+vivia neste monorepo na época):
 
 ```bash
 # 1) primeiro apply em hom/ — cria bucket, WAF, OAC e o certificado
@@ -143,62 +97,37 @@ cd ../../dns
 terraform apply
 ```
 
-**Checkpoint manual pós-`apply`**: a distribuição de hom nasce em
-cobrança pay-as-you-go. No console AWS (CloudFront → Distributions →
-`gastosapp-cdn-hom` → **Manage plan**), assinar o plano **Free**
-(2º dos 3 disponíveis na conta) para zerar o custo — isso cobre a
-distribuição + o WAF WebACL associado. Sem esse passo manual, a
-distribuição fica com cobrança padrão. O recurso Terraform equivalente
-(`aws_pricingplanmanager_subscription`) ainda não existe em nenhuma
-versão publicada do provider — ver `frontend/infra/CLAUDE.md`.
+Se a plataforma de hom ou prod precisar ser recriada do zero no futuro
+(ex.: conta AWS nova), esses mesmos procedimentos (`import` para prod,
+`apply` + a sequência acima para hom) se aplicam a
+`infra-jrnexpenses/terraform/environments/{hom,prod}/` (que hoje
+concentram OAC/distribuição/ACM/WAF) em conjunto com
+`infra-jrnexpenses/terraform/dns/` — **checkpoint manual pós-`apply`**
+no caso de hom: a distribuição nasce em cobrança pay-as-you-go; no
+console AWS (CloudFront → Distributions → `gastosapp-cdn-hom` →
+**Manage plan**), assinar o plano **Free** (2º dos 3 disponíveis na
+conta) para zerar o custo — cobre distribuição + WAF associado. O
+recurso Terraform equivalente (`aws_pricingplanmanager_subscription`)
+ainda não existe em nenhuma versão publicada do provider — ver
+`CLAUDE.md` do `infra-jrnexpenses`.
 
-## `cicd/` — OIDC Provider + IAM Role (fora do state, gerenciados manualmente)
+Cada `import`/`apply`/`state push` é confirmado individualmente no
+momento da execução — nenhum roda de forma autônoma (ver spec, US8).
 
-`frontend/infra/terraform/cicd/` contém o código de referência
-(`oidc.tf`, `iam-role.tf`, `iam-policy.tf`) para o OIDC Provider do
-GitHub Actions e a IAM Role assumida pelos workflows de deploy
-(`.github/workflows/frontend-deploy-{hom,prod}.yml`) — mas **os
-recursos reais foram criados manualmente no console AWS, não pelo
-Terraform**, e não estão no state desta config.
+## `cicd/` — movido para `infra-jrnexpenses`
 
-**Motivo**: tanto `terraform apply` (criação) quanto `terraform import`
-(trazer o que já existe) falharam com `AccessDenied` — o perfil usado
-(`agent-toolkit`, role `AWSReservedSSO_Perfil-Admin-Desenvolvedor`) não
-tem permissão para nenhuma ação de leitura/escrita sobre
-`aws_iam_openid_connect_provider`/Role relacionadas
-(`iam:CreateOpenIDConnectProvider`, `iam:GetOpenIDConnectProvider`,
-`iam:ListOpenIDConnectProviders`, `iam:GetRole`, `iam:GetRolePolicy`,
-`iam:ListRolePolicies` — todas negadas), mesmo sendo um perfil
-"Admin-Desenvolvedor". Aparenta ser um guardrail intencional (permission
-set ou SCP da AWS Organization) contra ações de federação de
-identidade/IAM, independente da permissão de admin no restante da
-conta.
+O código de referência do OIDC Provider + IAM Role do CI/CD do frontend
+(`oidc.tf`, `iam-role.tf`, `iam-policy.tf` — recursos criados
+manualmente no console, fora do state por causa do guardrail de IAM do
+perfil `agent-toolkit`) vive agora em
+`infra-jrnexpenses/terraform/cicd/frontend/` (FEAT-34, etapa 1). ARNs,
+motivo do guardrail e comando de `import` futuro: `README.md` daquele
+repositório.
 
-**Recursos existentes na conta** (criados manualmente, 2026-08-08):
-- OIDC Provider: `arn:aws:iam::648443184523:oidc-provider/token.actions.githubusercontent.com`
-- IAM Role: `arn:aws:iam::648443184523:role/gastosapp-frontend-cicd`
-  - Trust policy e policy inline (`gastosapp-frontend-cicd-deploy`)
-    criadas **byte a byte iguais** ao que `iam-role.tf`/`iam-policy.tf`
-    gerariam — conferido visualmente no console (não via `terraform
-    plan`, que também não funciona sem essas permissões).
-
-**Se a permissão for liberada no futuro** (permission set/SCP ajustado
-para permitir as ações acima), trazer para o state com:
-```bash
-cd frontend/infra/terraform/cicd
-terraform import aws_iam_openid_connect_provider.github \
-  arn:aws:iam::648443184523:oidc-provider/token.actions.githubusercontent.com
-terraform import aws_iam_role.frontend_cicd gastosapp-frontend-cicd
-terraform import aws_iam_role_policy.frontend_cicd \
-  gastosapp-frontend-cicd:gastosapp-frontend-cicd-deploy
-terraform plan   # deve dar "No changes" se o console bateu com o .tf
-```
-
-**Uso pelos workflows**: o ARN da Role
-(`arn:aws:iam::648443184523:role/gastosapp-frontend-cicd`) é cadastrado
-como variável `CICD_ROLE_ARN` nos GitHub Environments `hom`/`prod` — não
-depende do state do Terraform para funcionar, só do recurso existir de
-fato na conta (que existe, só não está sob Terraform).
+O ARN da Role (`arn:aws:iam::648443184523:role/gastosapp-frontend-cicd`)
+continua cadastrado como variável `CICD_ROLE_ARN` nos GitHub
+Environments `hom`/`prod` deste monorepo — não depende de onde o
+Terraform de referência vive, só do recurso existir de fato na conta.
 
 ## Explicitamente fora desta config
 

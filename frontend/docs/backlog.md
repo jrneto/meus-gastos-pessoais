@@ -179,6 +179,31 @@ vira `spec.md` própria via `/specify`.
   `/specify`), sem passar por spec própria em `specs/`.
   Depende de: nenhuma.
 
+## Infraestrutura (2026-09-12)
+
+- [x] **FEAT-34 — Extração da infra Terraform do frontend para o
+  repositório `infra-jrnexpenses`** *(spec em
+  `frontend/specs/FEAT-34-extracao-infra-repo-apartado/`; feature irmã
+  da FEAT-40 do backend)*: separa plataforma (CloudFront + OAC, ACM,
+  WAF WebACL, camada `dns/` inteira, `cicd/`) do workload (bucket S3 do
+  site + public access block + encryption + bucket policy), movendo a
+  plataforma para um repositório novo em etapas controladas (um state
+  por etapa — `dns/`, hom, prod —, `terraform state mv` offline, `plan`
+  = "No changes" dos dois lados, hom antes de prod), sem criar/
+  destruir/alterar nenhum recurso AWS nem tocar em workflows/GitHub
+  Environments. A bucket policy passa a ler o ARN da distribuição via
+  `terraform_remote_state`; a infra nunca lê o state do monorepo. Vai
+  **antes** da FEAT-40 do backend, para validar o padrão de referência
+  cruzada em states menores. Débitos correlatos (CI de
+  `fmt`/`validate`/`plan` no repo novo, consolidação de zona DNS) estão
+  registrados em `backend/docs/backlog.md`.
+  Depende de: nenhuma (o repositório `infra-jrnexpenses` é criado pelo
+  usuário na etapa 0).
+  Concluída em 2026-09-12 — todas as etapas do lado frontend (0-4)
+  entregues; ver seção "Status" em `spec.md`. Pendente só o que é
+  compartilhado com a FEAT-40 (docs raiz, PR `develop → main` do
+  `infra-jrnexpenses`).
+
 ## Débitos técnicos e melhorias futuras
 
 - **Componente de toast genérico (Modernist)** — levantado durante o
