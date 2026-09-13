@@ -1,16 +1,14 @@
 # Terraform — backend/infra
 
-Provisiona a infraestrutura AWS do backend. **Desde a FEAT-40 (etapa
-6), `environments/hom/` só gerencia o workload** — as 3 Lambdas .NET
-Native AOT (API + os 2 triggers do Cognito, `lambda*.tf`), suas roles/
-policies/log groups/permissions; a plataforma (tabela DynamoDB,
-Cognito User Pool + App Client, Parameter Store, SES, API Gateway,
-domínio customizado + ACM/DNS) foi movida para o repositório
+Provisiona a infraestrutura AWS do backend. **Desde a FEAT-40 (etapas
+6 e 7), `environments/{hom,prod}/` só gerenciam o workload** — as 3
+Lambdas .NET Native AOT (API + os 2 triggers do Cognito, `lambda*.tf`),
+suas roles/policies/log groups/permissions; a plataforma (tabela
+DynamoDB, Cognito User Pool + App Client, Parameter Store, SES, API
+Gateway, domínio customizado + ACM/DNS) foi movida para o repositório
 [`infra-jrnexpenses`](https://github.com/jrneto/infra-jrnexpenses) e é
-lida aqui via `terraform_remote_state` (`remote_state.tf`). **Produção
-(`environments/prod/`) ainda não migrou** (etapa 7 desta mesma feature)
-— lá o Terraform continua gerenciando tabela, Cognito, Parameter
-Store e API Gateway diretamente, mesmo descrito historicamente em
+lida aqui via `terraform_remote_state` (`remote_state.tf`), tanto em
+hom quanto em prod — mesmo descrito historicamente em
 `backend/specs/FEAT-09-terraform-cognito-parameter-store/` e
 `backend/specs/FEAT-10-deploy-lambda-aot-api-gateway/`.
 
@@ -27,7 +25,10 @@ etapa 5 — ver pointers abaixo):
 - `environments/prod/` — ambiente de **produção**
   (`api.jrnexpenses.com`), state próprio no bucket criado pelo
   `bootstrap/` (`key = gastosapp/prod/terraform.tfstate`), usando o
-  locking nativo do backend S3 (`use_lockfile`).
+  locking nativo do backend S3 (`use_lockfile`). Desde a FEAT-40 (etapa
+  7), contém só as 3 Lambdas de workload — a plataforma vive em
+  [`infra-jrnexpenses/terraform/environments/prod/`](https://github.com/jrneto/infra-jrnexpenses/tree/develop/terraform/environments/prod)
+  (lida via `remote_state.tf`).
 - `environments/hom/` — ambiente de **homologação**
   (`api-hom.jrnexpenses.com`, FEAT-13), state próprio no mesmo bucket
   (`key = gastosapp/hom/terraform.tfstate`). Desde a FEAT-40 (etapa 6),
@@ -110,32 +111,42 @@ bucket de state precisar ser recriado.
 
 - Nenhum novo recurso Terraform deve ser criado sem pedido explícito do
   usuário (ver `backend/infra/CLAUDE.md`).
-- Cognito (`cognito.tf`) e Parameter Store (`parameter-store.tf`) são
-  gerenciados por Terraform desde a FEAT-09. Em produção, o User
-  Pool/App Client atuais foram **recriados** (não importados) — o pool
-  anterior, criado manualmente, foi mantido intacto até exclusão manual
-  pelo usuário. Os 3 parâmetros do Parameter Store de produção foram
-  trazidos via `terraform import` (recurso simples, sem risco de
-  dado). Em homologação (FEAT-13), todos os recursos são criados do
-  zero via Terraform, sem import.
+- Cognito (`backend-cognito.tf`) e Parameter Store
+  (`backend-parameter-store.tf`) são gerenciados por Terraform desde a
+  FEAT-09, hoje em
+  [`infra-jrnexpenses/terraform/environments/{hom,prod}/`](https://github.com/jrneto/infra-jrnexpenses/tree/develop/terraform)
+  (FEAT-40). Em produção, o User Pool/App Client atuais foram
+  **recriados** (não importados) — o pool anterior, criado
+  manualmente, foi mantido intacto até exclusão manual pelo usuário. Os
+  3 parâmetros do Parameter Store de produção foram trazidos via
+  `terraform import` (recurso simples, sem risco de dado) — histórico
+  preservado na migração (`state mv`, sem novo `import`). Em
+  homologação (FEAT-13), todos os recursos foram criados do zero via
+  Terraform, sem import.
 
-## Domínio customizado da API (FEAT-12)
+## Domínio customizado da API (FEAT-12, migrado na FEAT-40)
 
 Além da URL padrão do API Gateway, a API de produção responde em
-`https://api.jrnexpenses.com`, gerido pelos arquivos `acm.tf`
-(certificado ACM), `api-gateway-domain.tf` (`aws_apigatewayv2_domain_name`
-+ `aws_apigatewayv2_api_mapping`) e `dns.tf` (records Route 53), dentro
-de `environments/prod/`. Os 5 recursos já existiam manualmente na
-conta e foram trazidos via `terraform import` — nenhum recurso novo foi
-criado.
+`https://api.jrnexpenses.com`. Desde a FEAT-40 (etapa 7), isso é
+gerido em
+[`infra-jrnexpenses/terraform/environments/prod/`](https://github.com/jrneto/infra-jrnexpenses/tree/develop/terraform/environments/prod)
+pelos arquivos `backend-acm.tf` (certificado ACM, já `ISSUED`,
+importado — sem `aws_acm_certificate_validation`, diferente de hom),
+`backend-api-gateway-domain.tf` (`aws_apigatewayv2_domain_name` +
+`aws_apigatewayv2_api_mapping`) e `backend-dns.tf` (records Route 53).
+Os 5 recursos originais já existiam manualmente na conta e foram
+trazidos via `terraform import` na FEAT-12 — nenhum recurso novo foi
+criado nem por aquela feature nem pela migração da FEAT-40.
 
-A hosted zone `jrnexpenses.com.` é gerenciada pelo Terraform do
-**frontend** (`frontend/infra/terraform/dns/`, FEAT-07), não pelo
-backend. `dns.tf` (em cada ambiente) só lê essa zona por nome
-(`data "aws_route53_zone"`), sem duplicá-la ou geri-la, para poder
-gerenciar os records de `api.jrnexpenses.com` (prod) ou
+A hosted zone `jrnexpenses.com.` vive em
+`infra-jrnexpenses/terraform/dns/` (migrada do frontend na FEAT-34).
+`backend-dns.tf` (de cada ambiente, no repositório novo) só lê essa
+zona por nome (`data "aws_route53_zone"`), sem duplicá-la ou geri-la,
+para poder gerenciar os records de `api.jrnexpenses.com` (prod) ou
 `api-hom.jrnexpenses.com` (hom) dentro dela. Ver
-`backend/specs/FEAT-12-terraform-dominio-customizado-api/`.
+`backend/specs/FEAT-12-terraform-dominio-customizado-api/` (contexto
+original) e `backend/specs/FEAT-40-extracao-infra-repo-apartado/`
+(migração).
 
 ## Deploy da Lambda (FEAT-10)
 

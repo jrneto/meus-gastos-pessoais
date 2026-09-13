@@ -16,27 +16,24 @@ Leve vs Fluxo Completo e a regra de organização de specs, e
 - IaC **exclusivamente Terraform** (não CloudFormation, não CDK). **Só
   gerar/alterar `.tf` para um recurso quando pedido explicitamente pelo
   usuário.** Código vive em `backend/infra/terraform/`, com
-  `environments/{prod,hom}/`. **Desde a FEAT-40 (etapa 6),
-  `environments/hom/` só gerencia o workload** (as 3 Lambdas, roles,
-  policies, log groups, permissions) — a plataforma (tabela DynamoDB,
-  Cognito User Pool + App Client, Parameter Store, SES, API Gateway,
-  domínio customizado, ver `backend/docs/data-model.md`) vive em
+  `environments/{prod,hom}/`. **Desde a FEAT-40 (etapas 6 e 7), os dois
+  ambientes só gerenciam o workload** (as 3 Lambdas, roles, policies,
+  log groups, permissions) — a plataforma (tabela DynamoDB, Cognito
+  User Pool + App Client, Parameter Store, SES, API Gateway, domínio
+  customizado, ver `backend/docs/data-model.md`) vive em
   [`infra-jrnexpenses`](https://github.com/jrneto/infra-jrnexpenses),
-  lida aqui via `terraform_remote_state` (`remote_state.tf`).
-  `environments/prod/` **ainda não migrou** (etapa 7 da mesma feature)
-  — segue com a plataforma completa local. `bootstrap/` e `cicd/`
-  também já migraram para lá (etapa 5) — não vivem mais neste
-  monorepo. Passo a passo: `backend/infra/terraform/README.md`.
+  lida aqui via `terraform_remote_state` (`remote_state.tf`) em ambos.
+  `bootstrap/` e `cicd/` também já migraram para lá (etapa 5) — não
+  vivem mais neste monorepo. Passo a passo:
+  `backend/infra/terraform/README.md`.
 - O domínio `api.jrnexpenses.com`/`api-hom.jrnexpenses.com` está sob
-  Terraform (ACM, mapeamento no API Gateway, records DNS) — de hom,
-  agora em `infra-jrnexpenses/terraform/environments/hom/`
+  Terraform (ACM, mapeamento no API Gateway, records DNS), hoje 100%
+  em `infra-jrnexpenses/terraform/environments/{hom,prod}/`
   (`backend-acm.tf`, `backend-api-gateway-domain.tf`, `backend-dns.tf`,
-  FEAT-40); de prod, ainda em `environments/prod/` deste monorepo
-  (`acm.tf`, `api-gateway-domain.tf`, `dns.tf`, até a etapa 7). A hosted
-  zone `jrnexpenses.com.` em si vive em
+  FEAT-40). A hosted zone `jrnexpenses.com.` em si vive em
   `infra-jrnexpenses/terraform/dns/` (migrada do frontend na FEAT-34) —
-  os dois lados de `dns.tf`/`backend-dns.tf` só a leem via
-  `data "aws_route53_zone"`, nunca a duplicam/gerenciam.
+  `backend-dns.tf` de cada ambiente só a lê via
+  `data "aws_route53_zone"`, nunca a duplica/gerencia.
 
 ## Ambientes
 
@@ -48,12 +45,12 @@ Leve vs Fluxo Completo e a regra de organização de specs, e
 | Parameter Store | `/GastosApp/...` (default) | `/GastosApp/Hom/...` via env `ParameterStore__Path` | `/GastosApp/...` no SSM local (LocalStack), + `ServiceURL`/`AccessKey`/`SecretKey` |
 | ACM | importado, já `ISSUED` | emitido do zero | — |
 
-Valores/nomes acima continuam os mesmos de sempre — só a **coluna
-Homologação mudou de repositório** (FEAT-40, etapa 6): API GW, tabela,
-Cognito, Parameter Store e ACM de hom são provisionados em
-`infra-jrnexpenses/terraform/environments/hom/`, lidos por este
-monorepo via `remote_state.tf`. Produção continua 100% neste monorepo
-até a etapa 7.
+Valores/nomes acima continuam os mesmos de sempre — só o
+**repositório mudou** (FEAT-40, etapas 6 e 7): API GW, tabela, Cognito,
+Parameter Store e ACM das duas colunas (Produção e Homologação) são
+provisionados em
+`infra-jrnexpenses/terraform/environments/{prod,hom}/`, lidos por este
+monorepo via `remote_state.tf`.
 
 - Tabela isolada por env `DynamoDb__TableName` na Lambda de cada ambiente.
 - CORS de hom (`frontend_origins`, API Gateway) já aponta pro frontend
