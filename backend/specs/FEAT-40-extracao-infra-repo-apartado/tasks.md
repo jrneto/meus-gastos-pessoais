@@ -207,58 +207,58 @@ combinada com o usuário**. Cuidado extra: `aws_cognito_user_pool.main`
 bloqueio) e `aws_dynamodb_table.gastos_app` (dados; sem deletion
 protection).
 
-- [ ] 37. [mono] Pré-condições + **baseline** de prod: zips presentes,
+- [x] 37. [mono] Pré-condições + **baseline** de prod: zips presentes,
       `init`, `terraform plan -no-color` (profile IAM) salvo em
       `baseline-mono-prod.txt`; `state list` salvo (24 + 15 + 2 data)
-- [ ] 38. [infra] `init` + `plan` em `terraform/environments/prod/` =
+- [x] 38. [infra] `init` + `plan` em `terraform/environments/prod/` =
       "No changes"
-- [ ] 39. [infra] `variables.tf` de prod: `table_name` (`GastosApp`),
+- [x] 39. [infra] `variables.tf` de prod: `table_name` (`GastosApp`),
       `frontend_origins` (`["https://jrnexpenses.com",
       "https://www.jrnexpenses.com"]`), `backend_api_function_name`
       (`gastos-app-api`), `backend_account_trigger_function_name`
       (`jrnexpenses-account-trigger`),
       `backend_custom_message_trigger_function_name`
       (`jrnexpenses-custom-message-trigger`)
-- [ ] 40. [infra] Criar os `backend-*.tf` de prod (mesmas regras das
+- [x] 40. [infra] Criar os `backend-*.tf` de prod (mesmas regras das
       tasks 10-15, nomes lógicos de prod: 7 SSM com
       `cors_production_origin_{0,1}`, `aws_acm_certificate.api` **sem**
       `aws_acm_certificate_validation`, `aws_apigatewayv2_domain_name.api`,
       `aws_apigatewayv2_api_mapping.api`, records `api_acm_validation`/
       `api_a`); sem `recreate-table.sh`
-- [ ] 41. [infra] `terraform validate`; `plan` só leitura → "24 to add"
+- [x] 41. [infra] `terraform validate`; `plan` só leitura → "24 to add"
       (nunca aplicar)
-- [ ] 42. [infra] Criar `scripts/migration/wave-7-backend-prod.sh` (24
+- [x] 42. [infra] Criar `scripts/migration/wave-7-backend-prod.sh` (24
       `mv` + `state rm data.aws_route53_zone.jrnexpenses`); **usuário
       revisa** contra o `state list` da task 37
-- [ ] 43. Scratch: `state pull` ×2 (prod) + backups datados
+- [x] 43. Scratch: `state pull` ×2 (prod) + backups datados
       (`backup-mono-prod-…`, `backup-infra-prod-…`); rodar o script;
       `state list` ×2 (infra 28; mono 15 + 1 data)
-- [ ] 44. [infra] **[APROVAÇÃO]** `state push infra.tfstate` em
+- [x] 44. [infra] **[APROVAÇÃO]** `state push infra.tfstate` em
       `terraform/environments/prod/` (conferência de alvo); `plan`
       revisado **linha a linha**: 0 recursos, só outputs (+8);
       User Pool e tabela sem qualquer diff
-- [ ] 45. [infra] **[APROVAÇÃO]** `apply` só de outputs (0/0/0); `plan` =
+- [x] 45. [infra] **[APROVAÇÃO]** `apply` só de outputs (0/0/0); `plan` =
       "No changes"; `terraform output` com os 8 valores
-- [ ] 46. [mono] Editar `environments/prod/` (tasks 24-28 com nomes de
+- [x] 46. [mono] Editar `environments/prod/` (tasks 24-28 com nomes de
       prod; `infra_state_key` default
       `infra-jrnexpenses/prod/terraform.tfstate`;
       `aws_lambda_function.api` de prod **não** tem `environment{}` —
       só policies e permissions mudam); `terraform validate`
-- [ ] 47. Zerar `outputs` do `mono.tfstate` de prod offline (task 29)
-- [ ] 48. [mono] **[APROVAÇÃO]** `state push mono.tfstate` em
+- [x] 47. Zerar `outputs` do `mono.tfstate` de prod offline (task 29)
+- [x] 48. [mono] **[APROVAÇÃO]** `state push mono.tfstate` em
       `backend/infra/terraform/environments/prod/` (conferência de
       alvo); `state list` remoto = 15 + 1 data
-- [ ] 49. [mono] `plan -no-color` (profile IAM) = igual à baseline da
+- [x] 49. [mono] `plan -no-color` (profile IAM) = igual à baseline da
       task 37; **nenhum `apply`**
-- [ ] 50. Smoke manual em `https://api.jrnexpenses.com` (rota pública +
+- [x] 50. Smoke manual em `https://api.jrnexpenses.com` (rota pública +
       401 em protegida); deploy de prod fica para a próxima Release real
       (não forçar); `backend-integration-tests-prod.yml` opcional, a
       critério do usuário
-- [ ] 51. [mono] `backend/infra/terraform/README.md` e
+- [x] 51. [mono] `backend/infra/terraform/README.md` e
       `backend/infra/CLAUDE.md` atualizados para prod; commit
       ("infra(backend): prod lê plataforma via remote_state — FEAT-40
       etapa 7")
-- [ ] 52. [infra] Commit em `develop` ("feat(prod): migra plataforma do
+- [x] 52. [infra] Commit em `develop` ("feat(prod): migra plataforma do
       backend do monorepo (FEAT-40 etapa 7)"); push
 
 ## Etapa 8 — fechamento (órfãos, docs, PRs)
