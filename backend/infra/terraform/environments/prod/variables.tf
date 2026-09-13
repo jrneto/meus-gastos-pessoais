@@ -4,14 +4,14 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
-variable "table_name" {
-  description = "Nome da tabela DynamoDB single-table do GastosApp."
+variable "state_bucket" {
+  description = "Bucket S3 de state remoto, reaproveitado do bootstrap/ (infra-jrnexpenses/terraform/bootstrap/, desde a FEAT-40)."
   type        = string
-  default     = "GastosApp"
+  default     = "gastosapp-terraform-state-648443184523"
 }
 
-variable "frontend_origins" {
-  description = "Origens (URLs) do frontend de produção permitidas no CORS do API Gateway."
-  type        = list(string)
-  default     = ["https://jrnexpenses.com", "https://www.jrnexpenses.com"]
+variable "infra_state_key" {
+  description = "Key do state de terraform/environments/prod/ no repositório infra-jrnexpenses (DynamoDB, Cognito, Parameter Store, SES, API Gateway, domínio api), lida via terraform_remote_state (FEAT-40)."
+  type        = string
+  default     = "infra-jrnexpenses/prod/terraform.tfstate"
 }

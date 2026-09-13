@@ -73,5 +73,5 @@ resource "aws_lambda_permission" "cognito_invoke_custom_message_trigger" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.custom_message_trigger.function_name
   principal     = "cognito-idp.amazonaws.com"
-  source_arn    = aws_cognito_user_pool.main.arn
+  source_arn    = local.cognito_user_pool_arn
 }

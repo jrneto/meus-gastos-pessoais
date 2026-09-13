@@ -54,7 +54,7 @@ backend/
     ├── docker-compose.yml         # LocalStack + cognito-local (dev local)
     ├── cognito-local/             # Dockerfile do emulador de Cognito
     ├── scripts/                   # seed idempotente (Cognito, DynamoDB, Parameter Store)
-    └── terraform/                 # infra real (produção/homologação)
+    └── terraform/                 # só workload (Lambdas); plataforma em infra-jrnexpenses (FEAT-40)
 ```
 
 Fluxo de dependência: `Api → Application → Domain` e

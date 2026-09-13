@@ -27,8 +27,10 @@ API de controle de gastos pessoal. Backend-first, frontend React depois.
   dos testes unitários/de componente
 - Sem Scan no DynamoDB — apenas Query com PK ou GSI definidos
 - Toda infraestrutura de produção/homologação é AWS real, provisionada via
-  Terraform (não CloudFormation, não CDK) em `backend/infra/terraform/`,
-  cobrindo DynamoDB, Cognito e Parameter Store (ver FEAT-09). Desde a
+  Terraform (não CloudFormation, não CDK) — o workload (Lambdas) em
+  `backend/infra/terraform/`, a plataforma (DynamoDB, Cognito e
+  Parameter Store, ver FEAT-09) no repositório apartado
+  `infra-jrnexpenses` (ver FEAT-40). Desde a
   FEAT-18, desenvolvimento local roda contra serviços emulados em
   containers Docker — LocalStack (DynamoDB + SSM Parameter Store) e
   cognito-local (Cognito, não disponível na edição gratuita do

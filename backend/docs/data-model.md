@@ -2,7 +2,7 @@
 
 ## Tabela: GastosApp (single-table, PAY_PER_REQUEST)
 
-Chaves e índices provisionados (`backend/infra/terraform/environments/{hom,prod}/dynamodb.tf`):
+Chaves e índices provisionados (`infra-jrnexpenses/terraform/environments/{hom,prod}/backend-dynamodb.tf`, desde a FEAT-40):
 
 | Atributo | Tipo | Papel |
 |---|---|---|

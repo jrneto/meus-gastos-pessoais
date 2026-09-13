@@ -37,7 +37,7 @@ resource "aws_iam_role_policy" "account_trigger_lambda_exec" {
           "dynamodb:GetItem",
           "dynamodb:TransactWriteItems"
         ]
-        Resource = aws_dynamodb_table.gastos_app.arn
+        Resource = local.dynamodb_table_arn
       },
       {
         Sid    = "LogsAccess"
@@ -52,7 +52,7 @@ resource "aws_iam_role_policy" "account_trigger_lambda_exec" {
         Sid      = "SesSendEmail"
         Effect   = "Allow"
         Action   = ["ses:SendEmail", "ses:SendRawEmail"]
-        Resource = aws_ses_domain_identity.main.arn
+        Resource = local.ses_domain_identity_arn
       }
     ]
   })
@@ -74,14 +74,15 @@ resource "aws_lambda_function" "account_trigger" {
 
   environment {
     variables = {
-      DynamoDb__TableName = aws_dynamodb_table.gastos_app.name
+      DynamoDb__TableName = local.dynamodb_table_name
 
       # FEAT-37: este Lambda não lê Parameter Store (decisão da FEAT-19,
       # ver comentário em Function.cs), então o remetente do SES precisa
       # chegar via variável de ambiente — mesmo literal fixo já usado em
-      # aws_ssm_parameter.ses_sender_email (parameter-store.tf) e em
-      # email_configuration do Cognito, não referência ao atributo ao vivo
-      # (evita diff perpétuo, lição da FEAT-36).
+      # aws_ssm_parameter.ses_sender_email (backend-parameter-store.tf,
+      # infra-jrnexpenses) e em email_configuration do Cognito, não
+      # referência ao atributo ao vivo (evita diff perpétuo, lição da
+      # FEAT-36).
       Ses__SenderEmail = "jrn.expenses (homologação) <no-reply@hom.jrnexpenses.com>"
     }
   }
@@ -94,5 +95,5 @@ resource "aws_lambda_permission" "cognito_invoke_account_trigger" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.account_trigger.function_name
   principal     = "cognito-idp.amazonaws.com"
-  source_arn    = aws_cognito_user_pool.main.arn
+  source_arn    = local.cognito_user_pool_arn
 }

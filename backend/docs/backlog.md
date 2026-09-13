@@ -306,6 +306,29 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   Depende de: nenhuma (cross-cutting, aplica-se a toda a API já
   existente).
 
+- [x] **FEAT-40 — Extração da infra Terraform do backend para o
+  repositório `infra-jrnexpenses`** *(concluída, ver
+  `backend/specs/FEAT-40-extracao-infra-repo-apartado/`, seção
+  "Status"; feature irmã da FEAT-34 do frontend)*: separou plataforma
+  (DynamoDB, Cognito, Parameter Store, SES, API Gateway + domínio
+  `api*`/ACM/DNS, `cicd/`, `bootstrap/`) do workload (3 Lambdas + roles
+  de execução + log groups + `lambda_permission`), movendo a
+  plataforma para `infra-jrnexpenses` em etapas controladas (um state
+  por etapa, `terraform state mv` offline, hom antes de prod), sem
+  criar/destruir/alterar nenhum recurso AWS nem tocar em workflows/
+  GitHub Environments — só 2 drifts pré-existentes aceitos (Lambda com
+  env vars do CI, Cognito `from_email_address` com diff cosmético
+  perpétuo do provider). Monorepo passa a ler ARNs/nomes da plataforma
+  via `terraform_remote_state`; a infra nunca lê o state do monorepo.
+  Achado fora do escopo original: `gastosapp-backend/cicd/terraform.tfstate`
+  não era órfão como a doc afirmava (continha a role/policy do CI/CD
+  gerenciadas) — não foi removido na limpeza de states órfãos.
+  Fecha a extração iniciada pela FEAT-34: limpa os states órfãos dos
+  dois contextos e remove das docs a ressalva "só o frontend migrou".
+  Depende de: FEAT-34 do frontend (ordem combinada: frontend primeiro,
+  para validar o padrão de referência cruzada em states menores) —
+  **concluída em 2026-09-12**, dependência satisfeita.
+
 ## Bugs
 
 - [x] **BUG — Cliente SES quebrava a criação de conta inteira na Lambda
@@ -595,6 +618,48 @@ monorepo.
   `ClientMetadata` nas chamadas ao Cognito (`SignUp`/`ConfirmSignUp`/
   `ForgotPassword`) e lê-lo do lado do trigger — recurso nativo do
   Cognito, não implementado nesta feature.
+
+- [ ] **DÉBITO — JSON de referência da role `gastosapp-backend-cicd` no
+  README está desatualizado** (percebido no `/specify` da FEAT-40,
+  2026-09-12): `backend/infra/terraform/README.md` (seção `cicd/`)
+  traz o JSON da policy inline com 2 funções e 1 statement, enquanto
+  `cicd/iam-policy.tf` já declara 6 funções (API + 2 triggers, hom e
+  prod) e 4 statements (`UpdateBackendLambdaCode`,
+  `ManageIntegrationTestCognitoUser`, `ManageIntegrationTestDynamoDbItems`,
+  `ReadIntegrationTestParameterStore`). Como a role vive fora do state
+  (guardrail de IAM, ver `backend/infra/CLAUDE.md`), esse JSON é a única
+  referência do que está de fato aplicado no console — vale regenerar a
+  partir do `.tf` (ou do console, se a leitura for liberada) e conferir
+  que os dois batem. Deixado fora da FEAT-40 de propósito (decisão do
+  usuário): a FEAT só move o `cicd/` como está para `infra-jrnexpenses`;
+  a correção vai no repositório novo depois.
+
+- [ ] **MELHORIA — CI de `terraform fmt`/`validate`/`plan` no repositório
+  `infra-jrnexpenses`** (levantado no `/specify` da FEAT-40,
+  2026-09-12): com a plataforma em repositório próprio, um workflow de
+  `fmt -check` + `validate` (sem credencial AWS) em todo PR é barato e
+  pega erro de sintaxe/formatação antes do apply manual; um `plan`
+  somente-leitura via OIDC seria o passo seguinte, mas exige role com
+  permissão de leitura ampla (inclusive `iam:Get*`, hoje negado pelo
+  guardrail — ver `backend/infra/CLAUDE.md`). **Apply continua manual**
+  — esta melhoria é distinta da "MELHORIA — `terraform apply` via
+  esteira de CI/CD" acima, que fica ainda mais longe agora que a infra
+  saiu do monorepo. Fora do escopo da FEAT-40/FEAT-34 (decisão do
+  usuário).
+
+- [ ] **MELHORIA — Consolidar `data "aws_route53_zone"` do backend com a
+  `aws_route53_zone.main` de `dns/`** (levantado no `/specify` da
+  FEAT-40, 2026-09-12): hoje o backend lê a hosted zone por nome via
+  data source porque a zona é gerida por outro contexto
+  (`frontend/infra/terraform/dns/`, FEAT-12). Depois da FEAT-34/FEAT-40,
+  zona e records de `api*`/SES vivem no mesmo repositório
+  (`infra-jrnexpenses`), então os records do backend poderiam
+  referenciar a zona via `terraform_remote_state` de `dns/` (ou até
+  migrar para dentro de `dns/`, junto com os records do frontend) —
+  elimina a lookup por nome e deixa explícita a dependência entre
+  states. Fora do escopo da FEAT-40 de propósito (só movimentação, sem
+  mudar referência que gere diff); revisitar quando a migração estiver
+  concluída.
 
 ## Compliance (LGPD)
 
