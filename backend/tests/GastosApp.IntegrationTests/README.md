@@ -314,8 +314,9 @@ dotnet test tests/GastosApp.IntegrationTests -c Release --filter "Category=Integ
 
 A role/usuário usado precisa da permissão `ssm:GetParametersByPath`
 sob `/GastosApp` e `/GastosApp/Hom` — ver
-`backend/infra/terraform/cicd/iam-policy.tf`, statement
-`ReadIntegrationTestParameterStore`. Rodando localmente com um profile
+`infra-jrnexpenses/terraform/cicd/backend/iam-policy.tf` (desde a
+FEAT-40), statement `ReadIntegrationTestParameterStore`. Rodando
+localmente com um profile
 sem essa permissão (ex.: `agent-toolkit`, que tem IAM restrito), troque
 pro profile certo.
 

@@ -56,13 +56,6 @@ o record de `api.jrnexpenses.com`/`api-hom.jrnexpenses.com` (contexto
 backend) e o registro do domínio em si. Passo a passo de
 `init`/`import`: `frontend/infra/terraform/README.md`.
 
-**Pendente**: `/CLAUDE.md` raiz (seção "Infraestrutura" e a afirmação
-"não existe infraestrutura compartilhada entre contextos") e
-`/docs/architecture.md` ainda descrevem toda a infra como vivendo no
-monorepo — são atualizados uma vez só pela `backend/specs/FEAT-40-extracao-infra-repo-apartado/`
-(a última das duas a terminar, já que cobre o mesmo repositório
-`infra-jrnexpenses` para o lado backend).
-
 ## CI/CD (GitHub Actions)
 
 - **`.github/workflows/frontend-deploy-hom.yml`**: push em `develop`

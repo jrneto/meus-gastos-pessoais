@@ -16,24 +16,62 @@ Leve vs Fluxo Completo e a regra de organização de specs, e
 - IaC **exclusivamente Terraform** (não CloudFormation, não CDK). **Só
   gerar/alterar `.tf` para um recurso quando pedido explicitamente pelo
   usuário.** Código vive em `backend/infra/terraform/`, com
-  `environments/{prod,hom}/`. **Desde a FEAT-40 (etapas 6 e 7), os dois
-  ambientes só gerenciam o workload** (as 3 Lambdas, roles, policies,
-  log groups, permissions) — a plataforma (tabela DynamoDB, Cognito
-  User Pool + App Client, Parameter Store, SES, API Gateway, domínio
-  customizado, ver `backend/docs/data-model.md`) vive em
-  [`infra-jrnexpenses`](https://github.com/jrneto/infra-jrnexpenses),
-  lida aqui via `terraform_remote_state` (`remote_state.tf`) em ambos.
-  `bootstrap/` e `cicd/` também já migraram para lá (etapa 5) — não
-  vivem mais neste monorepo. Passo a passo:
-  `backend/infra/terraform/README.md`.
-- O domínio `api.jrnexpenses.com`/`api-hom.jrnexpenses.com` está sob
-  Terraform (ACM, mapeamento no API Gateway, records DNS), hoje 100%
-  em `infra-jrnexpenses/terraform/environments/{hom,prod}/`
-  (`backend-acm.tf`, `backend-api-gateway-domain.tf`, `backend-dns.tf`,
-  FEAT-40). A hosted zone `jrnexpenses.com.` em si vive em
+  `environments/{prod,hom}/` — ver "Estado atual" abaixo para o que
+  cada um gerencia hoje. Passo a passo: `backend/infra/terraform/README.md`.
+
+## Estado atual
+
+Desde a FEAT-40 (etapas 5-7, extração de infra para
+`infra-jrnexpenses`, concluída), a infra do backend está dividida em
+dois repositórios: **workload** (as 3 Lambdas .NET Native AOT — API +
+os 2 triggers do Cognito —, suas roles/policies/log groups/permissions)
+segue gerido por Terraform aqui, em `backend/infra/terraform/`;
+**plataforma** (tabela DynamoDB, Cognito User Pool + App Client,
+Parameter Store, SES, API Gateway, domínio customizado + ACM/DNS,
+`bootstrap/`, `cicd/`) vive em
+[`infra-jrnexpenses`](https://github.com/jrneto/infra-jrnexpenses). Duas
+configurações independentes neste monorepo, cada uma com seu próprio
+state, ambas no mesmo bucket
+(`gastosapp-terraform-state-648443184523`, `key`s distintas):
+
+- **`environments/prod/`** — desde a FEAT-40, etapa 7, gerencia **só o
+  workload** (`lambda.tf`, `lambda-account-trigger.tf`,
+  `lambda-custom-message-trigger.tf`; inclui
+  `aws_lambda_permission.apigateway`, migrado de `api-gateway.tf`). A
+  **plataforma** (tabela `GastosApp`, User Pool `user-pool-gastos-app` +
+  App Client `controle-gastos-spa`, os 7 parâmetros do Parameter Store,
+  identidade SES `jrnexpenses.com`, API Gateway `gastos-app-api` +
+  domínio `api.jrnexpenses.com`, ACM já `ISSUED`/importado) vive em
+  `infra-jrnexpenses/terraform/environments/prod/` (`backend-*.tf`).
+- **`environments/hom/`** — mesma estrutura desde a FEAT-40, etapa 6:
+  só as 3 Lambdas de workload. A plataforma (tabela `GastosApp-Hom`,
+  User Pool `user-pool-gastos-app-hom` + App Client
+  `controle-gastos-spa-hom`, os 6 parâmetros do Parameter Store,
+  identidade SES `hom.jrnexpenses.com`, API Gateway
+  `gastos-app-api-hom` + domínio `api-hom.jrnexpenses.com`, ACM emitido
+  do zero) vive em `infra-jrnexpenses/terraform/environments/hom/`.
+- Em ambos, `remote_state.tf` lê 5 outputs da infra
+  (`dynamodb_table_name`, `dynamodb_table_arn`, `cognito_user_pool_arn`,
+  `ses_domain_identity_arn`, `api_gateway_execution_arn`) via
+  `data.terraform_remote_state.infra` — a infra nunca lê state do
+  monorepo, só o inverso; ela resolve as 3 Lambdas por
+  `data "aws_lambda_function"` (nome), nunca por state cruzado.
+- **`bootstrap/`** (bucket S3 de state em si) e **`cicd/`** (referência
+  de OIDC Provider + IAM Role do CI/CD) migraram como arquivos na
+  etapa 5 — não vivem mais neste monorepo. Ver seção "CI/CD" abaixo
+  para o achado sobre o estado real da role `gastosapp-backend-cicd`.
+- Domínio `api.jrnexpenses.com`/`api-hom.jrnexpenses.com` (ACM,
+  mapeamento no API Gateway, records DNS) 100% em
+  `infra-jrnexpenses/terraform/environments/{hom,prod}/`
+  (`backend-acm.tf`, `backend-api-gateway-domain.tf`, `backend-dns.tf`).
+  A hosted zone `jrnexpenses.com.` em si vive em
   `infra-jrnexpenses/terraform/dns/` (migrada do frontend na FEAT-34) —
   `backend-dns.tf` de cada ambiente só a lê via
   `data "aws_route53_zone"`, nunca a duplica/gerencia.
+
+Detalhamento completo do mecanismo de migração e das decisões técnicas:
+`backend/specs/FEAT-40-extracao-infra-repo-apartado/` neste monorepo, e
+`CLAUDE.md`/`README.md` do repositório novo.
 
 ## Ambientes
 
@@ -57,9 +95,9 @@ monorepo via `remote_state.tf`.
   de homologação real (`https://hom.jrnexpenses.com`, desde a
   FEAT-08/FEAT-11 do frontend). O `callback_urls` do **Cognito** de hom
   ainda não foi atualizado — continua `["http://localhost:5173"]`
-  (placeholder de antes de existir um frontend de hom, `cognito.tf`) —
-  trocar quando o login via Cognito precisar redirecionar pra
-  `hom.jrnexpenses.com`.
+  (placeholder de antes de existir um frontend de hom,
+  `backend-cognito.tf` em `infra-jrnexpenses`) — trocar quando o login
+  via Cognito precisar redirecionar pra `hom.jrnexpenses.com`.
 - Local: `docker-compose.yml` sobe `localstack` (DynamoDB + SSM,
   Community/gratuita) e `cognito-local` (build próprio, sem imagem
   oficial — `backend/infra/cognito-local/Dockerfile`, pacote npm
@@ -77,13 +115,14 @@ limitado a 50 e-mails/dia por conta, compartilhado entre hom e prod,
 ver "Testes integrados" abaixo).
 
 - **Identidade verificada por ambiente**, com DKIM habilitado
-  (`ses.tf` em cada `environments/{prod,hom}/`): prod verifica o
-  domínio raiz `jrnexpenses.com`, hom verifica o subdomínio
-  `hom.jrnexpenses.com` — mesmo padrão de separação por subdomínio já
-  usado por `api.jrnexpenses.com`/`api-hom.jrnexpenses.com`. Os
-  records DNS de verificação/DKIM vivem em `dns.tf` de cada ambiente,
-  na hosted zone `jrnexpenses.com.` (gerenciada pelo frontend, lida
-  só por `data "aws_route53_zone"`, mesmo mecanismo da FEAT-12).
+  (`backend-ses.tf` em cada `environments/{prod,hom}/` de
+  `infra-jrnexpenses`, desde a FEAT-40): prod verifica o domínio raiz
+  `jrnexpenses.com`, hom verifica o subdomínio `hom.jrnexpenses.com` —
+  mesmo padrão de separação por subdomínio já usado por
+  `api.jrnexpenses.com`/`api-hom.jrnexpenses.com`. Os records DNS de
+  verificação/DKIM vivem em `backend-dns.tf` de cada ambiente, na
+  hosted zone `jrnexpenses.com.` (`infra-jrnexpenses/terraform/dns/`,
+  lida só por `data "aws_route53_zone"`, mesmo mecanismo da FEAT-12).
 - **`email_configuration` do `aws_cognito_user_pool`**
   (`email_sending_account = "DEVELOPER"`) aponta pra identidade do
   próprio ambiente. Remetente: `jrn.expenses <no-reply@jrnexpenses.com>`
@@ -116,7 +155,8 @@ ver "Testes integrados" abaixo).
   precisa do remetente à mão em runtime. `/GastosApp/Ses/SenderEmail`
   (prod) e `/GastosApp/Hom/Ses/SenderEmail` (hom), tipo `String`,
   espelham o mesmo valor já calculado pelo `email_configuration` do
-  User Pool (`parameter-store.tf` de cada ambiente). Sem equivalente
+  User Pool (`backend-parameter-store.tf` de cada ambiente, em
+  `infra-jrnexpenses`). Sem equivalente
   local: LocalStack Community não emula SES (só o SSM genérico), e o
   envio deste email é best-effort (falha só loga, não derruba a
   resposta de sucesso do reset) — ver
@@ -160,10 +200,11 @@ ligado.
   imediato em Lambdas já "quentes", só nas próximas que passarem por
   cold start.
 - **CORS do API Gateway** (`cors_configuration` de
-  `aws_apigatewayv2_api.main`, `api-gateway.tf` de cada ambiente)
-  precisou ganhar os 4 headers novos em `allow_headers` + `trace-id` em
-  `expose_headers` — sem isso, o preflight do navegador recusaria esses
-  headers antes de chegar na Lambda.
+  `aws_apigatewayv2_api.main`, `backend-api-gateway.tf` de cada
+  ambiente em `infra-jrnexpenses`, desde a FEAT-40) precisou ganhar os
+  4 headers novos em `allow_headers` + `trace-id` em `expose_headers`
+  — sem isso, o preflight do navegador recusaria esses headers antes
+  de chegar na Lambda.
 - **Retenção de log group deixou de ser uniforme entre hom/prod**: hom
   passou a 7 dias (`retention_in_days`), prod permanece em 14 (15,
   cogitado originalmente, não é um valor aceito pela API da AWS — só um
@@ -186,9 +227,28 @@ parte desses dois pipelines — ver bullet abaixo.
   (incl. `APP_VERSION`/`APP_COMMIT_SHA`/`APP_ENVIRONMENT`) — nenhum
   `terraform apply` roda em CI. Por isso `lambda.tf` de cada ambiente
   **não declara** essas 3 chaves no bloco `environment{}`.
-- **Auth via OIDC**: Role `gastosapp-backend-cicd`
-  (`backend/infra/terraform/cicd/`), reaproveita o OIDC Provider único
-  da conta (criado para o frontend). Ver gotcha de permissão abaixo.
+- **Auth via OIDC**: Role `gastosapp-backend-cicd`, reaproveita o OIDC
+  Provider único da conta (criado para o frontend). Referência de
+  `.tf` em
+  `infra-jrnexpenses/terraform/cicd/backend/` desde a FEAT-40, etapa 5
+  (antes, `backend/infra/terraform/cicd/`, neste monorepo) — ver
+  gotcha de permissão abaixo e o achado sobre o estado real da role no
+  bullet seguinte.
+- **Achado no fechamento da FEAT-40 (etapa 8, 2026-09-13)**: ao
+  contrário do que a documentação afirmava até então (guardrail de IAM
+  impede qualquer `import`, role sempre fora de state, criada só
+  manualmente no console), o objeto
+  `gastosapp-backend/cicd/terraform.tfstate` (mesmo bucket de sempre)
+  **contém `aws_iam_role.backend_cicd` e `aws_iam_role_policy.backend_cicd`
+  gerenciados** (serial 5, `terraform_version` 1.15.8 — sem registro de
+  quando/como esse `import` foi feito). Por isso esse objeto **não**
+  foi apagado na limpeza de states órfãos da FEAT-40 (ele não é órfão).
+  Como os `.tf` de `cicd/backend/` continuam declarando a mesma `key`
+  (`gastosapp-backend/cicd/terraform.tfstate`), rodar `terraform init`
+  ali (com um profile que realmente tenha `iam:GetRole`/
+  `iam:GetRolePolicy`) deve mostrar esse state populado, ao contrário
+  do que o README/CLAUDE.md do `infra-jrnexpenses` documentavam antes
+  desta correção.
 - **Tag `backend-v*`** (não `vX.Y.Z`, que é do frontend) — evita colisão
   nos workflows de deploy/rascunho de release do outro contexto.
 - **GitHub Environments** `backend-hom`/`backend-prod` (distintos de

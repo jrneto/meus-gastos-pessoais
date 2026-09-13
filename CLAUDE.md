@@ -10,15 +10,17 @@ Cada contexto tem sua própria pasta `infra/` (`backend/infra/`,
 `frontend/infra/`), com seu próprio `CLAUDE.md`, provisionada de forma
 independente via Terraform. **Infraestrutura compartilhada entre
 contextos** vive num repositório apartado,
-[`infra-jrnexpenses`](https://github.com/jrneto/infra-jrnexpenses) — hoje
-só a parte do frontend já foi migrada para lá (CloudFront, OAC, ACM, WAF
-WebACL e a hosted zone `dns/`; ver `frontend/infra/CLAUDE.md`); a
-correspondente do backend (Cognito, DynamoDB, API Gateway etc.) segue
-no monorepo até uma feature futura no mesmo padrão. Mesmo assim, **cada
-`environments/{hom,prod}/` daquele repositório é um único state por
-ambiente**, desenhado para acomodar plataforma de frontend e backend
-juntos — a regra abaixo de não impor decisões de um contexto ao outro
-vale também dentro desse state compartilhado.
+[`infra-jrnexpenses`](https://github.com/jrneto/infra-jrnexpenses) —
+tanto a parte do frontend (CloudFront, OAC, ACM, WAF WebACL e a hosted
+zone `dns/`; ver `frontend/infra/CLAUDE.md`) quanto a do backend
+(Cognito, DynamoDB, Parameter Store, SES, API Gateway e domínio
+customizado; ver `backend/infra/CLAUDE.md`) já migraram para lá. Cada
+contexto continua dono só do Terraform essencial ao deploy do seu
+workload (`{contexto}/infra/terraform/`) — a plataforma inteira vive no
+repositório novo. **Cada `environments/{hom,prod}/` daquele repositório
+é um único state por ambiente**, acomodando plataforma de frontend e
+backend juntos — a regra abaixo de não impor decisões de um contexto ao
+outro vale também dentro desse state compartilhado.
 
 A arquitetura do sistema como um todo (backend + frontend, modelo C4
 até o nível 3) vive em [`/docs/architecture.md`](docs/architecture.md)
@@ -83,11 +85,12 @@ Docker — LocalStack + cognito-local, sem depender de credenciais AWS
 reais) vivem no `CLAUDE.md` de `{contexto}/infra/`, não aqui.
 
 Cada contexto continua dono só do Terraform essencial ao deploy do seu
-workload (`{contexto}/infra/terraform/`) — a plataforma (CDN,
-certificado, WAF, DNS) fica em `infra-jrnexpenses`, repositório
-separado (hoje só a parte do frontend migrou pra lá). O monorepo lê
-outputs de lá via `terraform_remote_state`; a infra nunca lê state do
-monorepo.
+workload (`{contexto}/infra/terraform/`) — a plataforma (frontend: CDN,
+certificado, WAF, DNS; backend: Cognito, DynamoDB, Parameter Store,
+SES, API Gateway, domínio customizado) fica em `infra-jrnexpenses`,
+repositório separado — os dois contextos já migraram para lá. O
+monorepo lê outputs de lá via `terraform_remote_state`; a infra nunca
+lê state do monorepo.
 
 ## Modo Leve vs Fluxo Completo
 
