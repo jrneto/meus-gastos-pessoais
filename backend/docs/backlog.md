@@ -318,8 +318,11 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   sem criar/destruir/alterar nenhum recurso AWS nem tocar em workflows/
   GitHub Environments. Monorepo passa a ler ARNs/nomes da plataforma
   via `terraform_remote_state`; a infra nunca lê o state do monorepo.
+  Fecha a extração iniciada pela FEAT-34: limpa os states órfãos dos
+  dois contextos e remove das docs a ressalva "só o frontend migrou".
   Depende de: FEAT-34 do frontend (ordem combinada: frontend primeiro,
-  para validar o padrão de referência cruzada em states menores).
+  para validar o padrão de referência cruzada em states menores) —
+  **concluída em 2026-09-12**, dependência satisfeita.
 
 ## Bugs
 
