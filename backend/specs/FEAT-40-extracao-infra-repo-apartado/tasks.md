@@ -31,26 +31,26 @@ Invariantes (plan §3):
 
 ## Etapa 5 — `bootstrap/` + `cicd/backend/` (só arquivos, nenhum comando Terraform)
 
-- [ ] 1. [infra] Criar `terraform/bootstrap/` com `main.tf`, `outputs.tf`,
+- [x] 1. [infra] Criar `terraform/bootstrap/` com `main.tf`, `outputs.tf`,
       `variables.tf`, `versions.tf` e `.gitignore` copiados de
       `backend/infra/terraform/bootstrap/` (conteúdo intacto; só o
       comentário de `main.tf` que aponta para
       `backend/infra/terraform/README.md` passa a apontar para o README da
       infra) + **cópia física** de `bootstrap/terraform.tfstate` (conferir
       que continua gitignored: `git status` não o lista)
-- [ ] 2. [infra] Criar `terraform/cicd/backend/` com os 6 `.tf` de
+- [x] 2. [infra] Criar `terraform/cicd/backend/` com os 6 `.tf` de
       `backend/infra/terraform/cicd/` (`oidc.tf`, `iam-role.tf`,
       `iam-policy.tf`, `outputs.tf`, `variables.tf`, `versions.tf`) **como
       estão** — key `gastosapp-backend/cicd/terraform.tfstate` mantida,
       dormente, mesma prática de `cicd/frontend/`
-- [ ] 3. [infra] `README.md`: seção "`bootstrap/`" (a partir do §1 do
+- [x] 3. [infra] `README.md`: seção "`bootstrap/`" (a partir do §1 do
       `backend/infra/terraform/README.md`) e seção "`cicd/backend/`"
       (trecho "cicd/ — OIDC Provider…" do README do monorepo, citando o
       débito do JSON desatualizado sem corrigi-lo); layout atualizado.
       `CLAUDE.md`: linha do `bootstrap/` deixa de dizer "(FEAT-40)"
-- [ ] 4. [infra] Commit em `develop` ("feat(bootstrap,cicd): traz
+- [x] 4. [infra] Commit em `develop` ("feat(bootstrap,cicd): traz
       bootstrap e cicd/backend do monorepo (FEAT-40 etapa 5)") + push
-- [ ] 5. [mono] Remover `backend/infra/terraform/{bootstrap,cicd}/`
+- [x] 5. [mono] Remover `backend/infra/terraform/{bootstrap,cicd}/`
       (inclusive `.terraform/` locais); no
       `backend/infra/terraform/README.md` as duas seções viram ponteiros
       para o repo novo; `backend/infra/terraform/.gitignore` permanece;
@@ -59,19 +59,19 @@ Invariantes (plan §3):
 
 ## Etapa 6 — backend hom (`gastosapp/hom/` → `infra-jrnexpenses/hom/`)
 
-- [ ] 6. [mono] Pré-condições: os 3 zips existem em `backend/infra/lambda/`
+- [x] 6. [mono] Pré-condições: os 3 zips existem em `backend/infra/lambda/`
       (necessários ao `filebase64sha256` do `plan`); `terraform init` em
       `backend/infra/terraform/environments/hom/`
-- [ ] 7. [mono] **Baseline**: `terraform plan -no-color` em
+- [x] 7. [mono] **Baseline**: `terraform plan -no-color` em
       `environments/hom/` com o profile com leitura de IAM, salvo em
       arquivo fora do repo (ex.: `/tmp/tf-mv/baseline-mono-hom.txt`);
       esperado: só `aws_lambda_function.*` com `source_code_hash`/
       `environment`; `terraform state list` salvo (esperado: 24 endereços
       de plataforma + 15 de workload + `data.aws_caller_identity.current`
       + `data.aws_route53_zone.jrnexpenses`)
-- [ ] 8. [infra] `terraform init` + `terraform plan` em
+- [x] 8. [infra] `terraform init` + `terraform plan` em
       `terraform/environments/hom/` = "No changes" (baseline da infra)
-- [ ] 9. [infra] `variables.tf` de hom: acrescentar `table_name`
+- [x] 9. [infra] `variables.tf` de hom: acrescentar `table_name`
       (`GastosApp-Hom`), `frontend_origins`
       (`["https://hom.jrnexpenses.com"]`), `backend_api_function_name`
       (`gastos-app-api-hom`), `backend_account_trigger_function_name`
@@ -79,124 +79,124 @@ Invariantes (plan §3):
       `backend_custom_message_trigger_function_name`
       (`jrnexpenses-custom-message-trigger-hom`); `aws_region` **não** se
       redeclara (plan §2.4)
-- [ ] 10. [infra] Criar `backend-data.tf` de hom: 3 ×
+- [x] 10. [infra] Criar `backend-data.tf` de hom: 3 ×
       `data "aws_lambda_function"` (`api`, `account_trigger`,
       `custom_message_trigger`) por `function_name` (plan §2.3), com o
       comentário explicando por que não lê state do monorepo
-- [ ] 11. [infra] Criar `backend-dynamodb.tf`, `backend-parameter-store.tf`
+- [x] 11. [infra] Criar `backend-dynamodb.tf`, `backend-parameter-store.tf`
       e `backend-ses.tf` de hom, copiados de `dynamodb.tf`,
       `parameter-store.tf` e `ses.tf` do monorepo sem alteração de
       recurso (nomes lógicos preservados)
-- [ ] 12. [infra] Criar `backend-cognito.tf` de hom a partir de
+- [x] 12. [infra] Criar `backend-cognito.tf` de hom a partir de
       `cognito.tf`, com `lambda_config { post_confirmation =
       data.aws_lambda_function.account_trigger.arn; custom_message =
       data.aws_lambda_function.custom_message_trigger.arn }` (únicas
       linhas alteradas; comentários que citam `lambda*.tf` passam a
       citar o caminho do monorepo)
-- [ ] 13. [infra] Criar `backend-api-gateway.tf` de hom a partir de
+- [x] 13. [infra] Criar `backend-api-gateway.tf` de hom a partir de
       `api-gateway.tf`: `integration_uri =
       data.aws_lambda_function.api.invoke_arn`; **sem** o
       `aws_lambda_permission.apigateway` (fica no monorepo)
-- [ ] 14. [infra] Criar `backend-acm.tf`, `backend-api-gateway-domain.tf`
+- [x] 14. [infra] Criar `backend-acm.tf`, `backend-api-gateway-domain.tf`
       e `backend-dns.tf` de hom a partir de `acm.tf`,
       `api-gateway-domain.tf` e `dns.tf` (inclui
       `data "aws_route53_zone" "jrnexpenses"`); comentários que citam
       `frontend/infra/terraform/dns/` passam a citar `terraform/dns/`
-- [ ] 15. [infra] Criar `backend-outputs.tf` de hom com os 8 outputs do
+- [x] 15. [infra] Criar `backend-outputs.tf` de hom com os 8 outputs do
       plan §2.1 (`dynamodb_table_name`, `dynamodb_table_arn`,
       `cognito_user_pool_arn`, `ses_domain_identity_arn`,
       `api_gateway_execution_arn`, `api_gateway_url`,
       `api_custom_domain_url`, `ses_sender_email`)
-- [ ] 16. [infra] Copiar `recreate-table.sh` para
+- [x] 16. [infra] Copiar `recreate-table.sh` para
       `terraform/environments/hom/` com o comentário de uso apontando
       para o caminho novo e nota de que as Lambdas vivem em outro state
       (`apply -replace` continua sendo a forma certa; nome da tabela não
       muda)
-- [ ] 17. [infra] `terraform validate` em `environments/hom/`; `terraform
+- [x] 17. [infra] `terraform validate` em `environments/hom/`; `terraform
       plan` **só leitura** → esperado "24 to add" (**nunca** aplicar
       nesse estado); conferir que os 3 `data.aws_lambda_function`
       resolvem sem erro
-- [ ] 18. [infra] Criar `scripts/migration/wave-6-backend-hom.sh`: 24 ×
+- [x] 18. [infra] Criar `scripts/migration/wave-6-backend-hom.sh`: 24 ×
       `terraform state mv -state=mono.tfstate -state-out=infra.tfstate
       "$addr" "$addr"` (lista do plan §2.5 — DynamoDB, User Pool,
       App Client, 6 SSM, 3 SES, 4 API GW, ACM + validação, domain name,
       api mapping, 4 records DNS; endereços sem índice) + `terraform
       state rm -state=mono.tfstate data.aws_route53_zone.jrnexpenses`;
       **usuário revisa a lista** contra o `state list` da task 7
-- [ ] 19. Preparar scratch (`/tmp/tf-mv`, `versions.tf` só com provider,
+- [x] 19. Preparar scratch (`/tmp/tf-mv`, `versions.tf` só com provider,
       `terraform init`); `state pull` do monorepo hom → `mono.tfstate` +
       `backup-mono-hom-<timestamp>.tfstate`; `state pull` da infra hom →
       `infra.tfstate` + `backup-infra-hom-<timestamp>.tfstate`
-- [ ] 20. Rodar `wave-6-backend-hom.sh` no scratch; `terraform state list
+- [x] 20. Rodar `wave-6-backend-hom.sh` no scratch; `terraform state list
       -state=infra.tfstate` (4 do frontend + 24 do backend = 28) e
       `-state=mono.tfstate` (15 recursos + `data.aws_caller_identity`);
       conferir `serial` incrementado nos dois arquivos
-- [ ] 21. [infra] **[APROVAÇÃO]** `terraform state push infra.tfstate` em
+- [x] 21. [infra] **[APROVAÇÃO]** `terraform state push infra.tfstate` em
       `terraform/environments/hom/` (conferência de alvo antes;
       `-force` só se reclamar de serial **e** lineage conferir);
       `terraform state list` remoto = 28
-- [ ] 22. [infra] `terraform plan` em `environments/hom/` → esperado
+- [x] 22. [infra] `terraform plan` em `environments/hom/` → esperado
       **0 recursos** e só "Changes to Outputs" (+8); revisar linha a
       linha `aws_cognito_user_pool.main` (`lambda_config`) e
       `aws_apigatewayv2_integration.lambda` (`integration_uri`) — diff
       ali aciona o fallback de ARN literal do plan §2.3 (decidido antes
       de qualquer apply)
-- [ ] 23. [infra] **[APROVAÇÃO]** `terraform apply` só de outputs (0/0/0);
+- [x] 23. [infra] **[APROVAÇÃO]** `terraform apply` só de outputs (0/0/0);
       `terraform plan` = "No changes"; `terraform output` mostra os 8
       valores (conferir `dynamodb_table_arn` e `cognito_user_pool_arn`
       contra `state show`)
-- [ ] 24. [mono] `environments/hom/`: apagar `acm.tf`, `api-gateway.tf`,
+- [x] 24. [mono] `environments/hom/`: apagar `acm.tf`, `api-gateway.tf`,
       `api-gateway-domain.tf`, `cognito.tf`, `dns.tf`, `dynamodb.tf`,
       `ses.tf`, `parameter-store.tf`, `outputs.tf` e `recreate-table.sh`
-- [ ] 25. [mono] `environments/hom/variables.tf`: fica `aws_region` +
+- [x] 25. [mono] `environments/hom/variables.tf`: fica `aws_region` +
       `state_bucket` (`gastosapp-terraform-state-648443184523`) +
       `infra_state_key` (`infra-jrnexpenses/hom/terraform.tfstate`);
       remove `table_name` e `frontend_origins`. Criar `remote_state.tf`
       (`data "terraform_remote_state" "infra"` + `locals` com os 5
       valores, plan §2.2)
-- [ ] 26. [mono] `environments/hom/lambda.tf`: trocar
+- [x] 26. [mono] `environments/hom/lambda.tf`: trocar
       `aws_dynamodb_table.gastos_app.arn/.name`,
       `aws_cognito_user_pool.main.arn`, `aws_ses_domain_identity.main.arn`
       por `local.*`; **receber** `aws_lambda_permission.apigateway` com
       `source_arn = "${local.api_gateway_execution_arn}/*/*"`;
       `data "aws_caller_identity" "current"` permanece
-- [ ] 27. [mono] `lambda-account-trigger.tf` e
+- [x] 27. [mono] `lambda-account-trigger.tf` e
       `lambda-custom-message-trigger.tf` de hom: mesmas substituições
       1-para-1 por `local.*` (policies, env `DynamoDb__TableName`,
       `source_arn` das permissions)
-- [ ] 28. [mono] `terraform validate` em `environments/hom/`; `git diff`
+- [x] 28. [mono] `terraform validate` em `environments/hom/`; `git diff`
       dos `lambda*.tf` revisado — só trocas de referência, nenhum valor
       literal novo
-- [ ] 29. Zerar `outputs` no `mono.tfstate` offline (`python -c` que
+- [x] 29. Zerar `outputs` no `mono.tfstate` offline (`python -c` que
       carrega o JSON, define `outputs = {}` e grava preservando
       `serial`/`lineage` — `jq` não existe nesta máquina); conferir com
       `terraform state list -state=mono.tfstate` que os 16 endereços
       continuam lá
-- [ ] 30. [mono] **[APROVAÇÃO]** `terraform state push mono.tfstate` em
+- [x] 30. [mono] **[APROVAÇÃO]** `terraform state push mono.tfstate` em
       `backend/infra/terraform/environments/hom/` (conferência de alvo
       antes — **não** confundir com o push da infra); `terraform state
       list` remoto = 15 + 1 data
-- [ ] 31. [mono] `terraform plan -no-color` em `environments/hom/` (profile
+- [x] 31. [mono] `terraform plan -no-color` em `environments/hom/` (profile
       IAM) comparado com a baseline da task 7: mesmos recursos e
       atributos (só `aws_lambda_function.*`), sem "Changes to Outputs",
       nenhuma `update` em policies/permissions (se aparecer `null`
       vindo do remote state → bloqueio, revisar task 23). **Nenhum
       `apply`**
-- [ ] 32. Smoke manual em `https://api-hom.jrnexpenses.com` (rota pública
+- [x] 32. Smoke manual em `https://api-hom.jrnexpenses.com` (rota pública
       responde; rota protegida devolve 401 sem token)
-- [ ] 33. `workflow_dispatch` de `backend-deploy-hom.yml` → verde
+- [x] 33. `workflow_dispatch` de `backend-deploy-hom.yml` → verde
       (`gh workflow run` + `gh run watch`); em seguida
       `workflow_dispatch` de `backend-integration-tests-hom.yml` → verde
-- [ ] 34. [mono] Atualizar `backend/infra/terraform/README.md` e
+- [x] 34. [mono] Atualizar `backend/infra/terraform/README.md` e
       `backend/infra/CLAUDE.md` para hom (monorepo = só workload;
       plataforma no repo novo; `remote_state` lido); commit
       ("infra(backend): hom lê plataforma via remote_state — FEAT-40
       etapa 6")
-- [ ] 35. [infra] Commit em `develop` ("feat(hom): migra plataforma do
+- [x] 35. [infra] Commit em `develop` ("feat(hom): migra plataforma do
       backend do monorepo (FEAT-40 etapa 6)") com `backend-*.tf`,
       `recreate-table.sh`, `variables.tf`, `wave-6-backend-hom.sh` e
       README (registro do que foi movido); push
-- [ ] 36. Guardar os backups da task 19 até o fim da etapa 7; anotar no
+- [x] 36. Guardar os backups da task 19 até o fim da etapa 7; anotar no
       README da infra que `gastosapp/hom/` segue em uso (workload)
 
 ## Etapa 7 — backend prod (`gastosapp/prod/` → `infra-jrnexpenses/prod/`)
