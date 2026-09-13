@@ -306,18 +306,23 @@ arquivo — cada item vira `spec.md` própria via `/specify`.
   Depende de: nenhuma (cross-cutting, aplica-se a toda a API já
   existente).
 
-- [ ] **FEAT-40 — Extração da infra Terraform do backend para o
-  repositório `infra-jrnexpenses`** *(spec em
-  `backend/specs/FEAT-40-extracao-infra-repo-apartado/`; feature irmã
-  da FEAT-34 do frontend)*: separa plataforma (DynamoDB, Cognito,
-  Parameter Store, SES, API Gateway + domínio `api*`/ACM/DNS, `cicd/`,
-  `bootstrap/`) do workload (3 Lambdas + roles de execução + log groups
-  + `lambda_permission`), movendo a plataforma para um repositório novo
-  em etapas controladas (um state por etapa, `terraform state mv`
-  offline, `plan` = "No changes" dos dois lados, hom antes de prod),
-  sem criar/destruir/alterar nenhum recurso AWS nem tocar em workflows/
-  GitHub Environments. Monorepo passa a ler ARNs/nomes da plataforma
+- [x] **FEAT-40 — Extração da infra Terraform do backend para o
+  repositório `infra-jrnexpenses`** *(concluída, ver
+  `backend/specs/FEAT-40-extracao-infra-repo-apartado/`, seção
+  "Status"; feature irmã da FEAT-34 do frontend)*: separou plataforma
+  (DynamoDB, Cognito, Parameter Store, SES, API Gateway + domínio
+  `api*`/ACM/DNS, `cicd/`, `bootstrap/`) do workload (3 Lambdas + roles
+  de execução + log groups + `lambda_permission`), movendo a
+  plataforma para `infra-jrnexpenses` em etapas controladas (um state
+  por etapa, `terraform state mv` offline, hom antes de prod), sem
+  criar/destruir/alterar nenhum recurso AWS nem tocar em workflows/
+  GitHub Environments — só 2 drifts pré-existentes aceitos (Lambda com
+  env vars do CI, Cognito `from_email_address` com diff cosmético
+  perpétuo do provider). Monorepo passa a ler ARNs/nomes da plataforma
   via `terraform_remote_state`; a infra nunca lê o state do monorepo.
+  Achado fora do escopo original: `gastosapp-backend/cicd/terraform.tfstate`
+  não era órfão como a doc afirmava (continha a role/policy do CI/CD
+  gerenciadas) — não foi removido na limpeza de states órfãos.
   Fecha a extração iniciada pela FEAT-34: limpa os states órfãos dos
   dois contextos e remove das docs a ressalva "só o frontend migrou".
   Depende de: FEAT-34 do frontend (ordem combinada: frontend primeiro,

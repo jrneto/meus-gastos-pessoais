@@ -335,55 +335,141 @@ cada recurso está registrado.
 - [x] Repositório `infra-jrnexpenses` criado, com `CLAUDE.md`,
       `README.md`, `.gitignore` e `terraform/` — **feito na FEAT-34**
       (etapa 0, compartilhada), nada a refazer aqui
-- [ ] `bootstrap/` e `cicd/` do backend vivem em
+- [x] `bootstrap/` e `cicd/` do backend vivem em
       `infra-jrnexpenses/terraform/{bootstrap,cicd/backend}/`; pastas
       removidas de `backend/infra/terraform/`; nenhum state remoto
       alterado nessa etapa (etapa 5)
-- [ ] `terraform state list` de `infra-jrnexpenses/terraform/environments/hom/`
+- [x] `terraform state list` de `infra-jrnexpenses/terraform/environments/hom/`
       contém todos os recursos de plataforma de hom listados em US2
       (além dos do frontend, movidos pela FEAT-34);
       `terraform state list` de `backend/infra/terraform/environments/hom/`
       contém exatamente Lambdas, roles, policies, log groups,
-      permissions e `data.aws_caller_identity`
-- [ ] `terraform plan` = "No changes" em
-      `infra-jrnexpenses/terraform/environments/hom/` e em
-      `backend/infra/terraform/environments/hom/` após a etapa 6 (o
-      `apply` de "só outputs" do lado da infra mostra 0/0/0 e é aprovado
-      como qualquer apply)
-- [ ] O mesmo para prod, após a etapa 7
-- [ ] Monorepo lê ARNs/nomes da plataforma via `terraform_remote_state`
+      permissions e `data.aws_caller_identity` (31 e 16 endereços/
+      instâncias, respectivamente — conferido na Task 20/31)
+- [x] `terraform plan` em `infra-jrnexpenses/terraform/environments/hom/`
+      e em `backend/infra/terraform/environments/hom/` após a etapa 6
+      — 0 recursos + só "Changes to Outputs" do lado da infra (apply
+      aprovado), e o `plan` do monorepo idêntico à baseline. **Exceção
+      aceita explicitamente pelo usuário**: não é "No changes" literal
+      dos dois lados — 2 drifts pré-existentes (não introduzidos por
+      esta migração) persistem: `aws_lambda_function.api` (env vars de
+      versão do CI, já esperado desde a FEAT-14) e
+      `aws_cognito_user_pool.main.email_configuration.from_email_address`
+      (diff cosmético perpétuo do provider AWS com acentuação/aspas,
+      não converge nem depois do `apply`)
+- [x] O mesmo para prod, após a etapa 7 (mesma exceção aceita — drift
+      perpétuo do Cognito, tabela e User Pool sem qualquer outro diff)
+- [x] Monorepo lê ARNs/nomes da plataforma via `terraform_remote_state`
       (outputs `dynamodb_table_name`, `dynamodb_table_arn`,
       `cognito_user_pool_arn`, `ses_domain_identity_arn`,
-      `api_gateway_execution_arn`, ou equivalentes definidos no `plan.md`);
-      a infra não contém `terraform_remote_state` apontando para state do
-      monorepo e resolve as Lambdas por nome
-- [ ] `recreate-table.sh` vive em
+      `api_gateway_execution_arn`); a infra não contém
+      `terraform_remote_state` apontando para state do monorepo e
+      resolve as Lambdas por nome (`data "aws_lambda_function"`, zero
+      diff em `lambda_config`/`integration_uri`)
+- [x] `recreate-table.sh` vive em
       `infra-jrnexpenses/terraform/environments/hom/`, com o comentário
       de uso apontando para o caminho novo; removido do monorepo
-- [ ] Nenhum recurso AWS criado, destruído, recriado ou alterado —
-      confirmado pelos `plan` acima e pela ausência de `apply` com
-      mudanças em qualquer etapa
-- [ ] Nenhuma alteração em `.github/workflows/*` nem nos GitHub
+- [x] Nenhum recurso AWS criado, destruído, recriado ou alterado —
+      confirmado pelos `plan` acima (só `update in-place` nos 2 drifts
+      já conhecidos) e pela ausência de `apply` com mudanças
+      inesperadas em qualquer etapa
+- [x] Nenhuma alteração em `.github/workflows/*` nem nos GitHub
       Environments `backend-hom`/`backend-prod`; `backend-deploy-hom.yml`
       verde após a etapa 6; API de hom respondendo (smoke manual)
-- [ ] `backend-integration-tests-hom.yml` executado sob demanda e verde
-      após a etapa 6
-- [ ] Nenhum `terraform state push`/`apply`/remoção de state executado
+- [x] `backend-integration-tests-hom.yml` executado sob demanda e verde
+      após a etapa 6 (`backend-integration-tests-prod.yml` também
+      rodado, opcional, na etapa 7)
+- [x] Nenhum `terraform state push`/`apply`/remoção de state executado
       sem aprovação explícita do usuário no momento da execução, sempre
       precedido da conferência de diretório/`key`/arquivo/`state list`
-- [ ] Objetos órfãos `gastosapp-frontend/dns/terraform.tfstate`,
-      `gastosapp-frontend/cicd/terraform.tfstate` e
-      `gastosapp-backend/cicd/terraform.tfstate` removidos do bucket
-      (etapa 8, cada um aprovado); `gastosapp/{hom,prod}/…` e
-      `gastosapp-frontend/{hom,prod}/…` intactos
-- [ ] `backend/infra/CLAUDE.md`, `backend/infra/terraform/README.md`,
+- [x] Objetos órfãos `gastosapp-frontend/dns/terraform.tfstate` e
+      `gastosapp-frontend/cicd/terraform.tfstate` removidos do bucket
+      (etapa 8, cada um aprovado, confirmados vazios antes);
+      `gastosapp/{hom,prod}/…` e `gastosapp-frontend/{hom,prod}/…`
+      intactos. **Divergência do previsto**:
+      `gastosapp-backend/cicd/terraform.tfstate` **não** foi removido —
+      achado na etapa 8: ao contrário do que a documentação afirmava,
+      esse objeto contém `aws_iam_role.backend_cicd` e
+      `aws_iam_role_policy.backend_cicd` **gerenciados** (não é órfão);
+      ver seção "Status" abaixo
+- [x] `backend/infra/CLAUDE.md`, `backend/infra/terraform/README.md`,
       `frontend/infra/CLAUDE.md` (parágrafo "Pendente" removido),
       `/CLAUDE.md` raiz, `/docs/architecture.md` e `CLAUDE.md`/`README.md`
       do `infra-jrnexpenses` atualizados, sem ressalva de "só o frontend
       migrou" (etapa 8)
 - [ ] PR `develop → main` do `infra-jrnexpenses` aberto ao fim da
       etapa 8 (merge manual)
-- [ ] `backend/docs/backlog.md` atualizado: FEAT-40 marcada como concluída
+- [x] `backend/docs/backlog.md` atualizado: FEAT-40 marcada como concluída
+
+## Status (2026-09-13)
+
+Todas as etapas concluídas: 5 (`bootstrap/`+`cicd/backend/`, só
+arquivos), 6 (backend hom) e 7 (backend prod). Nenhum recurso AWS foi
+criado, destruído ou recriado em nenhuma etapa — só movimentação de
+state Terraform e reorganização de código.
+
+**O que foi movido para `infra-jrnexpenses`** (por ambiente, 24
+endereços/26 instâncias cada): `aws_dynamodb_table.gastos_app`,
+`aws_cognito_user_pool.main`, `aws_cognito_user_pool_client.spa`, 6-7
+`aws_ssm_parameter.*`, 3 recursos SES
+(`aws_ses_domain_identity`/`_dkim`/`_identity_verification`), 4 recursos
+API Gateway (`aws_apigatewayv2_api`/`_integration`/`_route`/`_stage`),
+`aws_acm_certificate` (+ `_validation` só em hom), 2 recursos de domínio
+customizado (`aws_apigatewayv2_domain_name`/`_api_mapping`) e 4 records
+DNS (`api_a`, `api_acm_validation`, `ses_verification`, `ses_dkim` ×3
+instâncias) — mais `terraform/bootstrap/` e `terraform/cicd/backend/`
+(etapa 5, como estavam).
+
+**O que ficou no monorepo**: em cada ambiente, as 3 `aws_lambda_function`
+(API + os 2 triggers do Cognito), suas 3 `aws_iam_role` + 3
+`aws_iam_role_policy` + 3 `aws_cloudwatch_log_group` + 3
+`aws_lambda_permission` (workload) e `data.aws_caller_identity.current`
+— 15 recursos + 1 data, confirmado via `terraform state list` nos dois
+ambientes.
+
+**Drift pré-existente, não introduzido por esta migração** (aceito
+explicitamente pelo usuário, ver critérios de aceite acima): (1)
+`aws_lambda_function.api` sem os valores de `APP_VERSION`/
+`APP_COMMIT_SHA`/`APP_ENVIRONMENT` no `.tf` — já esperado desde a
+FEAT-14 (CI publica via `update-function-configuration`, fora do
+Terraform); (2) `aws_cognito_user_pool.main.email_configuration.from_email_address`
+— a AWS devolve esse atributo normalizado de forma diferente do
+literal declarado no `.tf` (encoding MIME/RFC 2047 em hom, remoção de
+aspas em prod) sempre que há acentuação ou aspas no nome de exibição;
+`apply` não converge, o diff reaparece no próximo `plan` indefinidamente
+— comportamento do provider AWS, documentado em
+`backend/infra/CLAUDE.md`.
+
+**Achado durante a execução, fora do previsto na spec original**: ao
+contrário do que toda a documentação anterior afirmava (guardrail de
+IAM bloqueia toda leitura/escrita sobre a role `gastosapp-backend-cicd`,
+que estaria sempre fora de state), o objeto
+`gastosapp-backend/cicd/terraform.tfstate` **contém**
+`aws_iam_role.backend_cicd` e `aws_iam_role_policy.backend_cicd`
+gerenciados (serial 5, `terraform_version` 1.15.8) — sem nenhum
+registro de quando ou como esse `import`/`apply` aconteceu. Por isso
+esse objeto **não** entrou na limpeza de states órfãos da etapa 8 (ele
+não é órfão) — decisão do usuário ao ser confrontado com o achado.
+Documentado em `backend/infra/CLAUDE.md` e no `CLAUDE.md` do
+`infra-jrnexpenses`.
+
+**Outros achados durante a execução**:
+- Nem o profile `agent-toolkit` nem um profile `default` inicialmente
+  disponível conseguiam ler a IAM role
+  `jrnexpenses-account-trigger-lambda-exec` (mesmo guardrail já
+  documentado) — os `plan`/`state list` que precisavam disso foram
+  rodados pelo usuário localmente com um profile próprio (com leitura
+  de IAM de verdade), em vez de pela ferramenta.
+- O profile usado pelo usuário expirou uma vez no meio da etapa 7
+  (sessão temporária, não SSO) e precisou ser renovado manualmente.
+- A baseline da etapa 6 revelou os 2 drifts pré-existentes acima antes
+  de qualquer `state mv` — tratado como achado a aceitar, não bloqueio,
+  já que nenhum dos dois foi causado pela migração.
+
+**Pendências reais para fechar a FEAT-40**: PR
+`FEAT-40-extracao-infra-repo-apartado → develop` do monorepo e PR
+`develop → main` do `infra-jrnexpenses` — ambos a abrir na sequência
+(tasks 65-66), merge manual pelo usuário.
 
 ## Fora do escopo
 
