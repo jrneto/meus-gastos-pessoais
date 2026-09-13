@@ -45,8 +45,8 @@ resource "aws_iam_role_policy" "lambda_exec" {
           "dynamodb:TransactWriteItems"
         ]
         Resource = [
-          aws_dynamodb_table.gastos_app.arn,
-          "${aws_dynamodb_table.gastos_app.arn}/index/*"
+          local.dynamodb_table_arn,
+          "${local.dynamodb_table_arn}/index/*"
         ]
       },
       {
@@ -64,7 +64,7 @@ resource "aws_iam_role_policy" "lambda_exec" {
           "cognito-idp:GetUser",
           "cognito-idp:AdminDeleteUser"
         ]
-        Resource = aws_cognito_user_pool.main.arn
+        Resource = local.cognito_user_pool_arn
       },
       {
         Sid    = "LogsAccess"
@@ -79,7 +79,7 @@ resource "aws_iam_role_policy" "lambda_exec" {
         Sid      = "SesSendEmail"
         Effect   = "Allow"
         Action   = ["ses:SendEmail", "ses:SendRawEmail"]
-        Resource = aws_ses_domain_identity.main.arn
+        Resource = local.ses_domain_identity_arn
       }
     ]
   })
@@ -102,9 +102,20 @@ resource "aws_lambda_function" "api" {
   environment {
     variables = {
       ParameterStore__Path = "/GastosApp/Hom/"
-      DynamoDb__TableName  = aws_dynamodb_table.gastos_app.name
+      DynamoDb__TableName  = local.dynamodb_table_name
     }
   }
 
   depends_on = [aws_cloudwatch_log_group.lambda]
+}
+
+# Autoriza o API Gateway (terraform/environments/hom/ do
+# infra-jrnexpenses, FEAT-40) a invocar esta Lambda — migrado de
+# api-gateway.tf junto com a própria Lambda que ele autoriza (workload).
+resource "aws_lambda_permission" "apigateway" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.api.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.api_gateway_execution_arn}/*/*"
 }

@@ -1,13 +1,18 @@
 # Terraform — backend/infra
 
-Provisiona a infraestrutura AWS do backend: tabela DynamoDB (`GastosApp`
-+ `GSI1` + `GSI2`, `dynamodb.tf`), Cognito User Pool + App Client
-(`cognito.tf`), os parâmetros do Cognito no Parameter Store
-(`parameter-store.tf`), a Lambda .NET Native AOT da API
-(`lambda.tf`) e o API Gateway HTTP API que a expõe publicamente
-(`api-gateway.tf`). Toda a infraestrutura do backend está sob Terraform
-(ver `backend/specs/FEAT-09-terraform-cognito-parameter-store/` e
-`backend/specs/FEAT-10-deploy-lambda-aot-api-gateway/`).
+Provisiona a infraestrutura AWS do backend. **Desde a FEAT-40 (etapa
+6), `environments/hom/` só gerencia o workload** — as 3 Lambdas .NET
+Native AOT (API + os 2 triggers do Cognito, `lambda*.tf`), suas roles/
+policies/log groups/permissions; a plataforma (tabela DynamoDB,
+Cognito User Pool + App Client, Parameter Store, SES, API Gateway,
+domínio customizado + ACM/DNS) foi movida para o repositório
+[`infra-jrnexpenses`](https://github.com/jrneto/infra-jrnexpenses) e é
+lida aqui via `terraform_remote_state` (`remote_state.tf`). **Produção
+(`environments/prod/`) ainda não migrou** (etapa 7 desta mesma feature)
+— lá o Terraform continua gerenciando tabela, Cognito, Parameter
+Store e API Gateway diretamente, mesmo descrito historicamente em
+`backend/specs/FEAT-09-terraform-cognito-parameter-store/` e
+`backend/specs/FEAT-10-deploy-lambda-aot-api-gateway/`.
 
 Duas configurações independentes neste diretório (`bootstrap/` e
 `cicd/` migraram para o repositório `infra-jrnexpenses` na FEAT-40,
@@ -24,9 +29,11 @@ etapa 5 — ver pointers abaixo):
   `bootstrap/` (`key = gastosapp/prod/terraform.tfstate`), usando o
   locking nativo do backend S3 (`use_lockfile`).
 - `environments/hom/` — ambiente de **homologação**
-  (`api-hom.jrnexpenses.com`, FEAT-13), isolado de produção (tabela,
-  Cognito, Parameter Store, Lambda e API Gateway próprios), state
-  próprio no mesmo bucket (`key = gastosapp/hom/terraform.tfstate`).
+  (`api-hom.jrnexpenses.com`, FEAT-13), state próprio no mesmo bucket
+  (`key = gastosapp/hom/terraform.tfstate`). Desde a FEAT-40 (etapa 6),
+  contém só as 3 Lambdas de workload — a plataforma vive em
+  [`infra-jrnexpenses/terraform/environments/hom/`](https://github.com/jrneto/infra-jrnexpenses/tree/develop/terraform/environments/hom)
+  (lida via `remote_state.tf`).
 - `cicd/` — **migrado para
   [`infra-jrnexpenses/terraform/cicd/backend/`](https://github.com/jrneto/infra-jrnexpenses/tree/develop/terraform/cicd/backend)**
   (FEAT-40, etapa 5) — ver seção dedicada abaixo.
@@ -170,45 +177,48 @@ ambiente que precisar do deploy — o `source_code_hash` no `lambda.tf`
 muda junto com o zip, e o `terraform plan` mostra a atualização do
 código como a única mudança.
 
-## Ambiente de homologação (FEAT-13)
+## Ambiente de homologação (FEAT-13, workload movido na FEAT-40)
 
-`environments/hom/` provisiona uma cópia isolada da infraestrutura de
-produção, exposta em `https://api-hom.jrnexpenses.com`:
+`environments/hom/` expõe a API em `https://api-hom.jrnexpenses.com`.
+Desde a FEAT-40 (etapa 6), este diretório só contém o **workload**: as
+3 Lambdas (`lambda.tf`, `lambda-account-trigger.tf`,
+`lambda-custom-message-trigger.tf`), suas roles/policies/log
+groups/permissions e `remote_state.tf` (lê a plataforma via
+`terraform_remote_state`). A **plataforma** — tabela DynamoDB
+(`GastosApp-Hom`), Cognito User Pool + App Client
+(`user-pool-gastos-app-hom`, `controle-gastos-spa-hom`), Parameter
+Store (`/GastosApp/Hom/...`), SES e o domínio customizado
+(`api-hom.jrnexpenses.com`, ACM, DNS) — vive em
+[`infra-jrnexpenses/terraform/environments/hom/`](https://github.com/jrneto/infra-jrnexpenses/tree/develop/terraform/environments/hom)
+(`backend-*.tf` de lá).
 
-- Tabela DynamoDB própria: `GastosApp-Hom`
-- Cognito User Pool + App Client próprios: `user-pool-gastos-app-hom`,
-  `controle-gastos-spa-hom` — `callback_urls` usa um placeholder
-  (`http://localhost:5173`), já que não existe frontend de
-  homologação ainda
-- Parameter Store em `/GastosApp/Hom/...` (em vez de `/GastosApp/...`)
-  — a Lambda de hom recebe a variável de ambiente
-  `ParameterStore__Path=/GastosApp/Hom/`, que sobrepõe o default
-  `/GastosApp/` lido em produção (mudança em
-  `AwsParameterStoreExtensions.cs`/`Program.cs`, sem alterar contrato
+Pontos que continuam relevantes para quem mexe no workload deste
+diretório:
+
+- `ParameterStore__Path=/GastosApp/Hom/` (variável de ambiente da
+  Lambda da API) isola a leitura do Parameter Store no prefixo de
+  homologação — sobrepõe o default `/GastosApp/` lido em produção
+  (`AwsParameterStoreExtensions.cs`/`Program.cs`, sem alterar contrato
   de API)
-- Tabela DynamoDB isolada via a variável de ambiente
-  `DynamoDb__TableName=GastosApp-Hom` na Lambda de hom (produção não
-  seta essa variável, cai no default `GastosApp`). Isso exigiu corrigir
-  `InfrastructureServiceCollectionExtensions.cs`: o binding de
-  `DynamoDbOptions` usava `services.Configure<T>(IConfiguration)`
-  (reflection), que **falha silenciosamente sob Native AOT** — mesmo
-  problema já corrigido para `CognitoOptions` na FEAT-10, mas nunca
-  replicado para `DynamoDbOptions` até este achado durante a validação
-  da FEAT-13. Nunca dava problema antes porque o default hardcoded
-  coincidia com o nome real da tabela de produção
+- `DynamoDb__TableName` (Lambda da API e do trigger de conta) vem de
+  `local.dynamodb_table_name` (`remote_state.tf`), não mais de um
+  recurso local — o valor resolvido continua `GastosApp-Hom`. O
+  binding de `DynamoDbOptions` usa leitura manual, não
+  `services.Configure<T>(IConfiguration)` (reflection, **falha
+  silenciosamente sob Native AOT** — achado da FEAT-13, ver
+  `backend/infra/CLAUDE.md`)
 - Lambda (`gastos-app-api-hom`) e API Gateway HTTP API
-  (`gastos-app-api-hom`) próprios, mesmo artefato de produção
-- Certificado ACM próprio (`api-hom.jrnexpenses.com`), emitido do zero
-  via Terraform (diferente de produção, importado já `ISSUED`) —
-  `dns.tf` usa `aws_acm_certificate_validation` para esperar a
-  validação DNS completar antes do domínio customizado usar o
-  certificado
-- CORS (`frontend_origins`) vazio por padrão — sem frontend de
-  homologação, nenhuma origem de browser é liberada; chamadas via
-  curl/Postman/testes automatizados não são afetadas
+  (`gastos-app-api-hom`, agora do lado da infra) seguem com o mesmo
+  artefato de produção
+- CORS (`frontend_origins`, variável da infra) aponta para
+  `https://hom.jrnexpenses.com` desde a FEAT-11/FEAT-34 do frontend —
+  `callback_urls` do Cognito ainda usa o placeholder
+  `http://localhost:5173` (débito registrado em
+  `backend/infra/CLAUDE.md`)
 
-Ver `backend/specs/FEAT-13-ambiente-homologacao/` para a spec e o plano
-técnico completos.
+Ver `backend/specs/FEAT-13-ambiente-homologacao/` (contexto original) e
+`backend/specs/FEAT-40-extracao-infra-repo-apartado/` (migração da
+plataforma) para spec e plano técnico completos.
 
 ## `cicd/` — OIDC Provider (reaproveitado) + IAM Role do backend (FEAT-14, migrado na FEAT-40)
 
