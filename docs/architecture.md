@@ -50,10 +50,12 @@ transações.
 
 "Container" aqui é o termo do C4 (uma unidade implantável/executável
 separadamente — não um container Docker). O sistema é dividido em dois
-contextos independentes, cada um com sua própria infraestrutura AWS
-(ver `/CLAUDE.md` raiz — "não existe infraestrutura compartilhada
-entre contextos", exceto a hosted zone DNS, que o frontend gerencia e o
-backend só lê).
+contextos independentes, cada um dono do Terraform essencial ao deploy
+do seu próprio workload; a plataforma (CDN, certificado, WAF, DNS) vive
+num repositório apartado, `infra-jrnexpenses` — hoje só a parte do
+frontend (CloudFront + OAC + ACM + WAF + hosted zone) já foi migrada
+para lá; a do backend segue no monorepo até uma feature futura no mesmo
+padrão (ver `/CLAUDE.md` raiz).
 
 ```mermaid
 flowchart TB
@@ -101,7 +103,8 @@ flowchart TB
 | Container | Contexto | Descrição | Detalhes |
 |---|---|---|---|
 | SPA (React) | frontend | App de página única, consome a API via HTTP | `frontend/CLAUDE.md`, `frontend/docs/constitution.md` |
-| S3 + CloudFront + WAF | frontend/infra | Hosting estático + CDN + TLS + regras gerenciadas | `frontend/infra/CLAUDE.md`, `frontend/infra/terraform/README.md` |
+| S3 (bucket do site) | frontend/infra | Workload: hosting estático em si | `frontend/infra/CLAUDE.md`, `frontend/infra/terraform/README.md` |
+| CloudFront + OAC + WAF | infra-jrnexpenses | Plataforma: CDN, TLS, regras gerenciadas — repositório apartado | `infra-jrnexpenses/CLAUDE.md`, `infra-jrnexpenses/README.md` |
 | API GastosApp (.NET/Lambda) | backend | API HTTP, Clean Architecture, Minimal APIs | `backend/CLAUDE.md` |
 | API Gateway (HTTP API) | backend/infra | Roteamento + throttling na frente da Lambda | `backend/infra/CLAUDE.md` |
 | Lambda PostConfirmation | backend | Cria `Account`/`Membership` no 1º login (trigger do Cognito) | `backend/docs/data-model.md`, backlog FEAT-19 |
@@ -238,8 +241,10 @@ criados manualmente no console):
 
 - Backend: `backend/infra/CLAUDE.md`, `backend/infra/README.md`,
   `backend/infra/terraform/README.md`
-- Frontend: `frontend/infra/CLAUDE.md`,
+- Frontend (workload — bucket): `frontend/infra/CLAUDE.md`,
   `frontend/infra/terraform/README.md`
+- Frontend (plataforma — CDN/certificado/WAF/DNS), repositório apartado:
+  `infra-jrnexpenses/CLAUDE.md`, `infra-jrnexpenses/README.md`
 
 ## Referências
 
@@ -252,6 +257,7 @@ criados manualmente no console):
 | Processo SDD do backend | `backend/docs/README.md` |
 | Backlog de features do backend | `backend/docs/backlog.md` |
 | Infra do backend | `backend/infra/CLAUDE.md` |
-| Infra do frontend | `frontend/infra/CLAUDE.md` |
+| Infra do frontend (workload) | `frontend/infra/CLAUDE.md` |
+| Infra compartilhada (plataforma, hoje só frontend) | `infra-jrnexpenses/CLAUDE.md` |
 | Design system (Modernist) | `frontend/design-system/README.md` |
 | Modo Leve vs Fluxo Completo, fluxo de Git | `/CLAUDE.md` (raiz) |
