@@ -50,6 +50,30 @@ function ensureRefreshed(): Promise<string | null> {
   return refreshPromise
 }
 
+// Disjuntor contra loop de refresh: cada hook de leitura (`useMembers`,
+// `useCategories`, ...) refaz sua chamada quando `token` muda no
+// authStore — inclusive quando quem mudou foi um refresh disparado por
+// OUTRO hook. Se o recurso pedido continuar devolvendo 401 mesmo com o
+// token novo (ex.: bug de contrato, não sessão expirada), cada um desses
+// hooks dispara seu próprio ciclo de refresh, que muda `token` de novo,
+// que dispara todos de novo — loop sem fim, visto na prática ao testar a
+// FEAT-41 (front ainda não ajustado ao novo contrato). Sem relação com
+// `refreshPromise` acima, que só deduplica refreshes *simultâneos* — o
+// problema aqui é uma sequência de ciclos completos (refresh bem
+// sucedido, retry ainda 401), um atrás do outro.
+let consecutiveRefreshFailures = 0
+const MAX_CONSECUTIVE_REFRESH_FAILURES = 2
+
+/**
+ * Rearma o disjuntor após uma sessão nova de fato (login explícito) —
+ * sem isso, uma sessão anterior que disparou o loop deixaria o
+ * disjuntor acionado pelo resto da aba, bloqueando até um refresh
+ * legítimo da sessão nova. Ver `features/auth/hooks/useLogin.ts`.
+ */
+export function resetAuthCircuitBreaker(): void {
+  consecutiveRefreshFailures = 0
+}
+
 function isAuthInterceptorExcluded(path: string): boolean {
   return AUTH_INTERCEPTOR_EXCLUDED_PATHS.some((excluded) => path.startsWith(excluded))
 }
@@ -95,14 +119,27 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
     return response
   }
 
-  const newToken = await ensureRefreshed()
-
-  if (newToken === null) {
+  if (consecutiveRefreshFailures >= MAX_CONSECUTIVE_REFRESH_FAILURES) {
+    // Já tentamos renovar e repetir repetidas vezes seguidas sem que o
+    // recurso voltasse a funcionar — trata como sessão inválida em vez
+    // de insistir indefinidamente. Não dispara mais nenhum refresh:
+    // é isso que quebra o loop (sem ele, `onSessionExpired` zera o
+    // token, mas o próximo 401 tentaria renovar de novo do mesmo jeito).
     authPlugin.onSessionExpired()
     return response
   }
 
-  return rawRequest(path, init)
+  const newToken = await ensureRefreshed()
+
+  if (newToken === null) {
+    consecutiveRefreshFailures = 0
+    authPlugin.onSessionExpired()
+    return response
+  }
+
+  const retried = await rawRequest(path, init)
+  consecutiveRefreshFailures = retried.status === 401 ? consecutiveRefreshFailures + 1 : 0
+  return retried
 }
 
 export const httpClient = {
