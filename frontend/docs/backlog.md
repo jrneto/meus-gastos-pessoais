@@ -291,4 +291,28 @@ vira `spec.md` própria via `/specify`.
     uma vez, mas não resolveria a segunda família (renderização direta
     de `isLoading`), que exigiria a técnica de Promise controlada em
     cada teste, um por um.
+- **Hooks de leitura acoplados diretamente a `token` do authStore
+  amplificam qualquer 401 persistente** — descoberto ao testar
+  manualmente a FEAT-41 (backend) localmente: excluir um membro deixou a
+  tela em loop, gerando requests sem parar pro backend (401 repetido).
+  Causa: `useMembers`, `useCategories` (e hooks equivalentes de outras
+  features) têm `useEffect(..., [token])` — qualquer refresh de token
+  bem-sucedido (disparado por *qualquer* chamada 401 em qualquer lugar
+  da tela) muda `token` no `authStore` global, o que re-dispara *todos*
+  esses hooks ao mesmo tempo. Se o recurso pedido continuar devolvendo
+  401 mesmo com o token novo (não é sessão expirada — outro motivo,
+  nesse caso um contrato de API ainda não ajustado no front), cada hook
+  dispara seu próprio ciclo de refresh, que muda `token` de novo, que
+  dispara todos de novo — loop sem fim, sem limite algum antes desse
+  fix. Corrigido em Modo Leve (`fix/loop-refresh-401-frontend`) com um
+  disjuntor no `lib/httpClient.ts` (para de tentar renovar depois de 2
+  ciclos seguidos malsucedidos) — resolve o sintoma (loop infinito) mas
+  não a fragilidade estrutural: qualquer nova feature que siga o mesmo
+  padrão (`useEffect` + `token` como dependência, buscando dados
+  diretamente da API) fica sujeita ao mesmo tipo de amplificação caso
+  algum endpoint volte a divergir do que o token permite. Solução mais
+  central a avaliar depois: uma camada de dados única ciente de auth
+  (ex.: introduzir TanStack Query, hoje ausente no projeto — não há
+  nenhum `QueryClientProvider`) que centralize cache/refetch/erro em vez
+  de cada feature reimplementar seu próprio `useEffect` de fetch.
 

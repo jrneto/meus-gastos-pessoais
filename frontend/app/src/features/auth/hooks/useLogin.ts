@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { resetAuthCircuitBreaker } from '@/lib/httpClient'
 import { startNewSession } from '@/lib/sessionId'
 import { authApi } from '../api/authApi'
 import type { LoginCredentials } from '../schemas/loginSchema'
@@ -24,6 +25,10 @@ export function useLogin(): UseLoginResult {
       // exista um da aba (ex.: logout seguido de login de novo) — ver
       // lib/sessionId.ts.
       startNewSession()
+      // Idem para o disjuntor de refresh do httpClient — uma sessão
+      // anterior que tenha disparado o loop de 401 não deve deixá-lo
+      // acionado pra sessão nova (ver lib/httpClient.ts).
+      resetAuthCircuitBreaker()
       setSession(result.accessToken, result.userId, result.expiresIn)
     } catch (err) {
       setError(err as Error)

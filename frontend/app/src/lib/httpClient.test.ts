@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '@/test/msw/server'
 import { startNewSession } from './sessionId'
-import { httpClient, registerAuthPlugin } from './httpClient'
+import { httpClient, registerAuthPlugin, resetAuthCircuitBreaker } from './httpClient'
 
 const BASE_URL = 'http://localhost:5049'
 const RESOURCE_URL = `${BASE_URL}/protected/resource`
@@ -75,6 +75,11 @@ describe('httpClient — plugin de auth', () => {
       refreshAccessToken: vi.fn(),
       onSessionExpired: vi.fn(),
     })
+    // O disjuntor de refresh (módulo compartilhado) não pode vazar
+    // estado de um teste que o aciona (ex.: o de loop, abaixo) para o
+    // próximo — mesmo racional do reset em `useLogin.ts` para sessões
+    // reais.
+    resetAuthCircuitBreaker()
   })
 
   it('injeta Authorization automaticamente a partir de getAccessToken', async () => {
@@ -161,6 +166,32 @@ describe('httpClient — plugin de auth', () => {
 
     await expect(httpClient.get('/protected/resource')).rejects.toThrow('network down')
     expect(onSessionExpired).not.toHaveBeenCalled()
+  })
+
+  it('em 401 persistente mesmo após refresh bem-sucedido (loop), para de tentar depois de algumas tentativas em vez de renovar pra sempre', async () => {
+    let refreshCount = 0
+    server.use(http.get(RESOURCE_URL, () => new HttpResponse(null, { status: 401 })))
+    const onSessionExpired = vi.fn()
+    const refreshAccessToken = vi.fn(async () => {
+      refreshCount += 1
+      return `new-token-${refreshCount}`
+    })
+    registerAuthPlugin({
+      getAccessToken: () => 'stale-token',
+      refreshAccessToken,
+      onSessionExpired,
+    })
+
+    // Simula chamadas sucessivas como as de hooks independentes que
+    // reagem à troca de `token` no authStore a cada refresh — sem o
+    // disjuntor, cada uma dispararia um novo refresh indefinidamente.
+    for (let i = 0; i < 6; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await httpClient.get('/protected/resource')
+    }
+
+    expect(refreshAccessToken.mock.calls.length).toBeLessThan(6)
+    expect(onSessionExpired).toHaveBeenCalled()
   })
 
   it('deduplica refreshes concorrentes — várias chamadas 401 disparam só um refresh', async () => {
