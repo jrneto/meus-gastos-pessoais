@@ -185,6 +185,26 @@ public class DynamoDbMembershipRepositoryTests
         await _dynamoDbClientMock.DidNotReceiveWithAnyArgs().PutItemAsync(default!, default);
     }
 
+    [Fact]
+    public async Task CreateInviteAsync_ShouldSucceed_WhenExistingMemberWithSameEmailIsInativo()
+    {
+        // Arrange (FEAT-41) — Inativo não conta como "já é membro" pra duplicidade.
+        var createdAt = DateTimeOffset.UtcNow;
+        _dynamoDbClientMock.QueryAsync(Arg.Any<QueryRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryResponse
+            {
+                Items = [BuildItem("account-1", "membership-1", "ex-colaborador@email.com", "Lancar", "Inativo", "user-2", createdAt)]
+            });
+        _dynamoDbClientMock.PutItemAsync(Arg.Any<PutItemRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new PutItemResponse());
+
+        var result = await _repository.CreateInviteAsync("account-1", "ex-colaborador@email.com", MembershipRole.Leitura);
+
+        result.Outcome.Should().Be(MembershipWriteOutcome.Success);
+        result.Membership!.Status.Should().Be(MembershipStatus.ConvitePendente);
+        await _dynamoDbClientMock.Received(1).PutItemAsync(Arg.Any<PutItemRequest>(), Arg.Any<CancellationToken>());
+    }
+
     // ----- UpdateRoleAsync -----
 
     [Fact]
@@ -212,6 +232,36 @@ public class DynamoDbMembershipRepositoryTests
         var result = await _repository.UpdateRoleAsync("account-1", "membership-inexistente", MembershipRole.Total);
 
         result.Outcome.Should().Be(MembershipWriteOutcome.NotFound);
+    }
+
+    // ----- InactivateAsync -----
+
+    [Fact]
+    public async Task InactivateAsync_ShouldReturnTrue_WhenUpdated()
+    {
+        _dynamoDbClientMock.UpdateItemAsync(Arg.Any<UpdateItemRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new UpdateItemResponse());
+
+        var result = await _repository.InactivateAsync("account-1", "membership-1");
+
+        result.Should().BeTrue();
+        await _dynamoDbClientMock.Received(1).UpdateItemAsync(
+            Arg.Is<UpdateItemRequest>(r =>
+                r.Key["PK"].S == "ACCOUNT#account-1" && r.Key["SK"].S == "MEMBER#membership-1"
+                && r.ExpressionAttributeValues[":inativo"].S == "Inativo"
+                && r.ExpressionAttributeValues[":ativo"].S == "Ativo"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InactivateAsync_ShouldReturnFalse_WhenConditionFails()
+    {
+        _dynamoDbClientMock.UpdateItemAsync(Arg.Any<UpdateItemRequest>(), Arg.Any<CancellationToken>())
+            .Returns<UpdateItemResponse>(_ => throw new ConditionalCheckFailedException("não existe ou não está Ativo"));
+
+        var result = await _repository.InactivateAsync("account-1", "membership-inexistente");
+
+        result.Should().BeFalse();
     }
 
     // ----- DeleteAsync -----

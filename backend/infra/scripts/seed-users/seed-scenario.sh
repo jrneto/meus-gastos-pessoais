@@ -40,6 +40,12 @@ API_BASE_URL="${API_BASE_URL:-http://localhost:5049}"
 COGNITO_ENDPOINT="http://localhost:9229"
 COGNITO_IDS_FILE="$SCRIPT_DIR/../../.local-cognito-ids"
 
+# FEAT-39: trace-id/client-platform/client-version são obrigatórios em toda
+# rota não isenta (só GET /health aceita qualquer combinação) — sem eles a
+# API responde 400 antes de qualquer Command/Query rodar. Mesmo padrão já
+# usado por scripts/export-openapi.sh.
+OBSERVABILITY_HEADERS=(-H "trace-id: seed-scenario-script" -H "client-platform: script" -H "client-version: 0.0.0")
+
 SCENARIO="$1"
 if [ -z "$SCENARIO" ]; then
   echo "Uso: $0 <cenario>  (ex.: $0 cenario1)" >&2
@@ -136,10 +142,12 @@ api_call() {
   if [ -n "$token" ]; then
     curl -s -w '\n%{http_code}' -X "$method" "$API_BASE_URL$path" \
       -H "Content-Type: application/json" -H "Authorization: Bearer $token" \
+      "${OBSERVABILITY_HEADERS[@]}" \
       --data-binary @- <<< "$data"
   else
     curl -s -w '\n%{http_code}' -X "$method" "$API_BASE_URL$path" \
       -H "Content-Type: application/json" \
+      "${OBSERVABILITY_HEADERS[@]}" \
       --data-binary @- <<< "$data"
   fi
 }
@@ -229,7 +237,7 @@ create_or_get_receita_category() {
 
 find_category_id_by_name() {
   local token="$1" nome="$2"
-  curl -s -H "Authorization: Bearer $token" "$API_BASE_URL/categories" \
+  curl -s -H "Authorization: Bearer $token" "${OBSERVABILITY_HEADERS[@]}" "$API_BASE_URL/categories" \
     | grep -oE '\{"id": *"[^}]*\}' \
     | grep -F "\"nome\":\"$nome\"" \
     | head -1 \
@@ -256,7 +264,7 @@ register_transaction() {
 guard_against_duplicate_transactions() {
   local titular_token="$1"
   local body
-  body=$(curl -s -H "Authorization: Bearer $titular_token" "$API_BASE_URL/transactions?Limit=1")
+  body=$(curl -s -H "Authorization: Bearer $titular_token" "${OBSERVABILITY_HEADERS[@]}" "$API_BASE_URL/transactions?Limit=1")
   if echo "$body" | grep -q '"items":\[{'; then
     echo ""
     echo "Aviso: esta conta já tem lançamentos. Rodar de novo VAI DUPLICAR" >&2

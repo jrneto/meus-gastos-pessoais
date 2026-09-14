@@ -81,6 +81,29 @@ public class ResolveMembershipQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldReturnAccountNotFound_WhenMembershipIsInativo()
+    {
+        // Arrange (FEAT-41) — membro inativado ainda é achado por
+        // FindByAccountAndUserIdAsync (GSI1PK preservado), mas nunca resolve
+        // como membro utilizável.
+        _accountRepositoryMock.FindAccountIdByUserIdAsync("user-1", Arg.Any<CancellationToken>())
+            .Returns("account-1");
+        var inativo = Membership.Restore(
+            "membership-1", "account-1", "user-1", "ex-colaborador@email.com",
+            MembershipRole.Lancar, MembershipStatus.Inativo, DateTimeOffset.UtcNow);
+        _membershipRepositoryMock.FindByAccountAndUserIdAsync("account-1", "user-1", Arg.Any<CancellationToken>())
+            .Returns(inativo);
+
+        // Act
+        var result = await _handler.Handle(new ResolveMembershipQuery("user-1"), CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Unauthorized);
+        result.Error.Code.Should().Be("account-not-found");
+    }
+
+    [Fact]
     public async Task Handle_ShouldNeverCreateAnything()
     {
         // Arrange — diferente de EnsureAccountCommand, esta query nunca cria.

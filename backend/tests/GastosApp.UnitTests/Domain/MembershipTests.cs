@@ -80,4 +80,23 @@ public class MembershipTests
         membership.UserId.Should().BeNull();
         membership.Status.Should().Be(MembershipStatus.ConvitePendente);
     }
+
+    [Fact]
+    public void Restore_ShouldKeepStatusInativo_AndPreserveUserIdAndRole()
+    {
+        // Arrange (FEAT-41) — membro inativado preserva UserId/Role/Email,
+        // só o Status muda.
+        var createdAt = new DateTimeOffset(2025, 6, 15, 12, 0, 0, TimeSpan.Zero);
+
+        // Act
+        var membership = Membership.Restore(
+            "membership-1", "account-123", "user-456", "ex-colaborador@email.com",
+            MembershipRole.Lancar, MembershipStatus.Inativo, createdAt);
+
+        // Assert
+        membership.UserId.Should().Be("user-456");
+        membership.Email.Should().Be("ex-colaborador@email.com");
+        membership.Role.Should().Be(MembershipRole.Lancar);
+        membership.Status.Should().Be(MembershipStatus.Inativo);
+    }
 }

@@ -17,4 +17,10 @@ public static class MembershipErrors
 
     public static Error InsufficientPermission => Error.Forbidden(
         "insufficient-permission", "Seu nível de acesso não permite esta ação.");
+
+    public static Error CannotModifyInactiveMember => Error.UnprocessableEntity(
+        "cannot-modify-inactive-member", "Não é possível alterar o papel de um membro inativo.");
+
+    public static Error MemberAlreadyInactive => Error.UnprocessableEntity(
+        "member-already-inactive", "Este membro já está inativo.");
 }

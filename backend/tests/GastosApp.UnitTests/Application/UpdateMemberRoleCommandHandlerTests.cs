@@ -75,4 +75,25 @@ public class UpdateMemberRoleCommandHandlerTests
         await _membershipRepositoryMock.DidNotReceiveWithAnyArgs()
             .UpdateRoleAsync(default!, default!, default, default);
     }
+
+    [Fact]
+    public async Task Handle_ShouldReturnCannotModifyInactiveMember_WhenTargetIsInativo()
+    {
+        // Arrange (FEAT-41)
+        var inativo = Membership.Restore(
+            "membership-1", "account-1", "user-2", "ex-colaborador@email.com",
+            MembershipRole.Lancar, MembershipStatus.Inativo, DateTimeOffset.UtcNow);
+        _membershipRepositoryMock.GetByIdAsync("account-1", inativo.Id, Arg.Any<CancellationToken>())
+            .Returns(inativo);
+
+        // Act
+        var result = await _handler.Handle(new UpdateMemberRoleCommand("account-1", inativo.Id, "Total"), CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("cannot-modify-inactive-member");
+
+        await _membershipRepositoryMock.DidNotReceiveWithAnyArgs()
+            .UpdateRoleAsync(default!, default!, default, default);
+    }
 }

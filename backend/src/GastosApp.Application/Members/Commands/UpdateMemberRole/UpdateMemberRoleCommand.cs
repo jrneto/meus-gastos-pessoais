@@ -25,6 +25,9 @@ public sealed class UpdateMemberRoleCommandHandler : ICommandHandler<UpdateMembe
         if (membership.Role == MembershipRole.Titular)
             return Result.Failure<MemberResult>(MembershipErrors.CannotModifyTitular);
 
+        if (membership.Status == MembershipStatus.Inativo)
+            return Result.Failure<MemberResult>(MembershipErrors.CannotModifyInactiveMember);
+
         var role = Enum.Parse<MembershipRole>(command.Role);
         var result = await _membershipRepository.UpdateRoleAsync(command.AccountId, command.MembershipId, role, cancellationToken);
 

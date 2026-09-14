@@ -32,6 +32,12 @@ public interface IMembershipRepository
     Task<MembershipWriteResult> UpdateRoleAsync(string accountId, string membershipId, MembershipRole role, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(string accountId, string membershipId, CancellationToken cancellationToken = default);
 
+    // Transforma um membro Ativo em Inativo (FEAT-41) — UpdateItem de um único
+    // atributo (Status), SK nunca muda. GSI1PK permanece USER#<userId>: quem
+    // passa a rejeitar um Inativo é ResolveMembershipQueryHandler, não esta
+    // query/índice (ver plan.md, decisão técnica 1).
+    Task<bool> InactivateAsync(string accountId, string membershipId, CancellationToken cancellationToken = default);
+
     // Aceita (Status=Ativo) todo convite pendente pro e-mail informado, em
     // qualquer conta — chamado no login (AcceptPendingInvitesCommand).
     Task<IReadOnlyList<AcceptedInvite>> AcceptPendingInvitesByEmailAsync(string email, string userId, CancellationToken cancellationToken = default);
