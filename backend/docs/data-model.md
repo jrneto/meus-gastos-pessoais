@@ -61,16 +61,33 @@ sem categoria.
   Titular) — é o `id` público de `/members`, estável mesmo quando um
   convite passa de pendente para aceito
 - `GSI1PK`: **dual-purpose**, conforme `Status`:
-  - `USER#<userId>` quando `Status=Ativo` (membro resolvido — Titular
-    sempre nasce assim; convidado, a partir do primeiro login cujo
-    e-mail bate com o convite)
+  - `USER#<userId>` quando `Status=Ativo` **ou** `Status=Inativo`
+    (membro resolvido — Titular sempre nasce assim; convidado, a
+    partir do primeiro login cujo e-mail bate com o convite; um
+    `Ativo` inativado pela FEAT-41 mantém esse mesmo `GSI1PK`, ver
+    abaixo)
   - `EMAIL#<emailNormalizado>` (`Trim().ToLowerInvariant()`) quando
     `Status=ConvitePendente` (convite ainda não aceito, `UserId`
     desconhecido)
-- `GSI1SK`: `ACCOUNT#<accountId>` (constante, nos dois estados)
+- `GSI1SK`: `ACCOUNT#<accountId>` (constante, em todos os estados)
 - Atributos: `Email` (string), `Role` (`Titular` \| `Leitura` \|
-  `Lancar` \| `Total`), `Status` (`Ativo` \| `ConvitePendente`),
-  `UserId` (presente só quando `Status=Ativo`), `CreatedAt`
+  `Lancar` \| `Total`), `Status` (`Ativo` \| `ConvitePendente` \|
+  `Inativo`, este último desde a FEAT-41), `UserId` (presente quando
+  `Status=Ativo` ou `Status=Inativo`), `CreatedAt`
+
+**`Status=Inativo` (FEAT-41):** `DELETE /members/{id}` de um membro
+`Ativo` que já lançou pelo menos uma transação na conta não apaga o
+item — só muda `Status` pra `Inativo` (`UpdateItem` de um único
+atributo, mesmo padrão de `AcceptPendingInvitesByEmailAsync`).
+`GSI1PK`/`GSI1SK`/`UserId`/`Role`/`Email`/`CreatedAt` **não mudam**:
+quem passa a rejeitar esse membro é `ResolveMembershipQueryHandler`
+(só resolve `Status=Ativo`), não o índice em si — o mesmo `GSI1PK`
+continua permitindo que `CreatedByLabelResolver` encontre o e-mail do
+membro inativado ao montar `createdByLabel` das transações que ele já
+lançou (em vez do fallback `"Ex-membro"`, que só ocorre pra membros
+removidos de fato antes da FEAT-41 existir). Um membro `Ativo` sem
+nenhuma transação, e qualquer `ConvitePendente`, continuam sendo
+removidos de fato (comportamento da FEAT-20, inalterado).
 
 Como o `SK` nunca muda, aceitar um convite (`Status=ConvitePendente` →
 `Ativo`) é um `UpdateItem` simples de atributos (`Status`, `UserId`,

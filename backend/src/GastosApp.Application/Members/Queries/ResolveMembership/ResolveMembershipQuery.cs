@@ -35,7 +35,12 @@ public sealed class ResolveMembershipQueryHandler : IQueryHandler<ResolveMembers
             return Result.Failure<ResolveMembershipResult>(AccountErrors.NotResolved);
 
         var membership = await _membershipRepository.FindByAccountAndUserIdAsync(accountId, query.UserId, cancellationToken);
-        if (membership is null)
+        // FEAT-41: um membro Inativo continua achável por FindByAccountAndUserIdAsync
+        // (GSI1PK permanece USER#<userId> mesmo depois da inativação, ver
+        // CreatedByLabelResolver), mas nunca resolve como membro utilizável —
+        // é aqui que ele perde acesso à conta, mesmo erro de "conta não
+        // resolvida" que já existe hoje pra um Membership ausente.
+        if (membership is null || membership.Status != MembershipStatus.Ativo)
             return Result.Failure<ResolveMembershipResult>(AccountErrors.NotResolved);
 
         return Result.Success(new ResolveMembershipResult(accountId, membership.Id, membership.Role));

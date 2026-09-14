@@ -10,10 +10,12 @@ public sealed record RemoveMemberCommand(string AccountId, string MembershipId) 
 public sealed class RemoveMemberCommandHandler : ICommandHandler<RemoveMemberCommand, Result>
 {
     private readonly IMembershipRepository _membershipRepository;
+    private readonly ITransactionRepository _transactionRepository;
 
-    public RemoveMemberCommandHandler(IMembershipRepository membershipRepository)
+    public RemoveMemberCommandHandler(IMembershipRepository membershipRepository, ITransactionRepository transactionRepository)
     {
         _membershipRepository = membershipRepository;
+        _transactionRepository = transactionRepository;
     }
 
     public async ValueTask<Result> Handle(RemoveMemberCommand command, CancellationToken cancellationToken)
@@ -24,6 +26,26 @@ public sealed class RemoveMemberCommandHandler : ICommandHandler<RemoveMemberCom
 
         if (membership.Role == MembershipRole.Titular)
             return Result.Failure(MembershipErrors.CannotRemoveTitular);
+
+        if (membership.Status == MembershipStatus.Inativo)
+            return Result.Failure(MembershipErrors.MemberAlreadyInactive);
+
+        // FEAT-41: um membro Ativo que já lançou transação é inativado em vez
+        // de removido de fato, pra createdByLabel continuar mostrando o e-mail
+        // dele. ConvitePendente nunca tem transação possível (UserId é null),
+        // segue removido de fato como sempre.
+        if (membership.Status == MembershipStatus.Ativo)
+        {
+            var hasTransactions = await _transactionRepository.ExistsByCreatedByUserIdAsync(
+                command.AccountId, membership.UserId!, cancellationToken);
+
+            if (hasTransactions)
+            {
+                var inactivated = await _membershipRepository.InactivateAsync(
+                    command.AccountId, command.MembershipId, cancellationToken);
+                return inactivated ? Result.Success() : Result.Failure(MembershipErrors.NotFound);
+            }
+        }
 
         var deleted = await _membershipRepository.DeleteAsync(command.AccountId, command.MembershipId, cancellationToken);
         return deleted ? Result.Success() : Result.Failure(MembershipErrors.NotFound);

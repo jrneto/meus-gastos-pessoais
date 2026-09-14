@@ -111,4 +111,46 @@ public sealed class MembersFlowTests
             bearerToken: membro.AccessToken);
         deleteResponse.StatusCode.Should().Be(403);
     }
+
+    [Fact]
+    public async Task RemoveMember_ComTransacaoLancada_InativaEmVezDeRemover()
+    {
+        // FEAT-41 — fluxo completo: convidar → aceitar via login → lançar
+        // transação como o membro → Titular remove → membro vira Inativo
+        // (não desaparece) → membro perde acesso à conta.
+        await using var titular = await TestAccountFixture.CreateAsync();
+        await using var membro = await titular.InviteAndAcceptAsync("Lancar");
+
+        var categoryResponse = await titular.Transport.SendAsync(
+            HttpMethod.Post, "/categories",
+            new CategoryRequestDto("Categoria FEAT-41", "despesa", null),
+            bearerToken: titular.AccessToken);
+        categoryResponse.StatusCode.Should().Be(201);
+        var category = categoryResponse.Deserialize<CategoryResponseDto>();
+
+        var transactionResponse = await membro.Transport.SendAsync(
+            HttpMethod.Post, "/transactions",
+            new TransactionRequestDto("Despesa lançada pelo membro", 1000, category.Id, "despesa", "2026-08-20"),
+            bearerToken: membro.AccessToken);
+        transactionResponse.StatusCode.Should().Be(201);
+
+        var membersBeforeResponse = await titular.Transport.SendAsync(
+            HttpMethod.Get, "/members", bearerToken: titular.AccessToken);
+        var membroId = membersBeforeResponse.Deserialize<MemberListResponseDto>()
+            .Items.Single(m => m.Email == membro.Email).Id;
+
+        var deleteResponse = await titular.Transport.SendAsync(
+            HttpMethod.Delete, $"/members/{membroId}",
+            bearerToken: titular.AccessToken);
+        deleteResponse.StatusCode.Should().Be(204);
+
+        var membersAfterResponse = await titular.Transport.SendAsync(
+            HttpMethod.Get, "/members", bearerToken: titular.AccessToken);
+        membersAfterResponse.Deserialize<MemberListResponseDto>()
+            .Items.Should().Contain(m => m.Id == membroId && m.Status == "Inativo");
+
+        var membroChamandoDepoisResponse = await membro.Transport.SendAsync(
+            HttpMethod.Get, "/transactions", bearerToken: membro.AccessToken);
+        membroChamandoDepoisResponse.StatusCode.Should().Be(401);
+    }
 }

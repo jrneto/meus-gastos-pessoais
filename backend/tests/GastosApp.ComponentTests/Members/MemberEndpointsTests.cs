@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -20,6 +21,7 @@ public sealed class MemberEndpointsTests : IClassFixture<ComponentTestWebApplica
         _factory = factory;
         _factory.ResetMembershipRepositoryMock();
         _factory.ResetAccountRepositoryMock();
+        _factory.ResetTransactionRepositoryMock();
         _client = factory.CreateClient();
     }
 
@@ -54,6 +56,28 @@ public sealed class MemberEndpointsTests : IClassFixture<ComponentTestWebApplica
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("items").GetArrayLength().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task GetMembers_ComMembroInativo_ApareceNaListaComStatusInativo()
+    {
+        // FEAT-41
+        AuthenticateWithRole("titular-1", MembershipRole.Titular);
+        var titular = Membership.CreateTitular("titular-1", "titular-1", "titular@email.com");
+        var inativo = Membership.Restore(
+            "membership-inativo", "titular-1", "user-2", "ex-colaborador@email.com",
+            MembershipRole.Lancar, MembershipStatus.Inativo, DateTimeOffset.UtcNow);
+        _factory.MembershipRepositoryMock.ListAsync("titular-1", Arg.Any<CancellationToken>())
+            .Returns(new List<Membership> { titular, inativo });
+
+        var response = await _client.GetAsync("/members");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var items = body.GetProperty("items").EnumerateArray().ToList();
+        items.Should().Contain(item =>
+            item.GetProperty("email").GetString() == "ex-colaborador@email.com"
+            && item.GetProperty("status").GetString() == "Inativo");
     }
 
     [Theory]
@@ -208,6 +232,27 @@ public sealed class MemberEndpointsTests : IClassFixture<ComponentTestWebApplica
         problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/cannot-modify-titular");
     }
 
+    [Fact]
+    public async Task UpdateMemberRole_MembroInativo_Retorna422()
+    {
+        // FEAT-41
+        AuthenticateWithRole("titular-1", MembershipRole.Titular);
+        var inativo = Membership.Restore(
+            "membership-inativo", "titular-1", "user-2", "ex-colaborador@email.com",
+            MembershipRole.Lancar, MembershipStatus.Inativo, DateTimeOffset.UtcNow);
+        _factory.MembershipRepositoryMock.GetByIdAsync("titular-1", inativo.Id, Arg.Any<CancellationToken>())
+            .Returns(inativo);
+
+        var response = await _client.PutAsJsonAsync($"/members/{inativo.Id}", new { role = "Total" });
+
+        response.StatusCode.Should().Be((HttpStatusCode)422);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/cannot-modify-inactive-member");
+
+        await _factory.MembershipRepositoryMock.DidNotReceiveWithAnyArgs()
+            .UpdateRoleAsync(default!, default!, default, default);
+    }
+
     [Theory]
     [InlineData("Leitura")]
     [InlineData("Lancar")]
@@ -238,6 +283,68 @@ public sealed class MemberEndpointsTests : IClassFixture<ComponentTestWebApplica
         var response = await _client.DeleteAsync($"/members/{existing.Id}");
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task RemoveMember_AtivoSemTransacao_Retorna204ERemoveDeFato()
+    {
+        // FEAT-41 — regressão: sem transação lançada, continua removendo de fato.
+        AuthenticateWithRole("titular-1", MembershipRole.Titular);
+        var ativo = Membership.Restore(
+            "membership-ativo", "titular-1", "user-2", "membro@email.com",
+            MembershipRole.Lancar, MembershipStatus.Ativo, DateTimeOffset.UtcNow);
+        _factory.MembershipRepositoryMock.GetByIdAsync("titular-1", ativo.Id, Arg.Any<CancellationToken>())
+            .Returns(ativo);
+        _factory.TransactionRepositoryMock.ExistsByCreatedByUserIdAsync("titular-1", "user-2", Arg.Any<CancellationToken>())
+            .Returns(false);
+        _factory.MembershipRepositoryMock.DeleteAsync("titular-1", ativo.Id, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var response = await _client.DeleteAsync($"/members/{ativo.Id}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        await _factory.MembershipRepositoryMock.Received(1).DeleteAsync("titular-1", ativo.Id, Arg.Any<CancellationToken>());
+        await _factory.MembershipRepositoryMock.DidNotReceiveWithAnyArgs().InactivateAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task RemoveMember_AtivoComTransacao_Retorna204EInativaEmVezDeRemover()
+    {
+        // FEAT-41
+        AuthenticateWithRole("titular-1", MembershipRole.Titular);
+        var ativo = Membership.Restore(
+            "membership-ativo", "titular-1", "user-2", "membro@email.com",
+            MembershipRole.Lancar, MembershipStatus.Ativo, DateTimeOffset.UtcNow);
+        _factory.MembershipRepositoryMock.GetByIdAsync("titular-1", ativo.Id, Arg.Any<CancellationToken>())
+            .Returns(ativo);
+        _factory.TransactionRepositoryMock.ExistsByCreatedByUserIdAsync("titular-1", "user-2", Arg.Any<CancellationToken>())
+            .Returns(true);
+        _factory.MembershipRepositoryMock.InactivateAsync("titular-1", ativo.Id, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var response = await _client.DeleteAsync($"/members/{ativo.Id}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        await _factory.MembershipRepositoryMock.Received(1).InactivateAsync("titular-1", ativo.Id, Arg.Any<CancellationToken>());
+        await _factory.MembershipRepositoryMock.DidNotReceiveWithAnyArgs().DeleteAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task RemoveMember_MembroJaInativo_Retorna422()
+    {
+        // FEAT-41
+        AuthenticateWithRole("titular-1", MembershipRole.Titular);
+        var inativo = Membership.Restore(
+            "membership-inativo", "titular-1", "user-2", "ex-colaborador@email.com",
+            MembershipRole.Lancar, MembershipStatus.Inativo, DateTimeOffset.UtcNow);
+        _factory.MembershipRepositoryMock.GetByIdAsync("titular-1", inativo.Id, Arg.Any<CancellationToken>())
+            .Returns(inativo);
+
+        var response = await _client.DeleteAsync($"/members/{inativo.Id}");
+
+        response.StatusCode.Should().Be((HttpStatusCode)422);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("type").GetString().Should().Be("https://gastosapp.dev/errors/member-already-inactive");
     }
 
     [Fact]

@@ -72,7 +72,11 @@ public sealed class DynamoDbMembershipRepository : IMembershipRepository
     {
         var normalizedEmail = NormalizeEmail(email);
         var existingMembers = await ListAsync(accountId, cancellationToken);
-        if (existingMembers.Any(m => NormalizeEmail(m.Email) == normalizedEmail))
+        // Inativo (FEAT-41) não conta como "já é membro" — do contrário esse
+        // e-mail ficaria trancado na conta pra sempre, já que um Inativo nunca
+        // é removido de fato. Um novo convite cria um Membership novo,
+        // coexistindo com o Inativo antigo (ver plan.md).
+        if (existingMembers.Any(m => m.Status != MembershipStatus.Inativo && NormalizeEmail(m.Email) == normalizedEmail))
             return MembershipWriteResult.EmailConflict();
 
         var membership = Membership.CreateInvite(accountId, email, role);
@@ -122,6 +126,36 @@ public sealed class DynamoDbMembershipRepository : IMembershipRepository
         catch (ConditionalCheckFailedException)
         {
             return MembershipWriteResult.NotFound();
+        }
+    }
+
+    public async Task<bool> InactivateAsync(string accountId, string membershipId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await _dynamoDbClient.UpdateItemAsync(new UpdateItemRequest
+            {
+                TableName = _options.TableName,
+                Key = ItemKey(accountId, membershipId),
+                UpdateExpression = "SET #status = :inativo",
+                ExpressionAttributeNames = new Dictionary<string, string> { ["#status"] = "Status" },
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":inativo"] = new AttributeValue { S = MembershipStatus.Inativo.ToString() },
+                    [":ativo"] = new AttributeValue { S = MembershipStatus.Ativo.ToString() }
+                },
+                ConditionExpression = "attribute_exists(PK) AND #status = :ativo",
+                ReturnValues = ReturnValue.NONE
+            }, cancellationToken);
+
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            // Item sumiu ou deixou de ser Ativo entre o GetByIdAsync do handler e
+            // este UpdateItem (corrida rara, ex.: duplo clique) — mesmo
+            // tratamento de "não achou" que DeleteAsync já dá hoje.
+            return false;
         }
     }
 

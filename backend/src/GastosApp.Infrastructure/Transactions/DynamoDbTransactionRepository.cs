@@ -293,6 +293,43 @@ public sealed class DynamoDbTransactionRepository : ITransactionRepository
         return response.Items.Count > 0;
     }
 
+    public async Task<bool> ExistsByCreatedByUserIdAsync(string accountId, string userId, CancellationToken cancellationToken = default)
+    {
+        Dictionary<string, AttributeValue>? exclusiveStartKey = null;
+        var iterations = 0;
+
+        while (true)
+        {
+            iterations++;
+            if (iterations > MaxPaginationIterations)
+            {
+                throw new InvalidOperationException(
+                    "Número máximo de iterações de paginação excedido ao verificar transações do membro.");
+            }
+
+            var response = await _dynamoDbClient.QueryAsync(new QueryRequest
+            {
+                TableName = _options.TableName,
+                KeyConditionExpression = "PK = :pk AND begins_with(SK, :skPrefix)",
+                FilterExpression = "CreatedByUserId = :userId",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":pk"] = new AttributeValue { S = $"ACCOUNT#{accountId}" },
+                    [":skPrefix"] = new AttributeValue { S = "TXN#" },
+                    [":userId"] = new AttributeValue { S = userId }
+                },
+                ExclusiveStartKey = exclusiveStartKey
+            }, cancellationToken);
+
+            if (response.Items.Count > 0)
+                return true;
+
+            exclusiveStartKey = response.LastEvaluatedKey is { Count: > 0 } ? response.LastEvaluatedKey : null;
+            if (exclusiveStartKey is null)
+                return false;
+        }
+    }
+
     public async Task<TransactionQueryPage> QueryAsync(TransactionQueryFilter filter, CancellationToken cancellationToken = default)
     {
         var index = filter.CategoryId is not null ? Gsi1Index : BaseIndex;

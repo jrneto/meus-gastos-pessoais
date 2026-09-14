@@ -12,11 +12,17 @@ public enum MembershipRole
 
 // Ativo: membro resolvido (Titular sempre nasce assim; convidado, a partir
 // do primeiro login cujo e-mail bate com o convite). ConvitePendente: convite
-// criado mas ainda não aceito (UserId ainda não resolvido).
+// criado mas ainda não aceito (UserId ainda não resolvido). Inativo (FEAT-41):
+// membro Ativo removido depois de já ter lançado alguma transação — perde
+// todo acesso à conta (ResolveMembershipQueryHandler nunca resolve um
+// Inativo), mas o registro persiste (UserId/Email/Role preservados) pra
+// createdByLabel continuar mostrando o e-mail dele nas transações já
+// lançadas, em vez do fallback "Ex-membro".
 public enum MembershipStatus
 {
     Ativo,
-    ConvitePendente
+    ConvitePendente,
+    Inativo
 }
 
 public sealed class Membership

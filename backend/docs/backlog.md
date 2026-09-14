@@ -436,16 +436,18 @@ monorepo.
   (`FEAT-24`), Exportação CSV (`FEAT-25`), Perfil do usuário
   (`FEAT-26`).
 
-- [ ] **DÉBITO — `DELETE /members` remove o membro em vez de
-  inativá-lo** (confirmado com o usuário durante a FEAT-22): deveria
-  bloquear a remoção de um membro que já lançou transações,
-  transformando-o em `Inativo` (novo `Status` de `Membership`) em vez
-  de removê-lo de fato — um membro `Inativo` continuaria aparecendo
-  como `createdByLabel` nas transações que já criou. Hoje
-  (FEAT-20/FEAT-22) `DELETE /members` remove o `Membership`
-  incondicionalmente; transações de um membro removido caem no
-  fallback `createdByLabel="Ex-membro"` (ver
-  `backend/specs/FEAT-22-transacoes-receita-despesa/`).
+- [x] **DÉBITO — `DELETE /members` remove o membro em vez de
+  inativá-lo** (confirmado com o usuário durante a FEAT-22, resolvido
+  pela FEAT-41, `backend/specs/FEAT-41-inativacao-membros-com-transacoes/`):
+  `DELETE /members/{id}` de um membro `Ativo` com pelo menos uma
+  transação lançada agora transforma o `Membership` em `Status=Inativo`
+  em vez de removê-lo de fato — `createdByLabel` das transações que ele
+  já criou volta a mostrar o e-mail dele em vez do fallback
+  `"Ex-membro"`. Membro `Ativo` sem nenhuma transação, e qualquer
+  `ConvitePendente`, continuam sendo removidos de fato (comportamento
+  da FEAT-20, inalterado). `"Ex-membro"` continua ocorrendo só para
+  membros removidos de fato **antes** da FEAT-41 (sem reconstituição
+  retroativa possível).
 
 - [ ] **DÉBITO — `backend-feature-pr.yml` não dispara para mudanças só
   em `backend/infra/terraform/**`** (percebido num fix pontual pós

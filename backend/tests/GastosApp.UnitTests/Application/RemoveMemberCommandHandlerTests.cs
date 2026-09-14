@@ -10,18 +10,21 @@ namespace GastosApp.UnitTests.Application;
 public class RemoveMemberCommandHandlerTests
 {
     private readonly IMembershipRepository _membershipRepositoryMock;
+    private readonly ITransactionRepository _transactionRepositoryMock;
     private readonly RemoveMemberCommandHandler _handler;
 
     public RemoveMemberCommandHandlerTests()
     {
         _membershipRepositoryMock = Substitute.For<IMembershipRepository>();
-        _handler = new RemoveMemberCommandHandler(_membershipRepositoryMock);
+        _transactionRepositoryMock = Substitute.For<ITransactionRepository>();
+        _handler = new RemoveMemberCommandHandler(_membershipRepositoryMock, _transactionRepositoryMock);
     }
 
     [Fact]
     public async Task Handle_ShouldRemoveMember_WhenExistsAndIsNotTitular()
     {
-        // Arrange
+        // Arrange — ConvitePendente nunca tem transação possível (UserId é null),
+        // segue removido de fato sem nem checar ExistsByCreatedByUserIdAsync.
         var existing = Membership.CreateInvite("account-1", "convidado@email.com", MembershipRole.Leitura);
         _membershipRepositoryMock.GetByIdAsync("account-1", existing.Id, Arg.Any<CancellationToken>())
             .Returns(existing);
@@ -33,6 +36,7 @@ public class RemoveMemberCommandHandlerTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
+        await _transactionRepositoryMock.DidNotReceiveWithAnyArgs().ExistsByCreatedByUserIdAsync(default!, default!, default);
     }
 
     [Fact]
@@ -68,5 +72,73 @@ public class RemoveMemberCommandHandlerTests
         result.Error!.Code.Should().Be("cannot-remove-titular");
 
         await _membershipRepositoryMock.DidNotReceiveWithAnyArgs().DeleteAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldDeleteForReal_WhenAtivoMemberHasNoTransactions()
+    {
+        // Arrange (FEAT-41)
+        var ativo = Membership.Restore(
+            "membership-1", "account-1", "user-2", "membro@email.com",
+            MembershipRole.Lancar, MembershipStatus.Ativo, DateTimeOffset.UtcNow);
+        _membershipRepositoryMock.GetByIdAsync("account-1", ativo.Id, Arg.Any<CancellationToken>())
+            .Returns(ativo);
+        _transactionRepositoryMock.ExistsByCreatedByUserIdAsync("account-1", "user-2", Arg.Any<CancellationToken>())
+            .Returns(false);
+        _membershipRepositoryMock.DeleteAsync("account-1", ativo.Id, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        var result = await _handler.Handle(new RemoveMemberCommand("account-1", ativo.Id), CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        await _membershipRepositoryMock.Received(1).DeleteAsync("account-1", ativo.Id, Arg.Any<CancellationToken>());
+        await _membershipRepositoryMock.DidNotReceiveWithAnyArgs().InactivateAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldInactivate_WhenAtivoMemberHasTransactions()
+    {
+        // Arrange (FEAT-41)
+        var ativo = Membership.Restore(
+            "membership-1", "account-1", "user-2", "membro@email.com",
+            MembershipRole.Lancar, MembershipStatus.Ativo, DateTimeOffset.UtcNow);
+        _membershipRepositoryMock.GetByIdAsync("account-1", ativo.Id, Arg.Any<CancellationToken>())
+            .Returns(ativo);
+        _transactionRepositoryMock.ExistsByCreatedByUserIdAsync("account-1", "user-2", Arg.Any<CancellationToken>())
+            .Returns(true);
+        _membershipRepositoryMock.InactivateAsync("account-1", ativo.Id, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        var result = await _handler.Handle(new RemoveMemberCommand("account-1", ativo.Id), CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        await _membershipRepositoryMock.Received(1).InactivateAsync("account-1", ativo.Id, Arg.Any<CancellationToken>());
+        await _membershipRepositoryMock.DidNotReceiveWithAnyArgs().DeleteAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnMemberAlreadyInactive_WhenTargetIsAlreadyInativo()
+    {
+        // Arrange (FEAT-41)
+        var inativo = Membership.Restore(
+            "membership-1", "account-1", "user-2", "ex-colaborador@email.com",
+            MembershipRole.Lancar, MembershipStatus.Inativo, DateTimeOffset.UtcNow);
+        _membershipRepositoryMock.GetByIdAsync("account-1", inativo.Id, Arg.Any<CancellationToken>())
+            .Returns(inativo);
+
+        // Act
+        var result = await _handler.Handle(new RemoveMemberCommand("account-1", inativo.Id), CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("member-already-inactive");
+
+        await _transactionRepositoryMock.DidNotReceiveWithAnyArgs().ExistsByCreatedByUserIdAsync(default!, default!, default);
+        await _membershipRepositoryMock.DidNotReceiveWithAnyArgs().DeleteAsync(default!, default!, default);
+        await _membershipRepositoryMock.DidNotReceiveWithAnyArgs().InactivateAsync(default!, default!, default);
     }
 }
