@@ -1,9 +1,11 @@
 import { httpClient } from '@/lib/httpClient'
 import {
+  CannotModifyInactiveMemberError,
   CannotModifyTitularError,
   CannotRemoveTitularError,
   ConflictError,
   ForbiddenError,
+  MemberAlreadyInactiveError,
   NetworkError,
   NotFoundError,
   SessionExpiredError,
@@ -12,7 +14,7 @@ import {
 } from '../errors/memberErrors'
 
 export type MemberRole = 'Leitura' | 'Lancar' | 'Total' | 'Titular'
-export type MemberStatus = 'ConvitePendente' | 'Ativo'
+export type MemberStatus = 'ConvitePendente' | 'Ativo' | 'Inativo'
 
 export interface MemberItem {
   id: string
@@ -86,7 +88,9 @@ async function assertUpdateOk(response: Response): Promise<void> {
   }
   if (response.status === 422) {
     const code = await extractErrorCode(response)
-    throw code === 'cannot-modify-titular' ? new CannotModifyTitularError() : new UnknownMemberError()
+    if (code === 'cannot-modify-titular') throw new CannotModifyTitularError()
+    if (code === 'cannot-modify-inactive-member') throw new CannotModifyInactiveMemberError()
+    throw new UnknownMemberError()
   }
   if (!response.ok) {
     throw new UnknownMemberError()
@@ -105,7 +109,9 @@ async function assertRemoveOk(response: Response): Promise<void> {
   }
   if (response.status === 422) {
     const code = await extractErrorCode(response)
-    throw code === 'cannot-remove-titular' ? new CannotRemoveTitularError() : new UnknownMemberError()
+    if (code === 'cannot-remove-titular') throw new CannotRemoveTitularError()
+    if (code === 'member-already-inactive') throw new MemberAlreadyInactiveError()
+    throw new UnknownMemberError()
   }
   if (!response.ok) {
     throw new UnknownMemberError()

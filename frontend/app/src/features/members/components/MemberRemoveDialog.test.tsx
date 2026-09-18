@@ -29,11 +29,13 @@ describe('MemberRemoveDialog', () => {
     expect(screen.queryByText('Remover membro')).not.toBeInTheDocument()
   })
 
-  it('aberto exibe o e-mail do membro', () => {
+  it('aberto exibe o e-mail do membro e o texto de confirmação atualizado', () => {
     render(<MemberRemoveDialog member={member} onOpenChange={vi.fn()} onRemoved={vi.fn()} />)
 
     expect(screen.getByText('Remover membro')).toBeInTheDocument()
     expect(screen.getByText(/convidado@email\.com/)).toBeInTheDocument()
+    expect(screen.getByText(/perde acesso imediatamente/)).toBeInTheDocument()
+    expect(screen.getByText(/fica marcado como inativo em vez de\s*apagado/)).toBeInTheDocument()
   })
 
   it('cancelar não chama a API', async () => {
@@ -74,6 +76,28 @@ describe('MemberRemoveDialog', () => {
     await user.click(screen.getByRole('button', { name: /^remover$/i }))
 
     await waitFor(() => expect(onRemoved).toHaveBeenCalledWith('mem-2'))
+  })
+
+  it('confirmar com 422 member-already-inactive mantém o dialog aberto com a mensagem específica, sem chamar onRemoved', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.delete(
+        MEMBER_URL,
+        () =>
+          new HttpResponse(JSON.stringify({ type: 'https://gastosapp.dev/errors/member-already-inactive' }), {
+            status: 422,
+          }),
+      ),
+    )
+    const onRemoved = vi.fn()
+
+    render(<MemberRemoveDialog member={member} onOpenChange={vi.fn()} onRemoved={onRemoved} />)
+    await user.click(screen.getByRole('button', { name: /^remover$/i }))
+
+    expect(await screen.findByText('Não foi possível remover')).toBeInTheDocument()
+    expect(screen.getByText('Este membro já está inativo.')).toBeInTheDocument()
+    expect(screen.getByText('Remover membro')).toBeInTheDocument()
+    expect(onRemoved).not.toHaveBeenCalled()
   })
 
   it('confirmar com erro inesperado mantém o dialog aberto com alerta, sem chamar onRemoved', async () => {

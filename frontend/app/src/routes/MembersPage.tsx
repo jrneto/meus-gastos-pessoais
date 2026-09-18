@@ -10,10 +10,19 @@ import { useCurrentUser } from '@/lib/auth/useCurrentUser'
 
 // Tela "Membros da conta" (FEAT-28). Busca `GET /members` + `GET
 // /auth/me` em paralelo; deriva quem é o Titular e se o usuário logado
-// é ele (decisão 3 da spec). Mutações atualizam o estado local
-// (`localOthers`) sem recarregar a lista inteira (ver plan.md).
+// é ele (decisão 3 da spec). Convidar/trocar papel atualizam o estado
+// local (`localOthers`) sem recarregar a lista inteira; remover
+// dispara `refetch()` em vez disso, porque a resposta de `DELETE
+// /members/{id}` não diferencia remoção de fato de inativação
+// (FEAT-35, ver plan.md).
 export function MembersPage() {
-  const { items, isLoading: membersLoading, error: membersError } = useMembers()
+  const {
+    items,
+    isLoading: membersLoading,
+    isRefetching,
+    error: membersError,
+    refetch,
+  } = useMembers()
   const { data: currentUser, isLoading: userLoading, error: userError } = useCurrentUser()
   const isLoading = membersLoading || userLoading
   const error = membersError ?? userError
@@ -42,8 +51,12 @@ export function MembersPage() {
     setLocalOthers((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
   }
 
-  function handleRemoved(id: string) {
-    setLocalOthers((prev) => prev.filter((item) => item.id !== id))
+  function handleRemoved() {
+    // Não dá pra saber, só pela resposta do DELETE, se o membro foi
+    // removido de fato ou inativado (204 idêntico nos dois casos) — só
+    // buscando a lista de novo pra reconciliar o estado real
+    // (localOthers se resincroniza pelo useEffect(..., [items]) acima).
+    refetch()
     setRemoveTarget(null)
   }
 
@@ -79,14 +92,25 @@ export function MembersPage() {
       )}
 
       {!isLoading && !error && (
-        <MemberList
-          titular={titular}
-          others={localOthers}
-          isViewerTitular={isViewerTitular}
-          currentUserEmail={currentUser?.email ?? null}
-          onRoleChanged={handleRoleChanged}
-          onRemoveRequested={setRemoveTarget}
-        />
+        <>
+          {isRefetching && (
+            <div
+              role="status"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', opacity: 0.6 }}
+            >
+              <span className="je-spin" style={{ width: '14px', height: '14px', borderWidth: '2px' }} />
+              Atualizando...
+            </div>
+          )}
+          <MemberList
+            titular={titular}
+            others={localOthers}
+            isViewerTitular={isViewerTitular}
+            currentUserEmail={currentUser?.email ?? null}
+            onRoleChanged={handleRoleChanged}
+            onRemoveRequested={setRemoveTarget}
+          />
+        </>
       )}
 
       <InviteMemberDialog open={inviteOpen} onOpenChange={setInviteOpen} onInvited={handleInvited} />

@@ -4,6 +4,7 @@ import { Trash2 } from 'lucide-react'
 import type { MemberItem, MemberRole } from '../api/membersApi'
 import { useUpdateMemberRole } from '../hooks/useUpdateMemberRole'
 import { ROLE_LABEL } from '../utils/roleLabels'
+import { MEMBER_STATUS_LABEL } from '../utils/statusLabels'
 
 interface MemberRowProps {
   member: MemberItem
@@ -48,6 +49,12 @@ export function MemberRow({ member, readOnly, isMe, onRoleChanged, onRemoveReque
     updateRole(role)
   }
 
+  // Um membro Inativo nunca tem ação de escrita disponível, mesmo pra
+  // quem é Titular — nenhuma delas tem efeito útil sobre ele (a API
+  // responde 422 pros dois casos), então a UI não oferece o que já se
+  // sabe que vai falhar (FEAT-35, ver plan.md).
+  const isEffectivelyReadOnly = readOnly || member.status === 'Inativo'
+
   return (
     <div
       style={{
@@ -64,15 +71,13 @@ export function MemberRow({ member, readOnly, isMe, onRoleChanged, onRemoveReque
           {member.email}
           {isMe && ' (você)'}
         </div>
-        <div style={{ fontSize: '12px', opacity: 0.55 }}>
-          {member.status === 'ConvitePendente' ? 'Convite pendente' : 'Ativo'}
-        </div>
+        <div style={{ fontSize: '12px', opacity: 0.55 }}>{MEMBER_STATUS_LABEL[member.status]}</div>
         {error && (
           <div style={{ fontSize: '12px', color: 'var(--color-accent-700)', marginTop: '4px' }}>{error.message}</div>
         )}
       </div>
 
-      {readOnly ? (
+      {isEffectivelyReadOnly ? (
         <span style={{ fontSize: '13px', flex: 'none' }}>{ROLE_LABEL[member.role]}</span>
       ) : (
         <div className="seg" style={{ flex: 'none' }}>
@@ -90,7 +95,7 @@ export function MemberRow({ member, readOnly, isMe, onRoleChanged, onRemoveReque
         </div>
       )}
 
-      {!readOnly && (
+      {!isEffectivelyReadOnly && (
         <button
           type="button"
           className="btn"

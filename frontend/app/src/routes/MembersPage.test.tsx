@@ -115,10 +115,20 @@ describe('MembersPage', () => {
     await waitFor(() => expect(screen.getByLabelText('Total')).toBeChecked())
   })
 
-  it('Titular remove um membro com confirmação', async () => {
+  it('Titular remove um membro sem transações — some da lista (removido de fato)', async () => {
     const user = userEvent.setup()
-    mockMembersAndMe('titular@email.com')
-    server.use(http.delete(`${MEMBERS_URL}/mem-2`, () => new HttpResponse(null, { status: 204 })))
+    let getMembersCount = 0
+    server.use(
+      http.get(MEMBERS_URL, () => {
+        getMembersCount += 1
+        // Depois do DELETE (2ª chamada em diante), o backend já não
+        // lista mais o membro removido de fato.
+        const items = getMembersCount === 1 ? [titular, member] : [titular]
+        return HttpResponse.json({ items })
+      }),
+      http.get(ME_URL, () => HttpResponse.json({ userId: 'user-1', email: 'titular@email.com', name: 'Titular' })),
+      http.delete(`${MEMBERS_URL}/mem-2`, () => new HttpResponse(null, { status: 204 })),
+    )
 
     render(<MembersPage />)
     await screen.findByText('convidado@email.com')
@@ -127,6 +137,72 @@ describe('MembersPage', () => {
     expect(await screen.findByText('Remover membro')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^remover$/i }))
 
+    await waitFor(() => expect(screen.queryByText('convidado@email.com')).not.toBeInTheDocument())
+    expect(getMembersCount).toBe(2)
+  })
+
+  it('Titular remove um membro com transações — continua na lista, marcado Inativo', async () => {
+    const user = userEvent.setup()
+    let getMembersCount = 0
+    server.use(
+      http.get(MEMBERS_URL, () => {
+        getMembersCount += 1
+        // Depois do DELETE, o backend inativou em vez de remover (FEAT-41)
+        // — o membro continua na lista, agora com status "Inativo".
+        const items = getMembersCount === 1 ? [titular, member] : [titular, { ...member, status: 'Inativo' }]
+        return HttpResponse.json({ items })
+      }),
+      http.get(ME_URL, () => HttpResponse.json({ userId: 'user-1', email: 'titular@email.com', name: 'Titular' })),
+      http.delete(`${MEMBERS_URL}/mem-2`, () => new HttpResponse(null, { status: 204 })),
+    )
+
+    render(<MembersPage />)
+    await screen.findByText('convidado@email.com')
+
+    await user.click(screen.getByRole('button', { name: 'Remover membro' }))
+    expect(await screen.findByText('Remover membro')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^remover$/i }))
+
+    // Continua visível — não some — e passa a somente-leitura.
+    await waitFor(() => expect(screen.getAllByText('Inativo').length).toBeGreaterThan(0))
+    expect(screen.getByText('convidado@email.com')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Remover membro' })).not.toBeInTheDocument()
+    expect(getMembersCount).toBe(2)
+  })
+
+  it('durante o refetch pós-remoção, a lista antiga permanece visível e o spinner aparece', async () => {
+    const user = userEvent.setup()
+    mockMembersAndMe('titular@email.com')
+    let resolveSecondGet: (() => void) | null = null
+    let getMembersCount = 0
+    server.use(
+      http.get(MEMBERS_URL, async () => {
+        getMembersCount += 1
+        if (getMembersCount === 1) {
+          return HttpResponse.json({ items: [titular, member] })
+        }
+        await new Promise<void>((resolve) => {
+          resolveSecondGet = resolve
+        })
+        return HttpResponse.json({ items: [titular] })
+      }),
+      http.delete(`${MEMBERS_URL}/mem-2`, () => new HttpResponse(null, { status: 204 })),
+    )
+
+    render(<MembersPage />)
+    await screen.findByText('convidado@email.com')
+
+    await user.click(screen.getByRole('button', { name: 'Remover membro' }))
+    await user.click(screen.getByRole('button', { name: /^remover$/i }))
+
+    // Enquanto o 2º GET /members não resolve, a lista antiga (com o
+    // membro ainda "Ativo") continua visível, e o spinner aparece.
+    await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument())
+    expect(screen.getByText('convidado@email.com')).toBeInTheDocument()
+
+    resolveSecondGet?.()
+
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
     await waitFor(() => expect(screen.queryByText('convidado@email.com')).not.toBeInTheDocument())
   })
 

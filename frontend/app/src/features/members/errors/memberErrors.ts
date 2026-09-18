@@ -54,6 +54,20 @@ export class CannotRemoveTitularError extends Error {
   }
 }
 
+export class CannotModifyInactiveMemberError extends Error {
+  constructor() {
+    super('Não é possível alterar o papel de um membro inativo.')
+    this.name = 'CannotModifyInactiveMemberError'
+  }
+}
+
+export class MemberAlreadyInactiveError extends Error {
+  constructor() {
+    super('Este membro já está inativo.')
+    this.name = 'MemberAlreadyInactiveError'
+  }
+}
+
 export class UnknownMemberError extends Error {
   constructor() {
     super('Ocorreu um erro inesperado. Tente novamente.')

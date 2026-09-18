@@ -65,6 +65,18 @@ describe('useInviteMember', () => {
     expect(result.current.error).toBeInstanceOf(ConflictError)
   })
 
+  it('convidar o e-mail de um membro Inativo é aceito (201), sem ConflictError — a checagem de duplicidade do backend ignora Inativo (FEAT-41)', async () => {
+    const reInvited = { ...invited, id: 'mem-4' }
+    server.use(http.post(MEMBERS_URL, () => HttpResponse.json(reInvited)))
+    const { result } = renderHook(() => useInviteMember())
+
+    await act(() => result.current.inviteMember({ email: 'convidado@email.com', role: 'Leitura' }))
+
+    expect(result.current.success).toBe(true)
+    expect(result.current.data).toEqual(reInvited)
+    expect(result.current.error).toBeNull()
+  })
+
   it('403 expõe ForbiddenError', async () => {
     server.use(http.post(MEMBERS_URL, () => new HttpResponse(null, { status: 403 })))
     const { result } = renderHook(() => useInviteMember())
