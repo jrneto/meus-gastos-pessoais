@@ -61,7 +61,9 @@ export function MemberRemoveDialog({ member, onOpenChange, onRemoved }: MemberRe
           Remover membro
         </div>
         <p className="dialog-body" id="remove-member-description">
-          Tem certeza que deseja remover "{member?.email}" da conta? Essa ação não pode ser desfeita.
+          Tem certeza que deseja remover "{member?.email}" da conta? A pessoa perde acesso imediatamente. Se ela já
+          tiver lançamentos registrados, o histórico é mantido e o vínculo fica marcado como inativo em vez de
+          apagado.
         </p>
 
         {otherError && (

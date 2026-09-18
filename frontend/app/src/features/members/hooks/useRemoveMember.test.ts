@@ -3,7 +3,12 @@ import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { CannotRemoveTitularError, ForbiddenError, NotFoundError } from '../errors/memberErrors'
+import {
+  CannotRemoveTitularError,
+  ForbiddenError,
+  MemberAlreadyInactiveError,
+  NotFoundError,
+} from '../errors/memberErrors'
 import { useRemoveMember } from './useRemoveMember'
 
 const MEMBER_URL = 'http://localhost:5049/members/mem-2'
@@ -48,6 +53,23 @@ describe('useRemoveMember', () => {
     await act(() => result.current.removeMember('mem-2'))
 
     expect(result.current.error).toBeInstanceOf(CannotRemoveTitularError)
+  })
+
+  it('422 member-already-inactive expõe MemberAlreadyInactiveError', async () => {
+    server.use(
+      http.delete(
+        MEMBER_URL,
+        () =>
+          new HttpResponse(JSON.stringify({ type: 'https://gastosapp.dev/errors/member-already-inactive' }), {
+            status: 422,
+          }),
+      ),
+    )
+    const { result } = renderHook(() => useRemoveMember())
+
+    await act(() => result.current.removeMember('mem-2'))
+
+    expect(result.current.error).toBeInstanceOf(MemberAlreadyInactiveError)
   })
 
   it('403 expõe ForbiddenError', async () => {

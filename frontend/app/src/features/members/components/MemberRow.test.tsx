@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
 import type { MemberItem } from '../api/membersApi'
+import { ROLE_LABEL } from '../utils/roleLabels'
 import { MemberRow } from './MemberRow'
 
 const MEMBER_URL = 'http://localhost:5049/members/mem-2'
@@ -104,5 +105,39 @@ describe('MemberRow', () => {
     )
 
     expect(screen.getByText('convidado@email.com (você)')).toBeInTheDocument()
+  })
+
+  it('membro Inativo mostra o rótulo "Inativo"', () => {
+    const inactiveMember: MemberItem = { ...member, status: 'Inativo' }
+
+    render(
+      <MemberRow
+        member={inactiveMember}
+        readOnly={false}
+        isMe={false}
+        onRoleChanged={() => {}}
+        onRemoveRequested={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('Inativo')).toBeInTheDocument()
+  })
+
+  it('membro Inativo não mostra seletor de papel nem botão de remover, mesmo com readOnly={false} (Titular)', () => {
+    const inactiveMember: MemberItem = { ...member, status: 'Inativo' }
+
+    render(
+      <MemberRow
+        member={inactiveMember}
+        readOnly={false}
+        isMe={false}
+        onRoleChanged={() => {}}
+        onRemoveRequested={() => {}}
+      />,
+    )
+
+    expect(screen.getByText(ROLE_LABEL[inactiveMember.role])).toBeInTheDocument()
+    expect(screen.queryByLabelText('Total')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Remover membro' })).not.toBeInTheDocument()
   })
 })

@@ -3,7 +3,12 @@ import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { server } from '@/test/msw/server'
-import { CannotModifyTitularError, ForbiddenError, NotFoundError } from '../errors/memberErrors'
+import {
+  CannotModifyInactiveMemberError,
+  CannotModifyTitularError,
+  ForbiddenError,
+  NotFoundError,
+} from '../errors/memberErrors'
 import { useUpdateMemberRole } from './useUpdateMemberRole'
 
 const MEMBER_URL = 'http://localhost:5049/members/mem-2'
@@ -56,6 +61,23 @@ describe('useUpdateMemberRole', () => {
     await act(() => result.current.updateRole('Total'))
 
     expect(result.current.error).toBeInstanceOf(CannotModifyTitularError)
+  })
+
+  it('422 cannot-modify-inactive-member expõe CannotModifyInactiveMemberError', async () => {
+    server.use(
+      http.put(
+        MEMBER_URL,
+        () =>
+          new HttpResponse(JSON.stringify({ type: 'https://gastosapp.dev/errors/cannot-modify-inactive-member' }), {
+            status: 422,
+          }),
+      ),
+    )
+    const { result } = renderHook(() => useUpdateMemberRole('mem-2'))
+
+    await act(() => result.current.updateRole('Total'))
+
+    expect(result.current.error).toBeInstanceOf(CannotModifyInactiveMemberError)
   })
 
   it('403 expõe ForbiddenError', async () => {

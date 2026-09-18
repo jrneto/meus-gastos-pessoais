@@ -166,24 +166,24 @@ para o frontend:
 
 ## Critérios de aceite
 
-- [ ] Tipo de `status` do membro no frontend contempla `"Inativo"`
-- [ ] Membro `Inativo` aparece na lista com rótulo próprio, distinto de
+- [x] Tipo de `status` do membro no frontend contempla `"Inativo"`
+- [x] Membro `Inativo` aparece na lista com rótulo próprio, distinto de
       `Ativo`/`ConvitePendente`
-- [ ] Membro `Inativo` não exibe seletor de papel nem botão de remover
-- [ ] Após uma remoção bem-sucedida (204), a tela reconcilia o estado
+- [x] Membro `Inativo` não exibe seletor de papel nem botão de remover
+- [x] Após uma remoção bem-sucedida (204), a tela reconcilia o estado
       real do membro com o backend em vez de assumir que ele
       desapareceu — membro inativado continua visível como `Inativo`,
       membro removido de fato desaparece
-- [ ] Erro 422 `cannot-modify-inactive-member` exibe mensagem
+- [x] Erro 422 `cannot-modify-inactive-member` exibe mensagem
       específica e desfaz a troca otimista de papel
-- [ ] Erro 422 `member-already-inactive` exibe mensagem específica
-- [ ] Texto do diálogo de confirmação de remoção não promete
+- [x] Erro 422 `member-already-inactive` exibe mensagem específica
+- [x] Texto do diálogo de confirmação de remoção não promete
       apagamento irreversível — comunica perda de acesso imediata
-- [ ] Reconvidar o e-mail de um membro `Inativo` funciona sem erro e
+- [x] Reconvidar o e-mail de um membro `Inativo` funciona sem erro e
       sem tratamento especial na UI
-- [ ] Remoção de `ConvitePendente`/`Ativo` sem transações continua
+- [x] Remoção de `ConvitePendente`/`Ativo` sem transações continua
       removendo o membro da lista (sem regressão)
-- [ ] 100% dos testes (unitários/componente) passando
+- [x] 100% dos testes (unitários/componente) passando
 
 ## Fora do escopo
 

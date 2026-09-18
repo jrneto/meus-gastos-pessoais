@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/features/auth/store/authStore'
@@ -53,6 +53,62 @@ describe('useMembers', () => {
     server.use(http.get(MEMBERS_URL, () => new HttpResponse(null, { status: 500 })))
 
     const { result } = renderHook(() => useMembers())
+
+    await waitFor(() => expect(result.current.error).toBeInstanceOf(UnknownMemberError))
+  })
+
+  it('refetch() atualiza items sem tocar isLoading', async () => {
+    let getCount = 0
+    server.use(
+      http.get(MEMBERS_URL, () => {
+        getCount += 1
+        return HttpResponse.json({ items: getCount === 1 ? [titular] : [] })
+      }),
+    )
+
+    const { result } = renderHook(() => useMembers())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.items).toEqual([titular])
+
+    act(() => {
+      result.current.refetch()
+    })
+
+    expect(result.current.isLoading).toBe(false)
+    await waitFor(() => expect(result.current.items).toEqual([]))
+    expect(getCount).toBe(2)
+  })
+
+  it('refetch() ativa e desativa isRefetching', async () => {
+    server.use(http.get(MEMBERS_URL, () => HttpResponse.json({ items: [titular] })))
+    const { result } = renderHook(() => useMembers())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.isRefetching).toBe(false)
+
+    act(() => {
+      result.current.refetch()
+    })
+
+    await waitFor(() => expect(result.current.isRefetching).toBe(true))
+    await waitFor(() => expect(result.current.isRefetching).toBe(false))
+  })
+
+  it('erro numa refetch() atualiza error normalmente', async () => {
+    let getCount = 0
+    server.use(
+      http.get(MEMBERS_URL, () => {
+        getCount += 1
+        if (getCount === 1) return HttpResponse.json({ items: [titular] })
+        return new HttpResponse(null, { status: 500 })
+      }),
+    )
+
+    const { result } = renderHook(() => useMembers())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.refetch()
+    })
 
     await waitFor(() => expect(result.current.error).toBeInstanceOf(UnknownMemberError))
   })
